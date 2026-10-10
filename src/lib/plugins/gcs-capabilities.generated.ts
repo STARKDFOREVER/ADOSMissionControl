@@ -159,7 +159,7 @@ export const GCS_CAPABILITY_CATALOG: Record<string, CapabilityMeta> = {
   },
   "perception.read": {
     label: "Read perception state in the GCS",
-    description: "Lets the plugin read the drone's perception state — where detection runs (on the drone or offloaded to a compute node), the bound compute node, and the live session health (feed freshness, throughput). Read-only on derived data; it does not open or read the camera.",
+    description: "Lets the plugin read the drone's perception state: where detection runs (on the drone or offloaded to a compute node), the bound compute node, and the live session health (feed freshness, throughput). Read-only on derived data; it does not open or read the camera.",
     category: "data_network",
     risk: "low",
     risk_reason: "Read-only on derived detection metadata; no camera access.",

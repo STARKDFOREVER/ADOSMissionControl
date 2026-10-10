@@ -285,7 +285,7 @@ export const AGENT_CAPABILITY_CATALOG: Record<string, CapabilityMeta> = {
   "vision.track.designate": {
     label: "Set the vision engine's follow target",
     description: "Lets the plugin choose which object the vision engine's single-object tracker locks onto (the follow target), by naming the box to track. This selects a target for downstream follow / framing logic; designation alone does not command the vehicle.",
-    category: "data_network",
+    category: "flight_control",
     risk: "medium",
     risk_reason: "Choosing the follow target steers downstream follow/framing behaviour, though designation alone does not command flight.",
   },

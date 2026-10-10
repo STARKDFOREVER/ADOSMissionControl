@@ -45,6 +45,7 @@ export const SIDECAR_VERSIONS = {
   "gpio-output": 1,
   "board": 1,
   "config-status": 1,
+  "fc-identity": 1,
 } as const;
 
 export interface ContractMeta {
@@ -110,7 +111,7 @@ export const CONTRACT_CATALOG: Record<string, ContractMeta> = {
     wire: "msgpack",
     transport: "unix-stream",
     status: "active",
-    description: "Length-prefixed msgpack vehicle-state frame (the current state-socket format). v3 added position_age_ms (how long since the flight controller's last decoded POSITION, read by the swarm beacon's suppression gate). v4 publishes a not-reported reading (battery voltage/current/remaining/temperature, GPS eph/epv, RC rssi) as null instead of the MAVLink sentinel.",
+    description: "Length-prefixed msgpack vehicle-state frame (the current state-socket format). v3 added position_age_ms (how long since the flight controller's last decoded POSITION, read by the swarm beacon's suppression gate). v4 publishes a not-reported reading (battery voltage/current/remaining/temperature, GPS eph/epv, RC rssi) as null instead of the MAVLink sentinel. The runtime extras carry `fc_system_id`/`fc_component_id` once the FC heartbeat is latched.",
   },
   "frame": {
     version: 0,
@@ -345,5 +346,12 @@ export const SIDECAR_CATALOG: Record<string, ContractMeta> = {
     transport: "/run/ados/config-status-<service>.json",
     status: "sidecar",
     description: "Per-service config-load status: a loud-fail record written when a service's config is malformed.",
+  },
+  "fc-identity": {
+    version: 1,
+    wire: "json",
+    transport: "/run/ados/fc-identity.json",
+    status: "sidecar",
+    description: "Flight-controller identity reconciler outcome: whether the write is enabled, the last tick's outcome, the wanted and current system id.",
   },
 };
