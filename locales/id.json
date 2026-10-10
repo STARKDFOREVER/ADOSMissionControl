@@ -1327,12 +1327,8 @@
     "preFlightCheck": "Pemeriksaan Pra-Terbang",
     "arm": "AKTIFKAN",
     "disarm": "NONAKTIFKAN",
-    "armShortcut": "Aktifkan (Shift+A)",
-    "disarmShortcut": "Nonaktifkan (Shift+A)",
     "pause": "JEDA",
     "resume": "LANJUT",
-    "pauseShortcut": "Jeda misi (Shift+P)",
-    "resumeShortcut": "Lanjutkan misi (Shift+P)",
     "attitude": "Sikap",
     "position": "Posisi",
     "health": "KESEHATAN",
@@ -1373,6 +1369,21 @@
       "thermalHits": "Deteksi termal",
       "waypoints": "Waypoint",
       "distance": "Jarak"
+    },
+    "actions": {
+      "withChord": "{label} ({chord})",
+      "openChecklist": "Open pre-flight checklist",
+      "arm": "Arm",
+      "disarm": "Disarm",
+      "pauseMission": "Pause mission",
+      "resumeMission": "Resume mission",
+      "holdPosition": "Hold position",
+      "returnHome": "Return to home",
+      "takeoffAltitude": "Takeoff altitude ({min}-{max} m)",
+      "takeoff": "Takeoff",
+      "land": "Land",
+      "abort": "Abort",
+      "kill": "Kill motors"
     }
   },
   "logs": {
@@ -1622,7 +1633,11 @@
     "pluginPage": "Extension page",
     "pluginSurface": {
       "unavailable": "This extension page is not loaded on this node yet."
-    }
+    },
+    "rebootNoFc": "No flight controller connected",
+    "rebootSent": "Reboot command sent",
+    "rebootRefused": "The FC refused the reboot command",
+    "rebootFailed": "Reboot command failed"
   },
   "vision": {
     "title": "Vision Engine",
@@ -3962,7 +3977,8 @@
     "enterCustomValue": "Custom value",
     "apply": "Apply",
     "cancel": "Cancel",
-    "bitmaskRawInvalid": "Enter a whole decimal number or 0x hex value that fits in 32 bits."
+    "bitmaskRawInvalid": "Enter a whole decimal number or 0x hex value that fits in 32 bits.",
+    "incompleteDownload": "{received} of {total} received. Retry missing"
   },
   "preArm": {
     "title": "Pemeriksaan Pra-Aktifkan",
@@ -4288,6 +4304,11 @@
         "list": "Daftar",
         "map": "Peta"
       }
+    },
+    "reconnecting": {
+      "title": "Reconnecting",
+      "label": "{name}: reconnecting (attempt {attempts})",
+      "stop": "Stop reconnecting"
     }
   },
   "commandPalette": {
@@ -6711,7 +6732,8 @@
       "altitude": "Ketinggian lepas landas",
       "altitudeUnit": "m",
       "altitudeDecrease": "Kurangi ketinggian",
-      "altitudeIncrease": "Tambah ketinggian"
+      "altitudeIncrease": "Tambah ketinggian",
+      "staleLink": "The vehicle may not receive this"
     },
     "groundStation": {
       "noDrone": "Tidak ada drone yang terhubung ke stasiun darat ini",
@@ -6888,7 +6910,9 @@
       "noAutonomousNav": "Autonomous flight unavailable",
       "stateError": "State unavailable",
       "noCharges": "No charges remaining",
-      "commandRejected": "The vehicle did not accept the command"
+      "commandRejected": "The vehicle did not accept the command",
+      "linkStale": "Link stale: sent without confirmation of receipt",
+      "changedSincePrompt": "The vehicle changed while the confirmation was open. Nothing was sent."
     },
     "state": {
       "ready": "Ready",
@@ -7915,5 +7939,24 @@
   "fcSigning": {
     "enrollSentNotConfirmed": "Key sent, not confirmed. The flight controller was sent the new key but was not seen signing with it. This browser keeps both keys until you confirm which one the flight controller holds.",
     "disableSentNotConfirmed": "Disable sent, not confirmed. The flight controller was not seen sending unsigned messages. This browser keeps its key until you confirm unsigned commands are accepted."
+  },
+  "droneLinks": {
+    "title": "Links",
+    "primary": "Primary",
+    "noData": "No data yet",
+    "age": "{seconds}s ago",
+    "remove": "Remove link {label}"
+  },
+  "armedLock": {
+    "soft": "Vehicle is armed. Parameter changes write live, so review before saving.",
+    "softUnknown": "Arm state unknown: treat the vehicle as armed. Parameter changes write live, so review before saving.",
+    "hard": "This control is disabled while the vehicle is armed for safety. Disarm to use.",
+    "hardUnknown": "This control is disabled until the vehicle reports it is disarmed."
+  },
+  "armedWriteConfirm": {
+    "title": "Vehicle is armed",
+    "titleUnknown": "Arm state unknown",
+    "body": "You are about to write {count, plural, one {# parameter} other {# parameters}} to the flight controller while it is armed. The changes take effect immediately and may affect in-flight behavior.",
+    "bodyUnknown": "You are about to write {count, plural, one {# parameter} other {# parameters}} to the flight controller, which has not reported whether it is armed. Treat it as armed: the changes take effect immediately and may affect in-flight behavior."
   }
 }
