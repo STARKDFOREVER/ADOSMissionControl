@@ -71,7 +71,7 @@ function refuseNonLocal(request: Request): Response | null {
  *  file avoids double-counting a completion that lands in both. */
 async function pickActivityFile(): Promise<string> {
   const override = process.env.ADOS_MCP_AUDIT_PATH?.trim();
-  const dir = override ? override.replace(/\/audit\.ndjson$/, "") : join(homedir(), ".ados", "mcp");
+  const dir = override ? override.replace(/[\\/]audit\.ndjson$/, "") : join(homedir(), ".ados", "mcp");
   const activity = join(dir, "activity.ndjson");
   try {
     await stat(activity);
