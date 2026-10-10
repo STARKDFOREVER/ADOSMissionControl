@@ -45,6 +45,7 @@ import { STM32DfuFlasher } from "./stm32-dfu";
 import { PX4SerialFlasher } from "./px4-serial";
 import { bootloaderAppImage } from "./px4-serial-helpers";
 import { saveFlashParamBackup, type FlashParamBackup } from "./param-backup";
+import { ParamDownloadIncompleteError } from "../mavlink-adapter-params";
 import { serialPortManager } from "@/lib/serial-port-manager";
 import {
   ALL_FC_BOOTLOADER_IDS,
@@ -159,7 +160,20 @@ export class FlashManager {
         try {
           params = await this.protocol.getAllParameters();
         } catch (err) {
-          throw new Error(`Parameter backup failed (${err instanceof Error ? err.message : String(err)}). Not flashing.`);
+          if (!(err instanceof ParamDownloadIncompleteError)) {
+            throw new Error(`Parameter backup failed (${err instanceof Error ? err.message : String(err)}). Not flashing.`);
+          }
+          // A partial backup restores a partial configuration. Flash only
+          // when the operator explicitly accepts that.
+          const accepted = typeof globalThis.confirm === "function" && globalThis.confirm(
+            `Backup incomplete ${err.received}/${err.total}: ${err.total - err.received} parameters were not received. ` +
+            "Flash anyway with this partial backup?",
+          );
+          if (!accepted) {
+            throw new Error(`Parameter backup incomplete (${err.received}/${err.total}). Not flashing.`);
+          }
+          this.log("warning", `operator accepted an incomplete backup (${err.received}/${err.total})`);
+          params = err.params;
         }
         paramBackup = await saveFlashParamBackup(options.backupBoard ?? String(firmware.boardId ?? "unknown"), params);
         onProgress({

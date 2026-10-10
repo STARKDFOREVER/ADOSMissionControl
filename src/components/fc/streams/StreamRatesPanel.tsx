@@ -8,6 +8,7 @@ import { Select } from "@/components/ui/select";
 import type { SelectOption } from "@/components/ui/select";
 import { usePanelCommit } from "@/hooks/use-panel-commit";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
+import { useSettingsStore } from "@/stores/settings-store";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { useParamLabel } from "@/hooks/use-param-label";
@@ -35,6 +36,8 @@ export function StreamRatesPanel() {
   const paramMeta = useParamMetadataMap();
   const scrollRef = usePanelScroll("stream-rates");
   const [channel, setChannel] = useState(1);
+  const gcsManagesRates = useSettingsStore((s) => s.gcsManagesTelemetryRates);
+  const setGcsManagesRates = useSettingsStore((s) => s.setGcsManagesTelemetryRates);
 
   // Both the MAVn_* and SRn_* names are read for the channel; the vehicle has
   // one family and the other is simply absent. Every rate is optional so a
@@ -58,6 +61,16 @@ export function StreamRatesPanel() {
         <PanelHeader title="Telemetry Stream Rates" subtitle="Per-port MAVLink message group rates (Hz)"
           icon={<Gauge size={16} />} loading={loading} loadProgress={loadProgress} hasLoaded={hasLoaded}
           onRead={refresh} connected={connected} error={error} />
+
+        <label className="flex items-start gap-2 text-xs text-text-secondary cursor-pointer">
+          <input type="checkbox" checked={gcsManagesRates} onChange={(e) => setGcsManagesRates(e.target.checked)}
+            className="mt-0.5 accent-accent-primary" />
+          <span>
+            GCS manages telemetry rates. On connect, link restore and flight-controller reboot this GCS
+            requests its own rates on the channel it is connected through. Turn off to keep the rates set
+            here, or by the agent&apos;s router, untouched.
+          </span>
+        </label>
 
         <div className="flex items-center gap-3">
           <span className="text-xs text-text-secondary">MAVLink channel</span>

@@ -320,5 +320,11 @@ export function migrateSettings(
     // kiosk now shows the agent's own cockpit), so the stored flag goes too.
     delete (state as Record<string, unknown>).hudAutoClaimPicOnFirstButton;
   }
+  if (version < 51) {
+    // v51: the GCS manages telemetry stream rates by default; inbound signing
+    // enforcement is opt-in.
+    state.gcsManagesTelemetryRates = true;
+    state.enforceInboundSigning = false;
+  }
   return state as Partial<SettingsStoreState>;
 }

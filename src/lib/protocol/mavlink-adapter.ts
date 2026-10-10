@@ -18,53 +18,28 @@ import type {
   LogDownloadProgressCallback, FtpDownloadProgressCallback, LinkInfo, GuidedGotoOptions,
   FenceElement,
 } from './types'
-import { MAVLinkParser, type MAVLinkFrame } from './mavlink-parser'
-import { encodeHeartbeat, MAV_CMD_SET_EKF_SOURCE_SET } from './mavlink-encoder'
-import { MAV_CMD_CAN_FORWARD, encodeCanFrame, encodeCanFdFrame } from './encoders/can-forward'
-import { decodeHeartbeat } from './mavlink-messages'
-import { isAutopilotHeartbeat } from './heartbeat-source'
-import { CommandQueue, MAV_RESULT } from './command-queue'
+import type { MAVLinkFrame } from './mavlink-parser'
+import { encodeHeartbeat } from './mavlink-encoder'
+import { MAV_CMD_CAN_FORWARD } from './encoders/can-forward'
+import { CommandQueue } from './command-queue'
 import { TELEMETRY_STALE_MS } from '@/lib/telemetry/freshness'
 import { createFirmwareHandler } from './firmware/ardupilot'
-import { useDiagnosticsStore } from '@/stores/diagnostics-store'
 import { createCallbackStore, bindCallbackMethods } from './mavlink-adapter-callbacks'
-import { routeFrame, checkLinkState, requestDataStreams, MSG_NAMES, type FrameHandlerState } from './mavlink-adapter-frame-handlers'
+import {
+  checkLinkState, requestDataStreams, processInboundFrame, resetOnDisconnect, type FrameHandlerState,
+} from './mavlink-adapter-frame-handlers'
 import { StatusTextAssembler } from './handlers/info-handlers'
 import * as cmds from './mavlink-adapter-commands'
+import * as ext from './mavlink-adapter-ext-commands'
 import * as prm from './mavlink-adapter-params'
 import * as msn from './mavlink-adapter-missions'
 import * as logOps from './mavlink-adapter-logs'
 import * as ftpOps from './mavlink-adapter-ftp'
 import * as ftpWriteOps from './mavlink-adapter-ftp-ops'
-import { SigningTransport } from './signing-transport'
+import { LinkSet } from './mavlink-adapter-links'
+import { commandRefusal } from './command-refusal'
+import { NO_CAPABILITIES } from './no-capabilities'
 import type { MavlinkSigner } from './mavlink-signer'
-import type { ConnectionMeta } from '@/lib/connection-meta'
-
-/** Per-link state for multi-link support. Each link is a Transport that can reach this drone. */
-interface LinkState {
-  id: string
-  transport: Transport
-  /** `transport` as seen by senders: signs each v2 frame while a signer is set. */
-  outbound: SigningTransport
-  /**
-   * This link's own frame parser. A parser holds partial frames between
-   * chunks, so two links sharing one would splice a chunk from one link into
-   * a frame from the other and lose both to the CRC check.
-   */
-  parser: MAVLinkParser
-  label: string
-  connectionMeta?: ConnectionMeta
-  connectedAt: number
-  /** Last time bytes were received on this link (ms) — used for "primary" selection */
-  lastByteAt: number
-  dataHandler: (data: Uint8Array) => void
-  closeHandler: () => void
-}
-
-type LinkFrameListener = (frame: MAVLinkFrame, linkId: string) => void
-
-let _linkIdCounter = 0
-const nextLinkId = () => `link-${++_linkIdCounter}-${Date.now()}`
 
 export class MAVLinkAdapter implements DroneProtocol {
   readonly protocolName = 'mavlink'
@@ -72,68 +47,38 @@ export class MAVLinkAdapter implements DroneProtocol {
   // Internal state
   /** True while this adapter routes link frames into its state machines. */
   private routing = false
-  /** Frame observers across every link, told which link delivered each frame. */
-  private frameListeners: LinkFrameListener[] = []
   private commandQueue = new CommandQueue(3000)
-  /** Multi-link support — Map of active transports reaching this drone. */
-  private links = new Map<string, LinkState>()
+  /** Every transport reaching this drone, with its parser and signing. */
+  private readonly ls = new LinkSet(
+    (frame) => { if (this.routing) this.handleFrame(frame) },
+    (linkId) => this.handleLinkClose(linkId),
+  )
   private _connected = false
   private _disconnected = false
   private heartbeatInterval: ReturnType<typeof setInterval> | null = null
-  private streamRequestInterval: ReturnType<typeof setInterval> | null = null
   private linkLostCheckInterval: ReturnType<typeof setInterval> | null = null
-  /** Signs every outbound v2 frame when set; null sends unsigned. */
-  private signer: MavlinkSigner | null = null
+  /** Stream-rate re-request triggers (link restored, FC reboot); dropped on disconnect. */
+  private streamTriggers: Array<() => void> = []
+  /** Last SYSTEM_TIME.time_boot_ms, to spot an FC reboot. */
+  private lastBootMs: number | null = null
+  private disconnectListeners: Array<() => void> = []
+
+  /** The link outbound frames go through (prefers one that can command). */
+  get commandTransport(): Transport | null { return this.ls.commandTransport }
 
   /**
-   * The "primary" transport — the link with the most recent byte activity.
-   *
-   * This is the liveness notion: which link is currently carrying this
-   * vehicle's telemetry. It is deliberately *not* the send target, because
-   * the busiest link can be receive-only.
-   */
-  private get transport(): Transport | null {
-    if (this.links.size === 0) return null
-    let primary: LinkState | null = null
-    for (const link of this.links.values()) {
-      if (!primary || link.lastByteAt > primary.lastByteAt) primary = link
-    }
-    return primary?.transport ?? null
-  }
-
-  /**
-   * The link every outbound byte goes through.
-   *
-   * A receive-only link (`canCommand === false`) can easily be the busiest —
-   * a relay downlink pushing video-rate telemetry while the uplink sits idle
-   * between operator actions. Selecting purely on byte recency therefore
-   * aimed every command at the link that discards it, while a perfectly good
-   * commanding link sat unused beside it.
-   *
-   * So: prefer the most recently active link that can actually command. When
-   * none can, fall back to the primary rather than null, so the honest
-   * `canCommand` refusals downstream still read the real link state instead
-   * of reporting "Not connected" for a link that is connected and simply
-   * cannot carry a command.
-   */
-  private get commandTransport(): Transport | null {
-    if (this.links.size === 0) return null
-    let best: LinkState | null = null
-    let primary: LinkState | null = null
-    for (const link of this.links.values()) {
-      if (!primary || link.lastByteAt > primary.lastByteAt) primary = link
-      if (!link.transport.canCommand || !link.transport.isConnected) continue
-      if (!best || link.lastByteAt > best.lastByteAt) best = link
-    }
-    return (best ?? primary)?.outbound ?? null
-  }
-
-  /**
-   * Sign every outbound MAVLink v2 frame with `signer`, or send unsigned
-   * with null. Takes effect on the next frame on every link.
+   * Sign every outbound MAVLink v2 frame with `signer` (and verify inbound
+   * signed frames against it), or send unsigned with null. Takes effect on
+   * the next frame on every link.
    */
   setSigner(signer: MavlinkSigner | null): void {
-    this.signer = signer
+    this.ls.setSigner(signer)
+  }
+
+  /** Fires once when the last link goes or the adapter is disconnected. */
+  onDisconnect(cb: () => void): () => void {
+    this.disconnectListeners.push(cb)
+    return () => { this.disconnectListeners = this.disconnectListeners.filter((l) => l !== cb) }
   }
   private cbs = createCallbackStore()
   private cbm = bindCallbackMethods(this.cbs)
@@ -187,86 +132,17 @@ export class MAVLinkAdapter implements DroneProtocol {
     }
   })()
 
-  /** Attach a transport as a link. Returns the link state. */
-  private attachLink(transport: Transport, label: string, meta?: ConnectionMeta): LinkState {
-    const id = nextLinkId()
-    const parser = new MAVLinkParser()
-    const link: LinkState = {
-      id,
-      transport,
-      outbound: new SigningTransport(transport, () => this.signer),
-      parser,
-      label,
-      connectionMeta: meta,
-      connectedAt: Date.now(),
-      lastByteAt: 0,
-      dataHandler: (data: Uint8Array) => {
-        link.lastByteAt = Date.now()
-        parser.feed(data)
-      },
-      closeHandler: () => this.handleLinkClose(id),
-    }
-    parser.onFrame((frame) => this.dispatchLinkFrame(frame, id))
-    transport.on('data', link.dataHandler)
-    transport.on('close', link.closeHandler as (data: void) => void)
-    this.links.set(id, link)
-    return link
-  }
-
-  /** Route one link's frame into the adapter state machines, then to every listener. */
-  private dispatchLinkFrame(frame: MAVLinkFrame, linkId: string): void {
-    if (this.routing) this.handleFrame(frame)
-    for (const listener of [...this.frameListeners]) {
-      try {
-        listener(frame, linkId)
-      } catch (err) {
-        console.warn('[MAVLink] frame listener threw, continuing', err)
-      }
-    }
-  }
-
-  private listenFrames(listener: LinkFrameListener): () => void {
-    this.frameListeners.push(listener)
-    return () => {
-      const i = this.frameListeners.indexOf(listener)
-      if (i !== -1) this.frameListeners.splice(i, 1)
-    }
-  }
-
-  /** Detach a single link's transport handlers (does not disconnect the transport). */
-  private detachLink(link: LinkState): void {
-    link.transport.off('data', link.dataHandler)
-    link.transport.off('close', link.closeHandler as (data: void) => void)
-    link.parser.reset()
-    this.links.delete(link.id)
-  }
-
   // ── Connection ─────────────────────────────────────────
   async connect(transport: Transport): Promise<VehicleInfo> {
     this._disconnected = false
-    const label = this.formatLinkLabel(transport)
-    const link = this.attachLink(transport, label)
+    const link = this.ls.attach(transport, transport.type)
     // Route frames for this connection; handleDisconnect stops it. The router
     // is on before the heartbeat wait so nothing arriving with the first
     // heartbeat is lost.
     this.routing = true
-
-    // The heartbeat wait, with BOTH exits cleaned up. The timeout used to
-    // reject without calling `unsub()`, so every failed connect left a
-    // frame listener on the parser and left the transport attached — the
-    // dialog reported a failure while the link kept running underneath,
-    // and each retry added another listener.
-    const gate = Promise.withResolvers<VehicleInfo>()
-    const timeout = setTimeout(
-      () => gate.reject(new Error('No heartbeat received within 10 seconds')),
-      10000,
-    )
-    const unsub = this.listenFrames((frame, linkId) => {
-      if (linkId === link.id && frame.msgId === 0) {
-        const hb = decodeHeartbeat(frame.payload)
-        // A companion computer, gimbal or camera on the vehicle's sysid must
-        // not win the lock: every command would target it instead of the FC.
-        if (!isAutopilotHeartbeat(hb)) return
+    let vehicleInfo: VehicleInfo
+    try {
+      vehicleInfo = await this.ls.awaitAutopilot(link, 10000, (frame, hb) => {
         const st = this.st
         st.targetSysId = frame.systemId; st.targetCompId = frame.componentId
         st.firmwareHandler = createFirmwareHandler(hb.autopilot, hb.type)
@@ -276,22 +152,13 @@ export class MAVLinkAdapter implements DroneProtocol {
           systemId: frame.systemId, componentId: frame.componentId,
           autopilotType: hb.autopilot, vehicleType: hb.type,
         }
-        st.vehicleInfo = info; gate.resolve(info)
-      }
-    })
-
-    let vehicleInfo: VehicleInfo
-    try {
-      vehicleInfo = await gate.promise
+        st.vehicleInfo = info
+        return info
+      })
     } catch (err) {
-      clearTimeout(timeout)
-      unsub()
       this.routing = false
-      this.detachLink(link)
       throw err
     }
-    clearTimeout(timeout)
-    unsub()
 
     this._connected = true
     // The GCS heartbeat is housekeeping: it announces us to the vehicle and
@@ -308,8 +175,19 @@ export class MAVLinkAdapter implements DroneProtocol {
     if (transport.canCommand) {
       this.sendWrapped(encodeHeartbeat(this.st.sysId, this.st.compId))
     }
-    requestDataStreams(this.st)
-    this.streamRequestInterval = setInterval(() => requestDataStreams(this.st), 10000)
+    // Stream rates are requested once per (re)connection, never on a timer:
+    // a periodic re-send overrode the operator's SRn_/MAVn_ edits and the
+    // agent router's configured rates.
+    this.requestStreams()
+    this.lastBootMs = null
+    this.streamTriggers = [
+      this.cbm.onLinkRestored(() => this.requestStreams()),
+      this.cbm.onSystemTime(({ timeBootMs }) => {
+        // time_boot_ms going backwards means the FC rebooted.
+        if (this.lastBootMs !== null && timeBootMs < this.lastBootMs) this.requestStreams()
+        this.lastBootMs = timeBootMs
+      }),
+    ]
     this.st.lastVehicleHeartbeat = Date.now(); this.st.linkIsLost = false
     this.linkLostCheckInterval = setInterval(() => checkLinkState(this.st), 1000)
     this.sendCommandLong(512, [242, 0, 0, 0, 0, 0, 0]).catch(() => {})
@@ -333,85 +211,47 @@ export class MAVLinkAdapter implements DroneProtocol {
     if (this._disconnected) {
       return { ok: false, error: 'Adapter is disconnected' }
     }
-    const label = this.formatLinkLabel(transport)
-    const link = this.attachLink(transport, label)
-
     // Wait for a heartbeat from the SAME sysid
-    const expectedSysId = this.st.targetSysId
-    return new Promise((resolve) => {
-      const timeout = setTimeout(() => {
-        unsub()
-        this.detachLink(link)
-        resolve({ ok: false, error: 'No heartbeat received on new link within 10 seconds' })
-      }, 10000)
-      const unsub = this.listenFrames((frame, linkId) => {
-        // Only a heartbeat that arrived on *this* link says anything about
-        // where this link reaches.
-        if (linkId !== link.id || frame.msgId !== 0) return
-        const hb = decodeHeartbeat(frame.payload)
-        if (!isAutopilotHeartbeat(hb)) return
-        if (frame.systemId !== expectedSysId) {
-          clearTimeout(timeout); unsub()
-          this.detachLink(link)
-          resolve({
-            ok: false,
-            error: `Sysid mismatch: this transport reaches sysid ${frame.systemId} but expected ${expectedSysId}`,
-          })
-          return
-        }
-        clearTimeout(timeout); unsub()
-        resolve({ ok: true, linkId: link.id })
-      })
-    })
+    return this.ls.verifyNewLink(this.ls.attach(transport, transport.type), this.st.targetSysId)
   }
 
   /** Remove a link by id. If it's the last link, the adapter disconnects. */
   async removeLink(linkId: string): Promise<void> {
-    const link = this.links.get(linkId)
+    const link = this.ls.links.get(linkId)
     if (!link) return
-    this.detachLink(link)
+    this.ls.detach(link)
     if (link.transport.isConnected) {
       try { await link.transport.disconnect() } catch { /* ignore */ }
     }
-    if (this.links.size === 0) {
+    if (this.ls.links.size === 0) {
       this.handleDisconnect()
     }
   }
 
   /** Returns information about all active links for this drone. */
-  get linkInfo(): LinkInfo[] {
-    const primaryTransport = this.transport
-    const result: LinkInfo[] = []
-    for (const link of this.links.values()) {
-      result.push({
-        id: link.id,
-        type: link.transport.type,
-        label: link.label,
-        isConnected: link.transport.isConnected,
-        connectedAt: link.connectedAt,
-        lastByteAt: link.lastByteAt,
-        isPrimary: link.transport === primaryTransport,
-      })
-    }
-    return result.sort((a, b) => a.connectedAt - b.connectedAt)
-  }
-
-  private formatLinkLabel(transport: Transport): string {
-    return transport.type
-  }
+  get linkInfo(): LinkInfo[] { return this.ls.info() }
 
   /** Called when an individual link's transport closes. */
   private handleLinkClose(linkId: string): void {
-    const link = this.links.get(linkId)
+    const link = this.ls.links.get(linkId)
     if (!link) return
-    this.detachLink(link)
-    if (this.links.size === 0) {
+    this.ls.detach(link)
+    if (this.ls.links.size === 0) {
       this.handleDisconnect()
     }
   }
 
+  /** Request telemetry rates; housekeeping, so a send failure is logged, never thrown. */
+  private requestStreams(): void {
+    try {
+      requestDataStreams(this.st)
+    } catch (err) {
+      console.warn('[MAVLinkAdapter] stream-rate request failed:', err)
+    }
+  }
+
   async disconnect(): Promise<void> {
-    const links = Array.from(this.links.values())
+    const links = Array.from(this.ls.links.values())
     this.handleDisconnect()
     for (const link of links) {
       if (link.transport.isConnected) {
@@ -424,55 +264,29 @@ export class MAVLinkAdapter implements DroneProtocol {
     if (this._disconnected) return
     this._disconnected = true; this._connected = false
     if (this.heartbeatInterval) { clearInterval(this.heartbeatInterval); this.heartbeatInterval = null }
-    if (this.streamRequestInterval) { clearInterval(this.streamRequestInterval); this.streamRequestInterval = null }
     if (this.linkLostCheckInterval) { clearInterval(this.linkLostCheckInterval); this.linkLostCheckInterval = null }
-    const st = this.st
-    this.commandQueue.clear(); st.statusText.clear(); this.paramCache.clear(); st.downloadedParamNames = null
+    for (const off of this.streamTriggers) off()
+    this.streamTriggers = []
+    this.commandQueue.clear(); this.paramCache.clear()
     this.routing = false
-    st.componentMetadataUri = null; st.homeAltitudeAmsl = null
-    logOps.cancelLogList(st, 'Disconnected during log list')
-    if (st.logDataDownload) logOps.cancelLogDownload(st, 'Disconnected during log download')
-    const ftp = this._ftpCtx.ftpDownload
-    if (ftp) { if (ftp.inactivityTimer) clearTimeout(ftp.inactivityTimer); clearTimeout(ftp.hardTimer); ftp.reject(new Error('Disconnected during FTP download')); this._ftpCtx.ftpDownload = null }
-    prm.finishParamDownload(st)
-    msn.cancelMissionTransfers(st, 'Disconnected during mission transfer')
-    ftpWriteOps.cancelFtpOp(this._ftpCtx, 'Disconnected during FTP operation')
+    resetOnDisconnect(this.st, this._ftpCtx)
     // Detach all remaining links
-    for (const link of Array.from(this.links.values())) {
-      this.detachLink(link)
+    for (const link of Array.from(this.ls.links.values())) {
+      this.ls.detach(link)
+    }
+    for (const cb of [...this.disconnectListeners]) {
+      try { cb() } catch (err) { console.warn('[MAVLinkAdapter] disconnect listener threw', err) }
     }
   }
 
   /** Every frame the link parser accepts (reassembled, CRC-checked, signature stripped). */
-  onMavlinkFrame(callback: (frame: MAVLinkFrame) => void): () => void { return this.listenFrames((frame) => callback(frame)) }
+  onMavlinkFrame(callback: (frame: MAVLinkFrame) => void): () => void { return this.ls.listen((frame) => callback(frame)) }
 
   /** Set to true when the MAVLink Inspector / diagnostics panel is open. */
   diagnosticsEnabled = false
 
   private handleFrame(frame: MAVLinkFrame): void {
-    const startTime = performance.now()
-    const diag = useDiagnosticsStore.getState(); diag.recordParseEvent()
-    const msgName = MSG_NAMES[frame.msgId] ?? `MSG_${frame.msgId}`
-    let rawHex: string | undefined
-    if (this.diagnosticsEnabled) {
-      const pb = new Uint8Array(frame.payload.buffer, frame.payload.byteOffset, frame.payload.byteLength)
-      rawHex = Array.from(pb.slice(0, 32)).map((b) => b.toString(16).padStart(2, '0')).join(' ') + (pb.length > 32 ? ' ...' : '')
-    }
-    diag.logMessage(frame.msgId, msgName, 'in', frame.payload.byteLength, rawHex)
-    const s = this.st
-    const cbStart = performance.now()
-    try {
-      routeFrame(s, frame, frame.payload)
-    } catch (err) {
-      // A throwing handler or store bridge must not propagate back through the
-      // parser's feed() loop and stall the rest of the batch. Keep the synced
-      // state and continue.
-      console.warn(`[MAVLink] routeFrame threw for ${msgName}, continuing`, err)
-    }
-    // Callback-dispatch latency: time spent fanning out to telemetry
-    // subscribers, tracked separately from total frame-processing time.
-    diag.recordCallbackLatency(performance.now() - cbStart)
-    diag.recordFrameProcessingTime(performance.now() - startTime)
+    processInboundFrame(this.st, frame, this.diagnosticsEnabled)
   }
 
   // ── Context helpers ────────────────────────────────────
@@ -524,52 +338,24 @@ export class MAVLinkAdapter implements DroneProtocol {
   async orbit(radius: number, velocity: number, yawBehavior: number, lat: number, lon: number, alt: number) { return cmds.cmdOrbit(this.cc, radius, velocity, yawBehavior, lat, lon, alt) }
   async setEkfOrigin(lat: number, lon: number, alt: number) { return cmds.cmdSetEkfOrigin(this.cc, lat, lon, alt) }
 
-  /**
-   * Switch the active EKF source set at runtime.
-   *
-   * ArduPilot path: COMMAND_LONG with MAV_CMD_SET_EKF_SOURCE_SET (42007) and
-   * a 1 s ACK timeout. PX4 has no runtime equivalent; the autopilot requires
-   * a parameter update plus EKF restart, which is out of scope for this
-   * surface, so the call resolves with a typed rejection instead of throwing.
-   */
-  async setEkfSourceSet(
-    sourceSet: 1 | 2 | 3,
-  ): Promise<{ ok: true } | { ok: false; reason: 'px4-not-supported' | 'no-ack' | 'rejected' }> {
-    if (sourceSet !== 1 && sourceSet !== 2 && sourceSet !== 3) {
-      throw new TypeError(`setEkfSourceSet: sourceSet must be 1, 2, or 3 (received ${String(sourceSet)})`)
-    }
-    if (this.st.firmwareHandler?.firmwareType === 'px4') {
-      if (!this.px4EkfSourceWarned) {
-        this.px4EkfSourceWarned = true
-        console.warn('PX4 does not support runtime EKF source-set switching, parameter update plus EKF restart required')
-      }
-      return { ok: false, reason: 'px4-not-supported' }
-    }
-    const result = await this.sendCommandLong(
-      MAV_CMD_SET_EKF_SOURCE_SET,
-      [sourceSet, 0, 0, 0, 0, 0, 0],
-      1000,
-    )
-    if (result.success) return { ok: true }
-    if (result.resultCode === -1) return { ok: false, reason: 'no-ack' }
-    if (
-      result.resultCode === MAV_RESULT.TEMPORARILY_REJECTED ||
-      result.resultCode === MAV_RESULT.DENIED ||
-      result.resultCode === MAV_RESULT.UNSUPPORTED ||
-      result.resultCode === MAV_RESULT.FAILED
-    ) {
-      return { ok: false, reason: 'rejected' }
-    }
-    return { ok: false, reason: 'rejected' }
+  private get xc(): ext.ExtCommandContext {
+    const { firmwareHandler, targetSysId, targetCompId, sysId, compId } = this.st
+    return { firmwareHandler, targetSysId, targetCompId, sysId, compId, linkUp: !!this.ls.primary?.isConnected, sendCommandLong: this.sendCommandLong.bind(this), sendHousekeeping: (d) => this.sendWrapped(d) }
+  }
+
+  /** Switch the active EKF source set at runtime (ArduPilot; PX4 resolves `px4-not-supported`). */
+  async setEkfSourceSet(sourceSet: 1 | 2 | 3) {
+    return ext.setEkfSourceSet(this.xc, sourceSet, () => {
+      if (this.px4EkfSourceWarned) return
+      this.px4EkfSourceWarned = true
+      console.warn('PX4 does not support runtime EKF source-set switching, parameter update plus EKF restart required')
+    })
   }
   sendSerialData(t: string) { cmds.cmdSendSerialData(this.cc, t) }
 
   /**
-   * Enable MAVLink CAN passthrough on the given bus.
-   *
-   * Sends MAV_CMD_CAN_FORWARD via COMMAND_LONG. `bus` = 1 or 2 to enable,
-   * `bus` = 0 to disable. ACK is awaited so the caller knows the FC
-   * accepted the request before opening a CAN client on top.
+   * Enable MAVLink CAN passthrough on the given bus (1 or 2; 0 disables). The
+   * ACK is awaited so the caller knows the FC accepted before opening a CAN client.
    */
   async enableCanForward(bus: number) {
     return this.sendCommandLong(MAV_CMD_CAN_FORWARD, [bus, 0, 0, 0, 0, 0, 0])
@@ -586,29 +372,8 @@ export class MAVLinkAdapter implements DroneProtocol {
     return this.sendCommandLong(310, [value, timeoutS, 0, 0, functionCode, 0, 0])
   }
 
-  /** Send a CAN_FRAME (msg 386) over the active transport. Fire-and-forget. */
-  sendCanFrame(bus: number, id: number, data: Uint8Array): void {
-    if (!this.transport?.isConnected) return
-    const s = this.st
-    const frame = encodeCanFrame(
-      s.targetSysId, s.targetCompId, bus,
-      { id, extended: (id & 0x80000000) !== 0, dlc: data.length, data },
-      s.sysId, s.compId,
-    )
-    this.sendWrapped(frame)
-  }
-
-  /** Send a CANFD_FRAME (msg 387) over the active transport. Fire-and-forget. */
-  sendCanFdFrame(bus: number, id: number, data: Uint8Array): void {
-    if (!this.transport?.isConnected) return
-    const s = this.st
-    const frame = encodeCanFdFrame(
-      s.targetSysId, s.targetCompId, bus,
-      { id, extended: (id & 0x80000000) !== 0, dlc: data.length, data },
-      s.sysId, s.compId,
-    )
-    this.sendWrapped(frame)
-  }
+  sendCanFrame(bus: number, id: number, data: Uint8Array): void { ext.sendCanFrame(this.xc, bus, id, data, false) }
+  sendCanFdFrame(bus: number, id: number, data: Uint8Array): void { ext.sendCanFrame(this.xc, bus, id, data, true) }
 
   // ── Delegated Parameters ───────────────────────────────
   async getAllParameters() { return prm.getAllParameters(this.st) }
@@ -680,33 +445,27 @@ export class MAVLinkAdapter implements DroneProtocol {
   // ── Info ────────────────────────────────────────────────
   getVehicleInfo(): VehicleInfo | null { return this.st.vehicleInfo }
   getCapabilities(): ProtocolCapabilities {
-    return this.st.firmwareHandler?.getCapabilities() ?? {
-      supportsArming: false, supportsFlightModes: false, supportsMissionUpload: false, supportsMissionDownload: false,
-      supportsManualControl: false, supportsParameters: false, supportsCalibration: false, supportsSerialPassthrough: false,
-      supportsMotorTest: false, supportsAutonomousNav: false, supportsGeoFence: false, supportsRally: false, supportsLogDownload: false,
-      supportsOsd: false, supportsDisplayPort: false, supportsPidTuning: false, supportsPorts: false, supportsFailsafe: false,
-      supportsPowerConfig: false, supportsReceiver: false, supportsFirmwareFlash: false, supportsCliShell: false,
-      supportsMavlinkInspector: false, supportsGimbal: false, supportsCamera: false, supportsLed: false,
-      supportsBattery2: false, supportsRangefinder: false, supportsOpticalFlow: false, supportsObstacleAvoidance: false,
-      supportsDebugValues: false, supportsCanFrame: false, supportsAuxModes: false, supportsVtx: false, supportsBlackbox: false,
-      supportsBetaflightConfig: false, supportsMspMotors: false, supportsGpsConfig: false, supportsEkfConfig: false, supportsStreamRates: false, supportsVtolConfig: false, supportsTecsConfig: false, supportsSubConfig: false, supportsPx4Tuning: false, supportsRateProfiles: false, supportsAdjustments: false,
-      supportsMavlinkSigning: false,
-      supportsMultiMission: false, supportsSafehome: false, supportsGeozone: false,
-      supportsLogicConditions: false, supportsGlobalVariables: false, supportsProgrammingPid: false,
-      supportsEzTune: false, supportsFwApproach: false, supportsCustomOsd: false,
-      supportsMixerProfile: false, supportsBatteryProfile: false, supportsTempSensors: false,
-      supportsServoMixer: false, supportsOutputMappingExt: false, supportsRateDynamics: false,
-      supportsMcBraking: false, supportsSettings: false, supportsCliSettings: false,
-      manualControlHz: 0, parameterCount: 0,
-    }
+    return this.st.firmwareHandler?.getCapabilities() ?? NO_CAPABILITIES
   }
   getFirmwareHandler(): FirmwareHandler | null { return this.st.firmwareHandler }
   getCommandQueueSnapshot() { return { pendingCount: this.commandQueue.pendingCount, entries: this.commandQueue.getSnapshot() } }
 
+  /**
+   * The command queue's sender. Unlike `sendWrapped` it lets a transport
+   * refusal or a dropped link throw, so the queue fails the command at once
+   * with the transport's own reason instead of reporting a timeout.
+   */
+  private readonly sendOrThrow = (d: Uint8Array): void => {
+    const t = this.commandTransport
+    if (!t?.isConnected) throw new Error('Not connected')
+    t.send(d)
+  }
+
   private sendCommandLong(cmd: number, p: [number, number, number, number, number, number, number], timeout?: number): Promise<CommandResult> {
-    if (!this.commandTransport?.isConnected) return Promise.resolve({ success: false, resultCode: -1, message: 'Not connected' })
+    const refusal = commandRefusal(this.commandTransport)
+    if (refusal) return Promise.resolve({ success: false, resultCode: -1, message: refusal })
     const s = this.st
-    return this.commandQueue.sendCommand(cmd, p, (d) => this.sendWrapped(d), s.targetSysId, s.targetCompId, s.sysId, s.compId, timeout)
+    return this.commandQueue.sendCommand(cmd, p, this.sendOrThrow, s.targetSysId, s.targetCompId, s.sysId, s.compId, timeout)
   }
 
   /** Ack-tracked COMMAND_INT, for commands whose x/y need 1e7 integer precision. */
@@ -719,16 +478,16 @@ export class MAVLinkAdapter implements DroneProtocol {
     frame: number,
     timeout?: number,
   ): Promise<CommandResult> {
-    if (!this.commandTransport?.isConnected) return Promise.resolve({ success: false, resultCode: -1, message: 'Not connected' })
+    const refusal = commandRefusal(this.commandTransport)
+    if (refusal) return Promise.resolve({ success: false, resultCode: -1, message: refusal })
     const s = this.st
-    return this.commandQueue.sendCommandInt(cmd, p, x, y, z, frame, (d) => this.sendWrapped(d), s.targetSysId, s.targetCompId, s.sysId, s.compId, timeout)
+    return this.commandQueue.sendCommandInt(cmd, p, x, y, z, frame, this.sendOrThrow, s.targetSysId, s.targetCompId, s.sysId, s.compId, timeout)
   }
 
-  /** Send data through the command link.
-   * A transport can throw ("Not connected") when it dropped between an
-   * isConnected check and the send; swallow + log so a disconnect race never
-   * escapes as an uncaught exception on any send path (heartbeat, params,
-   * commands). The command queue additionally fails the command on throw. */
+  /** Housekeeping send (heartbeat, CAN frames) through the command link.
+   * A transport can throw when it dropped between an isConnected check and
+   * the send; swallow + log so a disconnect race never escapes as an
+   * uncaught exception. Commands use `sendOrThrow` instead. */
   private sendWrapped(data: Uint8Array): void {
     try {
       this.commandTransport?.send(data)

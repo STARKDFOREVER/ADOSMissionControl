@@ -310,6 +310,7 @@ describe("ParametersPanel FC panel write conventions", () => {
     expect(useArmedConfirmStore.getState().context).toEqual({
       panelId: "parameters",
       paramNames: ["ATC_RAT_PIT_P", "ATC_RAT_RLL_P", "WPNAV_SPEED"],
+      armStateUnknown: false,
     });
     // Nothing has been written while the operator is being asked.
     expect(written).toEqual([]);

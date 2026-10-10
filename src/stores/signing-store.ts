@@ -33,12 +33,24 @@ export interface DroneSigningState {
   previousKeyId: string | null;
   hasBrowserKey: boolean;
   enrollmentState: EnrollmentUIState;
-  /** Signed frames we have emitted in this session. Incremented by the encoder. */
+}
+
+/**
+ * Inbound signature counters for one MAVLink link. `signedOk` / `signedBad`
+ * count only while a signing key is loaded (no key, nothing to verify with);
+ * `unsigned` counts every frame that arrived without a signature.
+ */
+export interface LinkSigningCounters {
+  signedOk: number;
+  signedBad: number;
+  unsigned: number;
 }
 
 interface SigningStoreState {
   // Per-drone state keyed by droneId.
   drones: Record<string, DroneSigningState>;
+  /** Per-link inbound verification counters, keyed by the protocol's link id. */
+  linkCounters: Record<string, LinkSigningCounters>;
 
   // Selectors.
   get(droneId: string): DroneSigningState;
@@ -55,6 +67,10 @@ interface SigningStoreState {
     } | null,
   ): void;
   setEnrollmentState(droneId: string, state: EnrollmentUIState): void;
+  /** Replace one link's counters (the adapter flushes them at most once a second). */
+  setLinkCounters(linkId: string, counters: LinkSigningCounters): void;
+  /** Drop a closed link's counters. */
+  clearLink(linkId: string): void;
 
   /** Drop every record. Used on sign-out / user-switch purge pairs. */
   clearAll(): void;
@@ -77,6 +93,7 @@ function blankState(droneId: string): DroneSigningState {
 
 export const useSigningStore = create<SigningStoreState>()((set, get) => ({
   drones: {},
+  linkCounters: {},
 
   get(droneId) {
     return get().drones[droneId] ?? blankState(droneId);
@@ -141,8 +158,21 @@ export const useSigningStore = create<SigningStoreState>()((set, get) => ({
     }));
   },
 
+  setLinkCounters(linkId, counters) {
+    set((s) => ({ linkCounters: { ...s.linkCounters, [linkId]: counters } }));
+  },
+
+  clearLink(linkId) {
+    set((s) => {
+      if (!(linkId in s.linkCounters)) return s;
+      const next = { ...s.linkCounters };
+      delete next[linkId];
+      return { linkCounters: next };
+    });
+  },
+
   clearAll() {
-    set({ drones: {} });
+    set({ drones: {}, linkCounters: {} });
   },
 
   clearDrone(droneId) {

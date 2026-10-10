@@ -321,8 +321,17 @@ describe('CommandQueue', () => {
     expect(snapshot).toHaveLength(2);
     expect(snapshot[0].command).toBe(400);
     expect(snapshot[0].retryCount).toBe(0);
-    expect(snapshot[0].timestamp).toBeGreaterThan(0);
+    expect(snapshot[0].sentAt).toBe(Date.now());
     expect(snapshot[1].command).toBe(401);
+  });
+
+  it('getSnapshot reports when the command was sent, not when the snapshot was taken', () => {
+    const sentAt = Date.now();
+    queue.sendCommand(400, params, sendFn, 1, 1, 255, 190, 10_000);
+    vi.advanceTimersByTime(1500);
+    const [entry] = queue.getSnapshot();
+    expect(entry.sentAt).toBe(sentAt);
+    expect(Date.now() - entry.sentAt).toBe(1500);
   });
 
   it('getSnapshot returns empty array when no pending commands', () => {

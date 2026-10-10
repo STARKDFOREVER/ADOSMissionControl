@@ -23,8 +23,10 @@ import {
   retryMissingParams,
   setParameter,
   finishParamDownload,
+  ParamDownloadIncompleteError,
   type ParamContext,
 } from "../mavlink-adapter-params";
+import { RECEIVE_ONLY_REFUSAL } from "../command-refusal";
 import type { ParameterValue, Transport } from "../types";
 
 function fakeTransport(): Transport {
@@ -112,9 +114,9 @@ describe("retryMissingParams convergence", () => {
     expect(dl.lastMissingCount).toBe(30);
   });
 
-  it("gives up after six consecutive rounds with no progress, not a fixed round count", () => {
+  it("gives up after six consecutive rounds with no progress, not a fixed round count", async () => {
     const ctx = makeCtx();
-    void getAllParameters(ctx);
+    const download = getAllParameters(ctx);
     const dl = ctx.parameterDownload!;
     dl.total = 10;
     dl.params.set(0, param(0, 10)); // 9 missing, never closes
@@ -127,6 +129,10 @@ describe("retryMissingParams convergence", () => {
     }
     retryMissingParams(ctx); // round 7: six consecutive stalls — give up
     expect(ctx.parameterDownload).toBeNull();
+    // Giving up is an incomplete download, never a complete list.
+    const err = await download.catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ParamDownloadIncompleteError);
+    expect(err).toMatchObject({ received: 1, total: 10, params: [param(0, 10)] });
   });
 
   it("finishes immediately once nothing is missing", () => {
@@ -137,6 +143,43 @@ describe("retryMissingParams convergence", () => {
     for (let i = 0; i < 3; i++) dl.params.set(i, param(i, 3));
 
     retryMissingParams(ctx);
+    expect(ctx.parameterDownload).toBeNull();
+  });
+});
+
+describe("getAllParameters on a link that cannot send", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it("fails fast with the refusal on a receive-only link and arms nothing", async () => {
+    const ctx = makeCtx();
+    ctx.transport = { ...fakeTransport(), canCommand: false } as Transport;
+    await expect(getAllParameters(ctx)).rejects.toThrow(RECEIVE_ONLY_REFUSAL);
+    expect(ctx.parameterDownload).toBeNull();
+  });
+
+  it("rejects and clears both timers when the first send throws", async () => {
+    const ctx = makeCtx();
+    const send = vi.fn(() => { throw new Error("link refused"); });
+    ctx.transport = { ...fakeTransport(), send } as Transport;
+    await expect(getAllParameters(ctx)).rejects.toThrow("link refused");
+    expect(ctx.parameterDownload).toBeNull();
+    // No timer left to fire into a dead download.
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("fails every waiter instead of throwing from the retry timer", async () => {
+    const ctx = makeCtx();
+    const send = vi.fn();
+    ctx.transport = { ...fakeTransport(), send } as Transport;
+    const settled = Promise.allSettled([getAllParameters(ctx), getAllParameters(ctx)]);
+    ctx.parameterDownload!.total = 5;
+    send.mockImplementation(() => { throw new Error("link dropped"); });
+    // The 5 s inactivity timer runs retryMissingParams, whose send throws.
+    vi.advanceTimersByTime(5000);
+    const results = await settled;
+    expect(results.map((r) => r.status)).toEqual(["rejected", "rejected"]);
+    expect(results[0]).toMatchObject({ reason: new Error("link dropped") });
     expect(ctx.parameterDownload).toBeNull();
   });
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useDiagnosticsStore } from "@/stores/diagnostics-store";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import type { MAVLinkAdapter } from "@/lib/protocol/mavlink-adapter";
@@ -38,24 +38,34 @@ export function CommandQueuePanel() {
   const snapshot = useDiagnosticsStore((s) => s.commandQueueSnapshot);
   const updateSnapshot = useDiagnosticsStore((s) => s.updateCommandQueueSnapshot);
   const protocol = useDroneManager(selectSelectedProtocol);
+  // Clock for the age column; ticks only while something is pending.
+  const [now, setNow] = useState(() => Date.now());
 
   // Poll the pending-command queue every 500ms. The adapter reports only what
   // is pending; nothing counts sent/acknowledged/failed commands, so no totals
-  // are shown.
+  // are shown. The store is written only when the pending set changed.
   useEffect(() => {
     if (!protocol) return;
     const interval = setInterval(() => {
-      // Access the underlying adapter's command queue snapshot
       const adapter = protocol as MAVLinkAdapter;
       if (typeof adapter.getCommandQueueSnapshot !== "function") return;
 
       const qs = adapter.getCommandQueueSnapshot();
+      if (qs.entries.length > 0) setNow(Date.now());
+      const prev = useDiagnosticsStore.getState().commandQueueSnapshot;
+      const unchanged =
+        prev.pendingCount === qs.pendingCount &&
+        prev.entries.length === qs.entries.length &&
+        prev.entries.every((e, i) => e.ticket === qs.entries[i].ticket && e.retryCount === qs.entries[i].retryCount);
+      if (unchanged) return;
       updateSnapshot({
         pendingCount: qs.pendingCount,
         entries: qs.entries.map((e) => ({
+          ticket: e.ticket,
           command: e.command,
           commandName: getCommandName(e.command),
-          timestamp: e.timestamp,
+          sentAt: e.sentAt,
+          retryCount: e.retryCount,
         })),
       });
     }, 500);
@@ -80,13 +90,16 @@ export function CommandQueuePanel() {
           </div>
         ) : (
           <div className="space-y-1">
-            {snapshot.entries.map((entry, idx) => (
+            {snapshot.entries.map((entry) => (
               <div
-                key={`${entry.command}-${idx}`}
+                key={entry.ticket}
                 className="flex items-center gap-2 px-2 py-1 bg-bg-tertiary/30 rounded text-[10px] font-mono"
               >
                 <span className="text-accent-primary">{entry.commandName}</span>
                 <span className="text-text-tertiary">({entry.command})</span>
+                <span className="ml-auto text-text-tertiary">
+                  {(Math.max(0, now - entry.sentAt) / 1000).toFixed(1)}s
+                </span>
               </div>
             ))}
           </div>

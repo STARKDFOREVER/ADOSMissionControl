@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { routeFrame } from '@/lib/protocol/mavlink-adapter-frame-handlers';
 import type { FrameHandlerState } from '@/lib/protocol/mavlink-adapter-frame-handlers';
-import { getAllParameters, getParameter, ParamAbsentError, type ParamContext } from '@/lib/protocol/mavlink-adapter-params';
+import { getAllParameters, getParameter, ParamAbsentError, ParamDownloadIncompleteError, type ParamContext } from '@/lib/protocol/mavlink-adapter-params';
 import type { MAVLinkFrame } from '@/lib/protocol/mavlink-parser';
 import { createCallbackStore } from '@/lib/protocol/mavlink-adapter-callbacks';
 import { StatusTextAssembler } from '@/lib/protocol/handlers/info-handlers';
@@ -202,7 +202,7 @@ describe('parameter batch load', () => {
     expect(retryFrames.length).toBe(50);
   });
 
-  it('gives up and resolves the partial set after the retry cap (six inactivity stalls)', async () => {
+  it('gives up after the retry cap (six inactivity stalls) and rejects as incomplete with the partial set', async () => {
     const t = makeTransport();
     const ctx = makeContext(t);
     const promise = getAllParameters(ctx);
@@ -211,19 +211,21 @@ describe('parameter batch load', () => {
     deliverParam(ctx, 'P0', 0, 0, 4);
 
     // Six stalls are tolerated (grace for a lossy link still inside the 120s
-    // hard backstop); the seventh stall exceeds the no-progress cap and
-    // resolves with whatever has arrived so far.
+    // hard backstop); the seventh stall exceeds the no-progress cap and ends
+    // the download as incomplete, never as a complete list.
     for (let cycle = 0; cycle < 7; cycle++) {
       vi.advanceTimersByTime(5000);
     }
 
-    const params = await promise;
-    // Only the one received param comes back.
-    expect(params.map((p) => p.index)).toEqual([0]);
+    const err = await promise.catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ParamDownloadIncompleteError);
+    expect(err).toMatchObject({ received: 1, total: 4 });
+    if (!(err instanceof ParamDownloadIncompleteError)) return;
+    expect(err.params.map((p) => p.index)).toEqual([0]);
     expect(ctx.parameterDownload).toBeNull();
   });
 
-  it('resolves with whatever arrived when the 120s hard timeout fires mid-download', async () => {
+  it('rejects as incomplete, carrying what arrived, when the 120s hard timeout fires mid-download', async () => {
     const t = makeTransport();
     const ctx = makeContext(t);
     const promise = getAllParameters(ctx);
@@ -235,9 +237,11 @@ describe('parameter batch load', () => {
     // The hard timer (120s) is the final backstop; jump straight to it.
     vi.advanceTimersByTime(120000);
 
-    const params = await promise;
-    expect(params.map((p) => p.index)).toEqual([0, 3]);
-    expect(params.map((p) => p.name)).toEqual(['BATT_MONITOR', 'ARMING_CHECK']);
+    const err = await promise.catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ParamDownloadIncompleteError);
+    if (!(err instanceof ParamDownloadIncompleteError)) return;
+    expect(err.params.map((p) => p.index)).toEqual([0, 3]);
+    expect(err.params.map((p) => p.name)).toEqual(['BATT_MONITOR', 'ARMING_CHECK']);
     expect(ctx.parameterDownload).toBeNull();
     expect(vi.getTimerCount()).toBe(0);
   });

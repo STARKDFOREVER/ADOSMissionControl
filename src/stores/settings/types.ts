@@ -143,6 +143,12 @@ export interface SettingsStoreState {
   videoWhepUrl: string;
   videoTransportMode: "auto" | "lan-whep" | "p2p-mqtt" | "off";
 
+  // MAVLink link protocol
+  /** The GCS requests telemetry stream rates on connect, restore and FC reboot. Off: never sends a rate request. */
+  gcsManagesTelemetryRates: boolean;
+  /** Drop every inbound MAVLink frame that is unsigned or fails verification against the loaded key. */
+  enforceInboundSigning: boolean;
+
   // keybindings / hotbar (Cockpit loadouts)
   loadouts: Record<string, Loadout>;
   activeLoadoutId: string;
@@ -247,6 +253,10 @@ export interface SettingsStoreState {
   setVideoTransportMode: (
     mode: "auto" | "lan-whep" | "p2p-mqtt" | "off",
   ) => void;
+
+  // MAVLink link protocol actions
+  setGcsManagesTelemetryRates: (on: boolean) => void;
+  setEnforceInboundSigning: (on: boolean) => void;
 
   // keybindings / hotbar actions
   setActiveLoadout: (id: string) => void;

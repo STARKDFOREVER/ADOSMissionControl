@@ -26,6 +26,7 @@ import { useSigningActions } from "./signing/use-signing-actions";
 import { SigningUnsupportedNotice } from "./signing/SigningUnsupportedNotice";
 import { SigningDisabledSection } from "./signing/SigningDisabledSection";
 import { SigningEnabledSection } from "./signing/SigningEnabledSection";
+import { InboundSigningSection } from "./signing/InboundSigningSection";
 
 export function SigningPanel() {
   const client = useAgentConnectionStore((s) => s.client);
@@ -111,6 +112,7 @@ export function SigningPanel() {
           </div>
         )}
         {bodyNode}
+        {droneId && <InboundSigningSection />}
       </div>
       {client && droneId && actions.exportOpen && (
         <ExportKeyModal

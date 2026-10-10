@@ -12,107 +12,13 @@ import {
   encodeMissionRequestInt,
   MAV_MISSION_TYPE_FENCE,
 } from './mavlink-encoder'
-
-/** MAV_FRAME_GLOBAL. Altitude is Reserved for fence polygon/circle vertices. */
-const MAV_FRAME_GLOBAL = 0
-
-/** NAV_FENCE_* mission-item commands (used when mission_type = fence). */
-export const MAV_CMD_NAV_FENCE_RETURN_POINT = 5000
-export const MAV_CMD_NAV_FENCE_POLYGON_VERTEX_INCLUSION = 5001
-export const MAV_CMD_NAV_FENCE_POLYGON_VERTEX_EXCLUSION = 5002
-export const MAV_CMD_NAV_FENCE_CIRCLE_INCLUSION = 5003
-export const MAV_CMD_NAV_FENCE_CIRCLE_EXCLUSION = 5004
-
-/** A single fence mission item, flattened and ready for MISSION_ITEM_INT. */
-export interface FenceMissionItem {
-  seq: number
-  frame: number
-  command: number
-  param1: number
-  param2: number
-  /** Latitude * 1e7. */
-  x: number
-  /** Longitude * 1e7. */
-  y: number
-  z: number
-}
+import { encodeFenceMissionItems, type FenceMissionItem } from './fence-mission-codec'
+import { createDeadline, createUploadDeadline, sendOpening, type TransferDeadline } from './mission-transfer-deadline'
 
 export interface MissionUploadState extends TransferDeadline {
   items: MissionItem[]
   resolve: (result: CommandResult) => void
   reject: (err: Error) => void
-}
-
-/**
- * Shared shape of a `MISSION_REQUEST_INT` walk.
- *
- * `restartTimer` re-arms the inactivity deadline on EVERY received item, and
- * `reject` fires when that deadline expires with a short list. The three
- * downloads previously shared one 15 s wall-clock budget that RESOLVED
- * successfully with whatever had arrived: a single dropped
- * `MISSION_REQUEST_INT` stalled the walk, the timer handed back a truncated
- * list, `mission-store` set `downloadState: "downloaded"` and replaced the
- * plan, and the operator could save that short plan to disk or upload it back.
- * 15 s was also a hard cap on usable mission size over a 57k6 link.
- */
-interface TransferDeadline {
-  /** Re-arm the inactivity deadline and the retransmit countdown. Called on each unit of progress. */
-  restartTimer: () => void;
-  /** Stop the inactivity deadline and the retransmit loop. Called on every settle path. */
-  stop: () => void;
-  timer: ReturnType<typeof setTimeout>
-}
-
-/**
- * Silence after which the GCS re-sends its outstanding request. The MAVLink
- * mission protocol puts retransmission on the GCS during a download (and on
- * MISSION_COUNT until the vehicle starts requesting items), so without it one
- * lost frame on a lossy radio stalled the walk until the idle deadline failed
- * the whole transfer.
- */
-const TRANSFER_RETRY_MS = 1500
-
-/**
- * Inactivity window for a mission/rally/fence transfer.
- *
- * Re-armed on every unit of progress, so the budget bounds a link that makes
- * no progress at all rather than the total transfer: a 300-item mission over a
- * 57k6 radio is a long transfer, not a failed one. Inside it the outstanding
- * request is re-sent every TRANSFER_RETRY_MS of silence.
- */
-const TRANSFER_IDLE_TIMEOUT_MS = 15000
-
-/**
- * Build the deadline for one transfer. `resend` re-issues whatever request the
- * transfer is waiting on; it runs after every TRANSFER_RETRY_MS without
- * progress for as long as `isActive()` holds (the transfer's slot on the
- * context still points at this state). `stop()` ends both timers and is called
- * by every path that settles the transfer.
- */
-function createDeadline(onIdle: () => void, resend: () => void, isActive: () => boolean): TransferDeadline {
-  let retry: ReturnType<typeof setInterval> | undefined
-  const armRetry = () => {
-    clearInterval(retry)
-    retry = setInterval(() => {
-      if (!isActive()) { clearInterval(retry); return }
-      resend()
-    }, TRANSFER_RETRY_MS)
-  }
-  const expire = () => { clearInterval(retry); onIdle() }
-  const deadline: TransferDeadline = {
-    timer: setTimeout(expire, TRANSFER_IDLE_TIMEOUT_MS),
-    restartTimer: () => {
-      clearTimeout(deadline.timer)
-      deadline.timer = setTimeout(expire, TRANSFER_IDLE_TIMEOUT_MS)
-      armRetry()
-    },
-    stop: () => {
-      clearTimeout(deadline.timer)
-      clearInterval(retry)
-    },
-  }
-  armRetry()
-  return deadline
 }
 
 /**
@@ -144,19 +50,6 @@ function resendDownloadRequest(
   if (next !== null) {
     ctx.transport?.send(encodeMissionRequestInt(ctx.targetSysId, ctx.targetCompId, next, ctx.sysId, ctx.compId, missionType))
   }
-}
-
-/**
- * Deadline for an upload: MISSION_COUNT is re-sent until the vehicle asks for
- * its first item. From then on the vehicle drives the walk and retries its own
- * requests, so re-sending the count would restart the transfer.
- */
-function createUploadDeadline(onIdle: () => void, sendCount: () => void, isActive: () => boolean): TransferDeadline {
-  let requested = false
-  const deadline = createDeadline(onIdle, () => { if (!requested) sendCount() }, isActive)
-  const restart = deadline.restartTimer
-  deadline.restartTimer = () => { requested = true; restart() }
-  return deadline
 }
 
 export interface MissionDownloadState extends TransferDeadline {
@@ -246,96 +139,6 @@ export function cancelMissionTransfers(ctx: MissionContext, reason: string): voi
   if (fenceDownload) { fenceDownload.stop(); fenceDownload.reject(err) }
 }
 
-/**
- * Flatten the fence model into a seq-indexed list of MISSION_ITEM_INT items for
- * a fence-type mission upload. A polygon emits one item per vertex, each
- * carrying param1 = the polygon's total vertex count (min 3); a circle emits one
- * item with param1 = radius (m). Elements with fewer than 3 polygon vertices are
- * skipped. Lat/lon are scaled to int32 * 1e7; altitude is Reserved (z = 0).
- */
-export function encodeFenceMissionItems(elements: FenceElement[]): FenceMissionItem[] {
-  const items: FenceMissionItem[] = []
-  let seq = 0
-  for (const el of elements) {
-    if (el.kind === 'polygon') {
-      const n = el.vertices.length
-      if (n < 3) continue
-      const command = el.role === 'inclusion'
-        ? MAV_CMD_NAV_FENCE_POLYGON_VERTEX_INCLUSION
-        : MAV_CMD_NAV_FENCE_POLYGON_VERTEX_EXCLUSION
-      const group = el.role === 'inclusion' ? (el.group ?? 0) : 0
-      for (const v of el.vertices) {
-        items.push({
-          seq: seq++, frame: MAV_FRAME_GLOBAL, command,
-          param1: n, param2: group,
-          x: Math.round(v.lat * 1e7), y: Math.round(v.lon * 1e7), z: 0,
-        })
-      }
-    } else {
-      const command = el.role === 'inclusion'
-        ? MAV_CMD_NAV_FENCE_CIRCLE_INCLUSION
-        : MAV_CMD_NAV_FENCE_CIRCLE_EXCLUSION
-      const group = el.role === 'inclusion' ? (el.group ?? 0) : 0
-      items.push({
-        seq: seq++, frame: MAV_FRAME_GLOBAL, command,
-        param1: el.radius, param2: group,
-        x: Math.round(el.center.lat * 1e7), y: Math.round(el.center.lon * 1e7), z: 0,
-      })
-    }
-  }
-  return items
-}
-
-/**
- * Reassemble downloaded fence mission items into the fence model. Consecutive
- * polygon-vertex items of the same command are grouped into one polygon using
- * param1 (vertex count); each circle item is a standalone element; a return
- * point (5000) is ignored. Items are sorted by seq first.
- */
-export function decodeFenceMissionItems(items: FenceMissionItem[]): FenceElement[] {
-  const sorted = [...items].sort((a, b) => a.seq - b.seq)
-  const elements: FenceElement[] = []
-  let poly: { role: 'inclusion' | 'exclusion'; command: number; group: number; remaining: number; vertices: Array<{ lat: number; lon: number }> } | null = null
-
-  const flushPoly = () => {
-    if (poly && poly.vertices.length >= 3) {
-      elements.push({ kind: 'polygon', role: poly.role, vertices: poly.vertices, group: poly.group })
-    }
-    poly = null
-  }
-
-  for (const it of sorted) {
-    if (
-      it.command === MAV_CMD_NAV_FENCE_POLYGON_VERTEX_INCLUSION ||
-      it.command === MAV_CMD_NAV_FENCE_POLYGON_VERTEX_EXCLUSION
-    ) {
-      const role = it.command === MAV_CMD_NAV_FENCE_POLYGON_VERTEX_INCLUSION ? 'inclusion' : 'exclusion'
-      const count = Math.max(3, Math.round(it.param1))
-      if (!poly || poly.command !== it.command || poly.remaining <= 0) {
-        flushPoly()
-        poly = { role, command: it.command, group: Math.round(it.param2), remaining: count, vertices: [] }
-      }
-      poly.vertices.push({ lat: it.x / 1e7, lon: it.y / 1e7 })
-      poly.remaining -= 1
-      if (poly.remaining <= 0) flushPoly()
-    } else if (
-      it.command === MAV_CMD_NAV_FENCE_CIRCLE_INCLUSION ||
-      it.command === MAV_CMD_NAV_FENCE_CIRCLE_EXCLUSION
-    ) {
-      flushPoly()
-      const role = it.command === MAV_CMD_NAV_FENCE_CIRCLE_INCLUSION ? 'inclusion' : 'exclusion'
-      elements.push({
-        kind: 'circle', role,
-        center: { lat: it.x / 1e7, lon: it.y / 1e7 },
-        radius: it.param1, group: Math.round(it.param2),
-      })
-    }
-    // MAV_CMD_NAV_FENCE_RETURN_POINT (5000) carries no geometry we model, ignore.
-  }
-  flushPoly()
-  return elements
-}
-
 export function uploadMission(ctx: MissionContext, items: MissionItem[]): Promise<CommandResult> {
   return serialized(ctx, 0, () => startMissionUpload(ctx, items))
 }
@@ -355,12 +158,17 @@ async function startMissionUpload(ctx: MissionContext, items: MissionItem[]): Pr
     resolve({ success: false, resultCode: -1, message: 'Mission upload stalled: flight controller stopped requesting items' })
   }
   const sendCount = () => ctx.transport?.send(encodeMissionCount(ctx.targetSysId, ctx.targetCompId, items.length, ctx.sysId, ctx.compId))
+  const onSendError = (err: Error) => {
+    if (ctx.missionUpload !== state) return
+    ctx.missionUpload = null
+    resolve({ success: false, resultCode: -1, message: err.message })
+  }
   const state: MissionUploadState = Object.assign(
-    createUploadDeadline(onIdle, sendCount, () => ctx.missionUpload === state),
+    createUploadDeadline(onIdle, sendCount, () => ctx.missionUpload === state, onSendError),
     { items, resolve, reject },
   )
   ctx.missionUpload = state
-  sendCount()
+  sendOpening(state, sendCount, onSendError)
   return promise
 }
 
@@ -385,12 +193,18 @@ async function startMissionDownload(ctx: MissionContext): Promise<MissionItem[]>
     ))
   }
 
+  const onSendError = (err: Error) => {
+    if (ctx.missionDownload !== state) return
+    ctx.missionDownload = null
+    reject(err)
+  }
   const state: MissionDownloadState = Object.assign(
-    createDeadline(onIdle, () => resendDownloadRequest(ctx, state, 0), () => ctx.missionDownload === state),
+    createDeadline(onIdle, () => resendDownloadRequest(ctx, state, 0), () => ctx.missionDownload === state, onSendError),
     { items: new Map<number, MissionItem>(), total: 0, resolve, reject },
   )
   ctx.missionDownload = state
-  ctx.transport.send(encodeMissionRequestList(ctx.targetSysId, ctx.targetCompId, ctx.sysId, ctx.compId))
+  const transport = ctx.transport
+  sendOpening(state, () => transport.send(encodeMissionRequestList(ctx.targetSysId, ctx.targetCompId, ctx.sysId, ctx.compId)), onSendError)
   return promise
 }
 
@@ -422,7 +236,12 @@ async function startMissionClear(ctx: MissionContext): Promise<CommandResult> {
     stop: () => clearTimeout(state.timer),
   }
   ctx.missionUpload = state
-  ctx.transport.send(encodeMissionClearAll(ctx.targetSysId, ctx.targetCompId, ctx.sysId, ctx.compId))
+  const transport = ctx.transport
+  sendOpening(state, () => transport.send(encodeMissionClearAll(ctx.targetSysId, ctx.targetCompId, ctx.sysId, ctx.compId)), (err) => {
+    if (ctx.missionUpload !== state) return
+    ctx.missionUpload = null
+    resolve({ success: false, resultCode: -1, message: err.message })
+  })
   return promise
 }
 
@@ -451,12 +270,17 @@ async function startFenceUpload(ctx: MissionContext, elements: FenceElement[]): 
     ctx.targetSysId, ctx.targetCompId, items.length,
     ctx.sysId, ctx.compId, MAV_MISSION_TYPE_FENCE,
   ))
+  const onSendError = (err: Error) => {
+    if (ctx.fenceUpload !== state) return
+    ctx.fenceUpload = null
+    resolve({ success: false, resultCode: -1, message: err.message })
+  }
   const state: FenceUploadState = Object.assign(
-    createUploadDeadline(onIdle, sendCount, () => ctx.fenceUpload === state),
+    createUploadDeadline(onIdle, sendCount, () => ctx.fenceUpload === state, onSendError),
     { items, resolve },
   )
   ctx.fenceUpload = state
-  sendCount()
+  sendOpening(state, sendCount, onSendError)
   return promise
 }
 
@@ -485,15 +309,21 @@ async function startFenceDownload(ctx: MissionContext): Promise<FenceElement[]> 
     ))
   }
 
+  const onSendError = (err: Error) => {
+    if (ctx.fenceDownload !== state) return
+    ctx.fenceDownload = null
+    reject(err)
+  }
   const state: FenceDownloadState = Object.assign(
-    createDeadline(onIdle, () => resendDownloadRequest(ctx, state, MAV_MISSION_TYPE_FENCE), () => ctx.fenceDownload === state),
+    createDeadline(onIdle, () => resendDownloadRequest(ctx, state, MAV_MISSION_TYPE_FENCE), () => ctx.fenceDownload === state, onSendError),
     { items: new Map<number, FenceMissionItem>(), total: 0, resolve, reject },
   )
   ctx.fenceDownload = state
-  ctx.transport.send(encodeMissionRequestList(
+  const transport = ctx.transport
+  sendOpening(state, () => transport.send(encodeMissionRequestList(
     ctx.targetSysId, ctx.targetCompId,
     ctx.sysId, ctx.compId, MAV_MISSION_TYPE_FENCE,
-  ))
+  )), onSendError)
   return promise
 }
 
@@ -515,12 +345,17 @@ async function startRallyUpload(ctx: MissionContext, points: Array<{ lat: number
     ctx.targetSysId, ctx.targetCompId, points.length,
     ctx.sysId, ctx.compId, 2,
   ))
+  const onSendError = (err: Error) => {
+    if (ctx.rallyUpload !== state) return
+    ctx.rallyUpload = null
+    resolve({ success: false, resultCode: -1, message: err.message })
+  }
   const state: RallyUploadState = Object.assign(
-    createUploadDeadline(onIdle, sendCount, () => ctx.rallyUpload === state),
+    createUploadDeadline(onIdle, sendCount, () => ctx.rallyUpload === state, onSendError),
     { items: points, resolve },
   )
   ctx.rallyUpload = state
-  sendCount()
+  sendOpening(state, sendCount, onSendError)
   return promise
 }
 
@@ -546,14 +381,20 @@ async function startRallyDownload(ctx: MissionContext): Promise<Array<{ lat: num
     ))
   }
 
+  const onSendError = (err: Error) => {
+    if (ctx.rallyDownload !== state) return
+    ctx.rallyDownload = null
+    reject(err)
+  }
   const state: RallyDownloadState = Object.assign(
-    createDeadline(onIdle, () => resendDownloadRequest(ctx, state, 2), () => ctx.rallyDownload === state),
+    createDeadline(onIdle, () => resendDownloadRequest(ctx, state, 2), () => ctx.rallyDownload === state, onSendError),
     { items: new Map<number, { lat: number; lon: number; alt: number }>(), total: 0, resolve, reject },
   )
   ctx.rallyDownload = state
-  ctx.transport.send(encodeMissionRequestList(
+  const transport = ctx.transport
+  sendOpening(state, () => transport.send(encodeMissionRequestList(
     ctx.targetSysId, ctx.targetCompId,
     ctx.sysId, ctx.compId, 2,
-  ))
+  )), onSendError)
   return promise
 }

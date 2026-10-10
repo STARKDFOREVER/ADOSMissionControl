@@ -5,6 +5,10 @@
 
 import type { CommandResult } from "./types";
 import { encodeCommandInt, encodeCommandLong } from "./mavlink-encoder";
+import {
+  armResend, resendAsCommandInt, retryTemporarilyRejected, transmit,
+  type PendingCommand,
+} from "./command-queue-retry";
 
 // MAVLink COMMAND_ACK result codes
 export const MAV_RESULT = {
@@ -34,108 +38,6 @@ const RESULT_MESSAGES: Record<number, string> = {
   [MAV_RESULT.COMMAND_UNSUPPORTED_MAV_FRAME]: "Command frame unsupported",
   [MAV_RESULT.NOT_IN_CONTROL]: "Another controller has control of the vehicle",
 };
-
-const MAV_FRAME_GLOBAL = 0;
-const MAV_FRAME_GLOBAL_RELATIVE_ALT = 3;
-
-/**
- * Commands whose COMMAND_LONG param5/param6 carry latitude/longitude in
- * degrees, with the frame the autopilot assumes for them. Converting such a
- * command to COMMAND_INT scales x/y by 1e7; every other command carries
- * param5/param6 into x/y unscaled. This mirrors the conversion ArduPilot
- * applies to an incoming COMMAND_LONG.
- */
-const LONG_LOCATION_COMMAND_FRAME: Readonly<Record<number, number>> = {
-  179: MAV_FRAME_GLOBAL, // DO_SET_HOME
-  195: MAV_FRAME_GLOBAL_RELATIVE_ALT, // DO_SET_ROI_LOCATION
-  201: MAV_FRAME_GLOBAL_RELATIVE_ALT, // DO_SET_ROI
-  192: MAV_FRAME_GLOBAL_RELATIVE_ALT, // DO_REPOSITION
-  611: MAV_FRAME_GLOBAL, // DO_SET_GLOBAL_ORIGIN
-  43003: MAV_FRAME_GLOBAL, // EXTERNAL_POSITION_ESTIMATE
-};
-
-/** Re-encode a COMMAND_LONG's inputs as the equivalent COMMAND_INT frame. */
-function encodeLongAsCommandInt(a: PendingCommand["encodeArgs"]): Uint8Array {
-  const locationFrame: number | undefined = LONG_LOCATION_COMMAND_FRAME[a.command];
-  const scale = locationFrame === undefined ? 1 : 1e7;
-  const x = Number.isNaN(a.params[4]) ? 0 : Math.trunc(a.params[4] * scale);
-  const y = Number.isNaN(a.params[5]) ? 0 : Math.trunc(a.params[5] * scale);
-  return encodeCommandInt(
-    a.targetSys, a.targetComp, locationFrame ?? MAV_FRAME_GLOBAL_RELATIVE_ALT, a.command, 0, 0,
-    a.params[0], a.params[1], a.params[2], a.params[3],
-    x, y, a.params[6], a.sysId, a.compId,
-  );
-}
-
-/**
- * Commands whose repeat leaves the vehicle in the same state, so they are sent
- * again when no COMMAND_ACK arrives, as the MAVLink command protocol expects of
- * the sender (confirmation incremented on each COMMAND_LONG resend). A command
- * that acts again when repeated (camera trigger or capture, calibration, motor
- * or actuator test, relative yaw) or that the vehicle refuses when already done
- * (takeoff while airborne) is sent once.
- */
-const RESEND_SAFE_COMMANDS: ReadonlySet<number> = new Set([
-  400, // COMPONENT_ARM_DISARM
-  176, // DO_SET_MODE
-  20, // NAV_RETURN_TO_LAUNCH
-  21, // NAV_LAND
-  185, // DO_FLIGHTTERMINATION
-  192, // DO_REPOSITION
-  193, // DO_PAUSE_CONTINUE
-  178, // DO_CHANGE_SPEED
-  179, // DO_SET_HOME
-  207, // DO_FENCE_ENABLE
-  181, // DO_SET_RELAY
-  183, // DO_SET_SERVO
-  204, // DO_MOUNT_CONFIGURE
-  205, // DO_MOUNT_CONTROL
-  195, // DO_SET_ROI_LOCATION
-  197, // DO_SET_ROI_NONE
-  34, // DO_ORBIT
-  511, // SET_MESSAGE_INTERVAL
-  512, // REQUEST_MESSAGE
-  32000, // CAN_FORWARD
-  42007, // SET_EKF_SOURCE_SET
-]);
-
-/** Resends of a silent command within its timeout (so three transmissions in all). */
-const MAX_SILENT_RESENDS = 2;
-
-interface PendingCommand {
-  command: number;
-  resolve: (result: CommandResult) => void;
-  timer: ReturnType<typeof setTimeout>;
-  retryCount: number;
-  /** COMMAND_LONG confirmation byte of the last transmission. */
-  confirmation: number;
-  /** Next resend of a silent command, while one is scheduled. */
-  resendTimer?: ReturnType<typeof setTimeout>;
-  frame: Uint8Array;
-  sendFn: (data: Uint8Array) => void;
-  timeoutMs: number;
-  // The system id of the vehicle this command was addressed to. Incoming
-  // COMMAND_ACKs from a different source sysid are ignored so a co-channel
-  // vehicle's ack cannot resolve this drone's pending command.
-  targetSys: number;
-  // Who we sent as. An ack addressed to a different GCS on a shared link is
-  // not ours to consume.
-  sysId: number;
-  compId: number;
-  // COMMAND_INT has no confirmation byte, so its retry is a byte-identical
-  // resend rather than a re-encode with an incremented confirmation.
-  isCommandInt?: boolean;
-  // Inputs retained so retries can re-encode the COMMAND_LONG with an
-  // incremented confirmation byte rather than resending byte-identical frames.
-  encodeArgs: {
-    targetSys: number;
-    targetComp: number;
-    command: number;
-    params: [number, number, number, number, number, number, number];
-    sysId: number;
-    compId: number;
-  };
-}
 
 /**
  * Upper bound on concurrently-pending commands. Generous next to real usage
@@ -216,7 +118,6 @@ export class CommandQueue {
     );
 
     return new Promise<CommandResult>((resolve) => {
-      // Set up timeout
       const timer = setTimeout(() => {
         this.pending.delete(ticket);
         resolve({
@@ -226,29 +127,16 @@ export class CommandQueue {
         });
       }, effectiveTimeout);
 
-      // Track the pending command
-      this.pending.set(ticket, {
-        command, resolve, timer, retryCount: 0, confirmation: 0,
+      const entry: PendingCommand = {
+        command, resolve, timer, retryCount: 0, confirmation: 0, sentAt: Date.now(),
         frame, sendFn, timeoutMs: effectiveTimeout,
         targetSys, sysId, compId, encodeArgs,
-      });
-
-      // Send. A transport can throw synchronously (e.g. "Not connected"
-      // if the link dropped between the caller's check and here). Fail
-      // the command cleanly instead of leaking an unhandled rejection
-      // and leaving the promise to hang until the timeout fires.
-      try {
-        sendFn(frame);
-      } catch (err) {
-        clearTimeout(timer);
-        this.pending.delete(ticket);
-        resolve({
-          success: false,
-          resultCode: -1,
-          message: `Send failed: ${err instanceof Error ? err.message : String(err)}`,
-        });
-      }
-      this.armResend(ticket);
+      };
+      this.pending.set(ticket, entry);
+      // A transport can throw synchronously (it dropped between the caller's
+      // check and here, or it cannot carry a command). The command fails at
+      // once with the transport's reason instead of waiting out the timeout.
+      if (transmit(this.pending, ticket, entry)) armResend(this.pending, ticket);
     });
   }
 
@@ -302,8 +190,8 @@ export class CommandQueue {
         });
       }, effectiveTimeout);
 
-      this.pending.set(ticket, {
-        command, resolve, timer, retryCount: 0, confirmation: 0,
+      const entry: PendingCommand = {
+        command, resolve, timer, retryCount: 0, confirmation: 0, sentAt: Date.now(),
         frame: encoded, sendFn, timeoutMs: effectiveTimeout,
         targetSys, sysId, compId, isCommandInt: true,
         // Retained only to satisfy the shared entry shape; the retry path
@@ -313,68 +201,10 @@ export class CommandQueue {
           params: [params[0], params[1], params[2], params[3], x, y, z],
           sysId, compId,
         },
-      });
-
-      try {
-        sendFn(encoded);
-      } catch (err) {
-        clearTimeout(timer);
-        this.pending.delete(ticket);
-        resolve({
-          success: false,
-          resultCode: -1,
-          message: `Send failed: ${err instanceof Error ? err.message : String(err)}`,
-        });
-      }
-      this.armResend(ticket);
+      };
+      this.pending.set(ticket, entry);
+      if (transmit(this.pending, ticket, entry)) armResend(this.pending, ticket);
     });
-  }
-
-  /**
-   * Send a resend-safe command again each time a third of its timeout passes
-   * without any COMMAND_ACK, at most {@link MAX_SILENT_RESENDS} times. Any ack
-   * (IN_PROGRESS included) stops it: the vehicle has the command.
-   */
-  private armResend(ticket: number): void {
-    const entry = this.pending.get(ticket);
-    if (!entry || !RESEND_SAFE_COMMANDS.has(entry.command)) return;
-    const interval = entry.timeoutMs / (MAX_SILENT_RESENDS + 1);
-    let resends = 0;
-    const tick = () => {
-      entry.resendTimer = undefined;
-      if (this.pending.get(ticket) !== entry || resends >= MAX_SILENT_RESENDS) return;
-      resends++;
-      if (!entry.isCommandInt) {
-        entry.confirmation++;
-        entry.frame = this.encodeLong(entry);
-      }
-      try {
-        entry.sendFn(entry.frame);
-      } catch (err) {
-        clearTimeout(entry.timer);
-        this.pending.delete(ticket);
-        entry.resolve({
-          success: false,
-          resultCode: -1,
-          message: `Send failed: ${err instanceof Error ? err.message : String(err)}`,
-        });
-        return;
-      }
-      entry.resendTimer = setTimeout(tick, interval);
-    };
-    entry.resendTimer = setTimeout(tick, interval);
-  }
-
-  /** Re-encode a pending COMMAND_LONG with its current confirmation byte. */
-  private encodeLong(entry: PendingCommand): Uint8Array {
-    const a = entry.encodeArgs;
-    return encodeCommandLong(
-      a.targetSys, a.targetComp, a.command,
-      a.params[0], a.params[1], a.params[2], a.params[3],
-      a.params[4], a.params[5], a.params[6],
-      a.sysId, a.compId,
-      entry.confirmation,
-    );
   }
 
   /**
@@ -433,75 +263,10 @@ export class CommandQueue {
       return;
     }
 
-    // TEMPORARILY_REJECTED: auto-retry up to 3 times with 1s delay
-    if (result === MAV_RESULT.TEMPORARILY_REJECTED && entry.retryCount < 3) {
-      clearTimeout(entry.timer);
-      entry.retryCount++;
-      // Re-encode the COMMAND_LONG with the confirmation byte incremented.
-      // ArduPilot/PX4 distinguish a fresh command from a repeat by this byte;
-      // resending confirmation=0 looks like a duplicate first attempt rather
-      // than a confirmation.
-      if (!entry.isCommandInt) {
-        entry.confirmation++;
-        entry.frame = this.encodeLong(entry);
-      }
-      setTimeout(() => {
-        // Entry may have been cleared during the delay
-        if (!this.pending.has(ticket)) return;
-        // Reset timeout
-        entry.timer = setTimeout(() => {
-          this.pending.delete(ticket);
-          entry.resolve({
-            success: false,
-            resultCode: MAV_RESULT.TEMPORARILY_REJECTED,
-            message: `Command ${command} temporarily rejected after ${entry.retryCount} retries`,
-          });
-        }, entry.timeoutMs);
-        // Resend. The transport may have dropped during the retry delay
-        // and can throw synchronously; fail the command cleanly instead
-        // of throwing uncaught inside the timer and leaving the promise
-        // pending forever.
-        try {
-          entry.sendFn(entry.frame);
-        } catch (err) {
-          clearTimeout(entry.timer);
-          this.pending.delete(ticket);
-          entry.resolve({
-            success: false,
-            resultCode: -1,
-            message: `Send failed: ${err instanceof Error ? err.message : String(err)}`,
-          });
-        }
-      }, 1000);
-      return;
-    }
+    if (result === MAV_RESULT.TEMPORARILY_REJECTED && retryTemporarilyRejected(this.pending, ticket, entry)) return;
 
-    // COMMAND_INT_ONLY: a flash-constrained ArduPilot build without
-    // COMMAND_LONG handling acks every COMMAND_LONG this way. Re-send the same
-    // command once as COMMAND_INT; its ack resolves this entry.
     if (result === MAV_RESULT.COMMAND_INT_ONLY && !entry.isCommandInt) {
-      clearTimeout(entry.timer);
-      entry.isCommandInt = true;
-      entry.frame = encodeLongAsCommandInt(entry.encodeArgs);
-      entry.timer = setTimeout(() => {
-        this.pending.delete(ticket);
-        entry.resolve({
-          success: false,
-          resultCode: -1,
-          message: `Command ${command} timed out after COMMAND_INT resend`,
-        });
-      }, entry.timeoutMs);
-      try {
-        entry.sendFn(entry.frame);
-      } catch (err) {
-        clearTimeout(entry.timer);
-        this.pending.delete(ticket);
-        entry.resolve({
-          success: false,
-          resultCode: -1,
-          message: `Send failed: ${err instanceof Error ? err.message : String(err)}`,
-        });
-      }
+      resendAsCommandInt(this.pending, ticket, entry);
       return;
     }
 
@@ -556,15 +321,11 @@ export class CommandQueue {
     return this.pending.size;
   }
 
-  /** Snapshot of pending commands for diagnostics display */
-  getSnapshot(): { command: number; retryCount: number; timestamp: number }[] {
-    const result: { command: number; retryCount: number; timestamp: number }[] = [];
-    for (const [, entry] of this.pending) {
-      result.push({
-        command: entry.command,
-        retryCount: entry.retryCount,
-        timestamp: Date.now(),
-      });
+  /** Snapshot of pending commands for diagnostics display, oldest first. */
+  getSnapshot(): { ticket: number; command: number; retryCount: number; sentAt: number }[] {
+    const result: { ticket: number; command: number; retryCount: number; sentAt: number }[] = [];
+    for (const [ticket, entry] of this.pending) {
+      result.push({ ticket, command: entry.command, retryCount: entry.retryCount, sentAt: entry.sentAt });
     }
     return result;
   }

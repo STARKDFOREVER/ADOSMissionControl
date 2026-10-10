@@ -42,8 +42,12 @@ type TransportEventMap = {
   error: Error;
 };
 
-/** Default WebSocket URL the local bridge listens on in the browser path. */
-export const DEFAULT_BRIDGE_URL = "ws://localhost:14551";
+/**
+ * Default WebSocket URL the local bridge listens on in the browser path. The
+ * bridge binds and prints `127.0.0.1`; `localhost` can resolve to `::1` on
+ * macOS and miss it.
+ */
+export const DEFAULT_BRIDGE_URL = "ws://127.0.0.1:14551";
 
 /**
  * Parse a connection-string endpoint into structured fields. Accepts

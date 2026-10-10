@@ -125,6 +125,9 @@ export class MAVLinkParser {
   private callbacks: FrameCallback[] = [];
   private signedObservers: SignedFrameObserver[] = [];
   private crcFailures = 0;
+  private signatureRejects = 0;
+  /** When set, a v2 frame is emitted only if it is signed and this returns true for its bytes. */
+  private verifier: ((frame: Uint8Array) => boolean) | null = null;
 
   constructor(initialCapacity = 4096) {
     this.buffer = new Uint8Array(initialCapacity);
@@ -164,6 +167,20 @@ export class MAVLinkParser {
   }
 
   /**
+   * Enforce inbound signing: with a verifier set, every unsigned frame and
+   * every signed frame the verifier rejects is dropped before emission. Null
+   * turns enforcement off.
+   */
+  setVerifier(verifier: ((frame: Uint8Array) => boolean) | null): void {
+    this.verifier = verifier;
+  }
+
+  /** Frames dropped by the signature verifier since the last {@link reset}. */
+  get signatureRejectCount(): number {
+    return this.signatureRejects;
+  }
+
+  /**
    * How many candidate frames failed CRC since the last {@link reset}.
    *
    * This replaced a `console.debug` inside the parse loop that fired per
@@ -180,6 +197,7 @@ export class MAVLinkParser {
   reset(): void {
     this.writePos = 0;
     this.crcFailures = 0;
+    this.signatureRejects = 0;
   }
 
   // ── Internal ────────────────────────────────────────────
@@ -269,6 +287,12 @@ export class MAVLinkParser {
         continue;
       }
 
+      if (this.verifier && (signatureLen !== 13 || !this.verifier(this.buffer.slice(readPos, readPos + totalLen)))) {
+        this.signatureRejects++;
+        readPos += totalLen;
+        continue;
+      }
+
       this.emit(msgId, sysId, compId, seq, readPos + HEADER_SIZE, payloadLen);
 
       // Signed-frame observers: fire after frame emission. Copy the
@@ -323,6 +347,11 @@ export class MAVLinkParser {
     if (crc !== wireCrc) {
       this.crcFailures++;
       return 1;
+    }
+    // A v1 frame cannot be signed, so enforcement drops it.
+    if (this.verifier) {
+      this.signatureRejects++;
+      return frameLen;
     }
     this.emit(msgId, this.buffer[pos + 3], this.buffer[pos + 4], this.buffer[pos + 2], pos + V1_HEADER_SIZE, payloadLen);
     return frameLen;

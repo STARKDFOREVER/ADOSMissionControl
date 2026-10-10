@@ -86,6 +86,7 @@ describe("ParamCompare apply", () => {
     expect(useArmedConfirmStore.getState().context).toEqual({
       panelId: "parameters",
       paramNames: ["ATC_RAT_PIT_P", "WPNAV_SPEED"],
+      armStateUnknown: false,
     });
     expect(written).toEqual([]);
 

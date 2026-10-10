@@ -259,8 +259,16 @@ export class MSPAdapter implements DroneProtocol {
     if (this.transport?.isConnected) await this.transport.disconnect()
   }
 
+  /** Fires once when the link closes or the adapter is disconnected. */
+  onDisconnect(cb: () => void): () => void {
+    this.disconnectListeners.push(cb)
+    return () => { this.disconnectListeners = this.disconnectListeners.filter((l) => l !== cb) }
+  }
+  private disconnectListeners: Array<() => void> = []
+
   private handleDisconnect(): void {
     if (!this._connected && !this.poller && !this.queue) return
+    const wasConnected = this._connected
     this._connected = false
     if (this.rcOverride) { this.rcOverride.destroy(); this.rcOverride = null }
     this.rxMspEnabled = false
@@ -273,6 +281,7 @@ export class MSPAdapter implements DroneProtocol {
       this.transport.off('close', this.closeHandler as (data: void) => void)
     }
     this.transport = null
+    if (wasConnected) for (const cb of [...this.disconnectListeners]) cb()
   }
 
   // ── Commands ────────────────────────────────────────────────

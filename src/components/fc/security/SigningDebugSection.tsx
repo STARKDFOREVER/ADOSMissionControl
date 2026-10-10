@@ -10,9 +10,8 @@
  *   - A "Copy diagnostics" button that writes a JSON blob to the
  *     clipboard for support tickets.
  *
- * No signed-frame counters are shown: nothing in the GCS counts signed
- * frames, and the agent reports its counters as unobserved. A counter row
- * belongs here only once something measures it.
+ * Inbound signed-frame counters live in InboundSigningSection, per link;
+ * the agent's own counters are unobserved and are not shown.
  *
  * All fields are safe to share: no keyHex, only the keyId fingerprint.
  *

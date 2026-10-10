@@ -160,6 +160,12 @@ export interface DroneProtocol {
   connect(transport: Transport): Promise<VehicleInfo>;
   disconnect(): Promise<void>;
   readonly isConnected: boolean;
+  /**
+   * Fires once when the protocol loses its last link (or is disconnected).
+   * The protocol, not any one transport, is the source of truth for whether
+   * a multi-link drone is still reachable. Returns an unsubscribe function.
+   */
+  onDisconnect?(cb: () => void): () => void;
 
   // ── Multi-Link (optional) ───────────────────────────────
   /** Add an additional transport as a link. Validates sysid match. */
@@ -168,6 +174,8 @@ export interface DroneProtocol {
   removeLink?(linkId: string): Promise<void>;
   /** Information about all active links for this drone. */
   readonly linkInfo?: LinkInfo[];
+  /** The link outbound frames go through (prefers one that can command). */
+  readonly commandTransport?: Transport | null;
 
   // ── Commands ────────────────────────────────────────────
   arm(): Promise<CommandResult>;

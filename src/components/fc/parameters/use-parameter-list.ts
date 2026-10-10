@@ -21,6 +21,7 @@ import {
 } from "@/stores/param-list-cache";
 import { loadParamMetadata, type ParamMetadata } from "@/lib/protocol/param-metadata";
 import type { ParameterValue } from "@/lib/protocol/types";
+import { ParamDownloadIncompleteError } from "@/lib/protocol/mavlink-adapter-params";
 
 const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
 
@@ -97,7 +98,13 @@ export function useParameterList(onReset: () => void): ParameterListState {
       const current = commitParamDownload(droneId, protocol, generation, params);
       if (current && activeGeneration.current === generation) setParameters(params);
     } catch (err) {
-      if (activeGeneration.current === generation) {
+      if (activeGeneration.current !== generation) return;
+      if (err instanceof ParamDownloadIncompleteError) {
+        // Show what arrived, flagged as partial; never cache it as the board's
+        // list. Read re-runs the download for the missing indices.
+        setParameters([...err.params].sort((a, b) => collator.compare(a.name, b.name)));
+        setError(tRef.current("incompleteDownload", { received: err.received, total: err.total }));
+      } else {
         setError(err instanceof Error ? err.message : tRef.current("downloadFailed"));
       }
     } finally {

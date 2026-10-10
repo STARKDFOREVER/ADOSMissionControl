@@ -19,6 +19,7 @@ import {
   notifyBrokerWriteAccepted,
 } from "@/lib/mqtt-broker-credential";
 import { OFFICIAL_MQTT_WS_URL } from "@/lib/config/endpoints";
+import { RECEIVE_ONLY_REFUSAL } from "../command-refusal";
 
 const MQTT_WS_URL = OFFICIAL_MQTT_WS_URL;
 const CONNECT_TIMEOUT_MS = 10_000;
@@ -244,9 +245,7 @@ export class MqttMavlinkTransport implements Transport {
     // refusal that happened here. Failing at the call site names the cause
     // while the caller still has the context to report it.
     if (!this._canPublish) {
-      throw new Error(
-        "Relay credential is receive-only: this session cannot send commands to the vehicle",
-      );
+      throw new Error(RECEIVE_ONLY_REFUSAL);
     }
     // QoS-0 publish is unreliable by design (no broker ACK), so a frame
     // can vanish while the caller waits on a COMMAND_ACK. Surface the

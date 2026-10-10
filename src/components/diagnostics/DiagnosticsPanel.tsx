@@ -30,6 +30,9 @@ export function DiagnosticsPanel() {
   const clear = useDiagnosticsStore((s) => s.clear);
   const protocol = useDroneManager(selectSelectedProtocol);
 
+  // While this panel is mounted the adapter logs every frame into the store.
+  useEffect(() => useDiagnosticsStore.getState().subscribeDiagnostics(), []);
+
   // Enable hex logging only when frames tab is active (perf optimization).
   // Keyed on the selected protocol, so a drone switch moves the flag to the
   // new link and clears it on the old one.

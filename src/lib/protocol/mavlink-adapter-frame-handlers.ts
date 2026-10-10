@@ -8,7 +8,10 @@ import type { MAVLinkFrame } from './mavlink-parser'
 import type { CallbackStore } from './mavlink-adapter-callbacks'
 import type { ParamContext } from './mavlink-adapter-params'
 import type { MissionContext } from './mavlink-adapter-missions'
-import { decodeFenceMissionItems, firstMissingSeq } from './mavlink-adapter-missions'
+import {
+  handleMissionAckFrame, handleMissionRequestFrame,
+  handleMissionCountResponse, handleMissionItemIntResponse,
+} from './mission-frame-handlers'
 import type { LogContext } from './mavlink-adapter-logs'
 import {
   decodeCommandAck, decodeParamValue,
@@ -17,10 +20,8 @@ import {
   decodeComponentMetadata,
 } from './mavlink-messages'
 import { usesBytewiseParamValues } from './param-value-codec'
-import {
-  encodeMissionItemInt, encodeMissionRequestInt, encodeMissionAck,
-  encodeRequestDataStream, encodeCommandLong,
-} from './mavlink-encoder'
+import { encodeRequestDataStream, encodeCommandLong } from './mavlink-encoder'
+import { useSettingsStore } from '@/stores/settings-store'
 import {
   handleAttitude, handleGlobalPosition, handleBattery,
   handleGpsRaw, handleVfrHud, handleRcChannels,
@@ -54,9 +55,11 @@ import {
   handleVisionPositionEstimate, handleVisionPositionDelta,
 } from './handlers/vision-handlers'
 import { finishParamDownload } from './mavlink-adapter-params'
-import { handleLogEntry, handleLogData } from './mavlink-adapter-logs'
+import { handleLogEntry, handleLogData, cancelLogList, cancelLogDownload } from './mavlink-adapter-logs'
 import { handleFileTransferProtocolAck, type FtpContext } from './mavlink-adapter-ftp'
-import { handleFtpOpAck } from './mavlink-adapter-ftp-ops'
+import { handleFtpOpAck, cancelFtpOp } from './mavlink-adapter-ftp-ops'
+import { cancelMissionTransfers } from './mavlink-adapter-missions'
+import { useDiagnosticsStore } from '@/stores/diagnostics-store'
 import type { CommandQueue } from './command-queue'
 import { handleHeartbeat } from './heartbeat-source'
 
@@ -221,6 +224,55 @@ export function routeFrame(s: FrameHandlerState, frame: MAVLinkFrame, p: DataVie
   }
 }
 
+/**
+ * Route one inbound frame, timing it for the diagnostics store. Per-frame
+ * logging (and the parse-rate sample) runs only while a diagnostics surface
+ * is mounted; `includeHex` adds the payload hex for the Frames tab.
+ */
+export function processInboundFrame(s: FrameHandlerState, frame: MAVLinkFrame, includeHex: boolean): void {
+  const startTime = performance.now()
+  const diag = useDiagnosticsStore.getState()
+  const msgName = MSG_NAMES[frame.msgId] ?? `MSG_${frame.msgId}`
+  if (diag.diagnosticsSubscribed > 0) {
+    diag.recordParseEvent()
+    let rawHex: string | undefined
+    if (includeHex) {
+      const pb = new Uint8Array(frame.payload.buffer, frame.payload.byteOffset, frame.payload.byteLength)
+      rawHex = Array.from(pb.slice(0, 32)).map((b) => b.toString(16).padStart(2, '0')).join(' ') + (pb.length > 32 ? ' ...' : '')
+    }
+    diag.logMessage(frame.msgId, msgName, 'in', frame.payload.byteLength, rawHex)
+  }
+  const cbStart = performance.now()
+  try {
+    routeFrame(s, frame, frame.payload)
+  } catch (err) {
+    // A throwing handler or store bridge must not propagate back through the
+    // parser's feed() loop and stall the rest of the batch. Keep the synced
+    // state and continue.
+    console.warn(`[MAVLink] routeFrame threw for ${msgName}, continuing`, err)
+  }
+  // Callback-dispatch latency: time spent fanning out to telemetry
+  // subscribers, tracked separately from total frame-processing time.
+  diag.recordCallbackLatency(performance.now() - cbStart)
+  diag.recordFrameProcessingTime(performance.now() - startTime)
+}
+
+/** Settle every in-flight transfer and clear per-connection state when the last link goes. */
+export function resetOnDisconnect(s: FrameHandlerState, ftpCtx: FtpContext): void {
+  s.statusText.clear(); s.downloadedParamNames = null
+  s.componentMetadataUri = null; s.homeAltitudeAmsl = null
+  cancelLogList(s, 'Disconnected during log list')
+  if (s.logDataDownload) cancelLogDownload(s, 'Disconnected during log download')
+  const ftp = ftpCtx.ftpDownload
+  if (ftp) {
+    clearTimeout(ftp.inactivityTimer ?? undefined); clearTimeout(ftp.hardTimer)
+    ftp.reject(new Error('Disconnected during FTP download')); ftpCtx.ftpDownload = null
+  }
+  finishParamDownload(s, new Error('Disconnected during parameter download'))
+  cancelMissionTransfers(s, 'Disconnected during mission transfer')
+  cancelFtpOp(ftpCtx, 'Disconnected during FTP operation')
+}
+
 export function checkLinkState(s: FrameHandlerState): void {
   const elapsed = Date.now() - s.lastVehicleHeartbeat
   if (elapsed > s.HEARTBEAT_TIMEOUT_MS && !s.linkIsLost) {
@@ -282,153 +334,6 @@ function handleParamValueFrame(s: FrameHandlerState, frame: MAVLinkFrame): void 
   }
 }
 
-function handleMissionAckFrame(s: FrameHandlerState, frame: MAVLinkFrame): void {
-  const ack = decodeMissionAck(frame.payload)
-  if (ack.missionType === 2 && s.rallyUpload) {
-    s.rallyUpload.stop()
-    s.rallyUpload.resolve({
-      success: ack.type === 0, resultCode: ack.type,
-      message: ack.type === 0 ? 'Rally points accepted' : `Rally points rejected: type ${ack.type}`,
-    })
-    s.rallyUpload = null
-    return
-  }
-  if (ack.missionType === 1 && s.fenceUpload) {
-    s.fenceUpload.stop()
-    s.fenceUpload.resolve({
-      success: ack.type === 0, resultCode: ack.type,
-      message: ack.type === 0 ? 'Fence accepted' : `Fence rejected: type ${ack.type}`,
-    })
-    s.fenceUpload = null
-    return
-  }
-  if (ack.missionType === 0 && s.missionUpload) {
-    s.missionUpload.stop()
-    s.missionUpload.resolve({
-      success: ack.type === 0, resultCode: ack.type,
-      message: ack.type === 0 ? 'Mission accepted' : `Mission rejected: type ${ack.type}`,
-    })
-    s.missionUpload = null
-  }
-}
-
-function handleMissionRequestFrame(s: FrameHandlerState, frame: MAVLinkFrame): void {
-  const req = decodeMissionRequestInt(frame.payload)
-  if (req.missionType === 2 && s.rallyUpload && req.seq < s.rallyUpload.items.length) {
-    s.rallyUpload.restartTimer()
-    const pt = s.rallyUpload.items[req.seq]
-    s.transport?.send(encodeMissionItemInt(
-      s.targetSysId, s.targetCompId, req.seq, 6, 5100, 0, 0,
-      0, 0, 0, 0, Math.round(pt.lat * 1e7), Math.round(pt.lon * 1e7), pt.alt,
-      s.sysId, s.compId, 2,
-    ))
-    return
-  }
-  if (req.missionType === 1 && s.fenceUpload && req.seq < s.fenceUpload.items.length) {
-    s.fenceUpload.restartTimer()
-    const fi = s.fenceUpload.items[req.seq]
-    s.transport?.send(encodeMissionItemInt(
-      s.targetSysId, s.targetCompId, fi.seq, fi.frame, fi.command, 0, 1,
-      fi.param1, fi.param2, 0, 0, fi.x, fi.y, fi.z,
-      s.sysId, s.compId, 1,
-    ))
-    return
-  }
-  if (req.missionType === 0 && s.missionUpload && req.seq < s.missionUpload.items.length) {
-    // The FC asking for the next item is progress: re-arm the inactivity
-    // budget so a long mission over a slow radio is not abandoned mid-walk.
-    s.missionUpload.restartTimer()
-    const item = s.missionUpload.items[req.seq]
-    s.transport?.send(encodeMissionItemInt(
-      s.targetSysId, s.targetCompId,
-      item.seq, item.frame, item.command, item.current, item.autocontinue,
-      item.param1, item.param2, item.param3, item.param4,
-      item.x, item.y, item.z, s.sysId, s.compId,
-    ))
-  }
-}
-
-function handleMissionCountResponse(s: FrameHandlerState, frame: MAVLinkFrame): void {
-  const data = decodeMissionCount(frame.payload)
-  if (data.missionType === 2 && s.rallyDownload) {
-    s.rallyDownload.total = data.count
-    s.rallyDownload.restartTimer()
-    if (data.count === 0) { s.rallyDownload.stop(); s.rallyDownload.resolve([]); s.rallyDownload = null; return }
-    s.transport?.send(encodeMissionRequestInt(s.targetSysId, s.targetCompId, 0, s.sysId, s.compId, 2))
-    return
-  }
-  if (data.missionType === 1 && s.fenceDownload) {
-    s.fenceDownload.total = data.count
-    s.fenceDownload.restartTimer()
-    if (data.count === 0) { s.fenceDownload.stop(); s.fenceDownload.resolve([]); s.fenceDownload = null; return }
-    s.transport?.send(encodeMissionRequestInt(s.targetSysId, s.targetCompId, 0, s.sysId, s.compId, 1))
-    return
-  }
-  if (data.missionType !== 0 || !s.missionDownload) return
-  s.missionDownload.total = data.count
-  s.missionDownload.restartTimer()
-  if (data.count === 0) { s.missionDownload.stop(); s.missionDownload.resolve([]); s.missionDownload = null; return }
-  s.transport?.send(encodeMissionRequestInt(s.targetSysId, s.targetCompId, 0, s.sysId, s.compId))
-}
-
-function handleMissionItemIntResponse(s: FrameHandlerState, frame: MAVLinkFrame): void {
-  const data = decodeMissionItemIntMsg(frame.payload)
-
-  // An item outside the announced count is not part of this transfer (a
-  // stale frame, or another GCS's exchange); storing it would pad the result.
-  if (data.missionType === 2 && s.rallyDownload) {
-    if (data.seq >= s.rallyDownload.total) return
-    s.rallyDownload.items.set(data.seq, { lat: data.x / 1e7, lon: data.y / 1e7, alt: data.z })
-    s.rallyDownload.restartTimer()
-    const next = firstMissingSeq(s.rallyDownload.items, s.rallyDownload.total)
-    if (next === null) {
-      s.rallyDownload.stop()
-      const items = Array.from(s.rallyDownload.items.entries()).sort((a, b) => a[0] - b[0]).map(([, pt]) => pt)
-      s.transport?.send(encodeMissionAck(s.targetSysId, s.targetCompId, 0, s.sysId, s.compId, 2))
-      s.rallyDownload.resolve(items); s.rallyDownload = null
-    } else {
-      s.transport?.send(encodeMissionRequestInt(s.targetSysId, s.targetCompId, next, s.sysId, s.compId, 2))
-    }
-    return
-  }
-  if (data.missionType === 1 && s.fenceDownload) {
-    if (data.seq >= s.fenceDownload.total) return
-    s.fenceDownload.items.set(data.seq, {
-      seq: data.seq, frame: data.frame, command: data.command,
-      param1: data.param1, param2: data.param2, x: data.x, y: data.y, z: data.z,
-    })
-    s.fenceDownload.restartTimer()
-    const next = firstMissingSeq(s.fenceDownload.items, s.fenceDownload.total)
-    if (next === null) {
-      s.fenceDownload.stop()
-      const elements = decodeFenceMissionItems(Array.from(s.fenceDownload.items.values()))
-      s.transport?.send(encodeMissionAck(s.targetSysId, s.targetCompId, 0, s.sysId, s.compId, 1))
-      s.fenceDownload.resolve(elements); s.fenceDownload = null
-    } else {
-      s.transport?.send(encodeMissionRequestInt(s.targetSysId, s.targetCompId, next, s.sysId, s.compId, 1))
-    }
-    return
-  }
-  if (data.missionType !== 0 || !s.missionDownload || data.seq >= s.missionDownload.total) return
-  const item: MissionItem = {
-    seq: data.seq, frame: data.frame, command: data.command,
-    current: data.current, autocontinue: data.autocontinue,
-    param1: data.param1, param2: data.param2, param3: data.param3, param4: data.param4,
-    x: data.x, y: data.y, z: data.z,
-  }
-  s.missionDownload.items.set(data.seq, item)
-  s.missionDownload.restartTimer()
-  const next = firstMissingSeq(s.missionDownload.items, s.missionDownload.total)
-  if (next === null) {
-    s.missionDownload.stop()
-    const items = Array.from(s.missionDownload.items.values()).sort((a, b) => a.seq - b.seq)
-    s.transport?.send(encodeMissionAck(s.targetSysId, s.targetCompId, 0, s.sysId, s.compId))
-    s.missionDownload.resolve(items); s.missionDownload = null
-  } else {
-    s.transport?.send(encodeMissionRequestInt(s.targetSysId, s.targetCompId, next, s.sysId, s.compId))
-  }
-}
-
 function handleAutopilotVersionFrame(s: FrameHandlerState, frame: MAVLinkFrame): void {
   const data = handleAutopilotVersionMsg(frame.payload, s.cbs.autopilotVersionCallbacks, s.firmwareHandler?.firmwareType)
   if (s.vehicleInfo) {
@@ -475,6 +380,8 @@ export function requestDataStreams(s: Pick<FrameHandlerState, 'transport' | 'fir
   // cannot carry, and turning that refusal into a thrown error here would take
   // down a session that is still perfectly good for telemetry.
   if (!s.transport?.isConnected || !s.transport.canCommand) return
+  // The operator (or the agent's router) owns the stream rates: never send.
+  if (!useSettingsStore.getState().gcsManagesTelemetryRates) return
   // PX4 uses per-message SET_MESSAGE_INTERVAL, not the legacy REQUEST_DATA_STREAM.
   if (s.firmwareHandler?.firmwareType === 'px4') {
     for (const [msgId, hz] of PX4_STREAM_RATES) {

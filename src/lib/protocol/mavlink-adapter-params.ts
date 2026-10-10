@@ -10,6 +10,7 @@
 import type { Transport, ParameterValue, CommandResult, FirmwareHandler, ParameterCallback } from './types'
 import { encodeParamRequestList, encodeParamRequestRead, encodeParamSet } from './mavlink-encoder'
 import { MAV_PARAM_TYPE, usesBytewiseParamValues } from './param-value-codec'
+import { commandRefusal } from './command-refusal'
 
 /**
  * A cached parameter read. Stores the full MAV_PARAM shape so a cache-served
@@ -39,6 +40,28 @@ export class ParamAbsentError extends Error {
   }
 }
 
+/**
+ * Rejected by getAllParameters when the download ended (retries stopped
+ * converging, or the hard timeout fired) before every index arrived. Carries
+ * the partial list so a caller can still show it, but never as a complete one.
+ */
+export class ParamDownloadIncompleteError extends Error {
+  readonly code = 'param_download_incomplete' as const
+  constructor(
+    readonly received: number,
+    readonly total: number,
+    readonly params: ParameterValue[],
+  ) {
+    super(`Parameter download incomplete: ${received} of ${total} received`)
+    this.name = 'ParamDownloadIncompleteError'
+  }
+}
+
+interface ParamWaiter {
+  resolve: (params: ParameterValue[]) => void
+  reject: (err: Error) => void
+}
+
 export interface ParamDownloadState {
   params: Map<number, ParameterValue>
   total: number
@@ -48,7 +71,7 @@ export interface ParamDownloadState {
    * starting a competing one (see the re-entrancy guard there) — every
    * resolver fires with the identical final list when it finishes.
    */
-  resolvers: Array<(params: ParameterValue[]) => void>
+  resolvers: ParamWaiter[]
   hardTimer: ReturnType<typeof setTimeout>
   inactivityTimer: ReturnType<typeof setTimeout> | null
   retryCount: number
@@ -83,14 +106,35 @@ export interface ParamContext {
   onParameter: (cb: ParameterCallback) => () => void
 }
 
-export function finishParamDownload(ctx: ParamContext): void {
+/**
+ * Settle the in-flight download. With `failure` every waiter is rejected with
+ * it. Otherwise the list resolves only when every index arrived; a short list
+ * rejects with ParamDownloadIncompleteError.
+ */
+export function finishParamDownload(ctx: ParamContext, failure?: Error): void {
   if (!ctx.parameterDownload) return
   const dl = ctx.parameterDownload
   clearTimeout(dl.hardTimer)
-  if (dl.inactivityTimer) clearTimeout(dl.inactivityTimer)
-  const params = Array.from(dl.params.values()).sort((a, b) => a.index - b.index)
-  for (const resolve of dl.resolvers) resolve(params)
+  clearTimeout(dl.inactivityTimer ?? undefined)
   ctx.parameterDownload = null
+  const params = Array.from(dl.params.values()).sort((a, b) => a.index - b.index)
+  const complete = dl.total > 0 && dl.params.size >= dl.total
+  const err = failure ?? (complete ? null : new ParamDownloadIncompleteError(dl.params.size, dl.total, params))
+  for (const waiter of dl.resolvers) {
+    if (err) waiter.reject(err)
+    else waiter.resolve(params)
+  }
+}
+
+/** Send one frame for the download; a throwing link fails the download. */
+function sendForDownload(ctx: ParamContext, frame: Uint8Array): boolean {
+  try {
+    ctx.transport!.send(frame)
+    return true
+  } catch (err) {
+    finishParamDownload(ctx, err instanceof Error ? err : new Error(String(err)))
+    return false
+  }
 }
 
 export function retryMissingParams(ctx: ParamContext): void {
@@ -100,7 +144,7 @@ export function retryMissingParams(ctx: ParamContext): void {
   if (dl.total <= 0) {
     dl.retryCount++
     if (dl.retryCount % 2 === 0) {
-      ctx.transport!.send(encodeParamRequestList(ctx.targetSysId, ctx.targetCompId, ctx.sysId, ctx.compId))
+      if (!sendForDownload(ctx, encodeParamRequestList(ctx.targetSysId, ctx.targetCompId, ctx.sysId, ctx.compId))) return
     }
     dl.resetInactivityTimer()
     return
@@ -135,18 +179,16 @@ export function retryMissingParams(ctx: ParamContext): void {
 
   const batch = missing.slice(0, 50)
   for (const idx of batch) {
-    ctx.transport!.send(
-      encodeParamRequestRead(
-        ctx.targetSysId, ctx.targetCompId,
-        '', idx, ctx.sysId, ctx.compId,
-      )
-    )
+    const frame = encodeParamRequestRead(ctx.targetSysId, ctx.targetCompId, '', idx, ctx.sysId, ctx.compId)
+    if (!sendForDownload(ctx, frame)) return
   }
   dl.resetInactivityTimer()
 }
 
 export async function getAllParameters(ctx: ParamContext): Promise<ParameterValue[]> {
   if (!ctx.transport?.isConnected) throw new Error('Not connected')
+  const refusal = commandRefusal(ctx.transport)
+  if (refusal) throw new Error(refusal)
 
   // A download is already in flight on this connection — share it instead of
   // starting a second one. Two independent ParamDownloadState objects would
@@ -158,12 +200,12 @@ export async function getAllParameters(ctx: ParamContext): Promise<ParameterValu
   // real download between callers.
   if (ctx.parameterDownload) {
     const dl = ctx.parameterDownload
-    return new Promise<ParameterValue[]>((resolve) => {
-      dl.resolvers.push(resolve)
+    return new Promise<ParameterValue[]>((resolve, reject) => {
+      dl.resolvers.push({ resolve, reject })
     })
   }
 
-  return new Promise<ParameterValue[]>((resolve) => {
+  return new Promise<ParameterValue[]>((resolve, reject) => {
     const hardTimer = setTimeout(() => {
       if (ctx.parameterDownload) {
         finishParamDownload(ctx)
@@ -188,7 +230,7 @@ export async function getAllParameters(ctx: ParamContext): Promise<ParameterValu
     ctx.parameterDownload = {
       params: new Map(),
       total: 0,
-      resolvers: [resolve],
+      resolvers: [{ resolve, reject }],
       hardTimer,
       inactivityTimer: createInactivityTimer(),
       retryCount: 0,
@@ -197,7 +239,7 @@ export async function getAllParameters(ctx: ParamContext): Promise<ParameterValu
       resetInactivityTimer,
     }
 
-    ctx.transport!.send(encodeParamRequestList(ctx.targetSysId, ctx.targetCompId, ctx.sysId, ctx.compId))
+    sendForDownload(ctx, encodeParamRequestList(ctx.targetSysId, ctx.targetCompId, ctx.sysId, ctx.compId))
   })
 }
 

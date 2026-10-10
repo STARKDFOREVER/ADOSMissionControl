@@ -15,7 +15,7 @@ import {
   MAV_CMD_NAV_FENCE_CIRCLE_INCLUSION,
   MAV_CMD_NAV_FENCE_CIRCLE_EXCLUSION,
   type FenceMissionItem,
-} from "../mavlink-adapter-missions";
+} from "../fence-mission-codec";
 import { encodeMissionItemInt, MAV_MISSION_TYPE_FENCE } from "../mavlink-encoder";
 import { decodeMissionItemInt } from "../mavlink-messages";
 import type { FenceElement } from "../types";

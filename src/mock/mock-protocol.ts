@@ -34,6 +34,8 @@ import { MOCK_FENCE_POLYGON, MOCK_VEHICLE_INFO, HELI_VEHICLE_INFO, PX4_VEHICLE_I
 import type { DisplayPortOp } from "@/lib/protocol/msp/decoders/config/displayport";
 import { MockRanges } from "./mock-protocol-ranges";
 import { MockBfStorage } from "./mock-protocol-bf-storage";
+import { createMockFrameFeed } from "./mock-mavlink-frames";
+import type { LinkInfo } from "@/lib/protocol/types";
 
 export { MOCK_FENCE_POLYGON } from "./mock-protocol-data";
 
@@ -156,7 +158,20 @@ export class MockProtocol implements DroneProtocol {
   // ── Connection ─────────────────────────────────────────
   get isConnected(): boolean { return this._connected; }
   async connect(_t: Transport): Promise<VehicleInfo> { this._connected = true; return this._vehicleInfo; }
-  async disconnect(): Promise<void> { this.stopMockTelemetryTick(); this.clearAccelTimers(); this.clearCompassTimers(); this._connected = false; }
+  async disconnect(): Promise<void> {
+    const was = this._connected;
+    this.stopMockTelemetryTick(); this.clearAccelTimers(); this.clearCompassTimers(); this._connected = false;
+    if (was) for (const cb of [...this.disconnectCbs]) cb();
+  }
+  private disconnectCbs: Array<() => void> = [];
+  onDisconnect(cb: () => void): () => void { this.disconnectCbs.push(cb); return () => { this.disconnectCbs = this.disconnectCbs.filter((c) => c !== cb); }; }
+  private readonly connectedAt = Date.now();
+  /** One primary demo link. */
+  get linkInfo(): LinkInfo[] {
+    return [{ id: "demo-link", type: "websocket", label: "Demo link", isConnected: this._connected, connectedAt: this.connectedAt, lastByteAt: Date.now(), isPrimary: true }];
+  }
+  /** Demo MAVLink frames for the Inspector, real wire layouts. */
+  onMavlinkFrame = createMockFrameFeed(() => this._vehicleInfo);
 
   // ── Commands ───────────────────────────────────────────
   async arm(): Promise<CommandResult> { this.emitStatusText(6, "Arming motors"); return ok("Armed"); }

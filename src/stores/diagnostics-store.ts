@@ -85,7 +85,8 @@ export interface MessageRateEntry {
 /** Command queue snapshot for display */
 export interface CommandQueueSnapshot {
   pendingCount: number;
-  entries: { command: number; commandName: string; timestamp: number }[];
+  /** One entry per pending command; `ticket` is stable for the command's life. */
+  entries: { ticket: number; command: number; commandName: string; sentAt: number; retryCount: number }[];
 }
 
 /** Ring buffer utilization info */
@@ -118,6 +119,14 @@ interface DiagnosticsStoreState {
 
   /** Command queue status snapshot */
   commandQueueSnapshot: CommandQueueSnapshot;
+
+  /**
+   * How many diagnostics surfaces (Diagnostics, MAVLink Inspector) are
+   * mounted. While 0 the adapter skips per-frame logging and parse timing.
+   */
+  diagnosticsSubscribed: number;
+  /** Count one mounted diagnostics surface; returns its release. */
+  subscribeDiagnostics: () => () => void;
 
   /** Ring buffer utilization snapshots */
   ringBufferInfo: RingBufferInfo[];
@@ -197,6 +206,17 @@ export const useDiagnosticsStore = create<DiagnosticsStoreState>((set, get) => (
   _lastConnectTimestamp: null,
   _version: 0,
   commandQueueSnapshot: { pendingCount: 0, entries: [] },
+  diagnosticsSubscribed: 0,
+
+  subscribeDiagnostics: () => {
+    set((s) => ({ diagnosticsSubscribed: s.diagnosticsSubscribed + 1 }));
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      set((s) => ({ diagnosticsSubscribed: Math.max(0, s.diagnosticsSubscribed - 1) }));
+    };
+  },
   ringBufferInfo: [],
   performanceMetrics: { parseRateHz: 0, avgCallbackLatencyMs: 0, frameProcessingTimeMs: 0, lastUpdated: 0 },
   _parseTimestamps: new RingBuffer<number>(MAX_PERF_SAMPLES),
