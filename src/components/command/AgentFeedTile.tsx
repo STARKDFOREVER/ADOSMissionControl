@@ -44,6 +44,7 @@ import {
   type CommandAgentSummary,
 } from "@/hooks/use-command-agent-fleet";
 import { useAgentVideoSession } from "@/hooks/use-agent-video-session";
+import { usePairedWhepKey } from "@/hooks/use-whep-key";
 import { useBatteryBand } from "@/lib/battery-bands";
 import { StatTile } from "@/components/command/shared/StatTile";
 import type { StatusLevel } from "@/lib/status-level";
@@ -312,8 +313,14 @@ function ConsoleAgentFeedTile({
   // Only a feed the fleet view resolved as live holds a session: a queued,
   // stale or offline tile must not keep dialing and pin a feed slot.
   const videoEnabled = hasVideoArea && agent.video.state === "live" && !!agent.video.whepUrl;
+  const whepApiKey = usePairedWhepKey(
+    agent.identity.deviceId,
+    agent.video.whepUrl,
+    agent.identity.lastIp,
+  );
   const session = useAgentVideoSession({
     whepUrl: agent.video.whepUrl,
+    apiKey: whepApiKey,
     enabled: videoEnabled,
     videoEl,
     retryKey,

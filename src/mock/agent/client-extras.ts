@@ -25,6 +25,11 @@ import type {
   RecordingControlResponse,
   RecordingListResponse,
 } from "@/lib/agent/agent-client/types";
+import type {
+  VideoAttentionProfile,
+  VideoProfileApplied,
+  VideoProfileLeaseRequest,
+} from "@/lib/agent/agent-client/extras";
 import { delay } from "./utils";
 
 /** Simulated round trip, the same order as the rest of the demo client. */
@@ -32,6 +37,8 @@ const DEMO_LATENCY_MS = 60;
 
 export class MockAgentClientExtras {
   private demoRecording: { filename: string; startedAt: number } | null = null;
+  private demoBaseProfile: VideoAttentionProfile = "hero";
+  private demoLeases = new Map<string, number>();
 
   async getVersion(_opts?: { force?: boolean }): Promise<AgentVersionInfo | null> {
     await delay(DEMO_LATENCY_MS);
@@ -91,6 +98,47 @@ export class MockAgentClientExtras {
   async getVideoLatency(): Promise<unknown | null> {
     await delay(DEMO_LATENCY_MS);
     return null;
+  }
+
+  /** The demo feed is a synthetic canvas with no encoder to retarget; the
+   * answer is the agent's lease bookkeeping at its default settings. */
+  async setVideoProfile(
+    profile: VideoAttentionProfile,
+    lease?: VideoProfileLeaseRequest,
+  ): Promise<VideoProfileApplied> {
+    await delay(DEMO_LATENCY_MS);
+    if (lease) {
+      if (profile === "hero") this.demoLeases.set(lease.holder, lease.leaseS);
+      else this.demoLeases.delete(lease.holder);
+    } else {
+      this.demoBaseProfile = profile;
+    }
+    return this.demoProfileState();
+  }
+
+  async releaseVideoProfile(holder: string): Promise<VideoProfileApplied> {
+    await delay(DEMO_LATENCY_MS);
+    this.demoLeases.delete(holder);
+    return this.demoProfileState();
+  }
+
+  private demoProfileState(): VideoProfileApplied {
+    const profile: VideoAttentionProfile =
+      this.demoLeases.size > 0 ? "hero" : this.demoBaseProfile;
+    const leases = [...this.demoLeases].map(([holder, leaseS]) => ({
+      holder,
+      expires_in_s: leaseS,
+    }));
+    const encoder = profile === "hero"
+      ? { width: 1280, height: 720, fps: 30, bitrate_kbps: 4000 }
+      : { width: 320, height: 180, fps: 1, bitrate_kbps: 50 };
+    return {
+      profile,
+      base_profile: this.demoBaseProfile,
+      ...encoder,
+      ceiling_kbps: null,
+      leases,
+    };
   }
 
   async getTime(): Promise<

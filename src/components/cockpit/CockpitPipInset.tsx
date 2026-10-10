@@ -23,6 +23,7 @@ import { useTranslations } from "next-intl";
 
 import { useDemoMode } from "@/hooks/use-demo-mode";
 import { usePipVideo } from "@/hooks/use-pip-video";
+import { useConnectedWhepKey } from "@/hooks/use-whep-key";
 import {
   ROLE_LABEL_KEY,
   useVideoStreamsStore,
@@ -158,9 +159,11 @@ export function CockpitPipInset({ droneId }: CockpitPipInsetProps) {
   const whepUrl =
     pip?.kind === "concurrent" ? (pip.address?.whepUrl ?? null) : null;
   // Only drive the isolated player for a real concurrent leg (demo uses canvas).
+  const pipApiKey = useConnectedWhepKey(whepUrl);
   const { status: pipStatus, retry: pipRetry } = usePipVideo(
     demo ? null : whepUrl,
     videoRef,
+    pipApiKey,
   );
 
   if (!pip) return null;

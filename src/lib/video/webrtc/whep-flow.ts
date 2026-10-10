@@ -27,6 +27,7 @@ import {
 import { closePeerConnection, reportHealth } from "./peer-utils";
 import { onPeerConnectionClose } from "./teardown";
 import { attachSeiTransform } from "./sei-transform";
+import { whepAuthHeaders } from "./whep-auth";
 import {
   acquireSession,
   getPc,
@@ -248,7 +249,7 @@ async function negotiateWhep(
 
     // Send offer to WHEP endpoint (fetch supports AbortSignal natively). The
     // agent's front authenticates /whep like any other data-plane route.
-    const authHeaders: Record<string, string> = apiKey ? { "X-ADOS-Key": apiKey } : {};
+    const authHeaders = whepAuthHeaders(apiKey);
     const response = await fetch(whepUrl, {
       method: "POST",
       headers: { "Content-Type": "application/sdp", ...authHeaders },

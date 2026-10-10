@@ -80,7 +80,7 @@ describe("usePipVideo", () => {
   const deletes = () => fetchMock.mock.calls.filter(([, init]) => init?.method === "DELETE");
 
   it("reports a dropped live leg as lost and reconnects", async () => {
-    const { result } = renderHook(() => usePipVideo(WHEP, VIDEO_REF));
+    const { result } = renderHook(() => usePipVideo(WHEP, VIDEO_REF, null));
     await waitFor(() => expect(result.current.status).toBe("live"));
     expect(posts()).toHaveLength(1);
 
@@ -94,17 +94,19 @@ describe("usePipVideo", () => {
     expect(deletes()[0][0]).toBe("http://host:8889/ir/whep/session-1");
   });
 
-  it("deletes its WHEP session on teardown", async () => {
-    const { result, unmount } = renderHook(() => usePipVideo(WHEP, VIDEO_REF));
+  it("deletes its WHEP session on teardown, with the pairing key on both calls", async () => {
+    const { result, unmount } = renderHook(() => usePipVideo(WHEP, VIDEO_REF, "k-1"));
     await waitFor(() => expect(result.current.status).toBe("live"));
+    expect(new Headers(posts()[0][1]?.headers).get("X-ADOS-Key")).toBe("k-1");
     unmount();
     expect(deletes()).toHaveLength(1);
     expect(deletes()[0][0]).toBe("http://host:8889/ir/whep/session-1");
+    expect(new Headers(deletes()[0][1]?.headers).get("X-ADOS-Key")).toBe("k-1");
   });
 
   it("reports a leg that never came up as an error, without auto-retrying", async () => {
     fetchMock.mockImplementationOnce(async () => new Response("", { status: 503 }));
-    const { result } = renderHook(() => usePipVideo(WHEP, VIDEO_REF));
+    const { result } = renderHook(() => usePipVideo(WHEP, VIDEO_REF, null));
     await waitFor(() => expect(result.current.status).toBe("error"));
     expect(posts()).toHaveLength(1);
   });

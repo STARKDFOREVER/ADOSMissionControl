@@ -3,7 +3,9 @@
 /**
  * @module use-agent-video-session
  * @description Independent LAN WHEP session for one Command overview tile.
- * Focused views keep using the singleton VideoFeedCard stack.
+ * Focused views keep using the singleton VideoFeedCard stack. A paired node's
+ * front refuses an unauthenticated WHEP request, so the offer and the session
+ * DELETE both carry the node's pairing key.
  * @license GPL-3.0-only
  */
 
@@ -14,6 +16,7 @@ import {
   NEGOTIATED_JITTER_TARGET_MS,
 } from "@/lib/video/webrtc/jitter-controller";
 import { closePeerConnection } from "@/lib/video/webrtc/teardown";
+import { whepAuthHeaders } from "@/lib/video/webrtc/whep-auth";
 
 export type AgentVideoSessionState = "idle" | "connecting" | "connected" | "failed";
 
@@ -32,11 +35,14 @@ const emptyStats: AgentVideoSessionStats = { fps: 0, bitrateKbps: 0 };
 
 export function useAgentVideoSession({
   whepUrl,
+  apiKey,
   enabled,
   videoEl,
   retryKey,
 }: {
   whepUrl: string | null;
+  /** The node's pairing key, sent as `X-ADOS-Key`; null for a keyless URL. */
+  apiKey: string | null;
   enabled: boolean;
   videoEl: HTMLVideoElement | null;
   retryKey: number;
@@ -56,8 +62,12 @@ export function useAgentVideoSession({
 
     let cancelled = false;
     let pc: RTCPeerConnection | null = null;
-    let statsInterval: ReturnType<typeof setInterval> | null = null;
+    let statsInterval: ReturnType<typeof setInterval> | undefined;
     const controller = new AbortController();
+    const authHeaders = whepAuthHeaders(apiKey);
+    // The server keeps a reader session at the answer's Location until it is
+    // deleted; a tile that unmounts or re-dials must not leave it behind.
+    let resourceUrl: string | null = null;
 
     async function connect() {
       if (!whepUrl) return;
@@ -99,7 +109,7 @@ export function useAgentVideoSession({
 
         const response = await fetch(whepUrl, {
           method: "POST",
-          headers: { "Content-Type": "application/sdp" },
+          headers: { "Content-Type": "application/sdp", ...authHeaders },
           body: pc.localDescription.sdp,
           signal: controller.signal,
         });
@@ -110,6 +120,8 @@ export function useAgentVideoSession({
               : `WHEP ${response.status}`,
           );
         }
+        const location = response.headers.get("Location");
+        if (location) resourceUrl = new URL(location, whepUrl).toString();
         const answerSdp = await response.text();
         if (cancelled || !pc) return;
 
@@ -183,11 +195,16 @@ export function useAgentVideoSession({
     return () => {
       cancelled = true;
       controller.abort();
-      if (statsInterval) clearInterval(statsInterval);
+      clearInterval(statsInterval);
       closePeerConnection(pc);
       if (videoEl) videoEl.srcObject = null;
+      if (resourceUrl) {
+        void fetch(resourceUrl, { method: "DELETE", headers: authHeaders, keepalive: true }).catch(
+          () => {},
+        );
+      }
     };
-  }, [enabled, retryKey, videoEl, whepUrl]);
+  }, [apiKey, enabled, retryKey, videoEl, whepUrl]);
 
   return { state, error, stats };
 }

@@ -235,6 +235,20 @@ export class AgentClient {
     return extras.listCameras(this.ctx);
   }
 
+  /** Set this drone's video attention profile, or take/renew a hero lease
+   * when `lease` is given (`POST /api/video/profile`). */
+  setVideoProfile(
+    profile: extras.VideoAttentionProfile,
+    lease?: extras.VideoProfileLeaseRequest,
+  ): Promise<extras.VideoProfileApplied> {
+    return extras.setVideoProfile(this.ctx, profile, lease);
+  }
+
+  /** Release one holder's hero lease (`DELETE /api/video/profile?holder=`). */
+  releaseVideoProfile(holder: string): Promise<extras.VideoProfileApplied> {
+    return extras.releaseVideoProfile(this.ctx, holder);
+  }
+
   /** The reconciled camera-management roster (`GET /api/video/roster`):
    * declared legs + discovered devices + live state, with per-camera
    * orientation / purpose / owner / state. */

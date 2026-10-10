@@ -127,6 +127,76 @@ export async function getVideoLatency(
   }
 }
 
+/** A drone's video attention profile: `hero` runs the camera's full encoder
+ * settings, `thumbnail` the 1 fps share every non-hero drone of a WFB fleet
+ * streams. */
+export type VideoAttentionProfile = "hero" | "thumbnail";
+
+/** One live hold on the hero profile. `expires_in_s` is null for an agent-internal
+ * hold (a vision engine attached to the tap). */
+export interface VideoProfileLease {
+  holder: string;
+  expires_in_s: number | null;
+}
+
+/** The encoder state every `/api/video/profile` verb answers with. `profile`
+ * is the effective one: hero while any lease is live, else `base_profile`.
+ * The lease fields are absent on an agent that predates profile leases. */
+export interface VideoProfileApplied {
+  profile: VideoAttentionProfile;
+  base_profile?: VideoAttentionProfile;
+  width: number;
+  height: number;
+  fps: number;
+  bitrate_kbps: number;
+  /** The adaptive ladder's clamp; null when unclamped. */
+  ceiling_kbps: number | null;
+  leases?: VideoProfileLease[];
+}
+
+/** A hero lease request: `holder` is 1-64 chars of `[A-Za-z0-9._:-]`,
+ * `leaseS` 5-120 s. The holder renews by sending the same request again. */
+export interface VideoProfileLeaseRequest {
+  holder: string;
+  leaseS: number;
+}
+
+/** Agent's encoder-socket client bound (10 s) plus margin: a profile switch
+ * respawns the encoder and the route answers only once it is applied. */
+const VIDEO_PROFILE_TIMEOUT_MS = 12_000;
+
+/** Set the drone's video attention profile (`POST /api/video/profile`). With
+ * `lease`, a `hero` request takes or renews that holder's lease instead of
+ * changing the base profile. A ground station answers 404 and a rig with no
+ * video pipeline 503. */
+export function setVideoProfile(
+  ctx: RequestContext,
+  profile: VideoAttentionProfile,
+  lease?: VideoProfileLeaseRequest,
+): Promise<VideoProfileApplied> {
+  const body = lease
+    ? { profile, holder: lease.holder, lease_s: lease.leaseS }
+    : { profile };
+  return agentRequest<VideoProfileApplied>(ctx, "/api/video/profile", {
+    method: "POST",
+    body: JSON.stringify(body),
+    timeoutMs: VIDEO_PROFILE_TIMEOUT_MS,
+  });
+}
+
+/** Release one holder's hero lease (`DELETE /api/video/profile?holder=`).
+ * Idempotent: an unknown holder still answers 200. */
+export function releaseVideoProfile(
+  ctx: RequestContext,
+  holder: string,
+): Promise<VideoProfileApplied> {
+  return agentRequest<VideoProfileApplied>(
+    ctx,
+    `/api/video/profile?holder=${encodeURIComponent(holder)}`,
+    { method: "DELETE", timeoutMs: VIDEO_PROFILE_TIMEOUT_MS },
+  );
+}
+
 /** Wall-clock + monotonic timestamps from the drone. */
 export async function getTime(
   ctx: RequestContext,

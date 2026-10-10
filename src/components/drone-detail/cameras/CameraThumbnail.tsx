@@ -5,14 +5,18 @@
  * @description A small, self-contained live preview for one camera. Opens its
  * OWN WHEP peer connection to the camera's resolved WHEP URL (mirroring the
  * cockpit's LAN-direct handshake) so a thumbnail never touches the single global
- * video session. Best-effort: with no URL, no WebRTC support, or on any failure
- * it renders nothing and the card shows a static placeholder instead.
+ * video session. The offer and the session DELETE carry the connected node's
+ * pairing key, which its front requires on a paired node. Best-effort: with no
+ * URL, no WebRTC support, or on any failure it renders nothing and the card
+ * shows a static placeholder instead.
  *
  * @license GPL-3.0-only
  */
 
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { useConnectedWhepKey } from "@/hooks/use-whep-key";
+import { whepAuthHeaders } from "@/lib/video/webrtc/whep-auth";
 import {
   applyJitterTarget,
   NEGOTIATED_JITTER_TARGET_MS,
@@ -57,6 +61,7 @@ export function CameraThumbnail({
   // never scrolls to. Once visible it stays open. Falls open where the observer
   // is unavailable (test / older runtimes).
   const [visible, setVisible] = useState(false);
+  const apiKey = useConnectedWhepKey(whepUrl);
 
   useEffect(() => {
     const el = videoRef.current;
@@ -84,11 +89,14 @@ export function CameraThumbnail({
     // deleted; a card that unmounts must not leave it behind.
     let sessionUrl: string | null = null;
     const abort = new AbortController();
+    const authHeaders = whepAuthHeaders(apiKey);
     const release = () => {
       if (!sessionUrl) return;
       const url = sessionUrl;
       sessionUrl = null;
-      void fetch(url, { method: "DELETE", keepalive: true }).catch(() => undefined);
+      void fetch(url, { method: "DELETE", headers: authHeaders, keepalive: true }).catch(
+        () => undefined,
+      );
     };
     const video = videoRef.current;
 
@@ -108,7 +116,7 @@ export function CameraThumbnail({
         if (cancelled) return;
         const res = await fetch(whepUrl, {
           method: "POST",
-          headers: { "Content-Type": "application/sdp" },
+          headers: { "Content-Type": "application/sdp", ...authHeaders },
           body: pc.localDescription?.sdp ?? offer.sdp,
           signal: AbortSignal.any([abort.signal, AbortSignal.timeout(WHEP_TIMEOUT_MS)]),
         });
@@ -145,7 +153,7 @@ export function CameraThumbnail({
         }
       }
     };
-  }, [whepUrl, visible]);
+  }, [whepUrl, visible, apiKey]);
 
   return (
     <video

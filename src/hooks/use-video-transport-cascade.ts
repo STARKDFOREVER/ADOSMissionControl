@@ -27,6 +27,14 @@
  * feed, meant one surface's unmount tore down another surface's live stream.
  * `holdsSession` is what makes the release symmetric.
  *
+ * ## Hero profile
+ *
+ * While a surface wants the connected drone's LAN Direct feed (enabled, a
+ * video element, the node's own WHEP origin with its pairing key, plain-http
+ * page), the hook holds the drone on the `hero` video profile (see
+ * `video/hero-profile-hold`). Every caller is a detail surface of the focused
+ * drone; the fleet grid's tiles use their own session and never promote.
+ *
  * All mutable cascade state lives in useRef to survive Turbopack HMR
  * cleanly. Module-level globals get reset on HMR.
  *
@@ -43,25 +51,8 @@ import {
 } from "@/lib/video/webrtc-client";
 import { useVideoStore, type VideoTransport } from "@/stores/video-store";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
-
-/**
- * The node API key to present on `whepUrl`, or null. Sent only when the
- * WHEP endpoint is on the connected agent's own origin: the key authorizes
- * that node's front and must never travel to any other host (a manual
- * SITL/Gazebo override, for one).
- */
-function whepKeyFor(
-  whepUrl: string | null,
-  agentUrl: string | null,
-  apiKey: string | null,
-): string | null {
-  if (!whepUrl || !agentUrl || !apiKey) return null;
-  try {
-    return new URL(whepUrl).origin === new URL(agentUrl).origin ? apiKey : null;
-  } catch {
-    return null;
-  }
-}
+import { whepKeyFor } from "@/lib/video/webrtc/whep-auth";
+import { acquireHeroProfile } from "@/lib/video/hero-profile-hold";
 
 type TransportMode = "auto" | "lan-whep" | "p2p-mqtt" | "off";
 
@@ -112,6 +103,22 @@ export function useVideoTransportCascade(opts: CascadeOpts): CascadeResult {
   const agentUrl = useAgentConnectionStore((s) => s.agentUrl);
   const agentApiKey = useAgentConnectionStore((s) => s.apiKey);
   const whepApiKey = whepKeyFor(agentWhepUrl, agentUrl, agentApiKey);
+  const agentClient = useAgentConnectionStore((s) => s.client);
+  // Held for as long as the surface wants the LAN feed, not only while a
+  // connection is up: the profile switch respawns the encoder, and a hold tied
+  // to "connected" would let that reconnect demote the drone again.
+  const heroEligible =
+    enabled &&
+    videoEl !== null &&
+    whepApiKey !== null &&
+    (transportMode === "auto" || transportMode === "lan-whep") &&
+    typeof window !== "undefined" &&
+    window.location.protocol !== "https:";
+
+  useEffect(() => {
+    if (!heroEligible || !agentUrl || !agentClient) return;
+    return acquireHeroProfile(agentUrl, agentClient);
+  }, [heroEligible, agentUrl, agentClient]);
 
   useEffect(() => {
     // Whether THIS effect run holds a hold on the shared session. Only a run

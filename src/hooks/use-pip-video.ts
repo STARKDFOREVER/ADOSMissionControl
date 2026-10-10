@@ -46,6 +46,7 @@ import {
   applyJitterTarget,
   NEGOTIATED_JITTER_TARGET_MS,
 } from "@/lib/video/webrtc/jitter-controller";
+import { whepAuthHeaders } from "@/lib/video/webrtc/whep-auth";
 
 /** Connection state of the isolated PiP player, so the inset can show a
  * spinner / NO SIGNAL + retry instead of a silent black rectangle. `lost` is a
@@ -77,11 +78,13 @@ export function resolveWhepResource(location: string, whepUrl: string): string {
  * A null `whepUrl` (or unmount) tears the connection down and releases the
  * server-side WHEP session. A leg that was live and drops reports `lost` and
  * reconnects with backoff; a leg that never came up, or that keeps failing,
- * reports `error` and waits for the operator's retry.
+ * reports `error` and waits for the operator's retry. `apiKey` is the node's
+ * pairing key, sent as `X-ADOS-Key` on the offer and on the session DELETE.
  */
 export function usePipVideo(
   whepUrl: string | null,
   videoRef: React.RefObject<HTMLVideoElement | null>,
+  apiKey: string | null,
 ): PipVideoState {
   const [status, setStatus] = useState<PipVideoStatus>("idle");
   const [attempt, setAttempt] = useState(0);
@@ -110,6 +113,7 @@ export function usePipVideo(
     const videoEl = videoRef.current;
     const controller = new AbortController();
     const { signal } = controller;
+    const authHeaders = whepAuthHeaders(apiKey);
     let pc: RTCPeerConnection | null = null;
     let cancelled = false;
     let resourceUrl: string | null = null;
@@ -180,7 +184,7 @@ export function usePipVideo(
 
         const response = await fetch(whepUrl, {
           method: "POST",
-          headers: { "Content-Type": "application/sdp" },
+          headers: { "Content-Type": "application/sdp", ...authHeaders },
           body: newPc.localDescription!.sdp,
           signal,
         });
@@ -234,10 +238,12 @@ export function usePipVideo(
       // Release the server-side session so a dropped or hidden inset does not
       // hold an encoder leg open until the server's own timeout.
       if (resourceUrl) {
-        void fetch(resourceUrl, { method: "DELETE", keepalive: true }).catch(() => {});
+        void fetch(resourceUrl, { method: "DELETE", headers: authHeaders, keepalive: true }).catch(
+          () => {},
+        );
       }
     };
-  }, [whepUrl, videoRef, attempt]);
+  }, [whepUrl, videoRef, attempt, apiKey]);
 
   return { status, retry };
 }
