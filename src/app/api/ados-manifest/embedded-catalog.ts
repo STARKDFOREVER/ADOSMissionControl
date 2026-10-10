@@ -1,27 +1,22 @@
-// Embedded baseline catalog for the Flash Tool.
+// Embedded install catalog for the Flash Tool.
 //
-// Used when no GitHub release manifest is reachable. Curl one-liners point
-// at the canonical install script uploaded to the latest GitHub Release
-// (releases/latest/download/install.sh) so install bodies match what was
-// tested at release time, not whatever happens to be on main when the
-// operator runs the command. Every board installs the single agent via the
-// same install.sh; the profile flag selects drone vs ground-station.
+// This is the catalog the Flash Tool serves; there is no remote fetch.
+// Every curl command runs the installer script from `main`, which fetches
+// signed release binaries. Every board installs the single agent with the
+// same script; the profile flag selects drone vs ground-station.
 //
 // Lives in a sibling module to route.ts because Next.js Route segment
 // files may only export the HTTP method handlers and route-segment
-// options. Keeping the catalog in a private sibling lets route.ts serve it
-// without violating that constraint.
+// options.
 
 import type { AdosAgentManifestData } from "@/lib/protocol/firmware/ados-agent-manifest";
+import {
+  AGENT_INSTALL_CMD as FULL_INSTALL_CMD,
+  AGENT_INSTALL_GROUND_CMD as FULL_INSTALL_GROUND_CMD,
+} from "@/lib/agent/install-script";
 
-const FULL_INSTALL_CMD =
-  "curl -sSL https://github.com/altnautica/ADOSDroneAgent/releases/latest/download/install.sh | sudo bash";
-const FULL_INSTALL_GROUND_CMD =
-  "curl -sSL https://github.com/altnautica/ADOSDroneAgent/releases/latest/download/install.sh | sudo bash -s -- --profile ground-station";
-
-export const EMBEDDED_FALLBACK: AdosAgentManifestData = {
+export const EMBEDDED_CATALOG: AdosAgentManifestData = {
   schemaVersion: 1,
-  agentVersion: "v0.1.0",
   generatedAt: "2026-05-06T00:00:00Z",
   boards: [
     {

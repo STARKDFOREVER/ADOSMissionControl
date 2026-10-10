@@ -16,9 +16,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Check, ChevronDown, Copy, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { INSTALL_URL } from "../pairing/use-pairing-flow";
-
-const INSTALL_COMMAND = `curl -sSL ${INSTALL_URL} | sudo bash`;
+import { AGENT_INSTALL_CMD as INSTALL_COMMAND } from "@/lib/agent/install-script";
 
 export function InstallAgentStrip() {
   const t = useTranslations("command.addNode");

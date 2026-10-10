@@ -78,6 +78,7 @@ export function RadioPanel() {
   const now = useClockStore((s) => s.now);
 
   const [wfbTxPowerDbm, setWfbTxPowerDbm] = useState<number | null>(null);
+  const [wfbTxReadbackDbm, setWfbTxReadbackDbm] = useState<number | null>(null);
   const [pollError, setPollError] = useState<string | null>(null);
   // null means the pair state is unknown: no answer yet, or the last check
   // failed. It is never read as "unpaired".
@@ -264,10 +265,13 @@ export function RadioPanel() {
           setWfbTxPowerDbm(
             typeof wfb.tx_power_dbm === "number" ? wfb.tx_power_dbm : null,
           );
+          setWfbTxReadbackDbm(
+            typeof wfb.tx_power_readback_dbm === "number" ? wfb.tx_power_readback_dbm : null,
+          );
         } catch {
           // No answer means no reading: the slider shows "—" rather than
           // the last value as if it were live.
-          if (!cancelled) setWfbTxPowerDbm(null);
+          if (!cancelled) { setWfbTxPowerDbm(null); setWfbTxReadbackDbm(null); }
         }
         setPollError(null);
       } catch (err) {
@@ -584,6 +588,7 @@ export function RadioPanel() {
 
       <TxPowerCard
         txPowerDbm={txPowerDbm}
+        txPowerReadbackDbm={wfbTxReadbackDbm}
         txPowerMaxDbm={txPowerMaxDbm}
         hostname={hostname}
         onApply={onApply}

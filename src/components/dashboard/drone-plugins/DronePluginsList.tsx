@@ -187,6 +187,15 @@ export function DronePluginsList({
     return [...fromConvex, ...fromLan, ...fromAgent];
   }, [agentId, installs, lanInstalls, inventory]);
 
+  // Plugins whose signer was revoked while armed: the host disables them
+  // on disarm. Only the node's own LAN list carries the flag.
+  const revocationPending = useMemo(
+    () =>
+      new Set(
+        (lanInstalls ?? []).filter((i) => i.revocation_pending).map((i) => i.plugin_id),
+      ),
+    [lanInstalls],
+  );
   // Loading only while the Convex query is in flight and nothing else has
   // produced a card: a skipped or failed query is an empty Convex list.
   if (installsState === "loading" && cards.length === 0) {
@@ -197,12 +206,15 @@ export function DronePluginsList({
     );
   }
 
-  if (cards.length === 0) {
-    return <>{emptyState}</>;
-  }
+  if (cards.length === 0) return emptyState;
 
   return (
-    <PluginCardList cards={cards} className={className} />
+    <PluginCardList
+      cards={cards}
+      className={className}
+      revocationPending={revocationPending}
+      revocationLabel={t("revocationPending")}
+    />
   );
 }
 
@@ -214,9 +226,13 @@ const RING_CLASSES = ["ring-2", "ring-accent-primary/60", "rounded-lg"];
 function PluginCardList({
   cards,
   className,
+  revocationPending,
+  revocationLabel,
 }: {
   cards: DronePluginCardData[];
   className?: string;
+  revocationPending: ReadonlySet<string>;
+  revocationLabel: string;
 }) {
   const listRef = useRef<HTMLUListElement>(null);
   const pendingPluginId = useUiStore((s) => s.pendingPluginId);
@@ -263,6 +279,14 @@ function PluginCardList({
     >
       {cards.map((c) => (
         <li key={c.installId} data-plugin-id={c.pluginId}>
+          {revocationPending.has(c.pluginId) && (
+            <span
+              data-testid="revocation-pending-badge"
+              className="mb-1 inline-block text-[10px] px-1.5 py-0.5 bg-status-warning/10 text-status-warning border border-status-warning/40"
+            >
+              {revocationLabel}
+            </span>
+          )}
           <DronePluginCard install={c} />
         </li>
       ))}

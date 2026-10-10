@@ -2343,7 +2343,8 @@
       "disabled": "Disabled",
       "crashed": "Crashed",
       "installed": "Installed"
-    }
+    },
+    "revocationPending": "Revocation pending (vehicle armed)"
   },
   "droneRadio": {
     "airSideBadge": "Air side",
@@ -4561,9 +4562,8 @@
     "oled": {
       "title": "OLEDディスプレイ",
       "brightness": "明るさ",
-      "autoDim": "60秒アイドル後に自動減光",
-      "cycleSeconds": "切替間隔 (秒)",
-      "refreshHint": "1秒ごとに更新"
+      "refreshHint": "1秒ごとに更新",
+      "contrast": "OLED contrast"
     },
     "buttons": {
       "title": "ボタン",
@@ -5147,7 +5147,8 @@
       "packetsAll": "Packets seen",
       "packetsAllHint": "Total RF frames the receiver has seen, whether or not they decoded. A rising count with rising decrypt errors means frames arrive but cannot be decoded.",
       "decryptErrors": "Decrypt errors",
-      "decryptErrorsHint": "Frames that reached the receiver but failed FEC decode or decryption. A climbing count usually points at a key or link-id mismatch between the two ends."
+      "decryptErrorsHint": "Frames that reached the receiver but failed FEC decode or decryption. A climbing count usually points at a key or link-id mismatch between the two ends.",
+      "txPowerMeasured": "Measured: {value}"
     },
     "videoLink": {
       "title": "Video Link",
@@ -5697,14 +5698,11 @@
       },
       "targetBoard": {
         "title": "Target Board",
-        "version": "Version: {version}",
         "loadingManifest": "Loading manifest...",
         "loadingBoards": "Loading boards...",
         "noBoards": "No {stack} boards available",
         "soc": "SoC:",
-        "arch": "Arch:",
-        "offlineCatalog": "Offline catalog",
-        "offlineCatalogTooltip": "The upstream release catalog was unreachable. Showing the embedded baseline. Image URLs may be missing or stale."
+        "arch": "Arch:"
       },
       "confirm": {
         "title": "Confirm flash",
@@ -6591,15 +6589,33 @@
   },
   "cockpit": {
     "hud": {
-      "attFlag": "ATT", "gs": "GS", "ias": "IAS", "alt": "ALT", "vs": "V/S", "rel": "REL", "msl": "MSL",
+      "attFlag": "ATT",
+      "gs": "GS",
+      "ias": "IAS",
+      "alt": "ALT",
+      "vs": "V/S",
+      "rel": "REL",
+      "msl": "MSL",
       "altRefToggle": "高度基準 {ref}、{next} に切り替え",
-      "homeMark": "H", "cardN": "N", "cardE": "E", "cardS": "S", "cardW": "W",
-      "wind": "WIND", "eta": "ETA", "noData": "データなし",
+      "homeMark": "H",
+      "cardN": "N",
+      "cardE": "E",
+      "cardS": "S",
+      "cardW": "W",
+      "wind": "WIND",
+      "eta": "ETA",
+      "noData": "データなし",
       "summary": "ピッチ {pitch}、ロール {roll}、速度 {speed}、高度 {alt}、機首方位 {heading}"
     },
-    "layout": { "hiddenAtDensity": "この表示密度では非表示" },
-    "streams": { "switchFailed": "{name} に切り替えられませんでした" },
-    "pip": { "reconnecting": "再接続中" },
+    "layout": {
+      "hiddenAtDensity": "この表示密度では非表示"
+    },
+    "streams": {
+      "switchFailed": "{name} に切り替えられませんでした"
+    },
+    "pip": {
+      "reconnecting": "再接続中"
+    },
     "noDrone": "No drone",
     "exit": "Exit",
     "enter": "Enter cockpit",

@@ -35,4 +35,7 @@ export interface GroundStationStatusResponse extends GroundStationStatus {
 export interface WfbConfig {
   channel: number | null;
   tx_power_dbm: number | null;
+  /** TX power measured back from the PHY after the last apply; null when
+   *  the radio has not measured it. */
+  tx_power_readback_dbm: number | null;
 }

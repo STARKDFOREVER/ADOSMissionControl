@@ -2343,7 +2343,8 @@
       "disabled": "Disabled",
       "crashed": "Crashed",
       "installed": "Installed"
-    }
+    },
+    "revocationPending": "Revocation pending (vehicle armed)"
   },
   "droneRadio": {
     "airSideBadge": "Air side",
@@ -4561,9 +4562,8 @@
     "oled": {
       "title": "OLED திரை",
       "brightness": "ஒளி",
-      "autoDim": "60 வினாடிகள் செயலற்ற பின் தானாகவே மங்கும்",
-      "cycleSeconds": "சுழற்சி இடைவெளி (வினாடிகள்)",
-      "refreshHint": "வினாடிக்கு ஒருமுறை புதுப்பிக்கப்படும்"
+      "refreshHint": "வினாடிக்கு ஒருமுறை புதுப்பிக்கப்படும்",
+      "contrast": "OLED contrast"
     },
     "buttons": {
       "title": "பட்டன்கள்",
@@ -5147,7 +5147,8 @@
       "packetsAll": "Packets seen",
       "packetsAllHint": "Total RF frames the receiver has seen, whether or not they decoded. A rising count with rising decrypt errors means frames arrive but cannot be decoded.",
       "decryptErrors": "Decrypt errors",
-      "decryptErrorsHint": "Frames that reached the receiver but failed FEC decode or decryption. A climbing count usually points at a key or link-id mismatch between the two ends."
+      "decryptErrorsHint": "Frames that reached the receiver but failed FEC decode or decryption. A climbing count usually points at a key or link-id mismatch between the two ends.",
+      "txPowerMeasured": "Measured: {value}"
     },
     "videoLink": {
       "title": "Video Link",
@@ -5697,14 +5698,11 @@
       },
       "targetBoard": {
         "title": "Target Board",
-        "version": "Version: {version}",
         "loadingManifest": "Loading manifest...",
         "loadingBoards": "Loading boards...",
         "noBoards": "No {stack} boards available",
         "soc": "SoC:",
-        "arch": "Arch:",
-        "offlineCatalog": "Offline catalog",
-        "offlineCatalogTooltip": "The upstream release catalog was unreachable. Showing the embedded baseline. Image URLs may be missing or stale."
+        "arch": "Arch:"
       },
       "confirm": {
         "title": "Confirm flash",
@@ -6591,15 +6589,33 @@
   },
   "cockpit": {
     "hud": {
-      "attFlag": "ATT", "gs": "GS", "ias": "IAS", "alt": "ALT", "vs": "V/S", "rel": "REL", "msl": "MSL",
+      "attFlag": "ATT",
+      "gs": "GS",
+      "ias": "IAS",
+      "alt": "ALT",
+      "vs": "V/S",
+      "rel": "REL",
+      "msl": "MSL",
       "altRefToggle": "உயரக் குறிப்பு {ref}, {next} க்கு மாற்று",
-      "homeMark": "H", "cardN": "N", "cardE": "E", "cardS": "S", "cardW": "W",
-      "wind": "WIND", "eta": "ETA", "noData": "தரவு இல்லை",
+      "homeMark": "H",
+      "cardN": "N",
+      "cardE": "E",
+      "cardS": "S",
+      "cardW": "W",
+      "wind": "WIND",
+      "eta": "ETA",
+      "noData": "தரவு இல்லை",
       "summary": "பிட்ச் {pitch}, ரோல் {roll}, வேகம் {speed}, உயரம் {alt}, திசை {heading}"
     },
-    "layout": { "hiddenAtDensity": "இந்த அடர்த்தியில் மறைக்கப்பட்டது" },
-    "streams": { "switchFailed": "{name} க்கு மாற முடியவில்லை" },
-    "pip": { "reconnecting": "மீண்டும் இணைக்கிறது" },
+    "layout": {
+      "hiddenAtDensity": "இந்த அடர்த்தியில் மறைக்கப்பட்டது"
+    },
+    "streams": {
+      "switchFailed": "{name} க்கு மாற முடியவில்லை"
+    },
+    "pip": {
+      "reconnecting": "மீண்டும் இணைக்கிறது"
+    },
     "noDrone": "No drone",
     "exit": "Exit",
     "enter": "Enter cockpit",

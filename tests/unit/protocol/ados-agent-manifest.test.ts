@@ -15,7 +15,6 @@ import {
 function buildManifest(): AdosAgentManifestData {
   return {
     schemaVersion: 1,
-    agentVersion: "lite-v0.1.3",
     generatedAt: "2026-05-06T00:00:00Z",
     boards: [
       {
@@ -102,7 +101,7 @@ describe("AdosAgentManifest", () => {
 
       expect(mockFetch).toHaveBeenCalledTimes(1);
       expect(mockFetch).toHaveBeenCalledWith("/api/ados-manifest");
-      expect(result.agentVersion).toBe("lite-v0.1.3");
+      expect(result.generatedAt).toBe("2026-05-06T00:00:00Z");
       expect(result.boards).toHaveLength(3);
     });
 
@@ -198,15 +197,6 @@ describe("AdosAgentManifest", () => {
     });
   });
 
-  describe("getAgentVersion", () => {
-    it("returns the manifest agentVersion field", async () => {
-      mockFetch.mockResolvedValueOnce(jsonResponse(buildManifest()));
-      const client = new AdosAgentManifest();
-      const version = await client.getAgentVersion();
-      expect(version).toBe("lite-v0.1.3");
-    });
-  });
-
   describe("clearCache", () => {
     it("forces the next getManifest call to re-fetch", async () => {
       mockFetch.mockResolvedValue(jsonResponse(buildManifest()));
@@ -268,30 +258,4 @@ describe("AdosAgentManifest", () => {
     });
   });
 
-  describe("source field", () => {
-    it("exposes the upstream source via getSource() when present", async () => {
-      mockFetch.mockResolvedValueOnce(
-        jsonResponse({ ...buildManifest(), source: "github" }),
-      );
-      const client = new AdosAgentManifest();
-      const source = await client.getSource();
-      expect(source).toBe("github");
-    });
-
-    it("exposes the fallback source via getSource() when present", async () => {
-      mockFetch.mockResolvedValueOnce(
-        jsonResponse({ ...buildManifest(), source: "fallback" }),
-      );
-      const client = new AdosAgentManifest();
-      const source = await client.getSource();
-      expect(source).toBe("fallback");
-    });
-
-    it("returns null from getSource() when the proxy omits the field", async () => {
-      mockFetch.mockResolvedValueOnce(jsonResponse(buildManifest()));
-      const client = new AdosAgentManifest();
-      const source = await client.getSource();
-      expect(source).toBeNull();
-    });
-  });
 });

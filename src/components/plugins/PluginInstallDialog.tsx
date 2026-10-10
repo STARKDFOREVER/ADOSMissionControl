@@ -132,6 +132,7 @@ export function PluginInstallDialog({
   // The install target's own board facts drive the compatibility check,
   // never the node the connection store happens to be attached to.
   const targetHost = useInstallTargetHost(targetDevice?.deviceId);
+  const boardProfile = targetHost?.boardProfile;
   const boardName = targetHost?.boardName;
   const boardSoc = targetHost?.boardSoc;
   const ramTotalMb = targetHost?.ramTotalMb;
@@ -309,8 +310,8 @@ export function PluginInstallDialog({
         cpuOk: true,
       };
     }
-    return checkCompatibility(manifest, { boardName, boardSoc, ramTotalMb });
-  }, [manifest, boardName, boardSoc, ramTotalMb]);
+    return checkCompatibility(manifest, { boardProfile, boardName, boardSoc, ramTotalMb });
+  }, [manifest, boardProfile, boardName, boardSoc, ramTotalMb]);
 
   const boardLabel = boardName ?? boardSoc ?? "unknown";
 

@@ -29,6 +29,7 @@ export const BoardInfoSchema = z
     // these would reject a valid boardless status and spam schema warnings.
     name: z.string().optional(),
     model: z.string().optional(),
+    profile: z.string().optional(),
     // A node with no board sidecar returns `board: {}`. These three used to be
     // non-optional `NumberLike`, which Zod invokes for an ABSENT key too, so a
     // boardless node parsed clean with tier 0 / 0 MB RAM / 0 cores — three

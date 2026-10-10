@@ -10,6 +10,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePairingStore, type DiscoveredAgent } from "@/stores/pairing-store";
+import { buildAgentInstallCommand } from "@/lib/agent/install-script";
 import type { Id } from "../../../../convex/_generated/dataModel";
 
 export type PairingState = "setup" | "waiting" | "success" | "error" | "expired";
@@ -53,12 +54,10 @@ export type ClaimWatch = (
   onClaimed: (deviceId: string) => void,
 ) => () => void;
 
-export const INSTALL_URL =
-  "https://raw.githubusercontent.com/altnautica/ADOSDroneAgent/main/scripts/install.sh";
 const CODE_TTL_MS = 15 * 60 * 1000;
 
 export function buildInstallCommand(code: string) {
-  return `curl -sSL ${INSTALL_URL} | sudo bash -s -- --pair ${code}`;
+  return buildAgentInstallCommand({ pairCode: code });
 }
 
 interface FlowOptions {

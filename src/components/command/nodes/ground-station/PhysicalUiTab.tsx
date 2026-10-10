@@ -17,7 +17,6 @@ import { LcdPagePreview } from "@/components/hardware/LcdPagePreview";
 import { PageIntro } from "@/components/hardware/PageIntro";
 import { HintChip } from "@/components/hardware/HintChip";
 import { Button } from "@/components/ui/button";
-import { Toggle } from "@/components/ui/toggle";
 import { useToast } from "@/components/ui/toast";
 import { groundStationApiFromAgent } from "@/lib/api/ground-station-api";
 import { isDemoMode } from "@/lib/utils";
@@ -65,8 +64,6 @@ export function PhysicalUiTab({ nodeDeviceId }: PhysicalUiTabProps) {
   const [btPairOpen, setBtPairOpen] = useState(false);
 
   const [brightness, setBrightness] = useState<number>(128);
-  const [autoDim, setAutoDim] = useState<boolean>(true);
-  const [cycleSeconds, setCycleSeconds] = useState<number>(10);
 
   const clientRef = useRef(client);
   clientRef.current = client;
@@ -81,8 +78,6 @@ export function PhysicalUiTab({ nodeDeviceId }: PhysicalUiTabProps) {
     void loadUi(client).then((loaded) => {
       if (cancelled || !loaded) return;
       setBrightness(loaded.oled.brightness);
-      setAutoDim(loaded.oled.auto_dim_enabled);
-      setCycleSeconds(loaded.oled.screen_cycle_seconds);
     });
     void loadPairedBluetooth(client);
     return () => {
@@ -105,11 +100,7 @@ export function PhysicalUiTab({ nodeDeviceId }: PhysicalUiTabProps) {
     if (ok) toast("Forgot " + name, "info");
   };
 
-  const sendOled = async (update: {
-    brightness?: number;
-    auto_dim_enabled?: boolean;
-    screen_cycle_seconds?: number;
-  }) => {
+  const sendOled = async (update: { brightness?: number }) => {
     const current = writeClient();
     if (!current) return;
     await applyOled(current, update);
@@ -121,17 +112,6 @@ export function PhysicalUiTab({ nodeDeviceId }: PhysicalUiTabProps) {
     brightnessTimerRef.current = setTimeout(() => {
       sendOled({ brightness: v });
     }, SLIDER_DEBOUNCE_MS);
-  };
-
-  const handleAutoDim = (v: boolean) => {
-    setAutoDim(v);
-    sendOled({ auto_dim_enabled: v });
-  };
-
-  const handleCycle = (v: number) => {
-    const clamped = Math.max(1, Math.min(60, Math.floor(v)));
-    setCycleSeconds(clamped);
-    sendOled({ screen_cycle_seconds: clamped });
   };
 
   const hasAgent = direct !== null;
@@ -182,7 +162,7 @@ export function PhysicalUiTab({ nodeDeviceId }: PhysicalUiTabProps) {
           <div className="flex flex-col gap-1">
             <div className="flex items-center justify-between">
               <label htmlFor="oled-brightness" className="text-xs text-text-secondary">
-                {t("oled.brightness")}
+                {t("oled.contrast")}
               </label>
               <span className="font-mono text-xs text-text-primary">{brightness}</span>
             </div>
@@ -195,28 +175,6 @@ export function PhysicalUiTab({ nodeDeviceId }: PhysicalUiTabProps) {
               value={brightness}
               onChange={(e) => handleBrightness(Number(e.target.value))}
               className="w-full accent-accent-primary focus-ring"
-            />
-          </div>
-
-          <Toggle
-            label={t("oled.autoDim")}
-            checked={autoDim}
-            onChange={handleAutoDim}
-          />
-
-          <div className="flex flex-col gap-1">
-            <label htmlFor="oled-cycle" className="text-xs text-text-secondary">
-              {t("oled.cycleSeconds")}
-            </label>
-            <input
-              id="oled-cycle"
-              type="number"
-              min={1}
-              max={60}
-              step={1}
-              value={cycleSeconds}
-              onChange={(e) => handleCycle(Number(e.target.value))}
-              className="w-28 h-8 px-2 bg-bg-tertiary border border-border-default text-sm font-mono text-text-primary focus-ring focus:border-accent-primary transition-colors"
             />
           </div>
 

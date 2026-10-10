@@ -16,9 +16,10 @@
 import type { InstallManifestSummary } from "./types";
 
 export interface CompatibilityHost {
-  /** Board model slug from the agent (`rk3582`, `rock-5c-lite`, etc.).
-   * Undefined when the agent has not reported a board yet. */
-  boardModel?: string;
+  /** HAL profile stem from the agent (`rock-5c-lite`, `rpi5`). The id a
+   * plugin's board list names. Undefined when the agent has not reported
+   * one. */
+  boardProfile?: string;
   /** Marketing board name (`Radxa ROCK 5C Lite`). */
   boardName?: string;
   /** SoC identifier (`rk3582`, `bcm2710a1`). */
@@ -37,26 +38,37 @@ export interface CompatibilityResult {
   cpuReason?: string;
 }
 
+/**
+ * The one board gate. A plugin board list matches when it is empty, holds
+ * `"*"`, or names the host's profile stem, board name or SoC
+ * (case-insensitive). Optimistic when the host reported no identity: the
+ * agent revalidates server-side.
+ */
+export function boardListMatches(
+  boards: readonly string[],
+  host: Pick<CompatibilityHost, "boardProfile" | "boardName" | "boardSoc">,
+): boolean {
+  if (boards.length === 0 || boards.includes("*")) return true;
+  const candidates = [host.boardProfile, host.boardName, host.boardSoc]
+    .filter((s): s is string => !!s)
+    .map((s) => s.toLowerCase());
+  if (candidates.length === 0) return true;
+  const supported = new Set(boards.map((b) => b.toLowerCase()));
+  return candidates.some((c) => supported.has(c));
+}
+
 export function checkCompatibility(
   manifest: InstallManifestSummary,
   host: CompatibilityHost,
 ): CompatibilityResult {
-  const boards = manifest.hardwareRequirements?.boards ?? [];
-  const candidates = [host.boardModel, host.boardName, host.boardSoc]
-    .filter((s): s is string => !!s)
-    .map((s) => s.toLowerCase());
-  const supported = new Set(boards.map((b) => b.toLowerCase()));
-  // Wildcard: empty board list matches everything. Optimistic on
-  // missing host data: if the agent has not reported a board yet we
-  // let the install proceed; the agent revalidates server-side.
-  const boardCompatible =
-    boards.length === 0 ||
-    candidates.length === 0 ||
-    candidates.some((c) => supported.has(c));
+  const boardCompatible = boardListMatches(
+    manifest.hardwareRequirements?.boards ?? [],
+    host,
+  );
 
   const boardReason = boardCompatible
     ? undefined
-    : host.boardModel ??
+    : host.boardProfile ??
       host.boardName ??
       host.boardSoc ??
       "unknown board";

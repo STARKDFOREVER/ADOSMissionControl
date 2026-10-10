@@ -2343,7 +2343,8 @@
       "disabled": "Disabled",
       "crashed": "Crashed",
       "installed": "Installed"
-    }
+    },
+    "revocationPending": "Revocation pending (vehicle armed)"
   },
   "droneRadio": {
     "airSideBadge": "Air side",
@@ -4561,9 +4562,8 @@
     "oled": {
       "title": "OLED ಪ್ರದರ್ಶನ",
       "brightness": "ಹೊಳಪು",
-      "autoDim": "60 ಸೆ ನಿಷ್ಕ್ರಿಯ ನಂತರ ಸ್ವಯಂ ಮಂದ",
-      "cycleSeconds": "ಸೈಕಲ್ ಅಂತರ (ಸೆಕೆಂಡುಗಳು)",
-      "refreshHint": "ಸೆಕೆಂಡಿಗೆ ಒಮ್ಮೆ ರಿಫ್ರೆಶ್ ಆಗುತ್ತದೆ"
+      "refreshHint": "ಸೆಕೆಂಡಿಗೆ ಒಮ್ಮೆ ರಿಫ್ರೆಶ್ ಆಗುತ್ತದೆ",
+      "contrast": "OLED contrast"
     },
     "buttons": {
       "title": "ಬಟನ್‌ಗಳು",
@@ -5147,7 +5147,8 @@
       "packetsAll": "Packets seen",
       "packetsAllHint": "Total RF frames the receiver has seen, whether or not they decoded. A rising count with rising decrypt errors means frames arrive but cannot be decoded.",
       "decryptErrors": "Decrypt errors",
-      "decryptErrorsHint": "Frames that reached the receiver but failed FEC decode or decryption. A climbing count usually points at a key or link-id mismatch between the two ends."
+      "decryptErrorsHint": "Frames that reached the receiver but failed FEC decode or decryption. A climbing count usually points at a key or link-id mismatch between the two ends.",
+      "txPowerMeasured": "Measured: {value}"
     },
     "videoLink": {
       "title": "Video Link",
@@ -5697,14 +5698,11 @@
       },
       "targetBoard": {
         "title": "Target Board",
-        "version": "Version: {version}",
         "loadingManifest": "Loading manifest...",
         "loadingBoards": "Loading boards...",
         "noBoards": "No {stack} boards available",
         "soc": "SoC:",
-        "arch": "Arch:",
-        "offlineCatalog": "Offline catalog",
-        "offlineCatalogTooltip": "The upstream release catalog was unreachable. Showing the embedded baseline. Image URLs may be missing or stale."
+        "arch": "Arch:"
       },
       "confirm": {
         "title": "Confirm flash",
@@ -6591,15 +6589,33 @@
   },
   "cockpit": {
     "hud": {
-      "attFlag": "ATT", "gs": "GS", "ias": "IAS", "alt": "ALT", "vs": "V/S", "rel": "REL", "msl": "MSL",
+      "attFlag": "ATT",
+      "gs": "GS",
+      "ias": "IAS",
+      "alt": "ALT",
+      "vs": "V/S",
+      "rel": "REL",
+      "msl": "MSL",
       "altRefToggle": "ಎತ್ತರ ಉಲ್ಲೇಖ {ref}, {next} ಗೆ ಬದಲಿಸಿ",
-      "homeMark": "H", "cardN": "N", "cardE": "E", "cardS": "S", "cardW": "W",
-      "wind": "WIND", "eta": "ETA", "noData": "ಡೇಟಾ ಇಲ್ಲ",
+      "homeMark": "H",
+      "cardN": "N",
+      "cardE": "E",
+      "cardS": "S",
+      "cardW": "W",
+      "wind": "WIND",
+      "eta": "ETA",
+      "noData": "ಡೇಟಾ ಇಲ್ಲ",
       "summary": "ಪಿಚ್ {pitch}, ರೋಲ್ {roll}, ವೇಗ {speed}, ಎತ್ತರ {alt}, ದಿಕ್ಕು {heading}"
     },
-    "layout": { "hiddenAtDensity": "ಈ ಸಾಂದ್ರತೆಯಲ್ಲಿ ಮರೆಮಾಡಲಾಗಿದೆ" },
-    "streams": { "switchFailed": "{name} ಗೆ ಬದಲಾಯಿಸಲು ಆಗಲಿಲ್ಲ" },
-    "pip": { "reconnecting": "ಮರುಸಂಪರ್ಕಿಸಲಾಗುತ್ತಿದೆ" },
+    "layout": {
+      "hiddenAtDensity": "ಈ ಸಾಂದ್ರತೆಯಲ್ಲಿ ಮರೆಮಾಡಲಾಗಿದೆ"
+    },
+    "streams": {
+      "switchFailed": "{name} ಗೆ ಬದಲಾಯಿಸಲು ಆಗಲಿಲ್ಲ"
+    },
+    "pip": {
+      "reconnecting": "ಮರುಸಂಪರ್ಕಿಸಲಾಗುತ್ತಿದೆ"
+    },
     "noDrone": "No drone",
     "exit": "Exit",
     "enter": "Enter cockpit",

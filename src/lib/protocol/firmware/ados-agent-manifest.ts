@@ -84,19 +84,11 @@ export interface AdosAgentBoard {
 
 export interface AdosAgentManifestData {
   schemaVersion: number;
-  /** Lite agent release this manifest pins. */
-  agentVersion: string;
   /** ISO 8601 timestamp the manifest was generated. */
   generatedAt: string;
   boards: AdosAgentBoard[];
-  /**
-   * "github" when the proxy successfully resolved the upstream release
-   * manifest, "fallback" when the proxy served the embedded baseline
-   * because GitHub was unreachable, returned non-OK, or returned an
-   * invalid payload. Optional for backward compatibility with older
-   * proxy deployments that don't set the field.
-   */
-  source?: "github" | "fallback";
+  /** "embedded": the catalog is built into Mission Control. */
+  source?: "embedded";
 }
 
 // ── Client ────────────────────────────────────────────────
@@ -134,21 +126,6 @@ export class AdosAgentManifest {
     const board = await this.getBoardById(boardId);
     if (!board) return null;
     return board.installs[stack] ?? null;
-  }
-
-  async getAgentVersion(): Promise<string> {
-    const manifest = await this.getManifest();
-    return manifest.agentVersion;
-  }
-
-  /**
-   * Returns "github" when the most recent fetch resolved the upstream
-   * release manifest and "fallback" when the proxy served the embedded
-   * baseline. Returns null when the manifest hasn't been fetched yet.
-   */
-  async getSource(): Promise<"github" | "fallback" | null> {
-    const manifest = await this.getManifest();
-    return manifest.source ?? null;
   }
 
   clearCache(): void {

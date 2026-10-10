@@ -34,6 +34,7 @@ export function useInstallTargetHost(
   if (!status) return null;
   return {
     agentVersion: status.version,
+    boardProfile: status.boardProfile,
     boardName: status.boardName,
     boardSoc: status.boardSoc,
     ramTotalMb: status.boardRamMb ?? status.memoryTotalMb,

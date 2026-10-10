@@ -13,7 +13,7 @@ import type { GroundStationApi, UiConfig } from "@/lib/api/ground-station-api";
 
 function uiWithBrightness(brightness: number): UiConfig {
   return {
-    oled: { brightness, auto_dim_enabled: true, screen_cycle_seconds: 10 },
+    oled: { brightness },
     buttons: {},
     screens: { order: [], enabled: [] },
   } as unknown as UiConfig;

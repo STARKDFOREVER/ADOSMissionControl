@@ -78,7 +78,7 @@ describe("first-run screen (zero nodes)", () => {
     expect(install).toBeTruthy();
     fireEvent.click(install);
     expect(
-      screen.getByText(/curl -sSL .*install\.sh \| sudo bash/),
+      screen.getByText(/curl -fsSL .*install\.sh \| sudo bash/),
     ).toBeTruthy();
   });
 

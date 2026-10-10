@@ -20,6 +20,7 @@
  * @license GPL-3.0-only
  */
 
+import { withPluginArmedRetry } from "@/lib/agent/plugin-lifecycle";
 import { LanDirectError, finishLanInstall, sendLanInstall } from "./lan-direct";
 import { LAN_URL_INSTALL_TIMEOUT_MS, type InstallKickoffResult } from "./types";
 
@@ -70,25 +71,27 @@ export async function installLanDirectFromUrl(
     );
   }
 
-  const body = JSON.stringify({
+  const payload = {
     url: inputs.url,
     expected_sha256: inputs.expectedSha256,
     requested_permissions: [...inputs.grantedPermissions],
     job_id: inputs.jobId,
     from_catalog: inputs.fromCatalog === true,
-  });
+  };
 
-  const response = await sendLanInstall(
-    `${inputs.agentUrl}/api/plugins/install_from_url`,
-    {
-      method: "POST",
-      headers: {
-        "X-ADOS-Key": inputs.pairingKey,
-        "Content-Type": "application/json",
+  const response = await withPluginArmedRetry((force) =>
+    sendLanInstall(
+      `${inputs.agentUrl}/api/plugins/install_from_url`,
+      {
+        method: "POST",
+        headers: {
+          "X-ADOS-Key": inputs.pairingKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(force ? { ...payload, force: true } : payload),
       },
-      body,
-    },
-    LAN_URL_INSTALL_TIMEOUT_MS,
+      LAN_URL_INSTALL_TIMEOUT_MS,
+    ),
   );
   return finishLanInstall(response, {
     agentUrl: inputs.agentUrl,

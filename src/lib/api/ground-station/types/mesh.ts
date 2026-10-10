@@ -86,7 +86,8 @@ export interface WfbRelayStatus {
 export interface WfbReceiverRelay {
   mac: string;
   last_seen_ms: number;
-  fragments: number;
+  /** Fragments this relay forwarded; null when not measured. */
+  fragments: number | null;
 }
 
 /** `GET .../wfb/receiver/relays`. `relays` is null (not the empty list) under

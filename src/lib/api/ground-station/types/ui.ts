@@ -8,8 +8,6 @@
 
 export interface OledConfig {
   brightness: number;
-  auto_dim_enabled: boolean;
-  screen_cycle_seconds: number;
 }
 
 export interface ButtonBinding {
@@ -34,8 +32,6 @@ export interface UiConfig {
 
 export interface OledUpdate {
   brightness?: number;
-  auto_dim_enabled?: boolean;
-  screen_cycle_seconds?: number;
 }
 
 export interface ScreensUpdate {

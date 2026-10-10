@@ -54,6 +54,9 @@ export interface PluginAgentManifestDetail {
     signer_id: string | null;
     manifest_hash: string;
     status: string;
+    /** The signer was revoked while the vehicle was armed; the host
+     * disables the plugin on disarm. Older agents omit it. */
+    revocation_pending?: boolean;
     installed_at: number;
     enabled_at: number | null;
     permissions: Record<

@@ -170,6 +170,7 @@ export function mapFullStatusToCloudStatus(
     version: resp.version,
     uptimeSeconds: resp.uptime_seconds,
     boardName: resp.board?.name,
+    boardProfile: resp.board?.profile,
     boardTier: resp.board?.tier,
     boardSoc: resp.board?.soc,
     boardArch: resp.board?.arch,

@@ -48,7 +48,7 @@ export function RelayCard({ relay }: RelayCardProps) {
       <div className="flex flex-col">
         <span className="font-mono text-sm text-text-primary">{relay.mac}</span>
         <span className="text-xs text-text-tertiary">
-          {relay.fragments} fragments · {formatAge(relay.last_seen_ms)} ago
+          {relay.fragments ?? "—"} fragments · {formatAge(relay.last_seen_ms)} ago
         </span>
       </div>
       <button

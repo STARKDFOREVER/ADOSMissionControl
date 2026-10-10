@@ -3,9 +3,8 @@
 /**
  * @module fc/firmware/agent-stages/TargetBoardCard
  * @description Top card of the ADOS Agent flash flow. Shows the board
- * picker (filtered to boards that ship the chosen stack), an offline
- * catalog pill when the manifest came from the embedded fallback,
- * and a per-board SoC + arch summary line.
+ * picker (filtered to boards that ship the chosen stack) and a
+ * per-board SoC + arch summary line.
  * @license GPL-3.0-only
  */
 
@@ -21,8 +20,6 @@ export interface TargetBoardCardProps {
   loading: boolean;
   error: string;
   onRetry: () => void;
-  agentVersion: string;
-  manifestSource?: string;
   stackLabel: string;
 }
 
@@ -33,8 +30,6 @@ export function TargetBoardCard({
   loading,
   error,
   onRetry,
-  agentVersion,
-  manifestSource,
   stackLabel,
 }: TargetBoardCardProps) {
   const t = useTranslations("flashTool.ados");
@@ -45,20 +40,8 @@ export function TargetBoardCard({
         <h2 className="text-xs font-semibold text-text-primary flex items-center gap-2">
           <HardDrive size={14} />
           {t("targetBoard.title")}
-          {manifestSource === "fallback" && (
-            <span
-              className="text-[10px] px-1.5 py-0.5 bg-status-warning/10 text-status-warning border border-status-warning/40"
-              aria-label={t("targetBoard.offlineCatalogTooltip")}
-              title={t("targetBoard.offlineCatalogTooltip")}
-            >
-              {t("targetBoard.offlineCatalog")}
-            </span>
-          )}
         </h2>
         <div className="flex items-center gap-3">
-          {agentVersion && (
-            <span className="text-[10px] text-text-tertiary">{t("targetBoard.version", { version: agentVersion })}</span>
-          )}
           {loading && (
             <span className="text-[10px] text-text-tertiary flex items-center gap-1">
               <RefreshCw size={10} className="animate-spin" /> {t("targetBoard.loadingManifest")}

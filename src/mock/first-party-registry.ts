@@ -70,7 +70,7 @@ features:
   - "On-pod AI tracking republished to the cockpit (no accelerator required)"
 hardware_requirements:
   cameras: "A SIYI optical pod on the pod network (192.168.144.x) or a TTL serial port"
-  boards: ["cm4", "cm5", "rk3588s2", "rk3576", "rpi5", "x86"]
+  boards: ["cm4", "cm5", "rock-5c-lite", "rk3588s2", "rk3576", "rpi5", "generic-x86_64"]
 resource_impact:
   cpu_percent_peak: 12
   ram_mb: 96
@@ -79,7 +79,7 @@ resource_impact:
   startup_time_seconds: 3
 telemetry_fields:
   - "siyi"
-documentation_url: "https://docs.altnautica.com/drone-agent/siyi-pod-overview"
+documentation_url: "https://docs.altnautica.com/drone-agent/extensions-catalog#ados-siyi-optical-pod"
 homepage: "https://github.com/altnautica/ADOSExtensions/tree/main/extensions/siyi-pod"
 author: "Altnautica"
 license: "GPL-3.0-or-later"
@@ -225,7 +225,7 @@ features:
 hardware_requirements:
   cameras: "USB UVC or CSI camera bound to the vision pipeline"
   fc_firmware: "ArduPilot or PX4 in a guided position-hold mode"
-  boards: ["cm4", "cm5", "rk3588s2", "rk3576", "rpi5"]
+  boards: ["cm4", "cm5", "rock-5c-lite", "rk3588s2", "rk3576", "rpi5", "cubie-a7s", "cubie-a7z"]
 resource_impact:
   output_rate_hz: 6
   cpu_percent_peak: 25
@@ -234,7 +234,7 @@ resource_impact:
   startup_time_seconds: 3
 telemetry_fields:
   - "follow.state"
-documentation_url: "https://docs.altnautica.com/drone-agent/follow-me-overview"
+documentation_url: "https://docs.altnautica.com/drone-agent/extensions-catalog#ados-follow-me"
 homepage: "https://github.com/altnautica/ADOSExtensions/tree/main/extensions/follow-me"
 author: "Altnautica"
 license: "GPL-3.0-or-later"
@@ -331,7 +331,7 @@ resource_impact:
   startup_time_seconds: 2
 telemetry_fields:
   - "gimbal"
-documentation_url: "https://docs.altnautica.com/drone-agent/mavlink-gimbal-v2-overview"
+documentation_url: "https://docs.altnautica.com/drone-agent/extensions-catalog#ados-mavlink-gimbal-v2-controller"
 homepage: "https://github.com/altnautica/ADOSExtensions/tree/main/extensions/mavlink-gimbal-v2"
 author: "Altnautica"
 license: "GPL-3.0-or-later"
@@ -421,7 +421,7 @@ features:
   - "Video overlay with a live spot temperature"
 hardware_requirements:
   cameras: "FLIR Lepton 3.5 on a PureThermal 2 USB UVC dongle (firmware 1.2.2 or newer)"
-  boards: ["cm4", "cm5", "rk3582", "rk3576", "rk3566", "x86"]
+  boards: ["cm4", "cm5", "rock-5c-lite", "rk3576", "rk3566", "generic-x86_64"]
 resource_impact:
   cpu_percent_peak: 30
   ram_mb: 160
@@ -430,7 +430,7 @@ resource_impact:
   startup_time_seconds: 3
 telemetry_fields:
   - "thermal"
-documentation_url: "https://docs.altnautica.com/drone-agent/thermal-camera-overview"
+documentation_url: "https://docs.altnautica.com/drone-agent/extensions-catalog#ados-thermal-camera-flir-lepton-usb-uvc"
 homepage: "https://github.com/altnautica/ADOSExtensions/tree/main/extensions/thermal-camera-flir-lepton-usb"
 author: "Altnautica"
 license: "GPL-3.0-or-later"
@@ -523,7 +523,7 @@ features:
 hardware_requirements:
   cameras: "USB UVC global-shutter or rolling-shutter, or CSI via V4L2"
   fc_firmware: "ArduPilot 4.5+, PX4 1.14+, iNav 7.0+"
-  boards: ["cm4", "cm5", "rk3582", "rk3588s2", "rk3576", "rpi5", "pi-zero-2w"]
+  boards: ["cm4", "cm5", "rock-5c-lite", "rk3588s2", "rk3576", "rpi5"]
 resource_impact:
   output_rate_hz: 30
   cpu_percent_peak: 80
@@ -615,7 +615,7 @@ export const DEMO_REGISTRY_ENTRIES: ReadonlyArray<DemoRegistryEntry> = [
       "c88e424ed384d485fe44f49ea0e9c668aa53068b476a11b2b58cda9dc3cbeef2",
     archiveSizeBytes: 15089,
     signerKeyId: "altnautica-2026-A",
-    supportedBoards: ["cm4", "cm5", "rk3582", "rk3588s2", "rk3576", "rpi5", "x86"],
+    supportedBoards: ["cm4", "cm5", "rock-5c-lite", "rk3588s2", "rk3576", "rpi5", "generic-x86_64"],
   },
   {
     row: row({
@@ -624,13 +624,10 @@ export const DEMO_REGISTRY_ENTRIES: ReadonlyArray<DemoRegistryEntry> = [
       description:
         "Lock onto an operator-designated subject and fly a fixed-distance standoff follow.",
       category: "ai",
-      // Pinned to the last published tag (0.2.5). The extension's own
-      // manifest.yaml has moved on to 0.2.6 (board-gate fix for the A733),
-      // but no signed 0.2.6 release exists yet — do not point this entry at
-      // an unpublished tag/asset. `supportedBoards` below is intentionally
-      // ahead of `latest_version`: it mirrors the current manifest so the
-      // demo board gate exercises the real check, while the installable
-      // asset stays the verified 0.2.5 archive.
+      // Pinned to the last published tag (0.2.5); do not point this entry
+      // at an unpublished tag/asset. `supportedBoards` below mirrors the
+      // current manifest so the demo board gate exercises the real check,
+      // while the installable asset stays the verified 0.2.5 archive.
       latest_version: "0.2.5",
       icon: "follow",
     }),
@@ -644,13 +641,12 @@ export const DEMO_REGISTRY_ENTRIES: ReadonlyArray<DemoRegistryEntry> = [
     supportedBoards: [
       "cm4",
       "cm5",
-      "rk3582",
+      "rock-5c-lite",
       "rk3588s2",
       "rk3576",
       "rpi5",
       "cubie-a7s",
-      "a733",
-      "sun60iw2",
+      "cubie-a7z",
     ],
   },
   {
@@ -693,7 +689,7 @@ export const DEMO_REGISTRY_ENTRIES: ReadonlyArray<DemoRegistryEntry> = [
       "e82ff33dfd35ebe5905c2c409bc0fd75f041d16117d4a7a8d31c7c4aad15daa6",
     archiveSizeBytes: 12891,
     signerKeyId: "altnautica-2026-A",
-    supportedBoards: ["cm4", "cm5", "rk3582", "rk3576", "rk3566", "x86"],
+    supportedBoards: ["cm4", "cm5", "rock-5c-lite", "rk3576", "rk3566", "generic-x86_64"],
   },
   {
     row: row({
@@ -712,6 +708,6 @@ export const DEMO_REGISTRY_ENTRIES: ReadonlyArray<DemoRegistryEntry> = [
       "d255afdb3746abfa81ca98698470bd1e8bf54c73364de209c756d2976444cf57",
     archiveSizeBytes: 1126629,
     signerKeyId: "altnautica-2026-A",
-    supportedBoards: ["cm4", "cm5", "rk3582", "rk3588s2", "rk3576", "rpi5", "pi-zero-2w"],
+    supportedBoards: ["cm4", "cm5", "rock-5c-lite", "rk3588s2", "rk3576", "rpi5"],
   },
 ];

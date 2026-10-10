@@ -2,21 +2,16 @@
 /**
  * @module fc/firmware/firmware-state/demo-catalog
  * @description Demo-mode catalog for the ADOS agent picker. Mirrors a
- * small slice of the embedded fallback in `/api/ados-manifest` so the
- * Flash Tool stays usable when demo mode is active and the proxy may
- * not be reachable. Consumed only inside the demo-mode branch of the
- * ADOS-agent loader (never imported in production code paths).
+ * small slice of the embedded catalog in `/api/ados-manifest`. Consumed
+ * only inside the demo-mode branch of the ADOS-agent loader.
  * @license GPL-3.0-only
  */
 
 import type { AdosAgentBoard } from "@/lib/protocol/firmware/ados-agent-manifest";
-
-export const DEMO_ADOS_AGENT_VERSION = "v0.1.0";
-
-const DEMO_FULL_INSTALL_CMD =
-  "curl -sSL https://github.com/altnautica/ADOSDroneAgent/releases/latest/download/install.sh | sudo bash";
-const DEMO_FULL_INSTALL_GROUND_CMD =
-  "curl -sSL https://github.com/altnautica/ADOSDroneAgent/releases/latest/download/install.sh | sudo bash -s -- --profile ground-station";
+import {
+  AGENT_INSTALL_CMD as DEMO_FULL_INSTALL_CMD,
+  AGENT_INSTALL_GROUND_CMD as DEMO_FULL_INSTALL_GROUND_CMD,
+} from "@/lib/agent/install-script";
 
 export const DEMO_ADOS_BOARDS: AdosAgentBoard[] = [
   {

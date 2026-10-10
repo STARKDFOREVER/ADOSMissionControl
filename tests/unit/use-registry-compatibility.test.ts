@@ -16,13 +16,14 @@ const fleetInitial = useCommandFleetStore.getState();
 
 function report(
   deviceId: string,
-  board: { name: string; soc: string; version?: string },
+  board: { name: string; soc: string; profile?: string; version?: string },
 ): void {
   useCommandFleetStore.getState().upsertCloudStatuses([
     {
       deviceId,
       version: board.version ?? "0.36.2",
       boardName: board.name,
+      boardProfile: board.profile,
       boardSoc: board.soc,
       updatedAt: Date.now(),
     },
@@ -97,5 +98,26 @@ describe("useRegistryCompatibility", () => {
   it("passes any board when supported_boards is omitted", () => {
     report("drone-7", { name: "Anything", soc: "any-soc" });
     expect(compatFor("drone-7", { agent_min_version: "0.10.0" }).compatible).toBe(true);
+  });
+
+  it("\"*\" passes every board", () => {
+    report("drone-7", { name: "Anything", soc: "any-soc", profile: "odd-board" });
+    expect(
+      compatFor("drone-7", { agent_min_version: "0.10.0", supported_boards: ["*"] })
+        .compatible,
+    ).toBe(true);
+  });
+
+  it("matches the profile stem", () => {
+    report("drone-7", { name: "Radxa ROCK 5C Lite", soc: "rk3582", profile: "rock-5c-lite" });
+    expect(
+      compatFor("drone-7", {
+        agent_min_version: "0.13.0",
+        supported_boards: ["cm4", "rock-5c-lite"],
+      }).compatible,
+    ).toBe(true);
+    expect(
+      compatFor("drone-7", { agent_min_version: "0.13.0", supported_boards: ["cm4"] }),
+    ).toMatchObject({ compatible: false, reason: "board", detail: "rock-5c-lite" });
   });
 });

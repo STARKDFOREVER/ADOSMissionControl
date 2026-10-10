@@ -222,8 +222,6 @@ export function useFirmwareState() {
     loadPx4ReleasesRetry: px4.loadPx4ReleasesRetry,
     // ADOS
     adosBoards: ados.adosBoards, adosLoading: ados.adosLoading, adosError: ados.adosError,
-    adosAgentVersion: ados.adosAgentVersion,
-    adosManifestSource: ados.adosManifestSource,
     selectedAdosBoardId: ados.selectedAdosBoardId, setSelectedAdosBoardId: ados.setSelectedAdosBoardId,
     adosInstallMethod: ados.adosInstallMethod,
     loadAdosManifestRetry: ados.loadAdosManifestRetry,

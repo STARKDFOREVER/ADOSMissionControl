@@ -48,7 +48,6 @@ vi.mock("@/lib/protocol/firmware/ados-agent-manifest", () => ({
     async getManifest() {
       return {
         schemaVersion: 1,
-        agentVersion: "lite-v0.1.3",
         generatedAt: "2026-05-06T00:00:00Z",
         boards: [],
       };
@@ -56,7 +55,6 @@ vi.mock("@/lib/protocol/firmware/ados-agent-manifest", () => ({
     async getBoardsForStack() { return []; }
     async getBoardById() { return null; }
     async getInstall() { return null; }
-    async getAgentVersion() { return "lite-v0.1.3"; }
     clearCache() {}
   },
 }));

@@ -16,6 +16,8 @@
  */
 
 import { timedFetch } from "@/lib/agent/agent-client/timeout";
+import { AgentArmedRefusal, armedRefusalFrom } from "@/lib/agent/agent-client/transport";
+import { reportPluginWarning, withPluginArmedRetry } from "./plugin-lifecycle";
 import {
   WS_TICKET_PROTOCOL,
   mintWsTicket,
@@ -270,14 +272,17 @@ export class PluginAgentClient {
   }
 
   async install(file: File): Promise<PluginAgentInstallSummary> {
-    const form = new FormData();
-    form.append("file", file);
-    const res = await this.fetchImpl(
-      `${this.baseUrl}/api/plugins/install`,
-      { method: "POST", headers: this.authHeader(), body: form },
-      PLUGIN_TRANSFER_TIMEOUT_MS,
-    );
-    return this.parse<PluginAgentInstallSummary>(res);
+    return withPluginArmedRetry(async (force) => {
+      const form = new FormData();
+      form.append("file", file);
+      // Multipart carries no JSON body, so the override rides the query.
+      const res = await this.fetchImpl(
+        `${this.baseUrl}/api/plugins/install${force ? "?force=1" : ""}`,
+        { method: "POST", headers: this.authHeader(), body: form },
+        PLUGIN_TRANSFER_TIMEOUT_MS,
+      );
+      return this.parse<PluginAgentInstallSummary>(res);
+    });
   }
 
   /**
@@ -381,36 +386,67 @@ export class PluginAgentClient {
   }
 
   async enable(pluginId: string): Promise<void> {
-    const res = await this.fetchImpl(this.pluginUrl(pluginId, "enable"), {
-      method: "POST",
-      headers: this.authHeader(),
-    });
-    await this.parse(res);
+    await withPluginArmedRetry((force) => this.toggle(pluginId, "enable", force));
   }
 
   async disable(pluginId: string): Promise<void> {
-    const res = await this.fetchImpl(this.pluginUrl(pluginId, "disable"), {
+    await withPluginArmedRetry((force) => this.toggle(pluginId, "disable", force));
+  }
+
+  private async toggle(pluginId: string, op: "enable" | "disable", force: boolean): Promise<void> {
+    const res = await this.fetchImpl(this.pluginUrl(pluginId, op), {
       method: "POST",
-      headers: this.authHeader(),
+      headers: force
+        ? { ...this.authHeader(), "Content-Type": "application/json" }
+        : this.authHeader(),
+      ...(force ? { body: JSON.stringify({ force: true }) } : {}),
     });
     await this.parse(res);
   }
 
-  async remove(pluginId: string, opts?: { keepData?: boolean }): Promise<void> {
-    const qs = opts?.keepData ? "?keep_data=1" : "";
-    const res = await this.fetchImpl(`${this.pluginUrl(pluginId)}${qs}`, {
-      method: "DELETE",
-      headers: this.authHeader(),
+  /** Remove a plugin. A host `warning` (the remove completed but left
+   * something behind) is surfaced through the lifecycle UI and returned. */
+  async remove(
+    pluginId: string,
+    opts?: { keepData?: boolean },
+  ): Promise<{ warning: string | null }> {
+    const body = await withPluginArmedRetry(async (force) => {
+      const params = new URLSearchParams();
+      if (opts?.keepData) params.set("keep_data", "1");
+      if (force) params.set("force", "1");
+      const qs = params.size > 0 ? `?${params.toString()}` : "";
+      const res = await this.fetchImpl(`${this.pluginUrl(pluginId)}${qs}`, {
+        method: "DELETE",
+        headers: this.authHeader(),
+      });
+      return this.parse<{ warning?: unknown } | null>(res);
     });
-    await this.parse(res);
+    const warning = typeof body?.warning === "string" ? body.warning : null;
+    reportPluginWarning(warning);
+    return { warning };
   }
 
   private async parse<T>(res: Response): Promise<T> {
+    const text = await res.text().catch(() => "");
+    const armed = armedRefusalFrom(res.status, text);
+    if (armed) throw armed;
     let body: unknown = null;
     try {
-      body = await res.json();
+      body = text ? JSON.parse(text) : null;
     } catch {
       // fall through; treat as opaque failure
+    }
+    // Python-served routes nest the refusal under `detail`.
+    const detail =
+      body && typeof body === "object" && "detail" in body ? body.detail : null;
+    if (
+      res.status === 409 &&
+      detail &&
+      typeof detail === "object" &&
+      "error" in detail &&
+      detail.error === "E_ARMED"
+    ) {
+      throw new AgentArmedRefusal(text);
     }
     if (!res.ok) {
       if (

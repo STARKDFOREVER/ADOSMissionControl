@@ -85,7 +85,9 @@ export interface FleetDrone extends DroneInfo {
    * back there." Undefined on rows that predate the field. */
   agentIdentityKnown?: boolean;
   /** Board identity folded in from a live status poll (direct or relayed).
-   * Undefined until a status snapshot reports it. */
+   * Undefined until a status snapshot reports it. `boardProfile` is the HAL
+   * profile stem (`rock-5c-lite`), the id plugin board lists match. */
+  boardProfile?: string;
   boardName?: string;
   boardSoc?: string;
   boardTier?: number;

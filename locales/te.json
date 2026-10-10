@@ -2343,7 +2343,8 @@
       "disabled": "Disabled",
       "crashed": "Crashed",
       "installed": "Installed"
-    }
+    },
+    "revocationPending": "Revocation pending (vehicle armed)"
   },
   "droneRadio": {
     "airSideBadge": "Air side",
@@ -4561,9 +4562,8 @@
     "oled": {
       "title": "OLED డిస్ప్లే",
       "brightness": "కాంతి",
-      "autoDim": "60 సె నిష్క్రియ తర్వాత స్వయంచాలకంగా మసకబారు",
-      "cycleSeconds": "చక్ర వ్యవధి (సెకన్లు)",
-      "refreshHint": "సెకనుకు ఒకసారి రిఫ్రెష్ అవుతుంది"
+      "refreshHint": "సెకనుకు ఒకసారి రిఫ్రెష్ అవుతుంది",
+      "contrast": "OLED contrast"
     },
     "buttons": {
       "title": "బటన్లు",
@@ -5147,7 +5147,8 @@
       "packetsAll": "Packets seen",
       "packetsAllHint": "Total RF frames the receiver has seen, whether or not they decoded. A rising count with rising decrypt errors means frames arrive but cannot be decoded.",
       "decryptErrors": "Decrypt errors",
-      "decryptErrorsHint": "Frames that reached the receiver but failed FEC decode or decryption. A climbing count usually points at a key or link-id mismatch between the two ends."
+      "decryptErrorsHint": "Frames that reached the receiver but failed FEC decode or decryption. A climbing count usually points at a key or link-id mismatch between the two ends.",
+      "txPowerMeasured": "Measured: {value}"
     },
     "videoLink": {
       "title": "Video Link",
@@ -5697,14 +5698,11 @@
       },
       "targetBoard": {
         "title": "Target Board",
-        "version": "Version: {version}",
         "loadingManifest": "Loading manifest...",
         "loadingBoards": "Loading boards...",
         "noBoards": "No {stack} boards available",
         "soc": "SoC:",
-        "arch": "Arch:",
-        "offlineCatalog": "Offline catalog",
-        "offlineCatalogTooltip": "The upstream release catalog was unreachable. Showing the embedded baseline. Image URLs may be missing or stale."
+        "arch": "Arch:"
       },
       "confirm": {
         "title": "Confirm flash",
@@ -6591,15 +6589,33 @@
   },
   "cockpit": {
     "hud": {
-      "attFlag": "ATT", "gs": "GS", "ias": "IAS", "alt": "ALT", "vs": "V/S", "rel": "REL", "msl": "MSL",
+      "attFlag": "ATT",
+      "gs": "GS",
+      "ias": "IAS",
+      "alt": "ALT",
+      "vs": "V/S",
+      "rel": "REL",
+      "msl": "MSL",
       "altRefToggle": "ఎత్తు సూచన {ref}, {next} కి మార్చండి",
-      "homeMark": "H", "cardN": "N", "cardE": "E", "cardS": "S", "cardW": "W",
-      "wind": "WIND", "eta": "ETA", "noData": "డేటా లేదు",
+      "homeMark": "H",
+      "cardN": "N",
+      "cardE": "E",
+      "cardS": "S",
+      "cardW": "W",
+      "wind": "WIND",
+      "eta": "ETA",
+      "noData": "డేటా లేదు",
       "summary": "పిచ్ {pitch}, రోల్ {roll}, వేగం {speed}, ఎత్తు {alt}, దిశ {heading}"
     },
-    "layout": { "hiddenAtDensity": "ఈ సాంద్రతలో దాచబడింది" },
-    "streams": { "switchFailed": "{name} కు మారలేకపోయింది" },
-    "pip": { "reconnecting": "మళ్లీ కనెక్ట్ అవుతోంది" },
+    "layout": {
+      "hiddenAtDensity": "ఈ సాంద్రతలో దాచబడింది"
+    },
+    "streams": {
+      "switchFailed": "{name} కు మారలేకపోయింది"
+    },
+    "pip": {
+      "reconnecting": "మళ్లీ కనెక్ట్ అవుతోంది"
+    },
     "noDrone": "No drone",
     "exit": "Exit",
     "enter": "Enter cockpit",

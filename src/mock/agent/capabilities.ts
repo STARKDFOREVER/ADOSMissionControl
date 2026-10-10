@@ -116,6 +116,10 @@ function mockNavigationFor(mode: MockNavigationMode): NavigationCapability {
     imuRateHz: 100,
     cameraIntrinsicsLoaded: mode === "off" ? false : true,
     cameraImuSyncOffsetMs: jitter(4.2, 1.0),
+    emitErrors: 0,
+    rangefinderError: null,
+    degradedReasons: [],
+    fcParams: [],
   };
 
   if (mode === "off") {

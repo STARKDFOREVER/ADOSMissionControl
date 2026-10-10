@@ -329,9 +329,9 @@ export interface NavigationCapability {
   estimatorState?: string;
   /** Where the OF scale comes from when the active estimator is an
    * optical-flow variant. Values: "rangefinder" | "baro" | "gps" |
-   * "vision" | null. Null when the estimator does not produce flow
-   * (the VIO and off cases). */
-  flowScaleSource?: "rangefinder" | "baro" | "gps" | "vision" | null;
+   * "vision" | "static" | null. Null when the estimator does not produce
+   * flow (the VIO and off cases). */
+  flowScaleSource?: "rangefinder" | "baro" | "gps" | "vision" | "static" | null;
   /** Number of features the VIO estimator is currently tracking. Null
    * when no VIO is active. */
   estimatorFeatureCount?: number;
@@ -351,6 +351,14 @@ export interface NavigationCapability {
   /** Estimated camera↔IMU time-sync offset in milliseconds. Yellow gate
    * at ±5 ms, red gate at ±15 ms in the GCS sensors card. */
   cameraImuSyncOffsetMs?: number;
+  /** MAVLink frames the emitter failed to send since the plugin started. */
+  emitErrors?: number;
+  /** Last rangefinder read failure, or null while it reads cleanly. */
+  rangefinderError?: string | null;
+  /** Why the estimator is degraded; empty when it is not. */
+  degradedReasons?: string[];
+  /** FC parameters the plugin set or expects for its emit path. */
+  fcParams?: string[];
 }
 
 /**

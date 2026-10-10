@@ -13,14 +13,43 @@ import { GroundStationApiError } from "@/lib/api/ground-station-api";
 import type { GroundStationRole } from "@/lib/api/ground-station/types";
 import { AgentArmedRefusal, AgentHttpError } from "@/lib/agent/agent-client/transport";
 
+interface ErrorEnvelope {
+  error?: { code?: string; message?: string };
+}
+
+interface ErrorBody {
+  detail?: string | ErrorEnvelope;
+  message?: string;
+}
+
+function parseBody(body: string): ErrorBody | null {
+  try {
+    const parsed: unknown = JSON.parse(body);
+    return parsed !== null && typeof parsed === "object" ? (parsed as ErrorBody) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The agent's machine-readable error code (`detail.error.code`), if any. */
+export function errorCode(err: unknown): string | null {
+  if (!(err instanceof GroundStationApiError || err instanceof AgentHttpError)) return null;
+  const detail = parseBody(err.body)?.detail;
+  if (detail && typeof detail === "object") return detail.error?.code ?? null;
+  return null;
+}
+
 export function errorMessage(err: unknown): { message: string; status: number | null } {
   if (err instanceof GroundStationApiError || err instanceof AgentHttpError) {
-    let parsedMsg = err.body;
-    try {
-      const parsed = JSON.parse(err.body) as { detail?: string; message?: string };
-      parsedMsg = parsed.detail || parsed.message || err.body;
-    } catch {
-      // keep raw body
+    const parsed = parseBody(err.body);
+    let parsedMsg: string | undefined = err.body;
+    if (parsed) {
+      const detail = parsed.detail;
+      const detailMsg =
+        detail && typeof detail === "object"
+          ? (detail.error?.message ?? detail.error?.code)
+          : detail;
+      parsedMsg = detailMsg || parsed.message || err.body;
     }
     return { message: parsedMsg || err.message, status: err.status };
   }
@@ -29,25 +58,29 @@ export function errorMessage(err: unknown): { message: string; status: number | 
 }
 
 /**
- * The ONE status → operator-guidance table for a failed role switch. The two
- * statuses the agent answers with a fixable cause become instructions the
- * operator can act on; anything else falls back to the decoded message. Every
- * surface that writes a role (the mesh store, the fleet board's relay cell)
- * goes through this so the same failure never reads as raw JSON on one
- * surface and as guidance on another.
+ * The ONE code → operator-guidance table for a failed role switch. The
+ * agent's fixable refusal codes become instructions the operator can act
+ * on; anything else falls back to the decoded message. Every surface that
+ * writes a role (the mesh store, the fleet board's relay cell) goes through
+ * this so the same failure never reads as raw JSON on one surface and as
+ * guidance on another.
  */
 export function roleSwitchErrorMessage(
   err: unknown,
   role: GroundStationRole,
 ): string {
-  const { message, status } = errorMessage(err);
+  const { message } = errorMessage(err);
   // An armed refusal is not a missing invite: name the actual cause.
   if (err instanceof AgentArmedRefusal) return message;
-  if (status === 409 && role === "relay") {
-    return "Relay role needs an approved invite bundle first. Pair with the receiver from the OLED, then retry.";
+  switch (errorCode(err)) {
+    case "E_MESH_NOT_CAPABLE":
+      return "This node is not mesh-capable: mesh roles need two RTL8812-class radios. Plug in a second adapter; the agent detects it automatically.";
+    case "E_NOT_PAIRED":
+      // The invite flow only exists for the relay role.
+      return role === "relay"
+        ? "Relay role needs an approved invite bundle first. Pair with the receiver from the OLED, then retry."
+        : message;
+    default:
+      return message;
   }
-  if (status === 403) {
-    return "Mesh role requires mesh capability on this node. Rerun install.sh --with-mesh.";
-  }
-  return message;
 }

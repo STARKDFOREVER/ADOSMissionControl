@@ -63,6 +63,8 @@ export interface CommandCloudStatus {
   version?: string;
   uptimeSeconds?: number;
   boardName?: string;
+  /** HAL profile stem (`rock-5c-lite`), the id plugin board lists match. */
+  boardProfile?: string;
   boardTier?: number;
   boardSoc?: string;
   boardArch?: string;

@@ -17,6 +17,7 @@
 
 "use client";
 
+import { boardListMatches } from "./check-compatibility";
 import { useInstallTargetHost } from "./use-install-target-host";
 
 export interface RegistryPluginVersion {
@@ -86,12 +87,6 @@ export function useRegistryCompatibility(
 ): CompatResult {
   const host = useInstallTargetHost(options?.deviceId);
   const agentVersion = host?.agentVersion;
-  const boardName = host?.boardName;
-  // SoC is the second identifier a plugin author can target. A
-  // manifest that declares `supported_boards: ["rk3582"]` should
-  // match every board running that chip, regardless of the
-  // marketing-name slug.
-  const boardSoc = host?.boardSoc;
 
   // The target has not reported its version yet. The card stays
   // interactable from a browsing perspective, but Install is gated.
@@ -136,26 +131,16 @@ export function useRegistryCompatibility(
     };
   }
 
-  // (2) Board gate. `supported_boards` is optional; when omitted the
-  // plugin claims universal board support. When set, we check the board
-  // name and SoC the target reports (name `"Radxa ROCK 5C Lite"`, SoC
-  // `"rk3582"`). Matching on SoC also means a SoC-portable plugin works
-  // on every board sharing that chip without listing each board.
-  if (version.supported_boards && version.supported_boards.length > 0) {
-    const supported = new Set(
-      version.supported_boards.map((b) => b.toLowerCase()),
-    );
-    const candidates = [boardName, boardSoc]
-      .filter((s): s is string => !!s)
-      .map((s) => s.toLowerCase());
-    const matched = candidates.some((c) => supported.has(c));
-    if (!matched) {
-      return {
-        compatible: false,
-        reason: "board",
-        detail: boardName ?? boardSoc ?? "unknown board",
-      };
-    }
+  // (2) Board gate. `supported_boards` is optional; when omitted or `"*"`
+  // the plugin claims universal board support. Otherwise it must name the
+  // target's HAL profile stem (`rock-5c-lite`), board name or SoC; matching
+  // on SoC lets a SoC-portable plugin cover every board on that chip.
+  if (!boardListMatches(version.supported_boards ?? [], host ?? {})) {
+    return {
+      compatible: false,
+      reason: "board",
+      detail: host?.boardProfile ?? host?.boardName ?? host?.boardSoc ?? "unknown board",
+    };
   }
 
   return { compatible: true };

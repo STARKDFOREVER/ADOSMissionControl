@@ -17,6 +17,8 @@ export interface AgentVersionInfo {
 export interface BoardInfo {
   name: string;
   model: string;
+  /** HAL profile stem (`rock-5c-lite`). Absent on agents that predate it. */
+  profile?: string;
   /** Absent on a node with no board sidecar (compute/workstation, or any
    *  board the HAL did not match). Never substitute 0 — a tier-0 board with
    *  0 MB of RAM and 0 cores is a fabricated hardware fact. */

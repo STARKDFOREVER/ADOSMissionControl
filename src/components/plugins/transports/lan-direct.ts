@@ -22,6 +22,8 @@
  */
 
 import { PluginAgentClient } from "@/lib/agent/plugin-client";
+import { armedRefusalFrom } from "@/lib/agent/agent-client/transport";
+import { withPluginArmedRetry } from "@/lib/agent/plugin-lifecycle";
 import {
   LAN_FILE_INSTALL_TIMEOUT_MS,
   type InstallKickoffResult,
@@ -79,15 +81,20 @@ export async function installLanDirect(
     query.set("requested_permissions", inputs.grantedPermissions.join(","));
   }
 
-  const response = await sendLanInstall(
-    `${inputs.agentUrl}/api/plugins/install?${query.toString()}`,
-    {
-      method: "POST",
-      headers: { "X-ADOS-Key": inputs.pairingKey },
-      body: form,
-    },
-    LAN_FILE_INSTALL_TIMEOUT_MS,
-  );
+  const response = await withPluginArmedRetry((force) => {
+    // Multipart carries no JSON body, so the armed override rides the query.
+    const q = new URLSearchParams(query);
+    if (force) q.set("force", "1");
+    return sendLanInstall(
+      `${inputs.agentUrl}/api/plugins/install?${q.toString()}`,
+      {
+        method: "POST",
+        headers: { "X-ADOS-Key": inputs.pairingKey },
+        body: form,
+      },
+      LAN_FILE_INSTALL_TIMEOUT_MS,
+    );
+  });
   return finishLanInstall(response, {
     agentUrl: inputs.agentUrl,
     pairingKey: inputs.pairingKey,
@@ -100,7 +107,9 @@ export async function installLanDirect(
 }
 
 /** POST one install request and map wire failures to `LanDirectError`. A
- * non-2xx answer is thrown with the agent's own message. */
+ * 409 `E_ARMED` is thrown as `AgentArmedRefusal` so the caller can retry
+ * with the override; any other non-2xx answer is thrown with the agent's
+ * own message. */
 export async function sendLanInstall(
   url: string,
   init: RequestInit,
@@ -129,6 +138,8 @@ export async function sendLanInstall(
   }
   if (!response.ok) {
     const text = await response.text().catch(() => "");
+    const armed = armedRefusalFrom(response.status, text);
+    if (armed) throw armed;
     const cause: LanDirectFailureCause =
       response.status >= 500 ? "server-5xx" : "server-4xx";
     throw new LanDirectError(

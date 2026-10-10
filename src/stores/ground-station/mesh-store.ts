@@ -10,6 +10,7 @@
 
 import type { GroundStationSliceCreator } from "./state";
 import { errorMessage, roleSwitchErrorMessage } from "./error-handler";
+import { buildAgentInstallCommand } from "@/lib/agent/install-script";
 import { INITIAL_DISTRIBUTED_RX, INITIAL_MESH, INITIAL_ROLE } from "./initial-state";
 import { subscribeMeshWs } from "./mesh-ws";
 import {
@@ -103,7 +104,7 @@ export const createMeshSlice: GroundStationSliceCreator<MeshSlice> = (
       const { message, status } = errorMessage(err);
       const friendly =
         status === 404
-          ? "This agent is not in ground-station profile. Reinstall with install.sh --with-mesh or set agent.profile = ground-station in /etc/ados/config.yaml."
+          ? `This agent is not a ground station. Reinstall with \`${buildAgentInstallCommand({ profile: "ground-station", upgrade: true })}\`, or run \`sudo ados profile set ground_station\`.`
           : message;
       set({ role: { ...get().role, loading: false, error: friendly } });
     }

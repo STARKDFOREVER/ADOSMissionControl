@@ -33,11 +33,13 @@ vi.hoisted(() => {
 });
 
 import {
+  buildInstallCommand,
   usePairingFlow,
   type ClaimCodeMutation,
   type ClaimWatch,
   type PairingRequestId,
 } from "@/components/command/pairing/use-pairing-flow";
+import { AGENT_INSTALL_SCRIPT_URL } from "@/lib/agent/install-script";
 import { usePairingStore, type PairedDrone } from "@/stores/pairing-store";
 
 type Flow = Parameters<typeof usePairingFlow>[0];
@@ -247,5 +249,13 @@ describe("no cloud backend", () => {
     });
     expect(result.current.state).toBe("error");
     expect(result.current.pairedInfo).toBeNull();
+  });
+});
+
+describe("buildInstallCommand", () => {
+  it("runs the main-branch script with curl -fsSL and the pair code", () => {
+    expect(buildInstallCommand("ABCD-1234")).toBe(
+      `curl -fsSL ${AGENT_INSTALL_SCRIPT_URL} | sudo bash -s -- --pair ABCD-1234`,
+    );
   });
 });

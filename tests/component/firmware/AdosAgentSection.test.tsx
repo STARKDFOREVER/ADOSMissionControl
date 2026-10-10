@@ -94,7 +94,6 @@ describe("AdosAgentSection", () => {
         boards={[]}
         loading={true}
         error=""
-        agentVersion=""
         selectedBoardId=""
         setSelectedBoardId={vi.fn()}
         onRetry={vi.fn()}
@@ -106,22 +105,6 @@ describe("AdosAgentSection", () => {
     expect(screen.getByText(/loading manifest/i)).toBeDefined();
   });
 
-  it("renders the agent version pill when provided", () => {
-    renderWithIntl(
-      <AdosAgentSection
-        stack="ados-drone-agent"
-        boards={[]}
-        loading={false}
-        error=""
-        agentVersion="lite-v0.1.3"
-        selectedBoardId=""
-        setSelectedBoardId={vi.fn()}
-        onRetry={vi.fn()}
-      />,
-    );
-    expect(screen.getByText(/lite-v0\.1\.3/)).toBeDefined();
-  });
-
   it("renders the error message and a Retry button when error is set", () => {
     const onRetry = vi.fn();
     renderWithIntl(
@@ -130,7 +113,6 @@ describe("AdosAgentSection", () => {
         boards={[]}
         loading={false}
         error="Failed to load ADOS manifest"
-        agentVersion=""
         selectedBoardId=""
         setSelectedBoardId={vi.fn()}
         onRetry={onRetry}
@@ -152,7 +134,6 @@ describe("AdosAgentSection", () => {
           boards={[board]}
           loading={false}
           error=""
-          agentVersion="lite-v0.1.3"
           selectedBoardId={board.id}
           setSelectedBoardId={vi.fn()}
           onRetry={vi.fn()}
@@ -174,7 +155,6 @@ describe("AdosAgentSection", () => {
           boards={[board]}
           loading={false}
           error=""
-          agentVersion=""
           selectedBoardId={board.id}
           setSelectedBoardId={vi.fn()}
           onRetry={vi.fn()}
@@ -193,7 +173,6 @@ describe("AdosAgentSection", () => {
           boards={[board]}
           loading={false}
           error=""
-          agentVersion=""
           selectedBoardId={board.id}
           setSelectedBoardId={vi.fn()}
           onRetry={vi.fn()}
@@ -226,7 +205,6 @@ describe("AdosAgentSection", () => {
           boards={[boardA, boardB]}
           loading={false}
           error=""
-          agentVersion=""
           selectedBoardId={boardA.id}
           setSelectedBoardId={vi.fn()}
           onRetry={vi.fn()}
@@ -244,7 +222,6 @@ describe("AdosAgentSection", () => {
           boards={[boardA, boardB]}
           loading={false}
           error=""
-          agentVersion=""
           selectedBoardId={boardB.id}
           setSelectedBoardId={vi.fn()}
           onRetry={vi.fn()}
@@ -267,7 +244,6 @@ describe("AdosAgentSection", () => {
           boards={[board]}
           loading={false}
           error=""
-          agentVersion="lite-v0.1.3"
           selectedBoardId={board.id}
           setSelectedBoardId={vi.fn()}
           onRetry={vi.fn()}
@@ -296,7 +272,6 @@ describe("AdosAgentSection", () => {
           boards={[board]}
           loading={false}
           error=""
-          agentVersion=""
           selectedBoardId={board.id}
           setSelectedBoardId={vi.fn()}
           onRetry={vi.fn()}
@@ -314,7 +289,6 @@ describe("AdosAgentSection", () => {
           boards={[board]}
           loading={false}
           error=""
-          agentVersion=""
           selectedBoardId={board.id}
           setSelectedBoardId={vi.fn()}
           onRetry={vi.fn()}

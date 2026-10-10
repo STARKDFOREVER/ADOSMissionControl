@@ -2343,7 +2343,8 @@
       "disabled": "Disabled",
       "crashed": "Crashed",
       "installed": "Installed"
-    }
+    },
+    "revocationPending": "Revocation pending (vehicle armed)"
   },
   "droneRadio": {
     "airSideBadge": "Air side",
@@ -4561,9 +4562,8 @@
     "oled": {
       "title": "Pantalla OLED",
       "brightness": "Brillo",
-      "autoDim": "Atenuar tras 60 s de inactividad",
-      "cycleSeconds": "Intervalo de ciclo (segundos)",
-      "refreshHint": "Se actualiza una vez por segundo"
+      "refreshHint": "Se actualiza una vez por segundo",
+      "contrast": "OLED contrast"
     },
     "buttons": {
       "title": "Botones",
@@ -5147,7 +5147,8 @@
       "packetsAll": "Packets seen",
       "packetsAllHint": "Total RF frames the receiver has seen, whether or not they decoded. A rising count with rising decrypt errors means frames arrive but cannot be decoded.",
       "decryptErrors": "Decrypt errors",
-      "decryptErrorsHint": "Frames that reached the receiver but failed FEC decode or decryption. A climbing count usually points at a key or link-id mismatch between the two ends."
+      "decryptErrorsHint": "Frames that reached the receiver but failed FEC decode or decryption. A climbing count usually points at a key or link-id mismatch between the two ends.",
+      "txPowerMeasured": "Measured: {value}"
     },
     "videoLink": {
       "title": "Video Link",
@@ -5697,14 +5698,11 @@
       },
       "targetBoard": {
         "title": "Target Board",
-        "version": "Version: {version}",
         "loadingManifest": "Loading manifest...",
         "loadingBoards": "Loading boards...",
         "noBoards": "No {stack} boards available",
         "soc": "SoC:",
-        "arch": "Arch:",
-        "offlineCatalog": "Offline catalog",
-        "offlineCatalogTooltip": "The upstream release catalog was unreachable. Showing the embedded baseline. Image URLs may be missing or stale."
+        "arch": "Arch:"
       },
       "confirm": {
         "title": "Confirm flash",
@@ -6591,15 +6589,33 @@
   },
   "cockpit": {
     "hud": {
-      "attFlag": "ATT", "gs": "GS", "ias": "IAS", "alt": "ALT", "vs": "V/S", "rel": "REL", "msl": "MSL",
+      "attFlag": "ATT",
+      "gs": "GS",
+      "ias": "IAS",
+      "alt": "ALT",
+      "vs": "V/S",
+      "rel": "REL",
+      "msl": "MSL",
       "altRefToggle": "Referencia de altitud {ref}, cambiar a {next}",
-      "homeMark": "H", "cardN": "N", "cardE": "E", "cardS": "S", "cardW": "O",
-      "wind": "VIENTO", "eta": "ETA", "noData": "sin datos",
+      "homeMark": "H",
+      "cardN": "N",
+      "cardE": "E",
+      "cardS": "S",
+      "cardW": "O",
+      "wind": "VIENTO",
+      "eta": "ETA",
+      "noData": "sin datos",
       "summary": "Cabeceo {pitch}, alabeo {roll}, velocidad {speed}, altitud {alt}, rumbo {heading}"
     },
-    "layout": { "hiddenAtDensity": "Oculto con esta densidad" },
-    "streams": { "switchFailed": "No se pudo cambiar a {name}" },
-    "pip": { "reconnecting": "Reconectando" },
+    "layout": {
+      "hiddenAtDensity": "Oculto con esta densidad"
+    },
+    "streams": {
+      "switchFailed": "No se pudo cambiar a {name}"
+    },
+    "pip": {
+      "reconnecting": "Reconectando"
+    },
     "noDrone": "No drone",
     "exit": "Exit",
     "enter": "Enter cockpit",

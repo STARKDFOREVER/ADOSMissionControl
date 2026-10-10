@@ -203,6 +203,7 @@ export function nodeEntryToFleetDrone(
     fcVariant: status?.fcVariant,
     transportOpen: status?.transportOpen,
     boardName: status?.boardName,
+    boardProfile: status?.boardProfile,
     boardSoc: status?.boardSoc,
     boardTier: status?.boardTier,
   };

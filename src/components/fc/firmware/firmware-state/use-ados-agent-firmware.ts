@@ -18,17 +18,13 @@ import type { FirmwareStack } from "@/lib/protocol/firmware/types";
 import { isDemoMode } from "@/lib/utils";
 import { isAdosStack } from "../firmware-constants";
 import { adosManifest } from "./manifests";
-import { DEMO_ADOS_AGENT_VERSION, DEMO_ADOS_BOARDS } from "./demo-catalog";
+import { DEMO_ADOS_BOARDS } from "./demo-catalog";
 
 export function useAdosAgentFirmware(firmwareStack: FirmwareStack) {
   const [adosBoards, setAdosBoards] = useState<AdosAgentBoard[]>([]);
   const [adosLoading, setAdosLoading] = useState(false);
   const [adosError, setAdosError] = useState("");
-  const [adosAgentVersion, setAdosAgentVersion] = useState("");
   const [selectedAdosBoardId, setSelectedAdosBoardId] = useState("");
-  // Tracks whether the manifest came from the upstream catalog or the
-  // embedded baseline. Drives the "offline catalog" pill in the picker.
-  const [adosManifestSource, setAdosManifestSource] = useState<string | undefined>(undefined);
 
   async function loadAdosManifest() {
     setAdosLoading(true); setAdosError("");
@@ -37,8 +33,6 @@ export function useAdosAgentFirmware(firmwareStack: FirmwareStack) {
     // small built-in catalog and skip the network call entirely.
     if (isDemoMode()) {
       setAdosBoards(DEMO_ADOS_BOARDS);
-      setAdosAgentVersion(DEMO_ADOS_AGENT_VERSION);
-      setAdosManifestSource("fallback");
       const stackKey = isAdosStack(firmwareStack) ? (firmwareStack as AdosAgentStack) : "ados-drone-agent";
       const first = DEMO_ADOS_BOARDS.find((b) => b.stacks.includes(stackKey));
       if (first) setSelectedAdosBoardId(first.id);
@@ -48,8 +42,6 @@ export function useAdosAgentFirmware(firmwareStack: FirmwareStack) {
     try {
       const data = await adosManifest.getManifest();
       setAdosBoards(data.boards);
-      setAdosAgentVersion(data.agentVersion);
-      setAdosManifestSource(data.source);
       const stackKey = isAdosStack(firmwareStack) ? (firmwareStack as AdosAgentStack) : "ados-drone-agent";
       const first = data.boards.find((b) => b.stacks.includes(stackKey));
       if (first) setSelectedAdosBoardId(first.id);
@@ -82,8 +74,7 @@ export function useAdosAgentFirmware(firmwareStack: FirmwareStack) {
   }, [firmwareStack, adosBoards, selectedAdosBoardId]);
 
   return {
-    adosBoards, adosLoading, adosError, adosAgentVersion,
-    adosManifestSource,
+    adosBoards, adosLoading, adosError,
     selectedAdosBoardId, setSelectedAdosBoardId, adosInstallMethod,
     loadAdosManifest,
     loadAdosManifestRetry: () => { adosManifest.clearCache(); loadAdosManifest(); },

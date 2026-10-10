@@ -24,7 +24,7 @@ const base: InstallManifestSummary = {
 describe("checkCompatibility", () => {
   it("passes when manifest declares no boards (wildcard)", () => {
     const r = checkCompatibility(base, {
-      boardModel: "rock-5c-lite",
+      boardProfile: "rock-5c-lite",
       boardSoc: "rk3582",
       ramTotalMb: 16000,
     });
@@ -36,7 +36,7 @@ describe("checkCompatibility", () => {
   it("passes when one of the host's identifiers matches a declared board", () => {
     const r = checkCompatibility(
       { ...base, hardwareRequirements: { boards: ["rk3582"] } },
-      { boardModel: "rock-5c-lite", boardSoc: "rk3582" },
+      { boardProfile: "rock-5c-lite", boardSoc: "rk3582" },
     );
     expect(r.boardCompatible).toBe(true);
   });
@@ -44,10 +44,22 @@ describe("checkCompatibility", () => {
   it("fails when no identifier matches the declared list", () => {
     const r = checkCompatibility(
       { ...base, hardwareRequirements: { boards: ["jetson-orin-nano"] } },
-      { boardModel: "rock-5c-lite", boardSoc: "rk3582" },
+      { boardProfile: "rock-5c-lite", boardSoc: "rk3582" },
     );
     expect(r.boardCompatible).toBe(false);
     expect(r.boardReason).toBe("rock-5c-lite");
+  });
+
+  it("matches the HAL profile stem and treats \"*\" as any board", () => {
+    const host = { boardProfile: "rock-5c-lite", boardSoc: "rk3582" };
+    expect(
+      checkCompatibility({ ...base, hardwareRequirements: { boards: ["rock-5c-lite"] } }, host)
+        .boardCompatible,
+    ).toBe(true);
+    expect(
+      checkCompatibility({ ...base, hardwareRequirements: { boards: ["*"] } }, host)
+        .boardCompatible,
+    ).toBe(true);
   });
 
   it("stays optimistic when host board signals are missing", () => {

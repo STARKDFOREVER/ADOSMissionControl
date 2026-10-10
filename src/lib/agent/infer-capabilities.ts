@@ -160,7 +160,8 @@ function normalizeNavigation(raw: unknown): NavigationCapability | undefined {
     (scaleRaw === "rangefinder" ||
       scaleRaw === "baro" ||
       scaleRaw === "gps" ||
-      scaleRaw === "vision")
+      scaleRaw === "vision" ||
+      scaleRaw === "static")
   ) {
     nav.flowScaleSource = scaleRaw;
   }
@@ -177,6 +178,16 @@ function normalizeNavigation(raw: unknown): NavigationCapability | undefined {
   }
   if (typeof n.cameraImuSyncOffsetMs === "number") {
     nav.cameraImuSyncOffsetMs = n.cameraImuSyncOffsetMs;
+  }
+  if (typeof n.emitErrors === "number") nav.emitErrors = n.emitErrors;
+  if (n.rangefinderError === null || typeof n.rangefinderError === "string") {
+    nav.rangefinderError = n.rangefinderError;
+  }
+  if (Array.isArray(n.degradedReasons)) {
+    nav.degradedReasons = n.degradedReasons.filter((r): r is string => typeof r === "string");
+  }
+  if (Array.isArray(n.fcParams)) {
+    nav.fcParams = n.fcParams.filter((p): p is string => typeof p === "string");
   }
   return nav;
 }

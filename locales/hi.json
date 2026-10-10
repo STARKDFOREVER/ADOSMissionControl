@@ -2343,7 +2343,8 @@
       "disabled": "Disabled",
       "crashed": "Crashed",
       "installed": "Installed"
-    }
+    },
+    "revocationPending": "Revocation pending (vehicle armed)"
   },
   "droneRadio": {
     "airSideBadge": "Air side",
@@ -4561,9 +4562,8 @@
     "oled": {
       "title": "OLED डिस्प्ले",
       "brightness": "चमक",
-      "autoDim": "60 से निष्क्रिय रहने पर स्वतः मंद करें",
-      "cycleSeconds": "साइकल अंतराल (सेकंड)",
-      "refreshHint": "प्रति सेकंड एक बार रिफ्रेश होता है"
+      "refreshHint": "प्रति सेकंड एक बार रिफ्रेश होता है",
+      "contrast": "OLED contrast"
     },
     "buttons": {
       "title": "बटन",
@@ -5147,7 +5147,8 @@
       "packetsAll": "Packets seen",
       "packetsAllHint": "Total RF frames the receiver has seen, whether or not they decoded. A rising count with rising decrypt errors means frames arrive but cannot be decoded.",
       "decryptErrors": "Decrypt errors",
-      "decryptErrorsHint": "Frames that reached the receiver but failed FEC decode or decryption. A climbing count usually points at a key or link-id mismatch between the two ends."
+      "decryptErrorsHint": "Frames that reached the receiver but failed FEC decode or decryption. A climbing count usually points at a key or link-id mismatch between the two ends.",
+      "txPowerMeasured": "Measured: {value}"
     },
     "videoLink": {
       "title": "Video Link",
@@ -5697,14 +5698,11 @@
       },
       "targetBoard": {
         "title": "Target Board",
-        "version": "Version: {version}",
         "loadingManifest": "Loading manifest...",
         "loadingBoards": "Loading boards...",
         "noBoards": "No {stack} boards available",
         "soc": "SoC:",
-        "arch": "Arch:",
-        "offlineCatalog": "Offline catalog",
-        "offlineCatalogTooltip": "The upstream release catalog was unreachable. Showing the embedded baseline. Image URLs may be missing or stale."
+        "arch": "Arch:"
       },
       "confirm": {
         "title": "Confirm flash",
@@ -6591,15 +6589,33 @@
   },
   "cockpit": {
     "hud": {
-      "attFlag": "ATT", "gs": "GS", "ias": "IAS", "alt": "ALT", "vs": "V/S", "rel": "REL", "msl": "MSL",
+      "attFlag": "ATT",
+      "gs": "GS",
+      "ias": "IAS",
+      "alt": "ALT",
+      "vs": "V/S",
+      "rel": "REL",
+      "msl": "MSL",
       "altRefToggle": "ऊंचाई संदर्भ {ref}, {next} पर बदलें",
-      "homeMark": "H", "cardN": "N", "cardE": "E", "cardS": "S", "cardW": "W",
-      "wind": "WIND", "eta": "ETA", "noData": "कोई डेटा नहीं",
+      "homeMark": "H",
+      "cardN": "N",
+      "cardE": "E",
+      "cardS": "S",
+      "cardW": "W",
+      "wind": "WIND",
+      "eta": "ETA",
+      "noData": "कोई डेटा नहीं",
       "summary": "पिच {pitch}, रोल {roll}, गति {speed}, ऊंचाई {alt}, दिशा {heading}"
     },
-    "layout": { "hiddenAtDensity": "इस घनत्व पर छिपा हुआ" },
-    "streams": { "switchFailed": "{name} पर स्विच नहीं हो सका" },
-    "pip": { "reconnecting": "फिर से जुड़ रहा है" },
+    "layout": {
+      "hiddenAtDensity": "इस घनत्व पर छिपा हुआ"
+    },
+    "streams": {
+      "switchFailed": "{name} पर स्विच नहीं हो सका"
+    },
+    "pip": {
+      "reconnecting": "फिर से जुड़ रहा है"
+    },
     "noDrone": "No drone",
     "exit": "Exit",
     "enter": "Enter cockpit",

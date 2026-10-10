@@ -27,7 +27,6 @@ interface Props {
   boards: AdosAgentBoard[];
   loading: boolean;
   error: string;
-  agentVersion: string;
   selectedBoardId: string;
   setSelectedBoardId: (id: string) => void;
   onRetry: () => void;
@@ -40,19 +39,12 @@ interface Props {
   allChecked?: boolean;
   /** WebUSB availability gate (already computed in parent). */
   usbSupported?: boolean;
-  /**
-   * Manifest origin marker. "github" means the upstream catalog
-   * resolved cleanly; "fallback" means the proxy served the embedded
-   * baseline. Drives the offline-catalog pill near the picker.
-   */
-  manifestSource?: string;
 }
 
 export function AdosAgentSection({
-  stack, boards, loading, error, agentVersion,
+  stack, boards, loading, error,
   selectedBoardId, setSelectedBoardId, onRetry,
   allChecked = false, usbSupported = false,
-  manifestSource,
 }: Props) {
   const t = useTranslations("flashTool.ados");
 
@@ -144,8 +136,6 @@ export function AdosAgentSection({
         loading={loading}
         error={error}
         onRetry={onRetry}
-        agentVersion={agentVersion}
-        manifestSource={manifestSource}
         stackLabel={stackLabel}
       />
 

@@ -69,7 +69,9 @@ export class AgentArmedRefusal extends AgentHttpError {
 }
 
 /** An armed refusal when a non-2xx answer is a 409 naming `E_ARMED`, else
- * null. Shared by `agentRequest` and the ground-station `gsRequest`. */
+ * null. The code is read at the top level (`{"error":"E_ARMED"}`) or nested
+ * under `detail` (`{"detail":{"error":"E_ARMED"}}`). Shared by
+ * `agentRequest` and the ground-station `gsRequest`. */
 export function armedRefusalFrom(status: number, body: string): AgentArmedRefusal | null {
   if (status !== 409) return null;
   let parsed: unknown;
@@ -78,9 +80,15 @@ export function armedRefusalFrom(status: number, body: string): AgentArmedRefusa
   } catch {
     return null;
   }
-  if (typeof parsed === "object" && parsed !== null && "error" in parsed && parsed.error === "E_ARMED") {
-    return new AgentArmedRefusal(body);
-  }
+  if (typeof parsed !== "object" || parsed === null) return null;
+  const root = parsed as Record<string, unknown>;
+  const detail = root.detail;
+  const code =
+    root.error ??
+    (typeof detail === "object" && detail !== null
+      ? (detail as Record<string, unknown>).error
+      : undefined);
+  if (code === "E_ARMED") return new AgentArmedRefusal(body);
   return null;
 }
 

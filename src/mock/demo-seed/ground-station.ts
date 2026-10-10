@@ -184,7 +184,13 @@ export function seedGroundStationStore(): void {
     // Distributed-RX relay forwarder state (this node is a relay) for the
     // Distributed RX tab.
     distributedRx: {
-      receiverRelays: [],
+      // Two relays with measured fragment counts and one not yet measured
+      // (null renders as "—", never a fabricated 0).
+      receiverRelays: [
+        { mac: "aa:bb:cc:00:11:02", last_seen_ms: 320, fragments: 148102 },
+        { mac: "aa:bb:cc:00:11:03", last_seen_ms: 640, fragments: 52310 },
+        { mac: "aa:bb:cc:00:11:04", last_seen_ms: 1200, fragments: null },
+      ],
       combined: null,
       relayStatus: {
         role: "relay",
@@ -208,7 +214,7 @@ export function seedGroundStationStore(): void {
     // Physical UI (OLED brightness + button bindings + screen order) for the
     // Physical UI tab, plus a paired gamepad for its Bluetooth section.
     ui: {
-      oled: { brightness: 180, auto_dim_enabled: true, screen_cycle_seconds: 10 },
+      oled: { brightness: 180 },
       buttons: {
         button_a: { short_press: "next_screen", long_press: "toggle_backlight" },
         button_b: { short_press: "prev_screen", long_press: "open_pair_window" },
