@@ -50,6 +50,7 @@ import { useReachedViaName } from "@/lib/nodes/reach-provenance";
 import { useMqttControlAuthority } from "@/hooks/use-mqtt-control-authority";
 import { useControlAuthorityNotice } from "@/hooks/use-node-control-authority";
 import { requestGrant } from "@/stores/mqtt-control-grant-store";
+import { DroneLinksPanel } from "@/components/dashboard/drone-detail/DroneLinksPanel";
 
 /**
  * The drone Status surface — the node HOME.
@@ -133,6 +134,10 @@ function FcBand({ ctx }: { ctx: SurfaceContext }) {
     <OverviewSection>
       <OverviewTile span="half">
         <ParamsSnapshotTile isConnected={ctx.isConnected} />
+      </OverviewTile>
+      {/* The FC session's links (renders nothing without a managed session). */}
+      <OverviewTile span="half">
+        <DroneLinksPanel droneId={ctx.droneId} />
       </OverviewTile>
     </OverviewSection>
   );

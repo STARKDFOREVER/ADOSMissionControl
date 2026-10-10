@@ -5,6 +5,7 @@
  */
 
 import type { DroneProtocol } from "@/lib/protocol/types";
+import { useDroneManager } from "./drone-manager";
 import type { SysStatusData } from "@/lib/types";
 import { useTelemetryStore, computeVioQuality } from "./telemetry-store";
 import { useDroneStore } from "./drone-store";
@@ -184,6 +185,16 @@ export function bridgeTelemetry(
     ...(protocol.onHomePosition ? [protocol.onHomePosition((data) => {
       if (isSelected()) telemetry.pushHomePosition(data);
       rec("homePosition", data);
+    })] : []),
+    // AUTOPILOT_VERSION carries the board id and firmware version after the
+    // handshake; stamp them on the managed drone so a reconnect compares the
+    // full identity.
+    ...(protocol.onAutopilotVersion ? [protocol.onAutopilotVersion((data) => {
+      const v = data.flightSwVersion;
+      useDroneManager.getState().updateVehicleIdentity(droneId, {
+        boardId: data.boardId,
+        firmwareVersionString: `${(v >> 24) & 0xff}.${(v >> 16) & 0xff}.${(v >> 8) & 0xff}`,
+      });
     })] : []),
     ...(protocol.onPowerStatus ? [protocol.onPowerStatus((data) => {
       if (isSelected()) telemetry.pushPowerStatus(data);

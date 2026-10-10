@@ -9,14 +9,21 @@ import { useSettingsStore } from "@/stores/settings-store";
 
 type ToastStatus = "success" | "warning" | "error" | "info";
 
+/** An optional button on a toast; clicking it runs `onClick` and dismisses the toast. */
+export interface ToastAction {
+  label: string;
+  onClick: () => void;
+}
+
 interface Toast {
   id: string;
   message: string;
   status: ToastStatus;
+  action?: ToastAction;
 }
 
 interface ToastContextValue {
-  toast: (message: string, status?: ToastStatus) => void;
+  toast: (message: string, status?: ToastStatus, options?: { action?: ToastAction }) => void;
 }
 
 const ToastContext = createContext<ToastContextValue>({ toast: () => {} });
@@ -56,9 +63,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
 
-  const toast = useCallback((message: string, status: ToastStatus = "info") => {
+  const toast = useCallback((message: string, status: ToastStatus = "info", options?: { action?: ToastAction }) => {
     const id = randomId();
-    setToasts((prev) => [...prev, { id, message, status }].slice(-MAX_TOASTS));
+    setToasts((prev) => [...prev, { id, message, status, action: options?.action }].slice(-MAX_TOASTS));
     const lifetime = toastLifetimeMs(status, useSettingsStore.getState().alertPopupDuration);
     if (lifetime !== null) {
       timers.current.set(
@@ -114,6 +121,18 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               )}
             >
               <span className="text-xs text-text-primary flex-1">{t.message}</span>
+              {t.action && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    t.action?.onClick();
+                    dismiss(t.id);
+                  }}
+                  className="text-xs font-medium text-accent-primary hover:underline focus-ring"
+                >
+                  {t.action.label}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => dismiss(t.id)}
@@ -135,6 +154,18 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               )}
             >
               <span className="text-xs text-text-primary flex-1">{t.message}</span>
+              {t.action && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    t.action?.onClick();
+                    dismiss(t.id);
+                  }}
+                  className="text-xs font-medium text-accent-primary hover:underline focus-ring"
+                >
+                  {t.action.label}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => dismiss(t.id)}

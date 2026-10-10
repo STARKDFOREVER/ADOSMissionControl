@@ -10,6 +10,7 @@ import { renderHook, waitFor } from "@testing-library/react";
 
 const { disconnect } = vi.hoisted(() => ({ disconnect: vi.fn(async () => {}) }));
 
+vi.mock("next-intl", () => ({ useTranslations: () => (key: string) => key }));
 vi.mock("@/components/ui/toast", () => ({ useToast: () => ({ toast: vi.fn() }) }));
 vi.mock("@/lib/recent-connections", () => ({
   getRecentConnections: async () => [

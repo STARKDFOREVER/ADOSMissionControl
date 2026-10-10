@@ -28,6 +28,8 @@ export interface ReconnectEntry {
   meta: ConnectionMeta;
   state: ReconnectState;
   attempt: number;
+  /** Wall-clock ms when the cycle started. */
+  startedAt: number;
 }
 
 type ReconnectTransport = WebSerialTransport | WebSocketTransport | NetMavlinkTransport;
@@ -88,6 +90,7 @@ export class ReconnectManager {
       meta,
       state: "waiting",
       attempt: 0,
+      startedAt: Date.now(),
     };
     this.entries.set(droneId, entry);
     this.notify(entry);
@@ -95,7 +98,11 @@ export class ReconnectManager {
     return true;
   }
 
-  /** Stop re-dialling a drone. An attempt already in flight is discarded when it lands. */
+  /**
+   * Stop re-dialling a drone. An attempt already in flight is discarded when
+   * it lands. Called through the reconnect store when a manual connect reaches
+   * the same endpoint, or the operator disconnects, forgets or stops it.
+   */
   cancelReconnect(droneId: string): void {
     const timer = this.timers.get(droneId);
     if (timer) clearTimeout(timer);

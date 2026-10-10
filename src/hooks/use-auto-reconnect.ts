@@ -8,8 +8,10 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { ReconnectManager, type ReconnectEntry } from "@/lib/reconnect-manager";
 import { useDroneManager, onUnexpectedDisconnect } from "@/stores/drone-manager";
+import { useReconnectStore } from "@/stores/reconnect-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useToast } from "@/components/ui/toast";
 import { getRecentConnections } from "@/lib/recent-connections";
@@ -23,6 +25,13 @@ import { resolveNodeId } from "@/lib/agent/node-id";
 
 export function useAutoReconnect() {
   const { toast } = useToast();
+  const t = useTranslations("fleet.reconnecting");
+  // Read through a ref so a locale change does not tear down (and cancel)
+  // the running reconnect cycles.
+  const stopLabelRef = useRef(t("stop"));
+  useEffect(() => {
+    stopLabelRef.current = t("stop");
+  }, [t]);
   const addDrone = useDroneManager((s) => s.addDrone);
   const settingsHydrated = useSettingsStore((s) => s._hasHydrated);
   const managerRef = useRef<ReconnectManager | null>(null);
@@ -44,6 +53,8 @@ export function useAutoReconnect() {
   // Subscribe to unexpected disconnects → trigger reconnect
   useEffect(() => {
     const manager = managerRef.current!;
+    // The store mirrors the cycles and is the one place that cancels them.
+    const unbindStore = useReconnectStore.getState().bind(manager);
 
     const unsubDisconnect = onUnexpectedDisconnect((droneId, droneName, meta) => {
       const autoReconnect = useSettingsStore.getState().autoReconnect;
@@ -51,7 +62,12 @@ export function useAutoReconnect() {
       // An agent-attached FC is re-dialled by its agent bridge; only announce a
       // reconnect this manager is actually going to run.
       if (manager.startReconnect(droneId, droneName, meta)) {
-        toast(`${droneName} disconnected — reconnecting...`, "warning");
+        toast(`${droneName} disconnected — reconnecting...`, "warning", {
+          action: {
+            label: stopLabelRef.current,
+            onClick: () => useReconnectStore.getState().cancel(droneId),
+          },
+        });
       } else if (meta.type === "ble") {
         // The browser only opens a Bluetooth device from an operator gesture,
         // so a BLE link cannot be re-dialled in the background.
@@ -72,6 +88,7 @@ export function useAutoReconnect() {
       unsubDisconnect();
       unsubState();
       manager.cancelAll();
+      unbindStore();
     };
   }, [toast]);
 

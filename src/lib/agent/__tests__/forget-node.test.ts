@@ -68,6 +68,7 @@ import { usePairingStore } from "@/stores/pairing-store";
 import { useCommandFleetStore } from "@/stores/command-fleet-store";
 import { useNodeRegistryStore } from "@/stores/node-registry";
 import { selectFleetDrones } from "@/stores/node-registry/select-fleet-drones";
+import { useReconnectStore } from "@/stores/reconnect-store";
 
 const LOCAL_DEV = "local-aaaa1111";
 const CLOUD_DEV = "cloud-bbbb2222";
@@ -191,6 +192,21 @@ describe("forgetNode", () => {
   it("does not throw when the node is unknown (idempotent)", async () => {
     await expect(forgetNode(nodeIdForDevice("ghost-9999"))).resolves.toEqual({ ok: true });
     expect(projectedIds()).toHaveLength(0);
+  });
+
+  it("stops a reconnect cycle even when the drone is between attempts", async () => {
+    const nodeId = nodeIdForDevice("between-1");
+    const cancelReconnect = vi.fn();
+    const unbind = useReconnectStore.getState().bind({
+      cancelReconnect,
+      onStateChange: () => () => {},
+    });
+    try {
+      await forgetNode(nodeId);
+      expect(cancelReconnect).toHaveBeenCalledWith(nodeId);
+    } finally {
+      unbind();
+    }
   });
 
   it("keeps a cloud-paired node whole when the cloud unpair fails", async () => {

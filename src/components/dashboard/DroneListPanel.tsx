@@ -12,6 +12,7 @@ import { useForgetNode } from "@/hooks/use-forget-node";
 import { NodeRow } from "@/components/command/nodes/NodeRow";
 import { NodeRail } from "@/components/command/nodes/NodeRail";
 import { NodeContextMenu } from "@/components/command/nodes/NodeContextMenu";
+import { ReconnectingDrones } from "./ReconnectingDrones";
 
 /** Non-flight nodes sink below the drones (compute, then ground). */
 const PROFILE_RANK: Record<FleetNodeEntry["profile"], number> = {
@@ -199,6 +200,9 @@ export function DroneListPanel({ collapsed, onToggleCollapse }: DroneListPanelPr
           Fleet Overview
         </button>
       </div>
+
+      {/* Drones being re-dialled after a link loss, each with a stop action. */}
+      <ReconnectingDrones />
 
       {/* Search */}
       <div className="px-3 py-2 border-b border-border-default">

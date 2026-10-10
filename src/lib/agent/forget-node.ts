@@ -35,6 +35,7 @@
 
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useDroneManager } from "@/stores/drone-manager";
+import { useReconnectStore } from "@/stores/reconnect-store";
 import { useDroneMetadataStore } from "@/stores/drone-metadata-store";
 import { useLocalNodesStore } from "@/stores/local-nodes-store";
 import { usePairingStore } from "@/stores/pairing-store";
@@ -111,11 +112,11 @@ export async function forgetNode(
     conn.disconnect();
   }
 
-  // 3. Intentionally remove any managed FC under this node id. `disconnectDrone`
-  // marks the teardown intentional, so the unexpected-disconnect listener that
-  // drives auto-reconnect does NOT fire — this is how we "cancel reconnect"
-  // without reaching the per-hook ReconnectManager. The FC id IS the node id
-  // for an agent-attached FC (`node:<deviceId>`).
+  // 3. Stop any reconnect cycle for this node, then intentionally remove any
+  // managed FC under it. The cancel is unconditional: between attempts the
+  // drone is not in the manager, but its cycle would re-add it. The FC id IS
+  // the node id for an agent-attached FC (`node:<deviceId>`).
+  useReconnectStore.getState().cancel(nodeId);
   const mgr = useDroneManager.getState();
   if (mgr.drones.has(nodeId)) {
     mgr.disconnectDrone(nodeId);
