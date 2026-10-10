@@ -1,0 +1,93 @@
+{
+  "schema": 1,
+  "routes": [
+    {
+      "path": "/",
+      "dynamic": false
+    },
+    {
+      "path": "/community",
+      "dynamic": false
+    },
+    {
+      "path": "/community/changelog",
+      "dynamic": false
+    },
+    {
+      "path": "/community/changelog/:id",
+      "dynamic": true
+    },
+    {
+      "path": "/community/contact",
+      "dynamic": false
+    },
+    {
+      "path": "/config",
+      "dynamic": false
+    },
+    {
+      "path": "/config/can",
+      "dynamic": false
+    },
+    {
+      "path": "/config/data",
+      "dynamic": false
+    },
+    {
+      "path": "/config/firmware",
+      "dynamic": false
+    },
+    {
+      "path": "/config/input",
+      "dynamic": false
+    },
+    {
+      "path": "/config/notifications",
+      "dynamic": false
+    },
+    {
+      "path": "/config/operator",
+      "dynamic": false
+    },
+    {
+      "path": "/config/plugins",
+      "dynamic": false
+    },
+    {
+      "path": "/config/plugins/:id",
+      "dynamic": true
+    },
+    {
+      "path": "/config/theme",
+      "dynamic": false
+    },
+    {
+      "path": "/config/video",
+      "dynamic": false
+    },
+    {
+      "path": "/flight-logs",
+      "dynamic": false
+    },
+    {
+      "path": "/flight-logs/reports",
+      "dynamic": false
+    },
+    {
+      "path": "/mcp",
+      "dynamic": false
+    },
+    {
+      "path": "/pair",
+      "dynamic": false
+    },
+    {
+      "path": "/plan",
+      "dynamic": false
+    },
+    {
+      "path": "/simulate",
+      "dynamic": false
+    }
+  ]
+}

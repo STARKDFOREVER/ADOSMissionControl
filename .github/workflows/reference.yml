@@ -1,0 +1,41 @@
+name: Reference data
+
+# docs/reference/gcs-routes.json feeds the generated route table in the public
+# docs. This job fails when the committed file no longer matches src/app.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  reference:
+    name: gcs-routes.json is current
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # A check that cannot fail proves nothing: plant a page, require exit 1,
+      # then remove it.
+      - name: Self-test, planted drift is detected
+        run: |
+          set -uo pipefail
+          mkdir -p src/app/__reference_selftest__
+          printf 'export default function P() { return null; }\n' > src/app/__reference_selftest__/page.tsx
+          node scripts/emit-reference.mjs --check
+          status=$?
+          rm -rf src/app/__reference_selftest__
+          if [ "$status" -ne 1 ]; then
+            echo "planted page was not detected (exit $status)"
+            exit 1
+          fi
+
+      - name: Check
+        run: node scripts/emit-reference.mjs --check
