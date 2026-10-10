@@ -487,8 +487,10 @@ export interface FullStatusResponse {
   /** The workstation perception is offloaded to, or null when it runs locally. */
   perceptionOffloadTarget?: string | null;
   /** One row per ados-* unit: systemd ActiveState in `state`, the unit's
-   * sub-state in `sub_state`. No uptime: the agent does not measure one here. */
-  services: Array<{ name: string; state: string; sub_state?: string; task_done: boolean; memory_mb?: number }>;
+   * sub-state in `sub_state`. A unit whose start systemd skipped on an unmet
+   * unit condition reads `state: "idle"`, `reason: "condition_unmet"`. No
+   * uptime: the agent does not measure one here. */
+  services: Array<{ name: string; state: string; sub_state?: string; reason?: string; task_done: boolean; memory_mb?: number }>;
   /** Any field is absent when the agent could not take that reading. */
   resources: { cpu_percent?: number; memory_percent?: number; disk_percent?: number; temperature?: number | null };
   video: {
