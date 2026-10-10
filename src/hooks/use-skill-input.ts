@@ -28,7 +28,7 @@ import { useDroneManager } from "@/stores/drone-manager";
 import { useSkillConfirmStore } from "@/stores/skill-confirm-store";
 import { useFlyQuickSettingsStore } from "@/stores/fly-quick-settings-store";
 import { useSkillInputStore } from "@/stores/skill-input-store";
-import { activate, buildSkillContext } from "@/lib/skills";
+import { activateBound, buildSkillContext } from "@/lib/skills";
 import { canonicalChord } from "@/lib/skills/chord";
 import { TAKEOFF_ALTITUDE_M } from "@/lib/skills/builtins/takeoff";
 import type { SkillActivateArgs, SkillContext } from "@/lib/skills/types";
@@ -96,7 +96,9 @@ export function useSkillInput(): void {
     // Inject the live toast as the user-facing notifier.
     ctx.notify = (message: string, status?: "success" | "warning" | "error" | "info") =>
       toastRef.current(message, status);
-    void activate(skillId, ctx, args);
+    // An `arm` binding disarms an armed vehicle, and a `pause` binding resumes
+    // a paused mission; disarm keeps its own hold confirm.
+    void activateBound(skillId, ctx, args);
   }
 
   // Keyboard half: one window keydown listener.

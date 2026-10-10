@@ -27,9 +27,10 @@ import { COCKPIT_GAMEPAD_BUTTON } from "@/lib/skills/chord";
 import {
   useSkillRegistry,
   buildSkillContext,
-  activate,
+  activateBound,
   type Skill,
 } from "@/lib/skills";
+import { useBoundSkillResolver } from "@/lib/skills/use-skill-chord";
 
 /**
  * Reserved gamepad button that opens the radial while held (Select / Back on a
@@ -107,7 +108,9 @@ export function useGamepadRadial(enabled: boolean): GamepadRadialModel {
 
   // The bound, firmware-/install-filtered skills laid out as wedges. A slot
   // bound to a skill unavailable on the selected drone is dropped (it can't
-  // fire), so the radial only ever offers fireable wedges.
+  // fire), so the radial only ever offers fireable wedges. Each slot is
+  // projected through the binding resolver (arm shows Disarm while armed).
+  const resolveBound = useBoundSkillResolver(selectedId);
   const wedges = useMemo<RadialWedge[]>(() => {
     if (!selectedId) return [];
     const loadout = loadouts[activeLoadoutId] ?? loadouts.default;
@@ -119,7 +122,7 @@ export function useGamepadRadial(enabled: boolean): GamepadRadialModel {
     const bound: Skill[] = [];
     for (const slot of loadout.slots) {
       if (!slot.skillId) continue;
-      const skill = available.get(slot.skillId);
+      const skill = available.get(resolveBound(slot.skillId));
       if (skill) bound.push(skill);
     }
     return bound.map((skill, i) => ({
@@ -128,7 +131,7 @@ export function useGamepadRadial(enabled: boolean): GamepadRadialModel {
     }));
     // registrySkills drives a re-resolve on register/unregister.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedId, activeLoadoutId, loadouts, resolveForDrone, registrySkills]);
+  }, [selectedId, activeLoadoutId, loadouts, resolveForDrone, registrySkills, resolveBound]);
 
   const [open, setOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
@@ -193,7 +196,7 @@ export function useGamepadRadial(enabled: boolean): GamepadRadialModel {
           const droneId = selectedIdRef.current;
           const wedge = idx >= 0 ? list[idx] : undefined;
           if (wedge && droneId) {
-            void activate(wedge.skill.id, buildSkillContext(droneId));
+            void activateBound(wedge.skill.id, buildSkillContext(droneId));
           }
         }
         setOpen(false);

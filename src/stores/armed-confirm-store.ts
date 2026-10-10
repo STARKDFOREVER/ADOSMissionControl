@@ -3,6 +3,8 @@ import { create } from "zustand";
 export interface ArmedConfirmContext {
   panelId: string;
   paramNames: string[];
+  /** The vehicle has not reported its arm state, so it is treated as armed. */
+  armStateUnknown?: boolean;
 }
 
 interface ArmedConfirmState {

@@ -13,7 +13,7 @@ import { useToast } from "@/components/ui/toast";
 import { getRegisteredCommands } from "@/lib/command-palette-registry";
 import { cn } from "@/lib/utils";
 import { knownRemainingPct } from "@/lib/battery";
-import { activate, buildSkillContext, useSkillRegistry } from "@/lib/skills";
+import { activateBound, buildSkillContext, useSkillRegistry } from "@/lib/skills";
 import { skillDisplayLabel } from "@/lib/skills/skill-label";
 import { resolveSkillIcon } from "@/lib/skills/skill-icon";
 import { RthAllConfirmDialog } from "./rth-all-confirm-dialog";
@@ -94,7 +94,8 @@ export function CommandPalette() {
 
   // Flight actions for the selected drone come from the skill registry, the
   // same list the cockpit's palette and Skill Bar show. Each runs through the
-  // shared `activate` pipeline, so confirm tiers, the pre-flight checklist
+  // shared `activateBound` pipeline (arm resolves to disarm while armed, pause
+  // to resume on a paused mission), so confirm tiers, the pre-flight checklist
   // gate, arm requirements and the disabled-reason toast all apply here too.
   const skillActions: CommandAction[] =
     open && selectedDroneId
@@ -109,7 +110,7 @@ export function CommandPalette() {
               label: skillDisplayLabel(skill, tRoot),
               category: t("flight"),
               icon: <Icon size={14} />,
-              action: () => void activate(skill.id, buildSkillContext(selectedDroneId)),
+              action: () => void activateBound(skill.id, buildSkillContext(selectedDroneId)),
             };
           })
       : [];

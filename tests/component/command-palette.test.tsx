@@ -129,6 +129,18 @@ describe("CommandPalette flight commands", () => {
     expect(arm).not.toHaveBeenCalled();
   });
 
+  it("an armed drone's Arm entry resolves to Disarm through the bound pipeline", async () => {
+    useDroneStore.setState({ armState: "armed", lastHeartbeat: Date.now() });
+    openPalette();
+    await act(async () => {
+      fireEvent.click(screen.getByText(messages.skills.arm.label));
+    });
+    expect(useSkillConfirmStore.getState().pending?.policy.title).toBe(
+      "skills.disarm.confirm.title",
+    );
+    expect(arm).not.toHaveBeenCalled();
+  });
+
   it("Return to Home All asks first and recalls only on confirm", async () => {
     openPalette();
     act(() => {

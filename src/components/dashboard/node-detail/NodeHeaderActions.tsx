@@ -54,26 +54,28 @@ export function NodeHeaderActions({
   const t = useTranslations("dronePanel");
   const tRoot = useTranslations();
   const { toast } = useToast();
-  const { isHardBlocked, hardBlockMessage } = useArmedLock();
+  // The lock and the reboot both target this panel's drone, never whichever
+  // drone another surface has selected meanwhile.
+  const { isHardBlocked, hardBlockMessage } = useArmedLock(droneId);
   const forget = useForgetNode();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [rebootOpen, setRebootOpen] = useState(false);
 
   const handleReboot = async () => {
     setRebootOpen(false);
-    const protocol = useDroneManager.getState().getSelectedProtocol();
-    if (!protocol) {
-      toast("No flight controller connected", "error");
+    const protocol = useDroneManager.getState().drones.get(droneId)?.protocol;
+    if (!protocol || !protocol.isConnected) {
+      toast(t("rebootNoFc"), "error");
       return;
     }
     try {
       const result = await protocol.reboot();
       toast(
-        result.message || (result.success ? "Reboot command sent" : "The FC refused the reboot command"),
+        result.message || (result.success ? t("rebootSent") : t("rebootRefused")),
         result.success ? "success" : "error",
       );
     } catch {
-      toast("Reboot command failed", "error");
+      toast(t("rebootFailed"), "error");
     }
   };
 

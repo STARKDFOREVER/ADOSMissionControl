@@ -171,9 +171,14 @@ export function buildPluginSkill(c: DroneSkillContribution): Skill {
     },
   };
 
-  if (c.confirm) {
-    skill.confirm = PLUGIN_CONFIRM_POLICY;
-  }
+  // The host's safety floor: whatever the manifest says, a plugin skill fired
+  // at a vehicle that is not positively disarmed asks first, the same floor
+  // plugin command RPCs get. A disarmed vehicle confirms only when the
+  // manifest asks for it.
+  skill.confirmFor = (_args, ctx) =>
+    c.confirm || (ctx !== undefined && ctx.armState !== "disarmed")
+      ? PLUGIN_CONFIRM_POLICY
+      : undefined;
 
   if (c.toggle) {
     skill.deactivate = async (ctx) => {

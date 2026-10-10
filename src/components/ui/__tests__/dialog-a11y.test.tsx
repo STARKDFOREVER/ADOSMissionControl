@@ -265,4 +265,27 @@ describe("ArmedWriteConfirmDialog", () => {
     expect(resolve).not.toHaveBeenCalledWith(true);
     expect(useArmedConfirmStore.getState().open).toBe(false);
   });
+
+  it("says the arm state is unknown when the vehicle has not reported it", () => {
+    useArmedConfirmStore.setState({
+      open: true,
+      context: { panelId: "params", paramNames: ["FS_THR_ENABLE"], armStateUnknown: true },
+      _resolve: vi.fn(),
+    });
+    renderWithIntl(<ArmedWriteConfirmDialog />);
+    expect(screen.getByText("Arm state unknown")).toBeTruthy();
+    expect(screen.getByText(/has not reported whether it is armed/)).toBeTruthy();
+    expect(screen.queryByText("Vehicle is armed")).toBeNull();
+  });
+
+  it("keeps the armed wording for a vehicle reporting armed", () => {
+    useArmedConfirmStore.setState({
+      open: true,
+      context: { panelId: "params", paramNames: ["FS_THR_ENABLE", "ARMING_CHECK"] },
+      _resolve: vi.fn(),
+    });
+    renderWithIntl(<ArmedWriteConfirmDialog />);
+    expect(screen.getByText("Vehicle is armed")).toBeTruthy();
+    expect(screen.getByText(/write 2 parameters to the flight controller while it is armed/)).toBeTruthy();
+  });
 });

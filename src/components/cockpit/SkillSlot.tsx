@@ -170,7 +170,9 @@ export const SkillSlot = memo(function SkillSlot({
           ? safeReason(t, state.reason)
           : t("skills.state.disabled");
       default:
-        return t("skills.state.ready");
+        return state.warning
+          ? safeReason(t, state.warning)
+          : t("skills.state.ready");
     }
   }, [state, t, cooldownPct, skill]);
 
@@ -197,9 +199,11 @@ export const SkillSlot = memo(function SkillSlot({
   // referenced by aria-describedby so a screen reader announces why the slot
   // is unavailable.
   const ariaDescription =
-    isDisabled && skill && state.reason
+    skill && isDisabled && state.reason
       ? safeReason(t, state.reason)
-      : undefined;
+      : skill && !isDisabled && state.warning
+        ? safeReason(t, state.warning)
+        : undefined;
 
   const tooltipContent = (
     <div className="flex flex-col gap-0.5 text-left">
@@ -301,6 +305,19 @@ export const SkillSlot = memo(function SkillSlot({
         {state.badge ? (
           <span className="kbd" style={{ top: "auto", bottom: 3, color: "var(--hud-primary)" }}>
             {state.badge}
+          </span>
+        ) : null}
+
+        {/* stale-link warning badge (top-left): the command is still sent,
+            without confirmation that the vehicle receives it */}
+        {state.warning && !isDisabled ? (
+          <span
+            className="kbd"
+            aria-hidden="true"
+            data-skill-warning="true"
+            style={{ left: 3, right: "auto", color: "var(--hud-warn)" }}
+          >
+            !
           </span>
         ) : null}
 

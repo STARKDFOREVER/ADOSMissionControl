@@ -1,13 +1,20 @@
 /**
  * Return-to-Home skill — commands the vehicle to return to its launch point.
- * One-shot, any arm state, hold-to-confirm. Requires autonomous nav.
+ * One-shot, any arm state, hold-to-confirm. Requires autonomous nav. A
+ * last-resort command: on a stale link it stays fireable and is sent blind,
+ * with a stale-link warning.
  *
  * @module skills/builtins/rth
  * @license GPL-3.0-only
  */
 
 import type { Skill } from "../types";
-import { builtinConfirm, disabledIfNoLink } from "./_shared";
+import {
+  builtinConfirm,
+  disabledIfNoBlindLink,
+  lastResortPath,
+  withStaleLinkWarning,
+} from "./_shared";
 
 export const rthSkill: Skill = {
   id: "rth",
@@ -23,12 +30,9 @@ export const rthSkill: Skill = {
   // window down so the operator sees when it is fireable again.
   cooldownMs: 5000,
   confirm: builtinConfirm("rth", "hold", "primary"),
-  getState: (ctx) => {
-    const noLink = disabledIfNoLink(ctx);
-    if (noLink) return noLink;
-    return { kind: "idle" };
-  },
+  getState: (ctx) =>
+    disabledIfNoBlindLink(ctx) ?? withStaleLinkWarning(ctx, { kind: "idle" }),
   // The vehicle's answer goes back to the dispatcher, which surfaces a
   // refusal and neither spends the cooldown nor greys the control on it.
-  activate: async (ctx) => ctx.protocol?.returnToLaunch(),
+  activate: async (ctx) => lastResortPath(ctx)?.returnToLaunch(),
 };

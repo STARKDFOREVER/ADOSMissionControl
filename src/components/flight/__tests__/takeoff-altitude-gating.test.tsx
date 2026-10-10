@@ -23,7 +23,7 @@ const { toast, activateSpy } = vi.hoisted(() => ({
 
 vi.mock("@/lib/skills", async () => {
   const actual = await vi.importActual<typeof Skills>("@/lib/skills");
-  return { ...actual, activate: activateSpy };
+  return { ...actual, activate: activateSpy, activateBound: activateSpy };
 });
 vi.mock("@/components/ui/toast", () => ({ useToast: () => ({ toast }) }));
 vi.mock("@/hooks/use-firmware-capabilities", () => ({
@@ -151,8 +151,8 @@ describe("take-off altitude gating", () => {
     act(() => {
       pending = actual.activate("takeoff", ctx, { altitudeM: 100 });
     });
-    expect(confirm.mock.calls[0][0].values).toEqual({ altitude: 100 });
-    expect(screen.getByText(/Take off to 100 m/)).toBeTruthy();
+    expect(confirm.mock.calls[0][0].values).toEqual({ altitude: 100, drone: "drone-1" });
+    expect(screen.getByText(/Take drone-1 off to 100 m/)).toBeTruthy();
     act(() => useSkillConfirmStore.getState().resolvePending(false));
     await pending;
   });

@@ -70,6 +70,8 @@ vi.mock("@/stores/node-registry/use-fleet-drones", async (importOriginal) =>
 );
 import { useDroneManager, type ManagedDrone } from "@/stores/drone-manager";
 import { useDroneStore } from "@/stores/drone-store";
+import { useNodeRegistryStore } from "@/stores/node-registry";
+import type { NodeEntry } from "@/stores/node-registry/types";
 import type { FleetDrone } from "@/lib/types";
 import type { DroneProtocol } from "@/lib/protocol/types";
 
@@ -98,13 +100,22 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   useDroneManager.setState({ drones: new Map(), selectedDroneId: null });
+  useNodeRegistryStore.setState({ nodes: {} });
 });
+
+/** The arm state the panel's own drone reports through the node registry. */
+function setNodeArm(armState: "armed" | "disarmed"): void {
+  useNodeRegistryStore.setState({
+    nodes: { [DRONE]: { nodeId: DRONE, fc: { managedId: DRONE, armState } } as unknown as NodeEntry },
+  });
+}
 
 const rebootButton = () => screen.getByRole("button", { name: "rebootFc" });
 
 describe("header Reboot FC", () => {
   it("is disabled while the vehicle is armed", () => {
     useDroneStore.setState({ armState: "armed", connectionState: "connected" });
+    setNodeArm("armed");
     render(<NodeDetailPanel droneId={DRONE} onClose={() => {}} />);
     expect((rebootButton() as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(rebootButton());
@@ -114,6 +125,7 @@ describe("header Reboot FC", () => {
 
   it("asks first, then reports the FC's answer", async () => {
     useDroneStore.setState({ armState: "disarmed", connectionState: "connected" });
+    setNodeArm("disarmed");
     render(<NodeDetailPanel droneId={DRONE} onClose={() => {}} />);
     fireEvent.click(rebootButton());
     expect(reboot).not.toHaveBeenCalled();
@@ -124,5 +136,13 @@ describe("header Reboot FC", () => {
     });
     expect(reboot).toHaveBeenCalledTimes(1);
     expect(toast).toHaveBeenCalledWith("Reboot refused: vehicle is armed", "error");
+  });
+
+  it("gates on the panel's drone, not the selected drone", () => {
+    // The selected drone reads disarmed, but this panel's drone is armed.
+    useDroneStore.setState({ armState: "disarmed", connectionState: "connected" });
+    setNodeArm("armed");
+    render(<NodeDetailPanel droneId={DRONE} onClose={() => {}} />);
+    expect((rebootButton() as HTMLButtonElement).disabled).toBe(true);
   });
 });

@@ -12,6 +12,7 @@ import { act, renderHook } from "@testing-library/react";
 import type { DroneProtocol } from "@/lib/protocol/types";
 import { useDroneManager, type ManagedDrone } from "@/stores/drone-manager";
 import { useSettingsParams } from "../use-settings-params";
+import { IntlWrapper as wrapper } from "../../../tests/helpers/intl-wrapper";
 
 interface Values {
   rate: number;
@@ -53,6 +54,7 @@ describe("useSettingsParams across a drone switch", () => {
         supported,
         unsupportedMessage: "unsupported",
       }),
+      { wrapper },
     );
 
     let pending!: Promise<void>;
@@ -84,6 +86,7 @@ describe("useSettingsParams across a drone switch", () => {
         supported,
         unsupportedMessage: "unsupported",
       }),
+      { wrapper },
     );
 
     act(() => result.current.setValues({ rate: 9 }));

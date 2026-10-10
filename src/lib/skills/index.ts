@@ -31,6 +31,8 @@ import {
 } from "./cooldown";
 import { useDroneStore } from "@/stores/drone-store";
 import { useDroneManager } from "@/stores/drone-manager";
+import { useNodeRegistryStore } from "@/stores/node-registry";
+import { resolveBoundSkillId } from "./bound-skill";
 import { useChecklistStore } from "@/stores/checklist-store";
 import { useFollowMeStore } from "@/stores/follow-me-store";
 import { stopFollowMe } from "@/lib/follow-me";
@@ -68,6 +70,8 @@ export {
   notifySkill,
   SKILL_LINK_FRESH_MS,
 } from "./registry";
+export { resolveBoundSkillId, isMissionPaused } from "./bound-skill";
+export type { BoundSkillContext } from "./bound-skill";
 export {
   buildSkillContextForNode,
   availableModesForNode,
@@ -176,9 +180,11 @@ export async function activate(
   }
 
   // Confirm gate — open the shared sheet and await the operator. A `tap`
-  // policy is confirmed by the press itself and opens nothing.
+  // policy is confirmed by the press itself and opens nothing. The sheet names
+  // the target drone and, on a stale link, warns the command may not arrive.
   let activateArgs = args;
-  const policy = skill.confirmFor ? skill.confirmFor(args) : skill.confirm;
+  let sendCtx = ctx;
+  const policy = skill.confirmFor ? skill.confirmFor(args, ctx) : skill.confirm;
   if (policy && policy.gesture !== "tap") {
     busy.add(key);
     let result: ConfirmResult = false;
@@ -190,7 +196,12 @@ export async function activate(
       result = await ctx.confirm({
         ...policy,
         ...(altitude ? { altitude } : {}),
-        ...(skill.confirmValues ? { values: skill.confirmValues(args) } : {}),
+        values: {
+          ...policy.values,
+          ...(skill.confirmValues ? skill.confirmValues(args) : {}),
+          drone: skillTargetName(ctx.droneId),
+        },
+        ...(ctx.linkStale && !ctx.protocol ? { staleLink: true } : {}),
         ...(typeof args?.gamepadButton === "number"
           ? { gamepadButton: args.gamepadButton }
           : {}),
@@ -201,6 +212,18 @@ export async function activate(
     if (!result) return;
     if (typeof result === "object" && typeof result.altitudeM === "number") {
       activateArgs = { ...args, altitudeM: result.altitudeM };
+    }
+    // The sheet can stay open for seconds (a guarded hold runs 4.5 s), so the
+    // vehicle is re-read before anything is sent: a changed arm state, a skill
+    // that became unavailable or an unmet arm requirement cancels the send.
+    // Every store-built context carries `refresh`; a hand-built one (a test or
+    // an external caller) has no live source to re-read and is sent as is.
+    if (ctx.refresh) {
+      sendCtx = { ...ctx.refresh(), notify: ctx.notify, confirm: ctx.confirm };
+      if (changedSincePrompt(skill, ctx, sendCtx)) {
+        ctx.notify("skills.reason.changedSincePrompt", "warning");
+        return;
+      }
     }
   }
 
@@ -222,7 +245,7 @@ export async function activate(
 
   busy.add(key);
   try {
-    const result = await skill.activate(ctx, activateArgs);
+    const result = await skill.activate(sendCtx, activateArgs);
     // A returned result with success=false is the vehicle's (or its lane's)
     // own refusal. Silence here reads as success on a surface with no other
     // feedback, so the answer is surfaced in the operator's face.
@@ -250,6 +273,43 @@ export async function activate(
     busy.delete(key);
     useSkillRegistry.getState().recomputeSelected();
   }
+}
+
+/**
+ * Fire the skill a binding names, after resolving it against the live vehicle
+ * state: an `arm` binding disarms an armed vehicle and a `pause` binding
+ * resumes a paused mission. Every bound surface (keys, gamepad, Skill Bar,
+ * palette, radial) dispatches through here.
+ */
+export function activateBound(
+  skillId: string,
+  ctx: SkillContext,
+  args?: SkillActivateArgs,
+): Promise<void> {
+  return activate(resolveBoundSkillId(skillId, ctx.armState, ctx), ctx, args);
+}
+
+/** The name a confirm sheet shows for the drone a skill targets. */
+function skillTargetName(droneId: string): string {
+  const managed = useDroneManager.getState().drones.get(droneId);
+  if (managed?.name) return managed.name;
+  return useNodeRegistryStore.getState().getEntry(droneId)?.presence?.name ?? droneId;
+}
+
+/**
+ * True when the vehicle moved under an open confirm sheet so the approved
+ * command no longer means what the operator approved: the arm state changed,
+ * the skill became unavailable, or its arm requirement is no longer met.
+ */
+function changedSincePrompt(
+  skill: Skill,
+  before: SkillContext,
+  after: SkillContext,
+): boolean {
+  if (after.armState !== before.armState) return true;
+  if (skill.getState(after).kind === "disabled") return true;
+  const armReq = skill.armRequirement ?? "any";
+  return armReq !== "any" && after.armState !== armReq;
 }
 
 /** Stop a toggle behavior. Busy-guarded and protocol-optional via the skill. */

@@ -122,11 +122,12 @@ export function cloneDefaultCockpitLayout(): CockpitLayout {
 }
 
 /**
- * The factory-default loadout. Slot 0 binds "arm"; the dispatcher flips an
- * "arm" press to "disarm" when the live arm state is armed, so a single
- * slot covers both. Kill is slotted but deliberately unbound. Mode presets
- * guided/auto are registered built-ins available in the drawer but
- * unslotted by default.
+ * The factory-default loadout. Slot 0 binds "arm"; every bound surface
+ * resolves it through `resolveBoundSkillId`, so the slot fires (and renders)
+ * "disarm" while the vehicle is armed and disarm keeps its hold confirm.
+ * Slot 4 binds "pause", which resolves to "resume" while a mission is paused.
+ * Kill is slotted but deliberately unbound. Mode presets guided/auto are
+ * registered built-ins available in the drawer but unslotted by default.
  *
  * Frozen so an accidental mutation of the shared default is caught; callers
  * always clone via cloneDefaultLoadout().

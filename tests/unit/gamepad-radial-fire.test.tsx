@@ -46,7 +46,7 @@ const { activateMock } = vi.hoisted(() => ({
 vi.mock("@/lib/skills", async () => {
   const actual =
     await vi.importActual<typeof import("@/lib/skills")>("@/lib/skills");
-  return { ...actual, activate: activateMock };
+  return { ...actual, activate: activateMock, activateBound: activateMock };
 });
 
 import {

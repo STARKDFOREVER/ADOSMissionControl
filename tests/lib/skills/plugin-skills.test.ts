@@ -31,8 +31,9 @@ import {
 } from "@/lib/skills/plugin-skill-host-store";
 import { useSkillRegistry } from "@/lib/skills/registry";
 import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneStore } from "@/stores/drone-store";
 import { buildSkillContext, activate } from "@/lib/skills";
-import type { SkillContext } from "@/lib/skills/types";
+import type { ConfirmPolicy, SkillContext } from "@/lib/skills/types";
 
 /** A fake plugin manifest contributing a flight.skill and a no-op overlay. */
 const FIXTURE_MANIFEST = `id: com.example.follow
@@ -209,12 +210,53 @@ describe("buildPluginSkill", () => {
     const skill = buildPluginSkill(contribution({ confirm: false }));
     useSkillRegistry.getState().register(skill);
     useDroneManager.setState({ selectedDroneId: "drone-1" });
+    useDroneStore.setState({ armState: "armed" });
 
     const ctx: SkillContext = {
       ...buildSkillContext("drone-1"),
       armState: "armed",
+      confirm: async () => true,
     };
     await activate(skill.id, ctx);
     expect(writes).toContain(true);
+  });
+});
+
+describe("plugin skill confirm floor", () => {
+  beforeEach(() => {
+    clearRegistry();
+    usePluginSkillHostStore.getState().setPluginConfigWriter(() => {});
+    useDroneManager.setState({ selectedDroneId: "drone-1" });
+  });
+
+  it("asks for confirmation on an armed vehicle even when the manifest says confirm:false", async () => {
+    const skill = buildPluginSkill(contribution({ confirm: false, toggle: false, localId: "orbit" }));
+    useSkillRegistry.getState().register(skill);
+    useDroneStore.setState({ armState: "armed" });
+    const confirm = vi.fn(async (_policy: ConfirmPolicy) => true);
+    await activate(skill.id, { ...buildSkillContext("drone-1"), confirm });
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(confirm.mock.calls[0][0].title).toBe("skills.plugin.confirm.title");
+  });
+
+  it("treats an unknown arm state as possibly armed", () => {
+    const skill = buildPluginSkill(contribution({ confirm: false }));
+    const ctx: SkillContext = { ...buildSkillContext("drone-1"), armState: "unknown" };
+    expect(skill.confirmFor?.(undefined, ctx)?.title).toBe("skills.plugin.confirm.title");
+  });
+
+  it("opens no sheet on a disarmed vehicle when the manifest says confirm:false", async () => {
+    const skill = buildPluginSkill(contribution({ confirm: false, toggle: false, localId: "snap" }));
+    useSkillRegistry.getState().register(skill);
+    useDroneStore.setState({ armState: "disarmed" });
+    const confirm = vi.fn(async (_policy: ConfirmPolicy) => true);
+    await activate(skill.id, { ...buildSkillContext("drone-1"), confirm });
+    expect(confirm).not.toHaveBeenCalled();
+  });
+
+  it("keeps the manifest confirm on a disarmed vehicle", () => {
+    const skill = buildPluginSkill(contribution({ confirm: true }));
+    const ctx: SkillContext = { ...buildSkillContext("drone-1"), armState: "disarmed" };
+    expect(skill.confirmFor?.(undefined, ctx)).toBeDefined();
   });
 });

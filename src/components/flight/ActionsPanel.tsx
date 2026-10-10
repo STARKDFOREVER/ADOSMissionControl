@@ -22,6 +22,7 @@ import { useSkillInputStore } from "@/stores/skill-input-store";
 import { useToast } from "@/components/ui/toast";
 import { useShallow } from "zustand/react/shallow";
 import { buildSkillContext, activate } from "@/lib/skills";
+import { useSkillChord } from "@/lib/skills/use-skill-chord";
 import type { SkillActivateArgs } from "@/lib/skills";
 import { TAKEOFF_ALTITUDE_M, parseTakeoffAltitude } from "@/lib/skills/builtins/takeoff";
 import { cn } from "@/lib/utils";
@@ -106,6 +107,22 @@ export function ActionsPanel() {
   // from the operator's loadout, through the same pipeline as the buttons.
   useFlightInputSurface();
 
+  // Tooltip chords come from the operator's active loadout, so a rebind shows
+  // the new key and an unbound action shows none.
+  const chords = {
+    arm: useSkillChord("arm"),
+    disarm: useSkillChord("disarm"),
+    pause: useSkillChord("pause"),
+    resume: useSkillChord("resume"),
+    rth: useSkillChord("rth"),
+    takeoff: useSkillChord("takeoff"),
+    land: useSkillChord("land"),
+    abort: useSkillChord("abort"),
+    kill: useSkillChord("kill"),
+  };
+  const tip = (labelKey: string, chord: string | null) =>
+    chord ? t("actions.withChord", { label: t(labelKey), chord }) : t(labelKey);
+
   return (
     <>
       <div className="px-3 pt-3 pb-1.5 border-t border-border-default bg-bg-secondary flex flex-col gap-1.5">
@@ -113,7 +130,7 @@ export function ActionsPanel() {
         <LoadoutSelector />
 
         {/* Pre-Flight Checklist button */}
-        <Tooltip content="Open pre-flight checklist" position="right">
+        <Tooltip content={t("actions.openChecklist")} position="right">
           <button
             onClick={() => setShowChecklist(true)}
             className={cn(
@@ -135,7 +152,13 @@ export function ActionsPanel() {
           {/* ARM / DISARM */}
           <div className="flex-1 [&>*]:w-full">
             <Tooltip
-              content={armUnknown ? tReason("noFcLink") : isArmed ? t("disarmShortcut") : t("armShortcut")}
+              content={
+                armUnknown
+                  ? tReason("noFcLink")
+                  : isArmed
+                    ? tip("actions.disarm", chords.disarm)
+                    : tip("actions.arm", chords.arm)
+              }
               position="right"
             >
               <Button
@@ -166,7 +189,7 @@ export function ActionsPanel() {
           {hasAutonomousFlight && (
             <div className="flex-1 [&>*]:w-full">
               {hasMissions && flightMode === "AUTO" ? (
-                <Tooltip content="Pause mission (Shift+P)" position="right">
+                <Tooltip content={tip("actions.pauseMission", chords.pause)} position="right">
                   <Button
                     variant="secondary"
                     size="sm"
@@ -176,7 +199,7 @@ export function ActionsPanel() {
                   />
                 </Tooltip>
               ) : isResumable ? (
-                <Tooltip content="Resume mission (Shift+P)" position="right">
+                <Tooltip content={tip("actions.resumeMission", chords.resume)} position="right">
                   <Button
                     variant="secondary"
                     size="sm"
@@ -186,7 +209,7 @@ export function ActionsPanel() {
                   />
                 </Tooltip>
               ) : (
-                <Tooltip content="Hold position (Shift+P)" position="right">
+                <Tooltip content={tip("actions.holdPosition", chords.pause)} position="right">
                   <Button
                     variant="secondary"
                     size="sm"
@@ -200,7 +223,7 @@ export function ActionsPanel() {
           )}
           {hasAutonomousFlight && (
             <div className="flex-1 [&>*]:w-full">
-              <Tooltip content="Return to home (Shift+R)" position="right">
+              <Tooltip content={tip("actions.returnHome", chords.rth)} position="right">
                 <Button
                   variant="secondary"
                   size="sm"
@@ -215,7 +238,10 @@ export function ActionsPanel() {
             <>
               <div className="flex-1 [&>*]:w-full">
                 <Tooltip
-                  content={`Takeoff altitude (${TAKEOFF_ALTITUDE_M.min}-${TAKEOFF_ALTITUDE_M.max}m)`}
+                  content={t("actions.takeoffAltitude", {
+                    min: TAKEOFF_ALTITUDE_M.min,
+                    max: TAKEOFF_ALTITUDE_M.max,
+                  })}
                   position="right"
                 >
                   <input
@@ -230,7 +256,7 @@ export function ActionsPanel() {
                 </Tooltip>
               </div>
               <div className="flex-1 [&>*]:w-full">
-                <Tooltip content="Takeoff (Shift+T)" position="right">
+                <Tooltip content={tip("actions.takeoff", chords.takeoff)} position="right">
                   <Button
                     variant="secondary"
                     size="sm"
@@ -241,7 +267,7 @@ export function ActionsPanel() {
                 </Tooltip>
               </div>
               <div className="flex-1 [&>*]:w-full">
-                <Tooltip content="Land (Shift+L)" position="left">
+                <Tooltip content={tip("actions.land", chords.land)} position="left">
                   <Button
                     variant="secondary"
                     size="sm"
@@ -254,7 +280,7 @@ export function ActionsPanel() {
             </>
           )}
           <div className="flex-1 [&>*]:w-full">
-            <Tooltip content="Abort (Shift+X)" position="left">
+            <Tooltip content={tip("actions.abort", chords.abort)} position="left">
               <Button
                 variant="danger"
                 size="sm"
@@ -265,7 +291,7 @@ export function ActionsPanel() {
             </Tooltip>
           </div>
           <div className="flex-1 [&>*]:w-full">
-            <Tooltip content="Kill motors" position="left">
+            <Tooltip content={tip("actions.kill", chords.kill)} position="left">
               <Button
                 variant="danger"
                 size="sm"

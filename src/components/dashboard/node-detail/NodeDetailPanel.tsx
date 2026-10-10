@@ -147,8 +147,9 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
   // from the same install rows as the tab headers above.
   const pluginPages = useNodePluginPages(bareDeviceId, drone?.profile);
 
-  // Select this drone in drone-manager so getSelectedProtocol() returns the
-  // right protocol.
+  // Select this drone in drone-manager so the tab bodies that read the
+  // selected vehicle show this one. Safety actions in the header (reboot and
+  // its arm lock) resolve this panel's drone by id and never rely on it.
   useEffect(() => {
     if (isConnected) useDroneManager.getState().selectDrone(droneId);
   }, [droneId, isConnected]);

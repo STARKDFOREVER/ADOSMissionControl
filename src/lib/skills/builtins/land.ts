@@ -1,13 +1,20 @@
 /**
  * Land skill — commands a landing at the current position. One-shot, armed-
- * only, hold-to-confirm. Requires autonomous nav.
+ * only, hold-to-confirm. Requires autonomous nav. A last-resort command: on a
+ * stale link it stays fireable and is sent blind, with a stale-link warning.
  *
  * @module skills/builtins/land
  * @license GPL-3.0-only
  */
 
 import type { Skill } from "../types";
-import { builtinConfirm, disabledIfNoLink, REASON } from "./_shared";
+import {
+  builtinConfirm,
+  disabledIfNoBlindLink,
+  lastResortPath,
+  withStaleLinkWarning,
+  REASON,
+} from "./_shared";
 
 export const landSkill: Skill = {
   id: "land",
@@ -20,14 +27,14 @@ export const landSkill: Skill = {
   requiresAutonomousNav: true,
   confirm: builtinConfirm("land", "hold", "danger"),
   getState: (ctx) => {
-    const noLink = disabledIfNoLink(ctx);
+    const noLink = disabledIfNoBlindLink(ctx);
     if (noLink) return noLink;
     if (ctx.armState === "disarmed") {
       return { kind: "disabled", reason: REASON.notArmed };
     }
-    return { kind: "idle" };
+    return withStaleLinkWarning(ctx, { kind: "idle" });
   },
   // The vehicle's answer goes back to the dispatcher, which surfaces a
   // refusal and spends nothing on it.
-  activate: async (ctx) => ctx.protocol?.land(),
+  activate: async (ctx) => lastResortPath(ctx)?.land(),
 };

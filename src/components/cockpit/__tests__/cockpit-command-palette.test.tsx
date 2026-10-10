@@ -5,17 +5,17 @@ import { NextIntlClientProvider } from "next-intl";
 import messages from "../../../../locales/en.json";
 
 // Spy on the shared dispatch pipeline while keeping the real registry + context
-// builder, so a selection is asserted to route through `activate` (never a
+// builder, so a selection is asserted to route through `activateBound` (never a
 // palette-local side effect).
 vi.mock("@/lib/skills", async () => {
   const actual = await vi.importActual<typeof import("@/lib/skills")>(
     "@/lib/skills",
   );
-  return { ...actual, activate: vi.fn(() => Promise.resolve()) };
+  return { ...actual, activateBound: vi.fn(() => Promise.resolve()) };
 });
 
 import { CockpitCommandPalette } from "@/components/cockpit/CockpitCommandPalette";
-import { activate, registerBuiltins } from "@/lib/skills";
+import { activateBound, registerBuiltins } from "@/lib/skills";
 import { useDroneManager } from "@/stores/drone-manager";
 
 const DRONE = "drone-1";
@@ -35,7 +35,7 @@ describe("CockpitCommandPalette", () => {
   beforeEach(() => {
     registerBuiltins();
     useDroneManager.setState({ selectedDroneId: DRONE });
-    (activate as unknown as ReturnType<typeof vi.fn>).mockClear();
+    (activateBound as unknown as ReturnType<typeof vi.fn>).mockClear();
   });
   afterEach(() => {
     cleanup();
@@ -67,8 +67,8 @@ describe("CockpitCommandPalette", () => {
   it("fires the chosen command through the shared pipeline and closes", () => {
     const { onClose } = renderPalette();
     fireEvent.click(screen.getByText(messages.skills.arm.label));
-    expect(activate).toHaveBeenCalledTimes(1);
-    expect((activate as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0]).toBe(
+    expect(activateBound).toHaveBeenCalledTimes(1);
+    expect((activateBound as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0]).toBe(
       "arm",
     );
     expect(onClose).toHaveBeenCalled();

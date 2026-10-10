@@ -32,7 +32,8 @@ import { useSkillConfirmStore } from "@/stores/skill-confirm-store";
 /**
  * A command is offered only while the FC heartbeat is younger than this. Past
  * it the link is stale: a dispatched command most likely goes nowhere, so every
- * command skill reads "no FC link".
+ * command skill reads "no FC link" except the last-resort set, which stays
+ * fireable with a stale-link warning.
  */
 export const SKILL_LINK_FRESH_MS = 3000;
 
@@ -96,13 +97,19 @@ export function buildSkillContextFor(droneId: string): SkillContext {
     : "unknown";
 
   // An open transport is not an FC link: a skill dispatched while the FC
-  // heartbeat is stale goes into a void, so the command surface is offered
-  // only while the heartbeat is fresh and every skill reads "no FC link".
+  // heartbeat is stale most likely goes into a void, so the command surface is
+  // offered only while the heartbeat is fresh. The one exception is the
+  // last-resort set (kill, return home, land), which may be sent blind through
+  // `blindProtocol`: on an asymmetric link the uplink can still work.
   const fcReachable = isSkillLinkFresh(droneState.lastHeartbeat, Date.now());
+  const linkStale = live !== null && !fcReachable && droneState.lastHeartbeat > 0;
 
   return {
     droneId,
     protocol: fcReachable ? live : null,
+    blindProtocol: linkStale ? live : null,
+    linkStale,
+    refresh: () => buildSkillContextFor(droneId),
     armState: droneState.armState,
     flightMode: droneState.flightMode,
     availableModes,

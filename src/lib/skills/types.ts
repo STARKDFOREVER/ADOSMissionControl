@@ -81,6 +81,12 @@ export interface ConfirmPolicy {
   gamepadButton?: number;
   /** Interpolation values for `title` and `message`, set per request. */
   values?: Record<string, string | number>;
+  /**
+   * Set per request when the command goes out over a stale link (no FC
+   * heartbeat inside the freshness window). The sheet then warns that the
+   * vehicle may not receive the command.
+   */
+  staleLink?: boolean;
 }
 
 /** What the operator chose on the sheet, beyond confirming it. */
@@ -113,6 +119,11 @@ export interface SkillState {
   cooldown?: { startedAt: number; durationMs: number };
   /** <= ~4 chars overlay, optional (e.g. a locked target id). */
   badge?: string;
+  /**
+   * An i18n key for a warning the slot shows while the skill stays fireable,
+   * for example a last-resort command offered over a stale link.
+   */
+  warning?: string;
 }
 
 export interface SkillContext {
@@ -124,6 +135,20 @@ export interface SkillContext {
    * command path at all, which every built-in reports as disabled-no-link.
    */
   protocol: SkillProtocol | null;
+  /**
+   * The live command path while the FC heartbeat is stale. Only last-resort
+   * skills (kill, return home, land) send through it, and only when
+   * `protocol` is null: the downlink may be lost while the uplink still
+   * works. Absent or null when the transport itself is down.
+   */
+  blindProtocol?: SkillProtocol | null;
+  /** True when a transport is open but the FC heartbeat is stale. */
+  linkStale?: boolean;
+  /**
+   * Rebuild this context from the live stores. The dispatcher calls it after a
+   * confirm sheet resolves to re-check the vehicle before sending.
+   */
+  refresh?: () => SkillContext;
   armState: ArmState;
   flightMode: FlightMode;
   /**
@@ -199,7 +224,10 @@ export interface Skill {
    * (a mode change confirms differently for a recovery mode than for AUTO).
    * Wins over `confirm`; returning undefined means no confirmation.
    */
-  confirmFor?: (args?: SkillActivateArgs) => ConfirmPolicy | undefined;
+  confirmFor?: (
+    args?: SkillActivateArgs,
+    ctx?: SkillContext,
+  ) => ConfirmPolicy | undefined;
   /**
    * Interpolation values for the confirm title/message, computed from the
    * activation args so the dialog names what will actually be commanded (the

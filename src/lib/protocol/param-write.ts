@@ -43,11 +43,13 @@ export interface ParamWriteRequest {
 }
 
 /**
- * Ask the operator to confirm a write while the vehicle is armed.
+ * Ask the operator to confirm a write while the vehicle may be armed.
  *
- * Returns true when the write may proceed: either the vehicle is not armed (or
- * not connected, so nothing is flying) or the operator explicitly opted in. A
- * disarmed vehicle is never interrupted.
+ * Returns true when the write may proceed: either the vehicle is positively
+ * known to be disarmed, the link is down (nothing is flying on it), or the
+ * operator explicitly opted in. An open link whose arm state has not been read
+ * yet is treated as possibly armed, so it asks too. A disarmed vehicle is
+ * never interrupted.
  */
 export async function confirmArmedParamWrite(
   panelId: string,
@@ -55,10 +57,11 @@ export async function confirmArmedParamWrite(
 ): Promise<boolean> {
   if (paramNames.length === 0) return true;
   const { armState, connectionState } = useDroneStore.getState();
-  if (armState !== "armed" || connectionState === "disconnected") return true;
+  const mayBeArmed = connectionState !== "disconnected" && armState !== "disarmed";
+  if (!mayBeArmed) return true;
   return useArmedConfirmStore
     .getState()
-    .requestConfirm({ panelId, paramNames });
+    .requestConfirm({ panelId, paramNames, armStateUnknown: armState === "unknown" });
 }
 
 /**

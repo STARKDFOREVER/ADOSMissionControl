@@ -12,7 +12,9 @@
  * A checklist-aware request whose pre-flight checklist is incomplete lists the
  * open items and keeps the gesture inert until the operator turns on the
  * explicit override, which is recorded as a safety event. A take-off sheet
- * carries the altitude stepper whose value is what gets commanded.
+ * carries the altitude stepper whose value is what gets commanded. Titles name
+ * the target drone (`{drone}`), and a command going out over a stale link says
+ * the vehicle may not receive it.
  * @license GPL-3.0-only
  */
 
@@ -165,6 +167,16 @@ export function ConfirmSheet({ policy, droneId, onResolve }: ConfirmSheetProps) 
         <p id="skill-confirm-message" className="text-sm text-text-secondary">
           {message}
         </p>
+
+        {policy.staleLink && (
+          <p
+            role="alert"
+            className="flex items-center gap-1.5 rounded-md border border-status-warning/60 bg-status-warning/10 p-2 text-xs font-semibold text-status-warning"
+          >
+            <ShieldAlert size={14} aria-hidden="true" />
+            {t("cockpit.confirm.staleLink")}
+          </p>
+        )}
 
         {policy.altitude && (
           <AltitudeStepper

@@ -27,7 +27,7 @@ import { useTranslations } from "next-intl";
 import { Command, Search } from "lucide-react";
 
 import {
-  activate,
+  activateBound,
   buildSkillContext,
   useSkillRegistry,
   type Skill,
@@ -35,6 +35,7 @@ import {
 } from "@/lib/skills";
 import { skillDisplayLabel, skillEffectText } from "@/lib/skills/skill-label";
 import { resolveSkillIcon } from "@/lib/skills/skill-icon";
+import { useBoundSkillResolver } from "@/lib/skills/use-skill-chord";
 import { useSettingsStore } from "@/stores/settings-store";
 import { DEFAULT_LOADOUT_ID } from "@/stores/settings/keybindings-slice";
 import { cn } from "@/lib/utils";
@@ -76,14 +77,16 @@ export function CockpitCommandPalette({
   const [query, setQuery] = useState("");
   const [highlight, setHighlight] = useState(0);
 
+  const resolveBound = useBoundSkillResolver(droneId);
   const rows = useMemo<Row[]>(() => {
     if (!droneId) return [];
     const skills = resolveForDrone(droneId);
     const stateMap = registryStates.get(droneId);
-    // Map each skill id to its bound chord (for the row's hotkey hint).
+    // Map each skill id to the chord that fires it now (an arm chord fires
+    // disarm while armed), for the row's hotkey hint.
     const chordOf = new Map<string, string>();
     for (const slot of loadout?.slots ?? []) {
-      if (slot.skillId && slot.key) chordOf.set(slot.skillId, slot.key);
+      if (slot.skillId && slot.key) chordOf.set(resolveBound(slot.skillId), slot.key);
     }
     return skills.map((skill) => ({
       skill,
@@ -94,7 +97,7 @@ export function CockpitCommandPalette({
     }));
     // registrySkills is a dep so a register/unregister re-resolves.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [droneId, resolveForDrone, registrySkills, registryStates, loadout, tRoot]);
+  }, [droneId, resolveForDrone, registrySkills, registryStates, loadout, tRoot, resolveBound]);
 
   const filtered = useMemo<Row[]>(() => {
     const q = query.trim().toLowerCase();
@@ -123,7 +126,7 @@ export function CockpitCommandPalette({
       // shows over the cockpit, not under the palette. `activate` still routes
       // through confirm / arm-gating / the reason toast for a disabled skill.
       onClose();
-      void activate(row.skill.id, buildSkillContext(droneId));
+      void activateBound(row.skill.id, buildSkillContext(droneId));
     },
     [droneId, onClose],
   );

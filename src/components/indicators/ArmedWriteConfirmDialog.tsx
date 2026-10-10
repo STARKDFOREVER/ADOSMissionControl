@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef } from "react";
+import { useTranslations } from "next-intl";
 import { ShieldAlert } from "lucide-react";
 import { useArmedConfirmStore } from "@/stores/armed-confirm-store";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,7 @@ export function ArmedWriteConfirmDialog() {
   const confirm = useArmedConfirmStore((s) => s.confirm);
   const cancel = useArmedConfirmStore((s) => s.cancel);
   const cancelRef = useRef<HTMLButtonElement>(null);
+  const t = useTranslations("armedWriteConfirm");
 
   if (!open || !context) return null;
 
@@ -39,9 +41,7 @@ export function ArmedWriteConfirmDialog() {
     <Modal
       open={open}
       onClose={cancel}
-      // Hardcoded English title: no locale key exists for it, so the literal
-      // is passed through unchanged rather than pointing at an invented key.
-      title="Vehicle is armed"
+      title={context.armStateUnknown ? t("titleUnknown") : t("title")}
       role="alertdialog"
       initialFocusRef={cancelRef}
       size="sm"
@@ -64,9 +64,7 @@ export function ArmedWriteConfirmDialog() {
         />
         <div className="flex-1">
           <p className="text-xs text-text-secondary leading-relaxed">
-            You are about to write {count} parameter{count === 1 ? "" : "s"}{" "}
-            to the flight controller while it is armed. The changes take
-            effect immediately and may affect in-flight behavior.
+            {context.armStateUnknown ? t("bodyUnknown", { count }) : t("body", { count })}
           </p>
 
           <div className="mt-3 border border-border-default rounded bg-bg-secondary p-2">

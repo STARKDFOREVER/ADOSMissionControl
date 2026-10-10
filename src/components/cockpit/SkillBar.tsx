@@ -33,10 +33,11 @@ import { useFlyQuickSettingsStore } from "@/stores/fly-quick-settings-store";
 import {
   useSkillRegistry,
   buildSkillContext,
-  activate,
+  activateBound,
   type Skill,
   type SkillState,
 } from "@/lib/skills";
+import { useBoundSkillResolver } from "@/lib/skills/use-skill-chord";
 import type { HotbarSlot } from "@/stores/settings/keybindings-slice";
 import { skillDisplayLabel } from "@/lib/skills/skill-label";
 import { SkillSlot } from "./SkillSlot";
@@ -90,15 +91,21 @@ export function SkillBar({ droneId }: { droneId: string }) {
 
   // Build the projected slot views: bound skill (if available on this drone) +
   // its live state. A slot bound to a skill not available on this drone renders
-  // empty (the loadout is per-operator; availability is per-drone).
+  // empty (the loadout is per-operator; availability is per-drone). A slot is
+  // projected through the binding resolver, so the arm slot renders Disarm
+  // while the vehicle is armed and the pause slot renders Resume while a
+  // mission is paused.
+  const resolveBound = useBoundSkillResolver(droneId);
   const slotViews = useMemo<SlotView[]>(() => {
     const slots: HotbarSlot[] = loadout?.slots ?? [];
     return slots.map((slot) => {
-      const skill = slot.skillId ? resolvedById.get(slot.skillId) ?? null : null;
+      const skill = slot.skillId
+        ? resolvedById.get(resolveBound(slot.skillId)) ?? null
+        : null;
       const state = skill ? stateMap?.get(skill.id) ?? IDLE : IDLE;
       return { slot, skill, state };
     });
-  }, [loadout, resolvedById, stateMap]);
+  }, [loadout, resolvedById, stateMap, resolveBound]);
 
   // A polite live region announces active/disabled/cooldown transitions so a
   // screen-reader pilot hears state changes without watching the rings. Charge
@@ -159,7 +166,7 @@ export function SkillBar({ droneId }: { droneId: string }) {
   // skill or state changes.
   const fireSkill = useCallback(
     (skill: Skill) => {
-      void activate(skill.id, buildSkillContext(droneId));
+      void activateBound(skill.id, buildSkillContext(droneId));
     },
     [droneId],
   );

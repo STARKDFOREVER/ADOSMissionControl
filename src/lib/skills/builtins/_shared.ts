@@ -12,6 +12,7 @@ import type {
   ConfirmGesture,
   ConfirmPolicy,
   SkillContext,
+  SkillProtocol,
   SkillState,
 } from "../types";
 
@@ -68,12 +69,34 @@ export const REASON = {
   alreadyDisarmed: "skills.reason.alreadyDisarmed",
   modeUnavailable: "skills.reason.modeUnavailable",
   noAutonomousNav: "skills.reason.noAutonomousNav",
+  linkStale: "skills.reason.linkStale",
 } as const;
 
 /** A drone has no live FC link when its protocol is absent. */
 export function disabledIfNoLink(ctx: SkillContext): SkillState | null {
   if (!ctx.protocol) return { kind: "disabled", reason: REASON.noFcLink };
   return null;
+}
+
+/**
+ * The link gate of a last-resort skill (kill, return home, land). A fresh link
+ * passes; a stale link still passes when a transport is open, so the command
+ * can be sent blind. Only a missing transport disables the skill.
+ */
+export function disabledIfNoBlindLink(ctx: SkillContext): SkillState | null {
+  if (ctx.protocol || ctx.blindProtocol) return null;
+  return { kind: "disabled", reason: REASON.noFcLink };
+}
+
+/** Mark a fireable last-resort state with the stale-link warning. */
+export function withStaleLinkWarning(ctx: SkillContext, state: SkillState): SkillState {
+  if (ctx.protocol || !ctx.blindProtocol || state.kind === "disabled") return state;
+  return { ...state, warning: REASON.linkStale };
+}
+
+/** The path a last-resort command goes out on: the live link, else blind. */
+export function lastResortPath(ctx: SkillContext): SkillProtocol | null {
+  return ctx.protocol ?? ctx.blindProtocol ?? null;
 }
 
 /**

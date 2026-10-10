@@ -241,6 +241,7 @@ export function buildSkillContextForNode(
     return {
       droneId: node._id,
       protocol: liveFc,
+      refresh: () => buildSkillContextForNode(node, options),
       armState,
       flightMode,
       availableModes: liveAvailableModes(liveFc) ?? [],
@@ -312,6 +313,7 @@ export function buildSkillContextForNode(
   return {
     droneId: node._id,
     protocol: sink,
+    refresh: () => buildSkillContextForNode(node, options),
     armState,
     flightMode,
     availableModes,

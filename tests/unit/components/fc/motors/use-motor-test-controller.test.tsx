@@ -10,6 +10,7 @@ import { useDroneManager, type ManagedDrone } from "@/stores/drone-manager";
 import { useDroneStore } from "@/stores/drone-store";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import type { DroneProtocol } from "@/lib/protocol/types";
+import { IntlWrapper as wrapper } from "../../../../helpers/intl-wrapper";
 
 function fakeProtocol() {
   const frames: number[][] = [];
@@ -40,7 +41,7 @@ const isIdle = (frame: number[] | undefined) => !!frame && frame.every((v) => v 
 async function startSpinning() {
   const { protocol, frames } = fakeProtocol();
   selectDrone("d1", protocol);
-  const hook = renderHook(() => useMotorTestController());
+  const hook = renderHook(() => useMotorTestController(), { wrapper });
   act(() => {
     expect(hook.result.current.enable()).toBe(true);
   });
