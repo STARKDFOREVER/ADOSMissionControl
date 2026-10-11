@@ -19,6 +19,9 @@ import type {
   PairedNodeProfile,
 } from "@/lib/plugins/types";
 
+/** One `contributes.tabs` entry as the manifest summary carries it. */
+type TabContribution = NonNullable<InstallManifestSummary["contributesTabs"]>[number];
+
 /** One denormalized slot contribution recorded on the install row. */
 export type InstallGcsContribution = GcsContributeRow;
 
@@ -73,28 +76,7 @@ export function buildGcsContributes(
     return row;
   });
 
-  // A node-detail tab declared under `contributes.tabs` (rather than as a
-  // `panels` entry that names slot node.detail.tab) otherwise only feeds the
-  // profile narrowing and never mounts. Emit each such tab as a node.detail.tab
-  // slot so the contribution producer mounts it — unless a panels slot already
-  // covers the same panelId (in which case the loop above kept it and picked up
-  // the tab's profile).
-  const mountedTabPanelIds = new Set(
-    rows.filter((r) => r.slot === NODE_DETAIL_TAB_SLOT).map((r) => r.panelId),
-  );
-  for (const tab of manifest.contributesTabs ?? []) {
-    if (mountedTabPanelIds.has(tab.panelId)) continue;
-    const row: InstallGcsContribution = {
-      slot: NODE_DETAIL_TAB_SLOT,
-      panelId: tab.panelId,
-    };
-    if (tab.title !== undefined) row.title = tab.title;
-    if (tab.icon !== undefined) row.icon = tab.icon;
-    if (tab.order !== undefined) row.order = tab.order;
-    if (tab.profile && tab.profile.length > 0) row.profile = [...tab.profile];
-    rows.push(row);
-    mountedTabPanelIds.add(tab.panelId);
-  }
+  appendTabOnlyContributions(rows, manifest.contributesTabs ?? []);
 
   // Dedicated `missionTemplates[]` / `mapOverlays[]` entries mount in the
   // `mission.template` / `map.overlay` slots like a panel naming that slot,
@@ -114,6 +96,38 @@ export function buildGcsContributes(
     }
   }
   return rows;
+}
+
+/**
+ * A node-detail tab declared under `contributes.tabs` (rather than as a
+ * `panels` entry that names slot node.detail.tab) otherwise only feeds the
+ * profile narrowing and never mounts. Append each such tab to `rows` as a
+ * node.detail.tab slot so the contribution producer mounts it, unless a row
+ * already covers the same panelId (that row keeps its own entry and the tab
+ * only supplied its profile). Shared by the install record projection above
+ * and the local-first agent detail (`use-local-agent-plugins`), so a tabs-only
+ * plugin mounts the same signed in and signed out.
+ */
+export function appendTabOnlyContributions(
+  rows: GcsContributeRow[],
+  tabs: ReadonlyArray<TabContribution>,
+): void {
+  const mountedTabPanelIds = new Set(
+    rows.filter((r) => r.slot === NODE_DETAIL_TAB_SLOT).map((r) => r.panelId),
+  );
+  for (const tab of tabs) {
+    if (mountedTabPanelIds.has(tab.panelId)) continue;
+    const row: GcsContributeRow = {
+      slot: NODE_DETAIL_TAB_SLOT,
+      panelId: tab.panelId,
+    };
+    if (tab.title !== undefined) row.title = tab.title;
+    if (tab.icon !== undefined) row.icon = tab.icon;
+    if (tab.order !== undefined) row.order = tab.order;
+    if (tab.profile && tab.profile.length > 0) row.profile = [...tab.profile];
+    rows.push(row);
+    mountedTabPanelIds.add(tab.panelId);
+  }
 }
 
 /** One denormalized flight-skill contribution recorded on the install row.

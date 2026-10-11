@@ -11,7 +11,7 @@ import { renderHook } from "@testing-library/react";
 
 // Control the active-draw surface the dispatcher reads.
 const getActiveDrawApi = vi.fn();
-vi.mock("@/lib/drawing/drawing-manager", () => ({
+vi.mock("@/lib/drawing/active-draw-api", () => ({
   getActiveDrawApi: () => getActiveDrawApi(),
 }));
 

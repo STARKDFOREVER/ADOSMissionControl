@@ -106,6 +106,7 @@ vi.mock("../DronePluginCard", () => ({
 import { DronePluginsList } from "../DronePluginsList";
 import { useAgentPluginInventoryStore } from "@/stores/agent-plugin-inventory-store";
 import { useLocalNodesStore } from "@/stores/local-nodes-store";
+import { useSettingsStore } from "@/stores/settings-store";
 
 function renderList(agentId: string) {
   return render(
@@ -328,5 +329,99 @@ describe("DronePluginsList without a Convex answer", () => {
     const cards = screen.getAllByTestId("card");
     expect(cards).toHaveLength(1);
     expect(cards[0].textContent).toBe("com.example.both|registry|running");
+  });
+});
+
+describe("DronePluginsList failure reason", () => {
+  const TAMPERED = "tampered: agent/py/x.py digest mismatch";
+
+  beforeEach(() => {
+    convexRows = [];
+    convexState = "skipped";
+    lanList.mockReset();
+    useLocalNodesStore.setState({
+      nodes: [{ deviceId: "drone-1", hostname: "http://192.168.1.51:8080", apiKey: "k" }],
+    } as never);
+    useAgentPluginInventoryStore.getState().clear();
+  });
+
+  it("renders a failed LAN plugin in the error state with its reason", async () => {
+    lanList.mockImplementation(async () => ({
+      installs: [
+        {
+          plugin_id: "com.example.tampered",
+          version: "1.0.0",
+          source: "local_file",
+          signer_id: null,
+          status: "failed",
+          failure_reason: TAMPERED,
+        },
+        {
+          plugin_id: "com.example.healthy",
+          version: "1.0.0",
+          source: "local_file",
+          signer_id: null,
+          status: "running",
+          failure_reason: null,
+        },
+      ],
+    }));
+    renderList("drone-1");
+    await waitFor(() => expect(screen.getAllByTestId("card")).toHaveLength(2));
+    expect(screen.getAllByTestId("card").map((c) => c.textContent)).toEqual([
+      "com.example.tampered|local_file|crashed",
+      "com.example.healthy|local_file|running",
+    ]);
+    const reasons = screen.getAllByTestId("plugin-failure-reason");
+    expect(reasons).toHaveLength(1);
+    expect(reasons[0].textContent).toBe(`Stopped by the node: ${TAMPERED}`);
+    expect(reasons[0].closest("li")?.dataset.pluginId).toBe("com.example.tampered");
+  });
+
+  it("annotates a Convex row with the reason the node reports", async () => {
+    convexState = "ready";
+    convexRows = [
+      {
+        _id: "row-1",
+        pluginId: "com.example.revoked",
+        name: "Revoked",
+        version: "1.0.0",
+        source: "registry",
+        status: "disabled",
+        halves: ["agent"],
+        deviceId: "drone-1",
+      },
+    ];
+    lanList.mockImplementation(async () => ({
+      installs: [
+        {
+          plugin_id: "com.example.revoked",
+          version: "1.0.0",
+          source: "registry",
+          signer_id: null,
+          status: "disabled",
+          failure_reason: "revocation_list_unreadable",
+        },
+      ],
+    }));
+    renderList("drone-1");
+    await waitFor(() =>
+      expect(screen.getByTestId("plugin-failure-reason").textContent).toBe(
+        "Stopped by the node: revocation_list_unreadable",
+      ),
+    );
+    expect(screen.getByTestId("card").textContent).toBe("com.example.revoked|registry|disabled");
+  });
+
+  it("carries the demo failed-plugin example", () => {
+    useSettingsStore.setState({ _hasHydrated: true, demoMode: true } as never);
+    try {
+      renderList("charlie-3");
+      const reason = screen.getByTestId("plugin-failure-reason");
+      expect(reason.textContent).toContain("tampered: ");
+      expect(reason.closest("li")?.dataset.pluginId).toBe("com.altnautica.siyi-pod");
+    } finally {
+      useSettingsStore.setState({ demoMode: false } as never);
+    }
   });
 });

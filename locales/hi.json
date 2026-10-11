@@ -2360,7 +2360,8 @@
       "crashed": "Crashed",
       "installed": "Installed"
     },
-    "revocationPending": "Revocation pending (vehicle armed)"
+    "revocationPending": "Revocation pending (vehicle armed)",
+    "failureReason": "Stopped by the node: {reason}"
   },
   "droneRadio": {
     "airSideBadge": "Air side",
@@ -5286,7 +5287,8 @@
         "halves": "Halves",
         "installed": "Installed",
         "enabled": "Enabled",
-        "manifestHash": "Manifest hash"
+        "manifestHash": "Manifest hash",
+        "failureReason": "Failure reason"
       },
       "noPermissions": "No permissions declared.",
       "required": "Required",

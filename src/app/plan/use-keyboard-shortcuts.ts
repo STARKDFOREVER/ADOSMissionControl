@@ -29,7 +29,7 @@
 import { useEffect } from "react";
 import type { PlannerTool } from "@/lib/types";
 import { isTypingTarget, isElectron } from "@/lib/utils";
-import { getActiveDrawApi } from "@/lib/drawing/drawing-manager";
+import { getActiveDrawApi } from "@/lib/drawing/active-draw-api";
 import { TOOL_SHORTCUT_MAP } from "@/lib/planner-shortcuts";
 
 interface UseKeyboardShortcutsParams {

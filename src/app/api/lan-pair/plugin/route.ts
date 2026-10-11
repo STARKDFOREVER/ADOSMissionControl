@@ -2,7 +2,7 @@
  * @module LanPairPluginRoute
  * @description Same-origin, binary-safe proxy for the plugin routes an HTTPS
  * Mission Control needs on a plain-HTTP LAN node: an inline GCS module's
- * attestation, manifest and `gcs/` files, its per-node config, and the
+ * attestation, manifest and `gcs/` files, its locale bundles, its per-node config, and the
  * plugin's own HTTP server behind the agent passthrough
  * (`/api/plugins/{id}/x/*`). The browser cannot reach the node itself from an
  * HTTPS page (mixed content), so the call is relayed server-side, exactly as
@@ -10,7 +10,7 @@
  *
  * `<METHOD> ?host=<node>&path=/api/plugins/<id>/<sub>[&query=<qs>][&peer=<id>]`
  * with the pairing key in `X-ADOS-Key` (never in the URL). `sub` is one of
- * `attestation`, `manifest`, `state`, `config`, `gcs/<path>` or `x/<path>`; the method
+ * `attestation`, `manifest`, `state`, `config`, `locales/<lang>`, `gcs/<path>` or `x/<path>`; the method
  * must fit it. `peer` selects the relay lane: `host` is then the ground station
  * and the upstream is its relay-proxy route for that drone.
  *
@@ -152,9 +152,10 @@ async function handle(req: NextRequest, method: Method): Promise<NextResponse> {
     sub === "manifest" ||
     sub === "state" ||
     sub === "config" ||
+    /^locales\/[A-Za-z0-9_-]{1,16}$/.test(sub) ||
     /^(gcs|x)\/.+/.test(sub);
   if (!match || !subOk || !isSafeSubPath(path.slice(1))) {
-    return proxyError(400, "bad_path", "path must be a plugin attestation, manifest, config, gcs or x route");
+    return proxyError(400, "bad_path", "path must be a plugin attestation, manifest, config, locales, gcs or x route");
   }
   if (!allowedMethods(sub).has(method)) {
     return proxyError(405, "method_not_allowed", `${method} is not allowed on ${sub.split("/")[0]}`);

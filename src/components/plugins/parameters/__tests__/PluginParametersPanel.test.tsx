@@ -13,10 +13,11 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { NextIntlClientProvider } from "next-intl";
 
 import type { ParsedParameterContribution } from "@/lib/plugins/parameters/parse";
 
-const { writeMock, toastMock } = vi.hoisted(() => ({
+const { writeMock, toastMock, reachMock, getLocaleMock } = vi.hoisted(() => ({
   writeMock: vi.fn<
     (input: {
       droneId: string;
@@ -26,6 +27,16 @@ const { writeMock, toastMock } = vi.hoisted(() => ({
     }) => Promise<boolean>
   >(),
   toastMock: vi.fn(),
+  reachMock: vi.fn<(droneId: string) => unknown>(() => null),
+  getLocaleMock: vi.fn<(pluginId: string, lang: string) => Promise<Record<string, string> | null>>(),
+}));
+
+vi.mock("@/lib/plugins/node-agent-reach", () => ({
+  resolveNodeAgentReach: reachMock,
+  pluginClientForReach: () => ({
+    getConfig: () => Promise.reject(new Error("unreachable")),
+    getLocale: getLocaleMock,
+  }),
 }));
 
 vi.mock("@/lib/skills/plugin-config-writer", () => ({
@@ -43,6 +54,7 @@ vi.mock("@/components/vision/ModelPicker", () => ({
 }));
 
 import { PluginParametersPanel } from "../PluginParametersPanel";
+import { resetPluginLocaleCache } from "@/lib/plugins/plugin-locale";
 
 const DEFAULT_NOTE = "Default — not read from drone";
 
@@ -67,21 +79,68 @@ function detectorParam(): ParsedParameterContribution {
 function renderPanel(
   parameters: ParsedParameterContribution[],
   values?: Record<string, string | number | boolean>,
+  locale = "en",
 ) {
   return render(
-    <PluginParametersPanel
-      droneId="drone-1"
-      pluginId="com.example.followme"
-      parameters={parameters}
-      values={values}
-    />,
+    <NextIntlClientProvider locale={locale} messages={{}}>
+      <PluginParametersPanel
+        droneId="drone-1"
+        pluginId="com.example.followme"
+        parameters={parameters}
+        values={values}
+      />
+    </NextIntlClientProvider>,
   );
 }
+
+function groupedParam(group: string): ParsedParameterContribution {
+  return { ...numberParam(), ui: { label: "Follow distance", group } };
+}
+
+describe("PluginParametersPanel — group headings", () => {
+  beforeEach(() => {
+    resetPluginLocaleCache();
+    getLocaleMock.mockReset();
+    reachMock.mockReturnValue({ hostUrl: "http://node.example.com:8080", apiKey: "k", peerDeviceId: null });
+  });
+
+  it("resolves the group through the plugin's locale bundle", async () => {
+    getLocaleMock.mockResolvedValue({ "settings.title": "Settings" });
+    renderPanel([groupedParam("settings.title")]);
+    expect(await screen.findByText("Settings")).toBeTruthy();
+    expect(screen.queryByText("settings.title")).toBeNull();
+    expect(getLocaleMock).toHaveBeenCalledWith("com.example.followme", "en");
+  });
+
+  it("falls back to the en bundle when the active language has none", async () => {
+    getLocaleMock.mockImplementation(async (_id, lang) =>
+      lang === "en" ? { "settings.title": "Settings" } : null,
+    );
+    renderPanel([groupedParam("settings.title")], undefined, "de");
+    expect(await screen.findByText("Settings")).toBeTruthy();
+    expect(getLocaleMock.mock.calls.map((c) => c[1])).toEqual(["de", "en"]);
+  });
+
+  it("shows the raw group only when the bundle has no entry for it", async () => {
+    getLocaleMock.mockResolvedValue({ "other.key": "Other" });
+    renderPanel([groupedParam("Limits")]);
+    await waitFor(() => expect(getLocaleMock).toHaveBeenCalled());
+    expect(screen.getByText("Limits")).toBeTruthy();
+  });
+
+  it("keeps the raw group when the agent cannot serve the bundle", async () => {
+    getLocaleMock.mockRejectedValue(new Error("offline"));
+    renderPanel([groupedParam("settings.title")]);
+    await waitFor(() => expect(getLocaleMock).toHaveBeenCalled());
+    expect(screen.getByText("settings.title")).toBeTruthy();
+  });
+});
 
 describe("PluginParametersPanel — status honesty", () => {
   beforeEach(() => {
     writeMock.mockReset();
     toastMock.mockReset();
+    reachMock.mockReturnValue(null);
   });
 
   it("writes nothing when a field is focused and left without an edit", () => {

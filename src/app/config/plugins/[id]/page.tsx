@@ -14,6 +14,7 @@ import { PluginAgentClient } from "@/lib/agent/plugin-client";
 import { communityApi } from "@/lib/community-api";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import { useNodeDirectAgent } from "@/components/command/settings/use-node-direct-agent";
+import { useNodePluginList } from "@/hooks/use-node-plugin-list";
 import { deviceIdFromNodeId } from "@/lib/agent/node-id";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
@@ -54,9 +55,15 @@ export default function PluginDetailPage() {
   // revokes and removal go to that node's agent only, never to whichever
   // node happens to be attached. A GCS-only install has no agent half.
   const installDroneId = data?.install.droneId ?? null;
-  const installNode = useNodeDirectAgent(
-    installDroneId ? (deviceIdFromNodeId(installDroneId) ?? installDroneId) : null,
-  );
+  const installDeviceId = installDroneId
+    ? (deviceIdFromNodeId(installDroneId) ?? installDroneId)
+    : null;
+  const installNode = useNodeDirectAgent(installDeviceId);
+  // The node's own record of why it stopped or refused this plugin (a tamper,
+  // a revoked signer). Only a LAN-paired node's list carries it.
+  const failureReason =
+    useNodePluginList(installDeviceId)?.find((row) => row.plugin_id === data?.install.pluginId)
+      ?.failure_reason ?? null;
   const agentClient = useMemo(
     () =>
       installNode ? new PluginAgentClient(installNode.agentUrl, installNode.apiKey ?? "") : null,
@@ -155,6 +162,9 @@ export default function PluginDetailPage() {
         <>
           <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
             <Field label={t("detail.field.status")} value={install.status} capitalize />
+            {failureReason && (
+              <Field label={t("detail.field.failureReason")} value={failureReason} mono />
+            )}
             <Field label={t("detail.field.source")} value={install.source} capitalize />
             {install.signerId && <Field label={t("detail.field.signer")} value={install.signerId} mono />}
             <Field label={t("detail.field.halves")} value={install.halves.join(", ")} capitalize />
@@ -171,7 +181,7 @@ export default function PluginDetailPage() {
             <Field label={t("detail.field.manifestHash")} value={install.manifestHash.slice(0, 16) + "..."} mono />
           </dl>
           <PluginSettingsSections
-            deviceId={installDroneId ? (deviceIdFromNodeId(installDroneId) ?? installDroneId) : null}
+            deviceId={installDeviceId}
             pluginId={install.pluginId}
           />
         </>

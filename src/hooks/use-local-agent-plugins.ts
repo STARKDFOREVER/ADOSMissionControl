@@ -42,9 +42,11 @@ import {
   type LocalPluginInstall,
 } from "@/stores/local-plugin-installs-store";
 import { PluginAgentClient } from "@/lib/agent/plugin-client";
+import type { PluginAgentManifestDetail } from "@/lib/agent/plugin-client-types";
 import type { ArchivePin } from "@/lib/plugins/archive-pin";
 import { parseParameterContributions } from "@/lib/plugins/parameters/parse";
 import { parseTabContributions } from "@/lib/plugins/contributions/parse";
+import { appendTabOnlyContributions } from "@/components/plugins/transports/build-install-contributions";
 import { parseNodePageContributions } from "@/lib/plugins/contributions/node-pages";
 import type { PluginParameter } from "@/lib/plugins/parameters/schema";
 import type {
@@ -246,6 +248,26 @@ function fleetRecordToDetail(install: LocalPluginInstall): LocalAgentPluginDetai
  * effects on it do not re-run. */
 const NO_PLUGINS: ReadonlyArray<LocalAgentPluginDetail> = Object.freeze([]);
 
+/** Detail reads in flight, keyed by agent, plugin and version. A drone's detail
+ * view mounts this hook several times at once; they share one request instead
+ * of spending the agent's per-caller request budget on copies. An entry leaves
+ * when its read settles, so this never serves a stale or failed answer. */
+const detailReads = new Map<string, Promise<PluginAgentManifestDetail>>();
+
+function readDetail(
+  client: PluginAgentClient,
+  agentUrl: string,
+  pluginId: string,
+  version: string,
+): Promise<PluginAgentManifestDetail> {
+  const key = `${agentUrl}|${pluginId}@${version}`;
+  const pending = detailReads.get(key);
+  if (pending) return pending;
+  const read = client.get(pluginId).finally(() => detailReads.delete(key));
+  detailReads.set(key, read);
+  return read;
+}
+
 /**
  * Local-first plugin detail for `deviceId`. Returns `null` when not in
  * local mode (signed in, or demo) or while the agent fetch is in flight;
@@ -331,15 +353,17 @@ export function useLocalAgentPlugins(
     const client = new PluginAgentClient(agentUrl, apiKeyRef.current);
 
     void Promise.all(
-      liveInstalls.map(async ({ plugin_id: pluginId }): Promise<LocalAgentPluginDetail | null> => {
+      liveInstalls.map(async ({ plugin_id: pluginId, version }): Promise<LocalAgentPluginDetail | null> => {
         try {
-          const detail = await client.get(pluginId);
+          const detail = await readDetail(client, agentUrl, pluginId, version);
           const gcs = detail.manifest.gcs ?? null;
-          // The `tabs[]` array carries the per-tab `profile` narrowing; the
-          // node.detail.tab slot itself comes through `panels`. Build a
-          // panelId → profile map so a tab slot entry gets its profile.
+          // The `tabs[]` array carries the per-tab `profile` narrowing for a
+          // node.detail.tab a `panels` entry names; a tab no panel covers is
+          // mounted from `tabs[]` itself below. Build a panelId → profile map
+          // so a panels tab slot entry gets its profile.
+          const tabs = parseTabContributions(gcs?.contributes.tabs) ?? [];
           const tabProfileById = new Map<string, PairedNodeProfile[]>();
-          for (const tab of parseTabContributions(gcs?.contributes.tabs) ?? []) {
+          for (const tab of tabs) {
             if (tab.profile) tabProfileById.set(tab.panelId, tab.profile);
           }
           const slotEntries: LocalAgentGcsContribution[] = [];
@@ -360,6 +384,7 @@ export function useLocalAgentPlugins(
               }
             }
           }
+          appendTabOnlyContributions(slotEntries, tabs);
           slotEntries.push(...parseNodePageContributions(gcs?.contributes));
           // Dedicated mission templates / map overlays mount in their slots
           // like a panel naming that slot, unless a panel covers the same id.

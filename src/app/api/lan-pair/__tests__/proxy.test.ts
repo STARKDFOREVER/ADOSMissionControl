@@ -184,6 +184,24 @@ describe("path gate", () => {
     expect(init.redirect).toBe("manual");
     expect(new Headers(init.headers).get("X-ADOS-Key")).toBe("k");
   });
+
+  it("forwards a plugin locale bundle read", async () => {
+    upstream('{"settings.title":"Settings"}', { status: 200, headers: { "content-type": "application/json" } });
+    const res = await pluginGet("/api/plugins/com.example.p/locales/en");
+    expect(res.status).toBe(200);
+    const [url] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("http://192.168.1.50:8080/api/plugins/com.example.p/locales/en");
+  });
+
+  it.each([
+    ["/api/plugins/com.example.p/locales/en/extra"],
+    ["/api/plugins/com.example.p/locales/en.json"],
+    ["/api/plugins/com.example.p/locales/"],
+  ])("refuses locale path %j", async (path) => {
+    const res = await pluginGet(path);
+    expect(res.status).toBe(400);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });
 
 describe("response", () => {

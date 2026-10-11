@@ -111,7 +111,14 @@ export function DronePluginsList({
         ...s,
         installId: rows[i]?.installId ?? `demo-install-${i}`,
         deviceId: agentId,
+        failureReason: rows[i]?.failureReason,
       }));
+    }
+    // The node's own record of why it stopped or refused a plugin. Only the
+    // LAN list carries it; it annotates a card from any source.
+    const failureReasons = new Map<string, string>();
+    for (const install of lanInstalls ?? []) {
+      if (install.failure_reason) failureReasons.set(install.plugin_id, install.failure_reason);
     }
     const convexRows = installs ?? [];
     const fromConvex: DronePluginCardData[] = convexRows.map((row) => ({
@@ -125,6 +132,7 @@ export function DronePluginsList({
       installId: String(row._id),
       // The query selects this drone's rows, so the card's device is the list's.
       deviceId: agentId,
+      failureReason: failureReasons.get(row.pluginId),
     }));
     // Merge agent-reported inventory entries that the Convex query
     // did not return. These are typically webapp installs done on
@@ -150,10 +158,13 @@ export function DronePluginsList({
         name: install.plugin_id,
         source: source ?? "agent_webapp",
         signerId: install.signer_id ?? undefined,
-        status: install.status as PluginInstallStatus,
+        // The host reports `failed` for a plugin it stopped (a tamper, a
+        // revoked signer); the card renders that as its error state.
+        status: (install.status === "failed" ? "crashed" : install.status) as PluginInstallStatus,
         halves: ["agent"],
         installId: `lan:${install.plugin_id}`,
         deviceId: agentId,
+        failureReason: install.failure_reason ?? undefined,
       });
     }
     const fromAgent: DronePluginCardData[] = (inventory ?? [])
@@ -183,6 +194,7 @@ export function DronePluginsList({
         // Per-service readiness the agent reported for this plugin's
         // declared services (ready / not-ready with a reason).
         serviceStatus: entry.service_status ?? undefined,
+        failureReason: failureReasons.get(entry.plugin_id),
       }));
     return [...fromConvex, ...fromLan, ...fromAgent];
   }, [agentId, installs, lanInstalls, inventory]);
@@ -214,6 +226,7 @@ export function DronePluginsList({
       className={className}
       revocationPending={revocationPending}
       revocationLabel={t("revocationPending")}
+      failureLabel={(reason) => t("failureReason", { reason })}
     />
   );
 }
@@ -228,11 +241,13 @@ function PluginCardList({
   className,
   revocationPending,
   revocationLabel,
+  failureLabel,
 }: {
   cards: DronePluginCardData[];
   className?: string;
   revocationPending: ReadonlySet<string>;
   revocationLabel: string;
+  failureLabel: (reason: string) => string;
 }) {
   const listRef = useRef<HTMLUListElement>(null);
   const pendingPluginId = useUiStore((s) => s.pendingPluginId);
@@ -288,6 +303,14 @@ function PluginCardList({
             </span>
           )}
           <DronePluginCard install={c} />
+          {c.failureReason && (
+            <p
+              data-testid="plugin-failure-reason"
+              className="mt-1 break-words font-mono text-[10px] text-status-error"
+            >
+              {failureLabel(c.failureReason)}
+            </p>
+          )}
         </li>
       ))}
     </ul>

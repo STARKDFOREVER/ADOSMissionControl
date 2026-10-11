@@ -153,6 +153,28 @@ export class PluginAgentClient {
     return res.arrayBuffer();
   }
 
+  /** The installed plugin's `locales/<lang>.json` string bundle, or null when
+   * the plugin ships no bundle for `lang`. Non-string values are dropped. */
+  async getLocale(
+    pluginId: string,
+    lang: string,
+    init?: { signal?: AbortSignal },
+  ): Promise<Record<string, string> | null> {
+    const res = await this.fetchImpl(this.pluginUrl(pluginId, `locales/${lang}`), {
+      headers: this.authHeader(),
+      signal: init?.signal,
+    });
+    if (res.status === 404) return null;
+    const body = await this.parse<unknown>(res);
+    const bundle: Record<string, string> = {};
+    if (typeof body === "object" && body !== null && !Array.isArray(body)) {
+      for (const [key, value] of Object.entries(body)) {
+        if (typeof value === "string") bundle[key] = value;
+      }
+    }
+    return bundle;
+  }
+
   /** The installed plugin's signature and file digests. */
   async getAttestation(
     pluginId: string,

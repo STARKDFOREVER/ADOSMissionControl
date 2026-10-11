@@ -5,9 +5,11 @@
  *   - cloud / demo mode → inert (returns null so the cloud path wins)
  *   - signed-out + LAN node → the node's own install list names what is
  *     installed; each enabled / running plugin's agent detail is fetched and
- *     the raw manifest dicts normalized (panels → slot entries, skills →
- *     camelCase rows with arm_requirement / activation.config_key /
- *     state.topic flattened). No browser-local install record is involved.
+ *     the raw manifest dicts normalized (panels → slot entries, a tab only
+ *     `tabs[]` declares → a node.detail.tab entry, skills → camelCase rows
+ *     with arm_requirement / activation.config_key / state.topic flattened).
+ *     No browser-local install record is involved.
+ *   - hooks mounted together share one in-flight detail read per plugin.
  */
 
 import { describe, it, expect, vi, beforeEach, afterAll } from "vitest";
@@ -228,6 +230,49 @@ describe("useLocalAgentPlugins", () => {
     expect(action.defaultKey).toBe("f");
   });
 
+  it("mounts a node.detail.tab declared only under contributes.tabs", async () => {
+    // The agent's detail for a plugin whose tab no `panels` entry names (the
+    // Gimbal tab): it must still mount, as the signed-in install row does.
+    getImpl.value = async () => ({
+      install: { status: "running" },
+      manifest: {
+        version: "1.4.1",
+        name: "Gimbal",
+        gcs: {
+          entrypoint: "gcs/plugin.bundle.js",
+          isolation: "iframe",
+          contributes: {
+            panels: [],
+            tabs: [
+              {
+                id: "gimbal-control",
+                slot: "node.detail.tab",
+                profile: ["drone"],
+                title: "Gimbal",
+                icon: "gimbal",
+                order: 60,
+              },
+            ],
+          },
+          locales: [],
+        },
+      },
+      granted_capabilities: ["ui.slot.node-detail-tab"],
+    });
+    const { result } = renderHook(() => useLocalAgentPlugins("drone-1"));
+    await waitFor(() => expect(result.current).not.toBeNull());
+    expect(result.current![0].gcsContributes).toEqual([
+      {
+        slot: "node.detail.tab",
+        panelId: "gimbal-control",
+        title: "Gimbal",
+        icon: "gimbal",
+        order: 60,
+        profile: ["drone"],
+      },
+    ]);
+  });
+
   it("skips a plugin the agent no longer knows (get throws)", async () => {
     getImpl.value = async () => {
       throw new Error("404");
@@ -235,6 +280,29 @@ describe("useLocalAgentPlugins", () => {
     const { result } = renderHook(() => useLocalAgentPlugins("drone-1"));
     await waitFor(() => expect(result.current).not.toBeNull());
     expect(result.current).toEqual([]);
+  });
+
+  it("shares one detail read between hooks mounted together", async () => {
+    const gate = Promise.withResolvers<void>();
+    const get = vi.fn(async () => {
+      await gate.promise;
+      return FOLLOW_ME_DETAIL;
+    });
+    getImpl.value = get;
+    const { result } = renderHook(() => [
+      useLocalAgentPlugins("drone-1"),
+      useLocalAgentPlugins("drone-1"),
+    ]);
+    await waitFor(() => expect(get).toHaveBeenCalled());
+    // Give the second hook time to ask while the first read is still out.
+    const asked = Promise.withResolvers<void>();
+    setTimeout(asked.resolve, 50);
+    await asked.promise;
+    gate.resolve();
+    await waitFor(() => expect(result.current[1]).not.toBeNull());
+    expect(result.current[0]).toHaveLength(1);
+    expect(result.current[1]).toHaveLength(1);
+    expect(get).toHaveBeenCalledTimes(1);
   });
 
   it("surfaces the pages of a plugin installed outside this browser", async () => {

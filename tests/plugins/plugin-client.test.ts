@@ -21,6 +21,19 @@ describe("PluginAgentClient", () => {
     client = new PluginAgentClient("http://agent.local", "k1");
   });
 
+  it("reads a locale bundle, keeps string values and maps 404 to null", async () => {
+    let seen = "";
+    mockFetch(async (input) => {
+      seen = String(input);
+      return seen.endsWith("/locales/en")
+        ? new Response(JSON.stringify({ "settings.title": "Settings", n: 1 }), { status: 200 })
+        : new Response(JSON.stringify({ error: { code: 4, kind: "not_found", message: "x" } }), { status: 404 });
+    });
+    expect(await client.getLocale("com.example.basic", "en")).toEqual({ "settings.title": "Settings" });
+    expect(seen).toBe("http://agent.local/api/plugins/com.example.basic/locales/en");
+    expect(await client.getLocale("com.example.basic", "de")).toBeNull();
+  });
+
   it("sends the api key header on list", async () => {
     let captured: Headers | undefined;
     mockFetch(async (input, init) => {

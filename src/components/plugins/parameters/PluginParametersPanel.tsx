@@ -29,6 +29,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLocale } from "next-intl";
 
 import { useToast } from "@/components/ui/toast";
 import {
@@ -40,6 +41,7 @@ import {
   pluginClientForReach,
   resolveNodeAgentReach,
 } from "@/lib/plugins/node-agent-reach";
+import { loadPluginLocale, type PluginLocaleBundle } from "@/lib/plugins/plugin-locale";
 import { writePluginConfigValue } from "@/lib/skills/plugin-config-writer";
 import { isDemoMode } from "@/lib/utils";
 
@@ -139,6 +141,25 @@ export function PluginParametersPanel({
       alive = false;
     };
   }, [droneId, pluginId, parameters]);
+
+  // A group heading is a key into the plugin's own locale bundle (the
+  // manifests use e.g. `settings.title`); read the bundle once per node,
+  // plugin and language. The raw value shows only when it has no entry.
+  const lang = useLocale();
+  const [strings, setStrings] = useState<PluginLocaleBundle>({});
+  const hasGroups = parameters.some((param) => param.ui?.group);
+  useEffect(() => {
+    if (!hasGroups || isDemoMode()) return;
+    const reach = resolveNodeAgentReach(droneId);
+    if (!reach) return;
+    let alive = true;
+    void loadPluginLocale(reach, pluginId, lang).then((bundle) => {
+      if (alive) setStrings(bundle);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [droneId, pluginId, lang, hasGroups]);
 
   // Group parameters by `ui.group`; order groups by first appearance and
   // controls within a group by `ui.order` then declaration order.
@@ -240,7 +261,7 @@ export function PluginParametersPanel({
           <section key={group || "__default"} className="flex flex-col gap-3">
             {group ? (
               <h4 className="text-[11px] font-semibold uppercase tracking-wide text-text-tertiary">
-                {group}
+                {Object.prototype.hasOwnProperty.call(strings, group) ? strings[group] : group}
               </h4>
             ) : null}
             {visible.map((param) => {

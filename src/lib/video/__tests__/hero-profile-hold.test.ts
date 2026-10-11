@@ -1,16 +1,19 @@
 /**
  * The hero hold takes a renewed lease under one per-tab holder, shares it
  * between surfaces, releases it after a grace, never promotes a ground
- * station, and falls back to a plain set on an agent without leases.
+ * station, retries a rate-limited promotion while still held, and falls back
+ * to a plain set on an agent without leases.
  *
  * @license GPL-3.0-only
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { AgentHttpError } from "@/lib/agent/agent-client/transport";
 import {
   acquireHeroProfile,
   HERO_LEASE_S,
+  HERO_RATE_LIMIT_BACKOFF_MS,
   HERO_RELEASE_GRACE_MS,
   HERO_RENEW_MS,
   heroHolderId,
@@ -43,7 +46,7 @@ function fakeClient(
     setVideoProfile,
     releaseVideoProfile,
   } as unknown as HeroProfileClient;
-  return { client, setVideoProfile, releaseVideoProfile };
+  return { client, getFullStatus, setVideoProfile, releaseVideoProfile };
 }
 
 /** Let the promote chain's awaits settle. */
@@ -141,6 +144,43 @@ describe("acquireHeroProfile", () => {
     release();
     await vi.advanceTimersByTimeAsync(HERO_RELEASE_GRACE_MS);
     expect(setVideoProfile).toHaveBeenCalledTimes(1);
+    expect(releaseVideoProfile).not.toHaveBeenCalled();
+  });
+
+  it("retries a rate-limited promotion and renews the lease it then takes", async () => {
+    const { client, getFullStatus, setVideoProfile } = fakeClient("thumbnail");
+    getFullStatus.mockRejectedValueOnce(new AgentHttpError(429, "slow down"));
+    acquireHeroProfile(agent, client);
+    await settle();
+    expect(setVideoProfile).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(HERO_RATE_LIMIT_BACKOFF_MS[0]);
+    const lease = { holder: heroHolderId(), leaseS: HERO_LEASE_S };
+    expect(getFullStatus).toHaveBeenCalledTimes(2);
+    expect(setVideoProfile.mock.calls).toEqual([["hero", lease]]);
+    await vi.advanceTimersByTimeAsync(HERO_RENEW_MS);
+    expect(setVideoProfile.mock.calls).toEqual([["hero", lease], ["hero", lease]]);
+  });
+
+  it("retries a rate-limited lease request too, a bounded number of times", async () => {
+    const { client, setVideoProfile } = fakeClient("thumbnail");
+    setVideoProfile.mockRejectedValue(new AgentHttpError(429, "slow down"));
+    acquireHeroProfile(agent, client);
+    await settle();
+    for (const delay of HERO_RATE_LIMIT_BACKOFF_MS) await vi.advanceTimersByTimeAsync(delay);
+    await vi.advanceTimersByTimeAsync(HERO_RENEW_MS * 2);
+    expect(setVideoProfile).toHaveBeenCalledTimes(HERO_RATE_LIMIT_BACKOFF_MS.length + 1);
+  });
+
+  it("stops retrying once the last surface lets go", async () => {
+    const { client, getFullStatus, setVideoProfile, releaseVideoProfile } =
+      fakeClient("thumbnail");
+    getFullStatus.mockRejectedValue(new AgentHttpError(429, "slow down"));
+    const release = acquireHeroProfile(agent, client);
+    await settle();
+    release();
+    await vi.advanceTimersByTimeAsync(HERO_RELEASE_GRACE_MS + HERO_RENEW_MS);
+    expect(getFullStatus).toHaveBeenCalledTimes(1);
+    expect(setVideoProfile).not.toHaveBeenCalled();
     expect(releaseVideoProfile).not.toHaveBeenCalled();
   });
 

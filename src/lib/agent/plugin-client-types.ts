@@ -57,6 +57,10 @@ export interface PluginAgentManifestDetail {
     /** The signer was revoked while the vehicle was armed; the host
      * disables the plugin on disarm. Older agents omit it. */
     revocation_pending?: boolean;
+    /** Why the host stopped or refused the plugin (`tampered: <detail>`,
+     * `signer_revoked`, `revocation_list_unreadable`), null when it has not
+     * failed. Older agents omit it. */
+    failure_reason?: string | null;
     installed_at: number;
     enabled_at: number | null;
     permissions: Record<

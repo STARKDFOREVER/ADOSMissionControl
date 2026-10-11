@@ -59,6 +59,9 @@ export interface DemoPluginInstall {
   droneDetailTabProfile?: PairedNodeProfile[];
   /** Declarative parameters the plugin contributes to its tab's native panel. */
   parameters?: PluginParameter[];
+  /** Why the node stopped or refused the plugin (the agent's
+   * `failure_reason`). Set on a failed install only. */
+  failureReason?: string;
 }
 
 /** A small parameter set so the native panel renders above the demo iframe
@@ -146,7 +149,7 @@ const DEMO_PLUGIN_INSTALLS: DemoPluginInstall[] = [
     firstParty: true,
     hasDroneDetailTab: false,
   },
-  // ── Drone 2: thermal cam enabled, geofence disabled ──
+  // ── Drone 2: thermal cam enabled, geofence disabled, SIYI pod failed ──
   {
     installId: "demo-install-003",
     agentId: "charlie-3",
@@ -172,6 +175,21 @@ const DEMO_PLUGIN_INSTALLS: DemoPluginInstall[] = [
     signed: true,
     firstParty: true,
     hasDroneDetailTab: false,
+  },
+  // A plugin the host stopped because its installed files no longer match
+  // the digests recorded at install. The agent reports it `failed` with the
+  // reason; the card renders the error state and the reason line.
+  {
+    installId: "demo-install-007",
+    agentId: "charlie-3",
+    pluginId: "com.altnautica.siyi-pod",
+    name: "SIYI Optical Pod",
+    version: "0.5.1",
+    status: "crashed",
+    signed: true,
+    firstParty: true,
+    hasDroneDetailTab: false,
+    failureReason: "tampered: agent/src/altnautica_siyi_pod/pod.py digest mismatch",
   },
   // ── Drone 3: gimbal v2 enabled ──
   {

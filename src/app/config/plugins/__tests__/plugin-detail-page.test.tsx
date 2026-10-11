@@ -49,6 +49,12 @@ vi.mock("@/lib/agent/plugin-client", () => ({
     remove = agentRemove;
   },
 }));
+const lanRows: { current: Array<{ plugin_id: string; failure_reason?: string | null }> | null } = {
+  current: null,
+};
+vi.mock("@/hooks/use-node-plugin-list", () => ({
+  useNodePluginList: (deviceId: string | null) => (deviceId === "dev-1" ? lanRows.current : null),
+}));
 vi.mock("@/components/ui/toast", () => ({ useToast: () => ({ toast }) }));
 
 async function removeViaDialog() {
@@ -83,5 +89,32 @@ describe("PluginDetailPage · remove", () => {
     await removeViaDialog();
     expect(agentRemove).toHaveBeenCalledWith("com.example.thermal");
     expect(removeMutation).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("PluginDetailPage · failure reason", () => {
+  function renderPage() {
+    render(
+      <NextIntlClientProvider locale="en" messages={messages}>
+        <PluginDetailPage />
+      </NextIntlClientProvider>,
+    );
+  }
+
+  it("shows the reason the node stopped the plugin", () => {
+    lanRows.current = [
+      { plugin_id: "com.example.other", failure_reason: "signer_revoked" },
+      { plugin_id: "com.example.thermal", failure_reason: "tampered: agent/x.py digest mismatch" },
+    ];
+    renderPage();
+    expect(screen.getByText(messages.plugins.detail.field.failureReason)).toBeTruthy();
+    expect(screen.getByText("tampered: agent/x.py digest mismatch")).toBeTruthy();
+    expect(screen.queryByText("signer_revoked")).toBeNull();
+  });
+
+  it("shows no reason row for a plugin that has not failed", () => {
+    lanRows.current = [{ plugin_id: "com.example.thermal", failure_reason: null }];
+    renderPage();
+    expect(screen.queryByText(messages.plugins.detail.field.failureReason)).toBeNull();
   });
 });

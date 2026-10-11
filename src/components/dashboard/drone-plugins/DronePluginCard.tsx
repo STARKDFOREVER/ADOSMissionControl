@@ -64,6 +64,9 @@ export interface DronePluginCardData extends PluginInstallSummary {
   modelStatus?: PluginModelStatusEntry[];
   /** Per-service readiness reported by the agent (heartbeat inventory). */
   serviceStatus?: PluginServiceStatusEntry[];
+  /** Why the node stopped or refused the plugin (the agent's
+   * `failure_reason`), absent when it has not failed. */
+  failureReason?: string;
 }
 
 /** Dot colour for a model-delivery state: green resolved, amber needs-model,
