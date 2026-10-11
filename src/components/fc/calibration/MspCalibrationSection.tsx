@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
+import { useArmedLock } from "@/hooks/use-armed-lock";
 import { CalibrationWizard, type CalibrationStatus } from "./CalibrationWizard";
 import { InavCalibration } from "./InavCalibration";
 import { BF_ACC_CALIBRATION_MS, wait } from "./msp-calibration";
@@ -19,12 +20,14 @@ export function MspCalibrationSection({ firmware }: { firmware: "betaflight" | "
 function BetaflightAccelCalibration() {
   const t = useTranslations("calibration");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
+  const { isHardBlocked, hardBlockMessage } = useArmedLock();
   const [status, setStatus] = useState<CalibrationStatus>("idle");
   const [message, setMessage] = useState("");
 
   async function start() {
     const protocol = selectedProtocol;
-    if (!protocol) return;
+    // The wizard shows the lock reason; a start while armed is a no-op.
+    if (!protocol || isHardBlocked) return;
     setStatus("in_progress");
     setMessage(t("bfAccelInProgress"));
     const result = await protocol.startCalibration("accel");
@@ -51,6 +54,7 @@ function BetaflightAccelCalibration() {
         progress={status === "success" ? 100 : 0}
         statusMessage={message || undefined}
         onStart={start}
+        blockedReason={isHardBlocked ? hardBlockMessage : undefined}
       />
       <div className="border border-border-default bg-bg-secondary p-4 space-y-2">
         <h3 className="text-sm font-medium text-text-primary">{t("bfCalibrationTitle")}</h3>

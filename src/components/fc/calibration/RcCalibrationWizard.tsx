@@ -36,7 +36,7 @@ interface RcCalibrationWizardProps {
 
 export function RcCalibrationWizard({ connected, currentParams, onWritten }: RcCalibrationWizardProps) {
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
-  const { isHardBlocked } = useArmedLock();
+  const { isHardBlocked, hardBlockMessage } = useArmedLock();
   const { firmwareType } = useFirmwareCapabilities();
   const liveRc = useFreshTelemetry("rc");
   const { toast } = useToast();
@@ -221,7 +221,7 @@ export function RcCalibrationWizard({ connected, currentParams, onWritten }: RcC
       {(step === "confirm" || step === "done") && <RcCalSummaryTable captures={captures} channelLabels={RC_CHANNEL_LABELS} />}
 
       {step === "done" && <p className="text-[10px] font-mono text-status-success mb-3">{doneMsg}</p>}
-      {isHardBlocked && <p className="text-[10px] font-mono text-status-warning mb-3">Vehicle is armed. Disarm to calibrate or reset trims.</p>}
+      {isHardBlocked && <p className="text-[10px] font-mono text-status-warning mb-3">{hardBlockMessage}</p>}
       {step === "error" && <p className="text-[10px] font-mono text-status-error mb-3">{errorMsg}</p>}
       {step === "saving" && <p className="text-[10px] font-mono text-text-tertiary mb-3">Writing RC parameters to flight controller...</p>}
 

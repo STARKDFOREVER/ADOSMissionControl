@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { CheckCircle, Circle } from "lucide-react";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
+import { useArmedLock } from "@/hooks/use-armed-lock";
 import { Button } from "@/components/ui/button";
 import { cn, formatErrorMessage } from "@/lib/utils";
 import {
@@ -46,6 +47,7 @@ const fmtOffsets = (v: [number, number, number]) => `(${v.join(", ")})`;
 export function InavCalibration() {
   const t = useTranslations("calibration");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
+  const { isHardBlocked, hardBlockMessage } = useArmedLock();
 
   const [flags, setFlags] = useState<number | null>(null);
   const [readError, setReadError] = useState<string | null>(null);
@@ -82,6 +84,7 @@ export function InavCalibration() {
   async function captureOrientation() {
     const protocol = selectedProtocol;
     if (!protocol || flags === null) return;
+    if (isHardBlocked) { setAccNote({ tone: "error", text: hardBlockMessage }); return; }
     setAccBusy(true);
     setAccNote(null);
     const before = flags;
@@ -107,6 +110,7 @@ export function InavCalibration() {
   async function calibrateCompass() {
     const protocol = selectedProtocol;
     if (!protocol?.getCalibrationData) return;
+    if (isHardBlocked) { setMagNote({ tone: "error", text: hardBlockMessage }); return; }
     setMagNote(null);
     let seconds = INAV_MAG_CAL_DEFAULT_S;
     let timeKnown = false;
@@ -167,7 +171,8 @@ export function InavCalibration() {
           </>
         )}
         {accNote && <Note tone={accNote.tone} text={accNote.text} />}
-        <Button size="sm" variant="primary" loading={accBusy} disabled={accBusy || flags === null} onClick={captureOrientation}>
+        {isHardBlocked && !accNote && <Note tone="error" text={hardBlockMessage} />}
+        <Button size="sm" variant="primary" loading={accBusy} disabled={accBusy || flags === null || isHardBlocked} onClick={captureOrientation}>
           {t("inavAccelCapture")}
         </Button>
       </div>
@@ -177,7 +182,8 @@ export function InavCalibration() {
         <p className="text-xs text-text-tertiary">{t("inavCompassDesc")}</p>
         {magLeft !== null && <Note tone="info" text={t("inavCompassRunning", { seconds: magLeft })} />}
         {magNote && <Note tone={magNote.tone} text={magNote.text} />}
-        <Button size="sm" variant="primary" disabled={magLeft !== null || flags === null} onClick={calibrateCompass}>
+        {isHardBlocked && !magNote && magLeft === null && <Note tone="error" text={hardBlockMessage} />}
+        <Button size="sm" variant="primary" disabled={magLeft !== null || flags === null || isHardBlocked} onClick={calibrateCompass}>
           {t("inavCompassStart")}
         </Button>
       </div>

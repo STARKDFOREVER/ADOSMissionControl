@@ -50,6 +50,12 @@ interface CalibrationWizardProps {
   onCancel?: () => void;
   onForceSave?: () => void;
   unsupportedNotice?: string;
+  /**
+   * Why a calibration may not start now (the vehicle is armed or its arm
+   * state is unknown). Set, it disables Start / Retry / Re-calibrate and
+   * shows the reason; an already running calibration can still be cancelled.
+   */
+  blockedReason?: string;
   className?: string;
 }
 
@@ -66,7 +72,7 @@ export function CalibrationWizard({
   title, description, steps, currentStep, status, progress, statusMessage,
   waitingForConfirm, onConfirm, confirmLabel = "Confirm Position",
   compassProgress, compassResults, failureFixes, preTips,
-  onStart, onCancel, onForceSave, unsupportedNotice, className,
+  onStart, onCancel, onForceSave, unsupportedNotice, blockedReason, className,
 }: CalibrationWizardProps) {
   const badge = statusBadge[status];
 
@@ -157,10 +163,14 @@ export function CalibrationWizard({
         </div>
       )}
 
+      {blockedReason && status !== "in_progress" && !waitingForConfirm && (
+        <p className="text-[10px] font-mono text-status-warning mb-3">{blockedReason}</p>
+      )}
+
       <div className="flex gap-2">
         {status === "cal_warning" && onForceSave ? (
           <><Button variant="primary" size="sm" onClick={onForceSave}>Force Save Offsets</Button>
-            <Button variant="secondary" size="sm" onClick={onStart}>Retry</Button></>
+            <Button variant="secondary" size="sm" onClick={onStart} disabled={!!blockedReason}>Retry</Button></>
         ) : waitingForConfirm && onConfirm ? (
           <><Button variant="primary" size="sm" onClick={onConfirm}>{confirmLabel}</Button>
             {onCancel && <Button variant="danger" size="sm" onClick={onCancel}>Cancel</Button>}</>
@@ -170,7 +180,7 @@ export function CalibrationWizard({
         ) : unsupportedNotice ? (
           <Button variant="secondary" size="sm" disabled>Not Available</Button>
         ) : (
-          <Button variant="primary" size="sm" onClick={onStart}>
+          <Button variant="primary" size="sm" onClick={onStart} disabled={!!blockedReason}>
             {status === "success" ? "Re-calibrate" : status === "error" || status === "cal_warning" ? "Retry" : "Start"}
           </Button>
         )}

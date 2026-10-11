@@ -68,6 +68,7 @@ export function CalibrationPanel() {
             waitingForConfirm={cal.accel.waitingForConfirm}
             onConfirm={cal.confirmAccelPosition}
             onStart={() => cal.startCalibration("accel", cal.setAccel, ACCEL_STEPS.length)}
+            blockedReason={cal.blockedReason}
             onCancel={() => cal.cancelCalibration("accel", cal.setAccel)}
           />}
 
@@ -81,6 +82,7 @@ export function CalibrationPanel() {
             progress={cal.gyro.progress}
             statusMessage={cal.gyro.message}
             onStart={() => cal.startCalibration("gyro", cal.setGyro, GYRO_STEPS.length)}
+            blockedReason={cal.blockedReason}
             onCancel={() => cal.cancelCalibration("gyro", cal.setGyro)}
           />}
 
@@ -115,6 +117,7 @@ export function CalibrationPanel() {
               t("compassTip4"),
             ]}
             onStart={() => cal.startCalibration("compass", cal.setCompass, COMPASS_STEPS.length)}
+            blockedReason={cal.blockedReason}
             onCancel={() => cal.cancelCalibration("compass", cal.setCompass)}
           />}
 
@@ -144,6 +147,7 @@ export function CalibrationPanel() {
           {!mspFirmware && (
             <ArduPilotCalibrations
               connected={connected}
+              blockedReason={cal.blockedReason}
               level={cal.level} airspeed={cal.airspeed} baro={cal.baro}
               esc={cal.esc} compassmot={cal.compassmot} baroPressure={cal.baroPressure}
               startCalibration={cal.startCalibration} cancelCalibration={cal.cancelCalibration}
@@ -156,6 +160,7 @@ export function CalibrationPanel() {
           {cal.isPx4 && (
             <PX4CalibrationsSection
               px4QuickLevel={cal.px4QuickLevel}
+              blockedReason={cal.blockedReason}
               px4GnssMagCal={cal.px4GnssMagCal}
               startPx4QuickLevel={cal.startPx4QuickLevel}
               startPx4GnssMagCal={cal.startPx4GnssMagCal}

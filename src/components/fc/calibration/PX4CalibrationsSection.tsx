@@ -11,6 +11,8 @@ import { useState } from "react";
 interface PX4CalibrationsSectionProps {
   px4QuickLevel: CalibrationState;
   px4GnssMagCal: CalibrationState;
+  /** Set while a calibration may not start (vehicle armed or arm state unknown). */
+  blockedReason?: string;
   startPx4QuickLevel: () => void;
   startPx4GnssMagCal: (yawDeg: number) => void;
   cancelCalibration: (type: string, setter: React.Dispatch<React.SetStateAction<CalibrationState>>) => void;
@@ -20,6 +22,7 @@ interface PX4CalibrationsSectionProps {
 export function PX4CalibrationsSection({
   px4QuickLevel,
   px4GnssMagCal,
+  blockedReason,
   startPx4QuickLevel,
   startPx4GnssMagCal,
   cancelCalibration,
@@ -51,6 +54,7 @@ export function PX4CalibrationsSection({
         progress={px4QuickLevel.progress}
         statusMessage={px4QuickLevel.message}
         onStart={startPx4QuickLevel}
+        blockedReason={blockedReason}
         onCancel={() => cancelCalibration("level", setPx4QuickLevel)}
       />
 
@@ -89,6 +93,7 @@ export function PX4CalibrationsSection({
           "This calibration is quick and does not require rotation",
         ]}
         onStart={() => startPx4GnssMagCal(yawDeg)}
+        blockedReason={blockedReason}
       />
 
       {/* GNSS Mag Cal Reboot Banner */}

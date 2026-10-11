@@ -6,6 +6,7 @@ import { useToast } from "@/components/ui/toast";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useDiagnosticsStore } from "@/stores/diagnostics-store";
 import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
+import { useArmedLock } from "@/hooks/use-armed-lock";
 import {
   type CalibrationState,
   type CalibrationLogEntry,
@@ -40,6 +41,19 @@ export function useCalibrationEngine() {
   const t = useTranslations("fcToasts.calibration");
   const { firmwareType } = useFirmwareCapabilities();
   const isPx4 = firmwareType === "px4";
+  // Calibration starts are hard-blocked while the vehicle is armed or its arm
+  // state is unknown. The ref lets every start path read the latest lock, so
+  // a stale callback can never start one on a vehicle that has since armed.
+  const { isHardBlocked, hardBlockMessage } = useArmedLock();
+  const armLockRef = useRef({ isHardBlocked, hardBlockMessage });
+  armLockRef.current = { isHardBlocked, hardBlockMessage };
+  /** True (and the refusal toasted) when a calibration may not start now. */
+  const refuseWhileArmed = useCallback((): boolean => {
+    const lock = armLockRef.current;
+    if (!lock.isHardBlocked) return false;
+    toast(lock.hardBlockMessage, "error");
+    return true;
+  }, [toast]);
 
   const [accel, setAccel] = useState<CalibrationState>(INITIAL_STATE);
   const [gyro, setGyro] = useState<CalibrationState>(INITIAL_STATE);
@@ -233,7 +247,7 @@ export function useCalibrationEngine() {
     stepCount: number,
   ) => {
     const protocol = selectedProtocol;
-    if (!protocol) return;
+    if (!protocol || refuseWhileArmed()) return;
     setCalDiff(null); setCalDiffType(null);
     const paramNames = CAL_SNAPSHOT_PARAMS[type];
     if (paramNames && paramNames.length > 0) {
@@ -270,11 +284,11 @@ export function useCalibrationEngine() {
       setter((prev) => ({ ...prev, status: "error", message: "Failed to send calibration command" }));
       toast(t("calSendFailed"), "error");
     }
-  }, [selectedProtocol, toast, t, compassParams.COMPASS_AUTO_ROT, setCompassParams, isPx4]);
+  }, [selectedProtocol, toast, t, compassParams.COMPASS_AUTO_ROT, setCompassParams, isPx4, refuseWhileArmed]);
 
   const startPx4QuickLevel = useCallback(async () => {
     const protocol = selectedProtocol;
-    if (!protocol) return;
+    if (!protocol || refuseWhileArmed()) return;
     setPx4CalActiveType("quick-level");
     setPx4QuickLevel({ ...INITIAL_STATE, status: "in_progress", message: "Starting quick level calibration..." });
     subscribeToCalibrationStatus(manager, protocol, setPx4QuickLevel, 1, "level", toast, true);
@@ -283,11 +297,11 @@ export function useCalibrationEngine() {
       if (!result.success) { cleanupSubs(manager, "level"); setPx4CalActiveType(null); setPx4QuickLevel((prev) => ({ ...prev, status: "error", message: result.message || t("quickLevelRejected") })); toast(t("quickLevelFailed"), "error"); }
       else toast(t("quickLevelStarted"), "info");
     } catch { cleanupSubs(manager, "level"); setPx4CalActiveType(null); setPx4QuickLevel((prev) => ({ ...prev, status: "error", message: t("quickLevelSendFailed") })); toast(t("quickLevelSendFailed"), "error"); }
-  }, [selectedProtocol, toast, t]);
+  }, [selectedProtocol, toast, t, refuseWhileArmed]);
 
   const startPx4GnssMagCal = useCallback(async (yawDeg: number) => {
     const protocol = selectedProtocol;
-    if (!protocol) return;
+    if (!protocol || refuseWhileArmed()) return;
     setPx4CalActiveType("gnss-mag");
     setPx4GnssMagCal({ ...INITIAL_STATE, status: "in_progress", message: `Calibrating compass for a vehicle yaw of ${yawDeg}°...` });
     try {
@@ -295,7 +309,7 @@ export function useCalibrationEngine() {
       if (!result.success) { setPx4CalActiveType(null); setPx4GnssMagCal((prev) => ({ ...prev, status: "error", message: result.message || "Known-heading compass calibration was rejected. Ensure the vehicle has a position fix." })); toast(t("compassCalFailed"), "error"); }
       else { setPx4GnssMagCal(() => ({ ...INITIAL_STATE, status: "success", progress: 100, message: `Compass calibrated against the magnetic model for a vehicle yaw of ${yawDeg}°.`, needsReboot: true })); setPx4CalActiveType(null); toast(t("compassCalComplete"), "success"); useDiagnosticsStore.getState().logCalibration("gnss-mag", "success"); }
     } catch { setPx4CalActiveType(null); setPx4GnssMagCal((prev) => ({ ...prev, status: "error", message: t("compassCalSendFailed") })); toast(t("compassCalSendFailed"), "error"); }
-  }, [selectedProtocol, toast, t]);
+  }, [selectedProtocol, toast, t, refuseWhileArmed]);
 
   return {
     accel, setAccel, gyro, setGyro, compass, setCompass,
@@ -305,6 +319,7 @@ export function useCalibrationEngine() {
     compassParams, setCompassParams,
     calDiff, setCalDiff, calDiffType, setCalDiffType,
     px4QuickLevel, setPx4QuickLevel, px4GnssMagCal, isPx4,
+    blockedReason: isHardBlocked ? hardBlockMessage : undefined,
     startCalibration, cancelCalibration,
     confirmAccelPosition, acceptCompass, forceCompassSave,
     startPx4QuickLevel, startPx4GnssMagCal,

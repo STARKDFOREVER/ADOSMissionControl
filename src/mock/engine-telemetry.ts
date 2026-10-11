@@ -13,7 +13,6 @@ import { generateStatusMessage } from "./status-messages";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import type { MockProtocol } from "./mock-protocol";
 import type { FleetDrone } from "@/lib/types";
-import type { UnifiedFlightMode } from "@/lib/protocol/types";
 
 /** Core sensor bitmask: gyro | accel | compass | baro | GPS | motors | RC | AHRS | battery | pre-arm check */
 export const SENSOR_MASK = (1 << 0) | (1 << 1) | (1 << 2) | (1 << 3) | (1 << 5)
@@ -32,8 +31,6 @@ interface TelemetryTickContext {
   currentWaypointIdx: number;
   pathProgress: number;
   segmentDistances: number[];
-  status: string;
-  flightMode: string;
   statusMessageTick: number;
   rcChannels: number[];
 }
@@ -155,12 +152,10 @@ export function emitSelectedDroneTelemetry(ctx: TelemetryTickContext): number {
     });
   }
 
-  // Heartbeat at 1Hz
+  // Heartbeat at 1Hz, carrying the vehicle's own arm state and mode so a
+  // command that changed them (mock-protocol-flight) holds across ticks.
   if (ctx.tickCount % 5 === 0) {
-    ctx.protocol.emitHeartbeat(
-      ctx.status === "in_mission",
-      ctx.flightMode as UnifiedFlightMode,
-    );
+    ctx.protocol.emitHeartbeat(ctx.protocol.flight.armed, ctx.protocol.flight.mode);
   }
 
   // MissionCurrent at 1Hz: the mission item the drone is flying toward.

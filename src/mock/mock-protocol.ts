@@ -29,6 +29,7 @@ import { createCallbackArrays, bindOnMethods } from "./mock-protocol-callbacks";
 import type { ManualControlSample } from "./mock-control-samples";
 import * as E from "./mock-protocol-emitters";
 import { mockStartCalibration, type CalibrationContext } from "./mock-protocol-calibration";
+import { MockFlightState } from "./mock-protocol-flight";
 import { handleSerialCommand, startTelemetryTick, type TelemetryTickContext } from "./mock-protocol-serial";
 import { MOCK_FENCE_POLYGON, MOCK_VEHICLE_INFO, HELI_VEHICLE_INFO, PX4_VEHICLE_INFO, PX4_VTOL_VEHICLE_INFO, ARDUPLANE_VEHICLE_INFO, ARDUPLANE_VTOL_VEHICLE_INFO, ARDUPLANE_TAILSITTER_VEHICLE_INFO, ARDUPLANE_TILTROTOR_VEHICLE_INFO, ARDUROVER_VEHICLE_INFO, ARDUBOAT_VEHICLE_INFO, ARDUSUB_VEHICLE_INFO, BETAFLIGHT_VEHICLE_INFO, INAV_FW_VEHICLE_INFO } from "./mock-protocol-data";
 import type { DisplayPortOp } from "@/lib/protocol/msp/decoders/config/displayport";
@@ -76,6 +77,11 @@ export class MockProtocol implements DroneProtocol {
   private _lastManualControl: ManualControlSample | null = null;
   private rallyPoints: Array<{ lat: number; lon: number; alt: number }> = [];
   private fenceElements: FenceElement[] = [];
+  /** Arm / airborne / mode of this demo vehicle; see mock-protocol-flight. */
+  readonly flight = new MockFlightState(
+    (s) => this.emitHeartbeat(s.armed, s.mode),
+    (severity, text) => this.emitStatusText(severity, text),
+  );
 
   constructor(firmwareType: MockFirmware = 'ardupilot-copter') {
     switch (firmwareType) {
@@ -178,12 +184,12 @@ export class MockProtocol implements DroneProtocol {
   onMavlinkFrame = createMockFrameFeed(() => this._vehicleInfo);
 
   // ── Commands ───────────────────────────────────────────
-  async arm(): Promise<CommandResult> { this.emitStatusText(6, "Arming motors"); return ok("Armed"); }
-  async disarm(): Promise<CommandResult> { this.emitStatusText(6, "Disarming motors"); return ok("Disarmed"); }
-  async setFlightMode(m: UnifiedFlightMode): Promise<CommandResult> { this.emitStatusText(6, `Mode change to ${m}`); return ok(`Mode: ${m}`); }
+  async arm(): Promise<CommandResult> { return this.flight.arm(); }
+  async disarm(): Promise<CommandResult> { return this.flight.disarm(); }
+  async setFlightMode(m: UnifiedFlightMode): Promise<CommandResult> { return this.flight.setMode(m); }
   async returnToLaunch(): Promise<CommandResult> { this.emitStatusText(6, "Returning to launch"); return ok("RTL"); }
-  async land(): Promise<CommandResult> { this.emitStatusText(6, "Landing"); return ok("Landing"); }
-  async takeoff(alt: number): Promise<CommandResult> { this.emitStatusText(6, `Taking off to ${alt}m`); return ok(`Takeoff ${alt}m`); }
+  async land(): Promise<CommandResult> { return this.flight.land(); }
+  async takeoff(alt: number): Promise<CommandResult> { return this.flight.takeoff(alt); }
   async killSwitch(confirmed: boolean): Promise<CommandResult> {
     // Demo mode mirrors the real refusal so a caller that skips the confirm
     // fails the same way here as it does against a vehicle.

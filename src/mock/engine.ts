@@ -27,6 +27,7 @@ function createDemoProtocol(firmware: string | undefined): DemoProtocol {
 import { MockTransport } from "./mock-transport";
 import { BOOT_MESSAGES } from "./status-messages";
 import { emitSelectedDroneTelemetry } from "./engine-telemetry";
+import { tickGroundedDrone } from "./engine-grounded";
 import { seedDemoNodes } from "./engine-seed";
 import { DemoMissionLoader, holdsHomeSlot, pathMissionItems } from "./engine-mission";
 import { DEMO_PX4_EVENT_FRAMES } from "./px4-demo-events";
@@ -98,9 +99,11 @@ class MockFlightEngine {
         }
       }
       const protocol = createDemoProtocol(cfg.firmware);
-      // The loop this drone flies is the mission it holds onboard.
+      // The loop this drone flies is the mission it holds onboard, and it
+      // boots airborne in its configured arm state and mode.
       if (path && path.length >= 2 && protocol instanceof MockProtocol) {
         protocol.loadMission(pathMissionItems(path, holdsHomeSlot(protocol)));
+        protocol.flight.init({ armed: cfg.status === "in_mission", airborne: true, mode: cfg.flightMode });
       }
 
       return {
@@ -276,6 +279,13 @@ class MockFlightEngine {
       const path = FLIGHT_PATHS[cfg.pathIndex];
       if (!path || path.length < 2) continue;
 
+      // A drone that landed (Land command) holds its touchdown point and
+      // flies no path until it takes off again.
+      if (state.protocol instanceof MockProtocol && !state.protocol.flight.airborne) {
+        tickGroundedDrone(nid(cfg.id), state.protocol, state.tickCount, nid(cfg.id) === selectedId, now);
+        continue;
+      }
+
       const wp = path[state.currentWaypointIdx];
       const nextIdx = (state.currentWaypointIdx + 1) % path.length;
       const nextWp = path[nextIdx];
@@ -400,7 +410,6 @@ class MockFlightEngine {
           droneUpdate, pos, roll, pitch, headingDelta, battery: state.battery,
           pathIndex: cfg.pathIndex, currentWaypointIdx: state.currentWaypointIdx,
           pathProgress: state.pathProgress, segmentDistances: state.segmentDistances,
-          status: cfg.status, flightMode: cfg.flightMode,
           statusMessageTick: state.statusMessageTick, rcChannels,
         });
 

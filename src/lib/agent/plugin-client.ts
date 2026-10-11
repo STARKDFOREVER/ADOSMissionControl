@@ -422,7 +422,9 @@ export class PluginAgentClient {
   }
 
   private async toggle(pluginId: string, op: "enable" | "disable", force: boolean): Promise<void> {
-    const res = await this.fetchImpl(this.pluginUrl(pluginId, op), {
+    const url =
+      op === "enable" ? this.pluginUrl(pluginId, "enable") : this.pluginUrl(pluginId, "disable");
+    const res = await this.fetchImpl(url, {
       method: "POST",
       headers: force
         ? { ...this.authHeader(), "Content-Type": "application/json" }

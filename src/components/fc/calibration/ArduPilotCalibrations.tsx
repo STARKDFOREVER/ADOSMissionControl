@@ -14,6 +14,8 @@ import type { CalibrationState } from "./calibration-types";
 
 interface Props {
   connected: boolean;
+  /** Set while a calibration may not start (vehicle armed or arm state unknown). */
+  blockedReason?: string;
   level: CalibrationState;
   airspeed: CalibrationState;
   baro: CalibrationState;
@@ -30,7 +32,7 @@ interface Props {
 }
 
 export function ArduPilotCalibrations({
-  connected, level, airspeed, baro, esc, compassmot, baroPressure,
+  connected, blockedReason, level, airspeed, baro, esc, compassmot, baroPressure,
   startCalibration, cancelCalibration,
   setLevel, setAirspeed, setBaro, setEsc, setCompassmot,
 }: Props) {
@@ -47,6 +49,7 @@ export function ArduPilotCalibrations({
         progress={level.progress}
         statusMessage={level.message}
         onStart={() => startCalibration("level", setLevel, LEVEL_STEPS.length)}
+        blockedReason={blockedReason}
         onCancel={() => cancelCalibration("level", setLevel)}
       />
 
@@ -63,6 +66,7 @@ export function ArduPilotCalibrations({
         progress={airspeed.progress}
         statusMessage={airspeed.message}
         onStart={() => startCalibration("airspeed", setAirspeed, AIRSPEED_STEPS.length)}
+        blockedReason={blockedReason}
         onCancel={() => cancelCalibration("airspeed", setAirspeed)}
       />
 
@@ -75,6 +79,7 @@ export function ArduPilotCalibrations({
         progress={baro.progress}
         statusMessage={baro.message}
         onStart={() => startCalibration("baro", setBaro, BARO_STEPS.length)}
+        blockedReason={blockedReason}
         onCancel={() => cancelCalibration("baro", setBaro)}
       />
 
@@ -111,6 +116,7 @@ export function ArduPilotCalibrations({
           "This runs as a physical throttle passthrough on reboot and does not report a completion over MAVLink — follow the ESC beep sequence; the wizard ending on a timeout is expected.",
         ]}
         onStart={() => startCalibration("esc", setEsc, ESC_CAL_STEPS.length)}
+        blockedReason={blockedReason}
         onCancel={() => cancelCalibration("esc", setEsc)}
       />
 
@@ -133,6 +139,7 @@ export function ArduPilotCalibrations({
           "Interference below 30% is acceptable, below 15% is good",
         ]}
         onStart={() => startCalibration("compassmot", setCompassmot, COMPASSMOT_STEPS.length)}
+        blockedReason={blockedReason}
         onCancel={() => cancelCalibration("compassmot", setCompassmot)}
       />
 
