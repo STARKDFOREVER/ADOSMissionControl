@@ -115,3 +115,52 @@ describe("vision-detections-store ordering and age", () => {
     expect(useVisionDetectionsStore.getState().batches[DRONE].receivedAt).toBe(10_100);
   });
 });
+
+describe("vision-detections-store engine availability", () => {
+  beforeEach(() => useVisionDetectionsStore.getState().clear());
+
+  it("flags a drone not running and drops its feed when the agent reports unavailable", () => {
+    const s = useVisionDetectionsStore.getState();
+    s.setBatch(DRONE, batch({ tsMs: Date.now() }));
+    s.setVisionAvailable(DRONE, false);
+    const state = useVisionDetectionsStore.getState();
+    expect(state.visionUnavailable[DRONE]).toBe(true);
+    expect(state.batches[DRONE]).toBeUndefined();
+    expect(state.streamsForDrone(DRONE)).toEqual([]);
+    expect(state.receiptTimes(DRONE)).toEqual([]);
+  });
+
+  it("treats a repeated unavailable report as a no-op", () => {
+    const s = useVisionDetectionsStore.getState();
+    s.setVisionAvailable(DRONE, false);
+    const before = useVisionDetectionsStore.getState();
+    s.setVisionAvailable(DRONE, false);
+    expect(useVisionDetectionsStore.getState()).toBe(before);
+  });
+
+  it("clears the flag when detections resume", () => {
+    const s = useVisionDetectionsStore.getState();
+    s.setVisionAvailable(DRONE, false);
+    s.setBatch(DRONE, batch({ tsMs: Date.now() }));
+    const state = useVisionDetectionsStore.getState();
+    expect(DRONE in state.visionUnavailable).toBe(false);
+    expect(state.batches[DRONE]).toBeDefined();
+  });
+
+  it("clears the flag on an available report and on clearBatch", () => {
+    const s = useVisionDetectionsStore.getState();
+    s.setVisionAvailable(DRONE, false);
+    s.setVisionAvailable(DRONE, true);
+    expect(DRONE in useVisionDetectionsStore.getState().visionUnavailable).toBe(false);
+    s.setVisionAvailable(DRONE, false);
+    s.clearBatch(DRONE);
+    expect(DRONE in useVisionDetectionsStore.getState().visionUnavailable).toBe(false);
+  });
+
+  it("keeps the flag per drone", () => {
+    const s = useVisionDetectionsStore.getState();
+    s.setVisionAvailable(DRONE, false);
+    s.setBatch("node:d2", batch({ tsMs: Date.now() }));
+    expect(useVisionDetectionsStore.getState().visionUnavailable[DRONE]).toBe(true);
+  });
+});

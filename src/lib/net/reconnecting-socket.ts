@@ -54,6 +54,9 @@ export interface ReconnectingSocketOptions<S extends ReconnectingSocketLike> {
    * Only for a peer that sends periodic frames; omitted, a quiet socket
    * stays open until it closes. */
   livenessTimeoutMs?: number;
+  /** A peer-initiated close, with its code and reason (empty when the close
+   * event carried none), before the loop schedules the redial. */
+  onClose?: (code: number | undefined, reason: string) => void;
 }
 
 /** Run the loop until the returned teardown is called. */
@@ -170,6 +173,11 @@ export function openReconnectingSocket<S extends ReconnectingSocketLike>(
       if (closed) return;
       // A hand-driven close may carry no event at all.
       const code = (ev as CloseEvent | undefined)?.code;
+      try {
+        opts.onClose?.(code, (ev as CloseEvent | undefined)?.reason ?? "");
+      } catch {
+        // a consumer error never reaches the socket loop
+      }
       retry(code !== undefined && slow.includes(code) ? SOCKET_SLOW_RETRY_MS : SOCKET_RETRY_MS);
     };
   };

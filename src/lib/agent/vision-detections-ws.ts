@@ -166,6 +166,20 @@ function mapDetection(raw: WireDetection): VisionDetection {
   };
 }
 
+/** Operator copy for a node whose detection engine is unreachable. */
+export const VISION_NOT_RUNNING_COPY = "Vision not running";
+
+/** Whether the agent's detection poll says the engine is reachable. The
+ * agent answers `available:false` when its engine socket cannot be read, so
+ * "vision is off" never reads as "nothing detected"; `null` when an older
+ * agent omits the flag. */
+export function detectionsAvailability(raw: unknown): boolean | null {
+  if (raw && typeof raw === "object" && "available" in raw) {
+    return typeof raw.available === "boolean" ? raw.available : null;
+  }
+  return null;
+}
+
 /** Map a wire batch onto the store's camelCase shape (minus `receivedAt`,
  * which the store stamps). Frame dimensions default to the engine's
  * normalized size unless the agent advertised them. */
@@ -259,8 +273,7 @@ export function connectVisionDetections(
     return { close: () => {} };
   }
 
-  const setBatch = useVisionDetectionsStore.getState().setBatch;
-  const clearBatch = useVisionDetectionsStore.getState().clearBatch;
+  const { setBatch, clearBatch, setVisionAvailable } = useVisionDetectionsStore.getState();
 
   const unsubscribe = subscribeWebSocket<WireDetectionBatch>({
     ctx: { baseUrl: agentUrl, apiKey },
@@ -269,8 +282,21 @@ export function connectVisionDetections(
     onEvent: (raw) => {
       const mapped = mapWireBatch(raw);
       // A version this GCS does not speak maps to null — skip it, never feed
-      // the store a mis-mapped batch.
+      // the store a mis-mapped batch. A stored batch also clears any
+      // "vision not running" flag, so a resumed engine reads live at once.
       if (mapped) setBatch(droneId, mapped);
+    },
+    // An agent whose engine socket cannot be reached closes the stream with
+    // `{"available":false,...}` as the close reason, so "vision is off" never
+    // reads as "nothing detected". Any other close is a plain redial.
+    onClose: (_code, reason) => {
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(reason);
+      } catch {
+        return;
+      }
+      if (detectionsAvailability(parsed) === false) setVisionAvailable(droneId, false);
     },
     // The detections handler forwards engine batches only and sends no
     // keepalive, so a quiet engine is not a dead socket.

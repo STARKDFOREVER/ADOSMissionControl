@@ -21,8 +21,9 @@
  * The browser POSTs `{ host, apiKey, peerDeviceId }` — `peerDeviceId` is
  * required (this route has no LAN-direct use; the LAN branch never needed a
  * server proxy for a same-network dial). The upstream JSON body and status
- * are returned unchanged (see `../_proxy`) so an unreachable engine's `{"detections": []}` reading
- * or a 502 surfaces exactly as the agent produced it.
+ * are returned unchanged (see `../_proxy`) so an unreachable engine's
+ * `{"detections": [], "available": false}` reading or a 502 surfaces exactly
+ * as the agent produced it.
  *
  * @license GPL-3.0-only
  */

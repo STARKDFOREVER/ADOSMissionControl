@@ -7,7 +7,9 @@
  * every perception pipeline running simultaneously with its live state — the
  * central-hub visibility the single-active-model summary never gave. Derived
  * from the live detection streams (`useVisionPipelines`); a stream that stops
- * publishing flips to a "stalled" state rather than lingering.
+ * publishing flips to a "stalled" state rather than lingering. When the agent
+ * reports its vision engine unreachable the panel says so instead of listing
+ * nothing.
  *
  * @license GPL-3.0-only
  */
@@ -23,6 +25,7 @@ import {
 import { useVisionEngineStatus } from "@/hooks/use-vision-engine-models";
 import type { EngineModel } from "@/lib/agent/vision-client";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
+import { useVisionDetectionsStore } from "@/stores/vision-detections-store";
 import {
   executionTarget,
   type ExecutionTarget,
@@ -218,6 +221,7 @@ export function VisionPipelinesPanel({
   const engineStatus = useVisionEngineStatus();
   const engineModels = engineStatus.known ? engineStatus.models : NO_ENGINE_MODELS;
   const runningCount = pipelines.filter((p) => p.active).length;
+  const notRunning = useVisionDetectionsStore((s) => droneId in s.visionUnavailable);
 
   // Where detection runs for this node (tier-derived), stamped onto every row.
   const tier = useAgentCapabilitiesStore((s) => s.perceptionTier);
@@ -256,7 +260,11 @@ export function VisionPipelinesPanel({
           {t("pipelinesRunning", { count: runningCount })}
         </span>
       </div>
-      {isEmpty ? (
+      {notRunning ? (
+        <p className="py-4 text-center text-[11px] text-status-warning">
+          {t("visionNotRunning")}
+        </p>
+      ) : isEmpty ? (
         <p className="py-4 text-center text-[11px] text-text-tertiary">
           {/* With no engine read-back an empty list is "not known", not "none". */}
           {engineStatus.known ? t("noPipelines") : t("engineStatusUnavailable")}

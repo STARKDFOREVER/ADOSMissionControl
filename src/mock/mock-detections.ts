@@ -13,6 +13,11 @@
  * lockState (locked -> uncertain -> locked) so the overlay's green/amber/red
  * colour ramp and the identity-uncertainty UI are exercised over time.
  *
+ * One demo drone ({@link VISION_OFF_DEMO_DRONE}) models a node whose vision
+ * engine is not running: instead of batches it records the agent's
+ * `available:false` report, so the "vision not running" copy is reachable in
+ * the demo too.
+ *
  * This is demo infrastructure, not a stub: it is loaded only when isDemoMode()
  * is true and produces complete, well-formed data.
  *
@@ -25,6 +30,10 @@ import {
   type VisionDetection,
 } from "@/stores/vision-detections-store";
 import { useVideoStreamsStore } from "@/stores/video-streams-store";
+import { deviceIdFromNodeId } from "@/lib/agent/node-id";
+
+/** The demo drone whose agent reports its vision engine unreachable. */
+export const VISION_OFF_DEMO_DRONE = "kilo-11";
 
 /** Frame the synthetic boxes are expressed in (a common 4:3 inference size). */
 const FRAME_WIDTH = 640;
@@ -112,12 +121,19 @@ class MockDetectionStream {
   private droneId: string | null = null;
   private startMs = 0;
   private frameId = 0;
+  /** The current drone models a node whose vision engine is not running. */
+  private visionOff = false;
 
   /** Start (or retarget) the stream onto a drone id. Idempotent per drone. */
   start(droneId: string): void {
-    if (this.intervalId !== null && this.droneId === droneId) return;
+    if (this.droneId === droneId && (this.intervalId !== null || this.visionOff)) return;
     this.stop();
     this.droneId = droneId;
+    if ((deviceIdFromNodeId(droneId) ?? droneId) === VISION_OFF_DEMO_DRONE) {
+      this.visionOff = true;
+      useVisionDetectionsStore.getState().setVisionAvailable(droneId, false);
+      return;
+    }
     this.startMs = Date.now();
     this.frameId = 0;
     this.intervalId = setInterval(() => this.tick(), TICK_MS);
@@ -132,6 +148,7 @@ class MockDetectionStream {
       useVisionDetectionsStore.getState().clearBatch(this.droneId);
     }
     this.droneId = null;
+    this.visionOff = false;
   }
 
   isRunning(): boolean {

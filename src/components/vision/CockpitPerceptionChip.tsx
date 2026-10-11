@@ -13,6 +13,8 @@
  * aged out (`stale`), it escalates to "Perception feed stale" / "Offload link
  * lost" instead of silently reading as "nothing to see". It never shows the
  * stale state when no feed ever started (that is just "no detections yet").
+ * When the agent reports its vision engine unreachable (`available:false`),
+ * the chip reads "Vision not running" until a batch arrives again.
  *
  * It reads the SAME {@link DETECTION_STALE_MS} window the box overlay uses, and
  * the resolved tier from the agent-capabilities store, so it never fabricates a
@@ -32,11 +34,13 @@ import {
   staleReason,
   tierLabel,
 } from "@/lib/vision/perception-health";
+import { VISION_NOT_RUNNING_COPY } from "@/lib/agent/vision-detections-ws";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { useVisionDetectionsStore } from "@/stores/vision-detections-store";
 
 export function CockpitPerceptionChip({ droneId }: { droneId: string }) {
   const batch = useVisionDetectionsStore((s) => s.batches[droneId]);
+  const notRunning = useVisionDetectionsStore((s) => droneId in s.visionUnavailable);
   const tier = useAgentCapabilitiesStore((s) => s.perceptionTier);
   const target = useAgentCapabilitiesStore((s) => s.perceptionOffloadTarget);
 
@@ -48,22 +52,27 @@ export function CockpitPerceptionChip({ droneId }: { droneId: string }) {
   useEffect(() => useClockStore.subscribe((s) => setNow(s.now)), []);
 
   const feed = perceptionFeedState(batch, now);
-  const label = tierLabel(tier, feed !== "idle");
+  // A not-running engine is perception context worth showing even with no tier.
+  const label = tierLabel(tier, feed !== "idle" || notRunning);
 
   // Nothing to show: no feed ever AND no running tier → this drone is not doing
   // perception, so stay out of the way (never a fabricated placeholder).
   if (feed === "idle" && label === null) return null;
 
+  // The store drops a drone's batches when it flags vision not running, and a
+  // batch clears the flag, so `notRunning` always pairs with an idle feed.
   const stale = feed === "stale";
   const crit = stale && tier === "offload";
-  const stateClass = feed === "fresh" ? "fresh" : crit ? "crit" : stale ? "warn" : "";
+  const stateClass =
+    feed === "fresh" ? "fresh" : crit ? "crit" : stale || notRunning ? "warn" : "";
+  const reason = stale ? staleReason(tier) : notRunning ? VISION_NOT_RUNNING_COPY : null;
 
   return (
     <div
       className={`perchip ${stateClass}`.trim()}
       style={{ left: 18, top: 176 }}
       data-cockpit-widget="perception-health"
-      data-feed-state={feed}
+      data-feed-state={notRunning ? "not-running" : feed}
     >
       <span className="dot" aria-hidden="true" />
       <span className="body">
@@ -73,7 +82,7 @@ export function CockpitPerceptionChip({ droneId }: { droneId: string }) {
             <span className="tgt"> · {target}</span>
           ) : null}
         </span>
-        {stale ? <span className="reason">{staleReason(tier)}</span> : null}
+        {reason ? <span className="reason">{reason}</span> : null}
       </span>
     </div>
   );

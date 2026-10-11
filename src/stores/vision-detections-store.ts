@@ -183,6 +183,22 @@ export function streamKey(modelId: string, cameraId: string): string {
   return `${modelId}::${cameraId}`;
 }
 
+/** A drone's feed maps with its entry removed. */
+function withoutDrone(
+  state: Pick<VisionDetectionsState, "batches" | "streams" | "rateWindows" | "offsetWindows">,
+  droneId: string,
+): Pick<VisionDetectionsState, "batches" | "streams" | "rateWindows" | "offsetWindows"> {
+  const batches = { ...state.batches };
+  delete batches[droneId];
+  const streams = { ...state.streams };
+  delete streams[droneId];
+  const rateWindows = { ...state.rateWindows };
+  delete rateWindows[droneId];
+  const offsetWindows = { ...state.offsetWindows };
+  delete offsetWindows[droneId];
+  return { batches, streams, rateWindows, offsetWindows };
+}
+
 interface VisionDetectionsState {
   /** Latest batch per drone (keyed by drone/device id), across every stream —
    * the simple "what did this drone see most recently" view the cockpit
@@ -200,6 +216,12 @@ interface VisionDetectionsState {
   /** Per-stream (receipt − tsMs) window, keyed `droneId -> streamKey`. Not
    * part of the reactive render path. */
   offsetWindows: Record<string, Record<string, RingBuffer<number>>>;
+  /** Drones whose agent reported its vision engine unreachable
+   * (`available:false` on the detection poll or the detection socket's close
+   * reason), so a surface can say "vision not running" instead of reading an
+   * empty feed as "nothing detected". Absent = not reported. The next batch
+   * clears it. */
+  visionUnavailable: Record<string, true>;
   /** Replace the latest batch for a drone (and its stream). `receivedAt` is
    * stamped here so callers do not have to. A batch taken before the one its
    * stream already shows is dropped while that one is still fresh. */
@@ -207,6 +229,10 @@ interface VisionDetectionsState {
     droneId: string,
     batch: Omit<VisionDetectionBatch, "receivedAt">,
   ) => void;
+  /** Record the agent's engine-availability report for a drone. `false`
+   * drops the drone's batches (there is no live feed) and flags it; `true`
+   * clears the flag. */
+  setVisionAvailable: (droneId: string, available: boolean) => void;
   /** Receipt timestamps (epoch ms, oldest first) of a drone's recent batches,
    * for computing live throughput over a rolling window. Empty when no feed. */
   receiptTimes: (droneId: string) => number[];
@@ -224,6 +250,7 @@ export const useVisionDetectionsStore = create<VisionDetectionsState>(
     streams: {},
     rateWindows: {},
     offsetWindows: {},
+    visionUnavailable: {},
     setBatch: (droneId, batch) =>
       set((state) => {
         const now = Date.now();
@@ -260,6 +287,12 @@ export const useVisionDetectionsStore = create<VisionDetectionsState>(
           rateWindows = { ...rateWindows, [droneId]: win };
         }
         win.push(now);
+        // A batch is proof the engine is running again.
+        let visionUnavailable = state.visionUnavailable;
+        if (droneId in visionUnavailable) {
+          visionUnavailable = { ...visionUnavailable };
+          delete visionUnavailable[droneId];
+        }
         return {
           // Latest-across-streams (the cockpit's simple view).
           batches: { ...state.batches, [droneId]: stamped },
@@ -273,7 +306,33 @@ export const useVisionDetectionsStore = create<VisionDetectionsState>(
           },
           rateWindows,
           offsetWindows,
+          visionUnavailable,
         };
+      }),
+    setVisionAvailable: (droneId, available) =>
+      set((state) => {
+        if (available) {
+          if (!(droneId in state.visionUnavailable)) return state;
+          const visionUnavailable = { ...state.visionUnavailable };
+          delete visionUnavailable[droneId];
+          return { visionUnavailable };
+        }
+        // The relay lane repeats the report every poll: an already-flagged
+        // drone with no feed left is a no-op, not a fresh render.
+        const flagged = droneId in state.visionUnavailable;
+        if (
+          flagged &&
+          !(droneId in state.batches) &&
+          !(droneId in state.streams) &&
+          !(droneId in state.rateWindows) &&
+          !(droneId in state.offsetWindows)
+        ) {
+          return state;
+        }
+        const visionUnavailable = flagged
+          ? state.visionUnavailable
+          : { ...state.visionUnavailable, [droneId]: true as const };
+        return { ...withoutDrone(state, droneId), visionUnavailable };
       }),
     receiptTimes: (droneId) => get().rateWindows[droneId]?.toArray() ?? [],
     streamsForDrone: (droneId) => {
@@ -287,20 +346,16 @@ export const useVisionDetectionsStore = create<VisionDetectionsState>(
           !(droneId in state.batches) &&
           !(droneId in state.streams) &&
           !(droneId in state.rateWindows) &&
-          !(droneId in state.offsetWindows)
+          !(droneId in state.offsetWindows) &&
+          !(droneId in state.visionUnavailable)
         ) {
           return state;
         }
-        const batches = { ...state.batches };
-        delete batches[droneId];
-        const streams = { ...state.streams };
-        delete streams[droneId];
-        const rateWindows = { ...state.rateWindows };
-        delete rateWindows[droneId];
-        const offsetWindows = { ...state.offsetWindows };
-        delete offsetWindows[droneId];
-        return { batches, streams, rateWindows, offsetWindows };
+        const visionUnavailable = { ...state.visionUnavailable };
+        delete visionUnavailable[droneId];
+        return { ...withoutDrone(state, droneId), visionUnavailable };
       }),
-    clear: () => set({ batches: {}, streams: {}, rateWindows: {}, offsetWindows: {} }),
+    clear: () =>
+      set({ batches: {}, streams: {}, rateWindows: {}, offsetWindows: {}, visionUnavailable: {} }),
   }),
 );

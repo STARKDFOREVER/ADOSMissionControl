@@ -1,9 +1,10 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { CockpitPerceptionChip } from "@/components/vision/CockpitPerceptionChip";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { useVisionDetectionsStore } from "@/stores/vision-detections-store";
+import { VISION_NOT_RUNNING_COPY } from "@/lib/agent/vision-detections-ws";
 
 const DRONE = "node:d1";
 
@@ -29,7 +30,7 @@ function chip(): HTMLElement | null {
 
 describe("CockpitPerceptionChip", () => {
   beforeEach(() => {
-    useVisionDetectionsStore.setState({ batches: {} } as never);
+    useVisionDetectionsStore.getState().clear();
     useAgentCapabilitiesStore.setState({
       perceptionTier: undefined,
       perceptionOffloadTarget: undefined,
@@ -92,5 +93,36 @@ describe("CockpitPerceptionChip", () => {
     // No stale escalation when a feed never started (that is "no detections yet").
     expect(screen.queryByText("Perception feed stale")).toBeNull();
     expect(screen.getByText("LOCAL")).toBeTruthy();
+  });
+
+  it("reads 'Vision not running' (warn) when the agent reports the engine unavailable", () => {
+    useVisionDetectionsStore.getState().setVisionAvailable(DRONE, false);
+    render(<CockpitPerceptionChip droneId={DRONE} />);
+    const el = chip();
+    expect(el).not.toBeNull();
+    expect(el!.getAttribute("data-feed-state")).toBe("not-running");
+    expect(el!.className).toContain("warn");
+    expect(screen.getByText(VISION_NOT_RUNNING_COPY)).toBeTruthy();
+  });
+
+  it("drops the not-running copy the moment a batch arrives again", () => {
+    useAgentCapabilitiesStore.setState({ perceptionTier: "local" });
+    useVisionDetectionsStore.getState().setVisionAvailable(DRONE, false);
+    render(<CockpitPerceptionChip droneId={DRONE} />);
+    expect(screen.getByText(VISION_NOT_RUNNING_COPY)).toBeTruthy();
+
+    act(() =>
+      useVisionDetectionsStore.getState().setBatch(DRONE, {
+        modelId: "person",
+        cameraId: "uvc-0",
+        frameId: 1,
+        tsMs: Date.now(),
+        frameWidth: 640,
+        frameHeight: 480,
+        detections: [],
+      }),
+    );
+    expect(screen.queryByText(VISION_NOT_RUNNING_COPY)).toBeNull();
+    expect(chip()!.getAttribute("data-feed-state")).toBe("fresh");
   });
 });

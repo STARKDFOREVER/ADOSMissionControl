@@ -36,13 +36,16 @@ export interface SubscribeOptions<E> {
    *  for the ground-station event streams; false for a stream that can go
    *  quiet while healthy. Default true. */
   peerSendsKeepalive?: boolean;
+  /** The peer closed the socket, with its close code and reason, before the
+   *  redial. A handler can explain a refusal in the reason. */
+  onClose?: (code: number | undefined, reason: string) => void;
 }
 
 export function subscribeWebSocket<E>(opts: SubscribeOptions<E>): () => void {
   if (typeof window === "undefined") {
     return () => {};
   }
-  const { ctx, path, scope, onEvent, onState, peerSendsKeepalive = true } = opts;
+  const { ctx, path, scope, onEvent, onState, onClose, peerSendsKeepalive = true } = opts;
   // No ``?api_key=`` query param. The pairing key never reaches the URL.
   const url = ctx.baseUrl.replace(/^http/, "ws") + path;
 
@@ -72,5 +75,6 @@ export function subscribeWebSocket<E>(opts: SubscribeOptions<E>): () => void {
       if (state !== "connecting") onState?.(state);
     },
     slowRetryCloseCodes: [CLOSE_POLICY_VIOLATION],
+    onClose,
   });
 }

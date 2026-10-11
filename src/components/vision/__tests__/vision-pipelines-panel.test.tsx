@@ -120,4 +120,16 @@ describe("VisionPipelinesPanel", () => {
     expect(screen.queryByText(messages.vision.noPipelines)).toBeNull();
     expect(screen.getByText(messages.vision.engineStatusUnavailable)).toBeTruthy();
   });
+
+  it("says vision is not running when the agent reports the engine unavailable, and clears on resume", () => {
+    useVisionDetectionsStore.getState().setVisionAvailable(DRONE, false);
+    renderPanel(<VisionPipelinesPanel droneId={DRONE} />);
+    expect(screen.getByText(messages.vision.visionNotRunning)).toBeTruthy();
+    expect(screen.queryByText(messages.vision.engineStatusUnavailable)).toBeNull();
+    expect(screen.queryByText(messages.vision.noPipelines)).toBeNull();
+
+    act(() => seed("person", "uvc-0"));
+    expect(screen.queryByText(messages.vision.visionNotRunning)).toBeNull();
+    expect(screen.getAllByTestId("vision-pipeline-row")).toHaveLength(1);
+  });
 });

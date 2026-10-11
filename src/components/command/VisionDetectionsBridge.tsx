@@ -52,6 +52,7 @@ import {
 } from "@/lib/agent/resolve-agent";
 import {
   connectVisionDetections,
+  detectionsAvailability,
   mapWireBatch,
   type WireDetectionBatch,
 } from "@/lib/agent/vision-detections-ws";
@@ -105,8 +106,7 @@ function connectRelayVisionDetections(opts: {
   reach: RelayReach;
 }): { close: () => void } {
   const { droneId, reach } = opts;
-  const setBatch = useVisionDetectionsStore.getState().setBatch;
-  const clearBatch = useVisionDetectionsStore.getState().clearBatch;
+  const { setBatch, clearBatch, setVisionAvailable } = useVisionDetectionsStore.getState();
 
   let closed = false;
   let inFlight: AbortController | null = null;
@@ -127,10 +127,17 @@ function connectRelayVisionDetections(opts: {
         typeof raw === "object" &&
         !Array.isArray(raw)
       ) {
-        const batch = mapWireBatch(raw as WireDetectionBatch);
-        if (batch) {
-          setBatch(droneId, batch);
-          outcome = "fresh";
+        // `available:false` is the agent saying its engine is unreachable:
+        // surface "vision not running" rather than an empty feed. A later
+        // batch clears it through `setBatch`.
+        if (detectionsAvailability(raw) === false) {
+          setVisionAvailable(droneId, false);
+        } else {
+          const batch = mapWireBatch(raw as WireDetectionBatch);
+          if (batch) {
+            setBatch(droneId, batch);
+            outcome = "fresh";
+          }
         }
       }
     } catch {
