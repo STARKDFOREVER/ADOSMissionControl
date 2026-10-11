@@ -6,6 +6,165 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.60.0] - 2026-10-11
+
+This release covers everything since 0.59.0: seventy-four commits, most of
+them landing in the first two weeks of October on top of a summer of
+dependency updates. Three threads run through it.
+
+The first is the cockpit. Mission Control now shares one cockpit standard
+with the agent's HDMI cockpit and the Android app: a safety band, alerts by
+level, rebuilt HUD instruments and confirmations as gesture tiers that work
+from touch, pointer, keyboard and gamepad. Skills resolve through one place,
+so the Skill Bar, command palette and gamepad radial agree on what a key does,
+and kill, return home and land stay available when the link goes stale.
+
+The second is what Mission Control reports about the vehicle and the node.
+Parameter send failures, incomplete downloads, MISSION_ACK refusals and
+unconfirmed signing changes now show as failures instead of passing silently.
+Radio, relay and TX power readings are shown as measured or unknown, link loss
+drives removal and failover per drone, and node pages show what the agent
+declares rather than what a table assumes.
+
+The third is the self-hosted stack. The MQTT bridge forwarder is gone: agents
+post their status to Convex over HTTPS, and Mosquitto carries only the relay
+planes. Local-network server routes answer only local pages, server proxy
+routes fetch only from allowlisted sources, and the desktop app no longer
+installs unsigned updates by itself.
+
+### Added
+
+- **Phone receivers.** The ground station Radio tab lists phones asking to
+  receive the link directly, with their key fingerprint, for approval. The
+  card hides on agents without the route and disables decisions while the
+  station is unreachable.
+- **Links panel.** Each drone has a Links panel listing its connections. A
+  protocol-level disconnect drives removal and failover, a reconnecting list
+  shows drones being retried with a stop control, and drone identity refreshes
+  from AUTOPILOT_VERSION.
+- **Inbound signing enforcement.** An optional setting drops inbound MAVLink
+  frames without a valid signature, and the Signing panel shows inbound
+  signing counters. A banner warns while a vehicle runs unsigned.
+- **Agent diagnostics strip.** Node pages show the flight controller system id
+  and the agent's reconciler outcome, uplink route state, proxy posture,
+  agent signing, software-encode use and recorder segments. Uploads show a
+  busy state and their content digest.
+- **Dashboard PIN unlock.** An unpaired ground station whose dashboard is PIN
+  locked can be unlocked from Mission Control.
+- **Perimeter pattern.** The planner gains a perimeter pattern, and Planner
+  Copilot understands perimeter and intent requests.
+- **Desktop updates.** About has a "check now" control. Check failures and a
+  retry are shown, and an offline check is reported as information rather
+  than a failed update.
+- **Flight map mission route.** While the aircraft flies a mission the open
+  plan matches, the Flight map and cockpit minimap draw its route and mark the
+  waypoint it is heading to.
+- **Demo mode.** Each flying drone holds its loop as its mission and reports
+  the waypoint it is flying toward, so the WP readout, route and PLAN overlay
+  are live. Also new: Wi-Fi status and scan, a receiver ground station with
+  mesh pairing, the demo feed in the Overview and downlink video cards, the
+  Vision Nav tab body, and registry search and filters. Demo drones land and
+  disarm like a real flight controller.
+- **OLED contrast.** The ground station physical UI tab sets OLED contrast.
+
+### Changed
+
+- **Cockpit.** A safety band (reach, arm, mode, battery with time to reserve,
+  GPS, link, video, stick control, preflight, recording and flight timers,
+  guarded Kill), alerts by level, and rebuilt HUD instruments (5° pitch
+  ladder, roll scale, flight-path marker, heading tape with home caret,
+  scrolling speed and altitude tapes with REL/MSL, vertical speed, wind).
+  Confirmations are gesture tiers (tap, hold, slide, guarded); typed-phrase
+  confirms are gone from flight skills. Command skills turn off with a reason
+  as soon as the flight controller heartbeat is older than 3 s. The cockpit
+  adapts to its width and stays still under telemetry load.
+- **Skills.** One resolver for bound keys drives the Skill Bar, palette and
+  radial: arm becomes disarm and pause becomes resume. Each drone has its own
+  arm lock, and an unknown arm state is treated as armed. Confirms name the
+  drone and re-check before sending, and extension skills always confirm
+  unless the vehicle is disarmed. Default skill keys no longer collide with
+  built-in or reserved keys.
+- **Brand theme.** The default theme is the brand navy and blue palette,
+  generated from the shared design tokens; the previous neutral look is the
+  new "Mono" theme. Text, status and HUD colours meet AA contrast in every
+  theme. Night vision overrides the chosen accent.
+- **Extensions.** Extension skills and target actions inherit their confirm
+  and arm gates, write their config over the LAN or a ground station's relay,
+  and are disabled with a reason on cloud-only reach. Parameters for every
+  installed extension appear on the node's Extensions page and in cockpit
+  quick settings, including a camera picker, grouped and translated through
+  the extension's own locale. New `cockpit.widget` slot. Install, enable,
+  disable and remove work through a ground station's relay, and rows show why
+  an extension failed.
+- **Armed actions ask first.** When a node refuses an action because the
+  vehicle is armed, including extension install, enable, disable and remove,
+  Mission Control asks whether to continue and retries with an explicit
+  override. Sensor calibrations cannot start while the vehicle is armed or its
+  arm state is unknown.
+- **Fleet identity.** When two aircraft behind one ground station share a
+  MAVLink system id, a blocking banner names the id and commands to it are
+  held. A relayed drone opens its MAVLink session only once its system id is
+  known, and accepts frames from that id only. Live video follows the
+  selected drone, with a "Show this drone" action.
+- **Agent install command.** Every install command uses `curl -fsSL` with the
+  installer from the agent repository's main branch. The agent catalog is
+  embedded, and board profiles match with wildcards.
+- **Firmware flashing.** ArduPilot images go through the bootloader protocol
+  with a matching CRC; USB DFU needs the `_with_bl.hex` image. Parameters are
+  backed up (browser storage and a `.param` download) before flashing and can
+  be restored afterwards from a diff. Flashing needs a USB cable to the flight
+  controller and is held after an incomplete parameter download. CAN node
+  restart, erase, bootloader and node-id changes ask for confirmation and are
+  refused while armed.
+- **Planner.** Terrain samples are dropped when a waypoint moves and the
+  validator reports "terrain unknown" until resampled. Every waypoint carries
+  an explicit altitude frame, and pattern generators plan relative to home.
+  Planner shortcuts work on any keyboard layout.
+- **Flight logs.** Recordings are stored in chunks with no frame cap and are
+  never evicted while a flight references them; a full disk is reported. ULog
+  and tlog import in a worker with progress and cancel.
+- **Video.** WHEP requests send the node key only to the node's own origin and
+  close their session on teardown. Detail views hold the high-quality video
+  profile while they play and release it when they close. Cloud WebRTC
+  signaling is matched by session and closed on teardown.
+- **Vision.** When the agent reports detection is not running, the cockpit
+  chip and pipelines panel say so, and clear when detections resume. A model
+  downloads before its detector can be selected.
+- **Desktop app.** On Windows and Linux, as on macOS, updates install only
+  when the operator asks, because the builds are not code-signed. The UDP peer
+  is re-learned after silence, permissions are granted to the exact app origin
+  only, and installing an update is blocked while a vehicle is armed.
+- **Node capabilities** come from what the agent declares, not from a SoC
+  table.
+
+### Fixed
+
+- **Protocol.** MAVLink transfers share one state, so a second parameter or
+  mission download works after the first. A refused command raises an error,
+  MISSION_ACK refusals are shown, stream rates are set once, and transfers
+  clean up after errors. MSP arming is confirmed from the vehicle's status,
+  and MSP link loss is detected. BLE and WebSocket send queues are bounded.
+- **Readouts.** Parameter send failures and incomplete downloads are shown with
+  a retry. Radio state, relay fragments and TX power readback show as measured
+  or unknown. Signing changes the flight controller did not confirm are
+  reported. Network writes that drop the link ask first.
+- **Gamepad calibration** is stored per device.
+- **Reconnects.** Sockets and video players retry on a fixed cadence and never
+  give up. Relayed nodes show why a relay ticket was refused, and relayed logs
+  support live tail and export.
+- **Flight logs.** ULog array fields parse correctly, and re-importing a file
+  no longer duplicates it.
+- **Server routes.** The firmware proxy streams from allowlisted sources with
+  a size ceiling, PID analysis has a timeout and spends quota only after a
+  delivered answer, concurrent manifest requests share one fetch, and sign-in
+  cookies work on a plain-http LAN self-host.
+- Downloading an empty mission leaves the open plan alone. Betaflight polling
+  survives transient errors. Community HTML is sanitized. Fleet rows stay
+  stable, and extension frames get a grace period before unmounting.
+- Many smaller fixes across hardware pages, input calibration, replay, vision
+  overlays, DroneCAN tools, offline maps, mesh and role error copy, and
+  translations.
+
 ### Security
 
 - The LAN-pair proxy and the MCP activity feed answer only when the page is
@@ -14,67 +173,8 @@ the project follows [Semantic Versioning](https://semver.org/).
   `ados-deploy` sets that for a public domain.
 - In the desktop app, local node API keys are encrypted with the operating
   system keystore. Inline extension assets without a signed digest are refused.
-
-### Changed
-
-- **Cockpit.** One cockpit standard shared with the agent's HDMI cockpit and
-  the Android app: a safety band (reach, arm, mode, battery with time to
-  reserve, GPS, link, video, stick control, preflight, recording and flight
-  timers, guarded Kill), alerts by level, and rebuilt HUD instruments (5°
-  pitch ladder, roll scale, flight-path marker, heading tape with home caret,
-  scrolling speed and altitude tapes with REL/MSL, vertical speed, wind).
-  Confirmations are gesture tiers (tap, hold, slide, guarded) that work from
-  touch, pointer, keyboard and gamepad; typed-phrase confirms are gone from
-  flight skills. Command skills turn off with a reason as soon as the flight
-  controller heartbeat is older than 3 s. The cockpit adapts to its width
-  with container queries and stays still under telemetry load.
-- **Brand theme.** The default theme is the brand navy and blue palette,
-  generated from the shared design tokens; the previous neutral look is the
-  new "Mono" theme. Night vision overrides the chosen accent.
-- **Extensions.** Extension skills and target actions inherit their confirm
-  and arm gates, write their config over the LAN or a ground station's relay,
-  and are disabled with a reason on cloud-only reach. Parameters for every
-  installed extension appear on the node's Extensions page and in cockpit
-  quick settings, including a camera picker. New `cockpit.widget` slot.
-  Default skill keys no longer collide with built-in or reserved keys.
-- **Ground station.** The Radio tab lists phones asking to receive the link
-  directly, with their key fingerprint, for approval.
-- **Armed actions ask first.** When a node refuses an action because the
-  vehicle is armed, Mission Control asks whether to continue and retries with
-  an explicit override.
-- **Fleet identity.** When two aircraft behind one ground station share a
-  MAVLink system id, a blocking banner names the id and commands to it are
-  held. A relayed drone opens its MAVLink session only once its system id is
-  known, and accepts frames from that id only. Live video follows the
-  selected drone, with a "Show this drone" action.
-- **Firmware flashing.** ArduPilot images go through the bootloader protocol
-  with a matching CRC; USB DFU needs the `_with_bl.hex` image. Parameters are
-  backed up (browser storage and a `.param` download) before flashing and can
-  be restored afterwards from a diff. Flashing needs a USB cable to the flight
-  controller. CAN node restart, erase, bootloader and node-id changes ask for
-  confirmation and are refused while armed.
-- **Planner.** Terrain samples are dropped when a waypoint moves and the
-  validator reports "terrain unknown" until resampled. Every waypoint carries
-  an explicit altitude frame, and pattern generators plan relative to home.
-  Downloading an empty mission leaves the open plan alone.
-- **Flight logs.** Recordings are stored in chunks with no frame cap and are
-  never evicted while a flight references them; a full disk is reported.
-  ULog array fields parse correctly, ULog and tlog import in a worker with
-  progress and cancel, and re-importing a file no longer duplicates it.
-- **Protocol.** MAVLink transfers share one state, so a second parameter or
-  mission download works after the first. MSP arming is confirmed from the
-  vehicle's status, and MSP link loss is detected. BLE and WebSocket send
-  queues are bounded.
-- Reconnecting sockets and video players retry on a fixed cadence and never
-  give up. Relayed nodes show why a relay ticket was refused, and relayed
-  logs support live tail and export.
-- Node capabilities come from what the agent declares, not from a SoC table.
-- **Flight map mission route.** While the aircraft flies a mission the open
-  plan matches, the Flight map and cockpit minimap draw its route and mark the
-  waypoint it is heading to. In demo mode each flying drone holds its loop as
-  its mission, reports the waypoint it is flying toward, and selecting it
-  downloads that mission, so the WP readout, route and PLAN overlay are live.
-  The Overview and ground-station downlink video cards play the demo feed.
+- Next.js and Convex auth are upgraded for published security advisories.
+- Release builds check their tag and publish checksums.
 
 ### Removed
 
@@ -83,11 +183,34 @@ the project follows [Semantic Versioning](https://semver.org/).
   kiosk shows the ground station agent's own cockpit
   (`http://localhost:8080/cockpit/?kiosk=1`). The kiosk PIC auto-claim switch
   under Controllers is gone with it, and its stored value is dropped.
+- **The MQTT bridge forwarder service** (its source under `tools/mqtt-bridge`
+  and its container in both compose files). Agents post status straight to
+  Convex at `/agent/status` over HTTPS.
+- **`NEXT_PUBLIC_DEMO_DRONE_COUNT`.** Demo mode runs a fixed simulated fleet.
 
-### Fixed
+### Notes
 
-- Many smaller fixes across hardware pages, input calibration, replay,
-  vision overlays, DroneCAN tools, offline maps and translations.
+- **Self-hosters: drop the bridge.** Remove the `mqtt-bridge` (or `bridge`)
+  service from your compose file. The Mosquitto broker, its ACL and the
+  `mqtt-auth-sync` loop stay; their assets remain under
+  `tools/mqtt-bridge/deploy/`. `MQTT_BROKER_URL` and `CONVEX_URL` are no
+  longer needed in the broker's `.env`.
+- **`MQTT_AUTH_RELAY_SECRET` is required.** Set the same value in
+  `tools/selfhost/.env` and on Convex (`npx convex env set
+  MQTT_AUTH_RELAY_SECRET "<value>"`; generate with `openssl rand -hex 32`).
+  Without it `mqtt-auth-sync` cannot read broker credentials and agents are
+  refused by the broker.
+- **Redeploy Convex functions** (`npx convex deploy`) before serving this
+  build. Drone liveness moves to a new `cmd_droneLiveness` table
+  (`cmdDroneLiveness.ts`); a drone with no heartbeat since the upgrade falls
+  back to its stored last-seen time. In `cmdAiUsage`, `checkAndRecord` is
+  replaced by `getRemaining` plus a record made only after a delivered
+  answer.
+- **Public deployments** should set `ADOS_LOCAL_ROUTES=off`; private DNS names
+  go in `ADOS_LOCAL_ROUTE_HOSTS`. `tools/selfhost/docker-compose.yml` passes
+  both through to the Mission Control container.
+- TypeScript stays on 5.x and ESLint on 9.x; the toolchain does not yet run
+  on their next majors.
 
 ## [0.59.0] - 2026-09-25
 
