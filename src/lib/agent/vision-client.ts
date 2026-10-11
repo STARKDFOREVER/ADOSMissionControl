@@ -21,6 +21,8 @@
  */
 
 import { timedFetch } from "@/lib/agent/agent-client/timeout";
+import { contentDigestHeader, uploadRefusalCopy } from "./upload-digest";
+import { selectDetectorInstalling } from "./vision-detector-select";
 
 /** A detector model is tens to hundreds of MB and may cross a radio link,
  *  so the 6 s read default would abort every legitimate upload. It still
@@ -136,6 +138,9 @@ export interface VisionDownloadResult {
   status: "ok" | "error";
   message: string;
   path?: string;
+  /** The agent's job status URL (`/api/vision/models/<id>/status`) a 202
+   * download answers with; the progress is polled there. */
+  statusUrl?: string;
 }
 
 export interface VisionDownloadProgress {
@@ -456,22 +461,36 @@ export class VisionAgentClient implements VisionClient {
   /**
    * Set the engine's active detector (`PUT /api/vision/detector`). The
    * agent resolves the model id, writes `vision.detector` to its config,
-   * and restarts the vision service (a ~2 s gap is the safe state). The
-   * model must already be installed (download it first). Returns the
-   * agent's status envelope.
+   * and restarts the vision service (a ~2 s gap is the safe state). A model
+   * the node does not hold is answered 409; the model is then downloaded
+   * (202 + `status_url`), polled until installed, and selected again.
    */
   async setActiveDetector(modelId: string): Promise<VisionSetDetectorResult> {
-    const body = await this.json(
-      await timedFetch(`${this.baseUrl}/api/vision/detector`, {
-        method: "PUT",
-        headers: { ...this.headers(), "Content-Type": "application/json" },
-        body: JSON.stringify({ model_id: modelId }),
-      }),
+    return selectDetectorInstalling(
+      {
+        putDetector: (id) => this.putDetector(id),
+        download: (id) => this.download(id),
+        modelStatus: (id) => this.modelStatus(id),
+      },
+      modelId,
     );
-    const e = body as Record<string, unknown>;
-    const status = e.status === "ok" ? "ok" : "error";
+  }
+
+  private async putDetector(
+    modelId: string,
+  ): Promise<VisionSetDetectorResult & { notInstalled?: boolean }> {
+    const res = await timedFetch(`${this.baseUrl}/api/vision/detector`, {
+      method: "PUT",
+      headers: { ...this.headers(), "Content-Type": "application/json" },
+      body: JSON.stringify({ model_id: modelId }),
+    });
+    if (res.status === 409) {
+      const text = await res.text().catch(() => "");
+      return { status: "error", message: text, notInstalled: true };
+    }
+    const e = (await this.json(res)) as Record<string, unknown>;
     return {
-      status,
+      status: e.status === "ok" ? "ok" : "error",
       message: str(e.message),
       modelId: str(e.model_id) || undefined,
     };
@@ -504,17 +523,27 @@ export class VisionAgentClient implements VisionClient {
         board_match: meta.boardMatch,
       }),
     );
-    const body = await this.json(
-      await timedFetch(
-        `${this.baseUrl}/api/vision/models/upload`,
-        {
-          method: "POST",
-          headers: this.headers(),
-          body: form,
-        },
-        MODEL_UPLOAD_TIMEOUT_MS,
-      ),
+    const res = await timedFetch(
+      `${this.baseUrl}/api/vision/models/upload`,
+      {
+        method: "POST",
+        headers: { ...this.headers(), ...(await contentDigestHeader(file)) },
+        body: form,
+      },
+      MODEL_UPLOAD_TIMEOUT_MS,
     );
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      let parsed: unknown = null;
+      try {
+        parsed = text ? JSON.parse(text) : null;
+      } catch {
+        // an opaque body keeps the raw text below
+      }
+      const copy = uploadRefusalCopy(res.status, parsed);
+      throw new VisionAgentError(res.status, copy ?? (text || `HTTP ${res.status}`));
+    }
+    const body: unknown = await res.json();
     const e = body as Record<string, unknown>;
     const status = e.status === "ok" ? "ok" : "error";
     return {
@@ -527,8 +556,8 @@ export class VisionAgentClient implements VisionClient {
 
   /**
    * Kick off a model download. The agent picks the best variant for the
-   * board's NPU TOPS. Returns the agent's status envelope; the actual
-   * progress is polled separately via `modelStatus`.
+   * board's NPU TOPS and answers 202 `{status:"started", status_url}`; the
+   * progress is polled at that URL via `modelStatus`.
    */
   async download(modelId: string): Promise<VisionDownloadResult> {
     const body = await this.json(
@@ -539,8 +568,13 @@ export class VisionAgentClient implements VisionClient {
       ),
     );
     const e = body as Record<string, unknown>;
-    const status = e.status === "ok" ? "ok" : "error";
-    return { status, message: str(e.message), path: str(e.path) || undefined };
+    const status = e.status === "ok" || e.status === "started" ? "ok" : "error";
+    return {
+      status,
+      message: str(e.message),
+      path: str(e.path) || undefined,
+      statusUrl: str(e.status_url) || undefined,
+    };
   }
 
   /** Poll download progress + installed state for one model. */

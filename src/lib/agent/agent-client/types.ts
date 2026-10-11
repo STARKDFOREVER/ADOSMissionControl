@@ -18,6 +18,10 @@ export interface SigningCapability {
   firmware_name: string | null;
   firmware_version: string | null;
   signing_params_present: boolean;
+  /** True when the FC answers signed on a serial link other than its USB
+   * port, so the agent's own unsigned frames are dropped; false when not;
+   * null when there is no serial link to judge. Absent on older agents. */
+  agent_commands_unsigned_rejected_risk?: boolean | null;
 }
 
 /** `POST /api/mavlink/signing/enroll-fc`. ArduPilot never acknowledges
@@ -30,6 +34,9 @@ export interface SigningEnrollResult {
   verified: boolean;
   key_id: string;
   enrolled_at: string;
+  /** True when the node stored the key to sign its own traffic. Absent on
+   * agents that predate agent signing. */
+  agent_holds_key?: boolean;
 }
 
 /** `POST /api/mavlink/signing/disable-on-fc`. `verified` is true only when an
@@ -76,8 +83,11 @@ export interface CameraListResponse {
 
 /** A ground-station recorder start / stop reply. Start carries
  * `{filename, started_at, path}`; stop carries `{filename, stopped_at,
- * duration_seconds, size_bytes}`. A refusal is a non-2xx (409 / 503 / 507)
- * that the client throws, never a 2xx body. */
+ * duration_seconds, size_bytes, segments, interrupted_count}`. A capture whose
+ * ffmpeg exited while wanted continued in a new segment file: `segments` lists
+ * every file in order and `interrupted_count` how often that happened. A
+ * refusal is a non-2xx (409 / 503 / 507) that the client throws, never a 2xx
+ * body. */
 export interface RecordingControlResponse {
   filename?: string;
   path?: string;
@@ -85,6 +95,8 @@ export interface RecordingControlResponse {
   stopped_at?: string | number;
   duration_seconds?: number;
   size_bytes?: number;
+  segments?: string[];
+  interrupted_count?: number;
 }
 
 export interface RecordingFileEntry {

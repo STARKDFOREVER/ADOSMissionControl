@@ -28,12 +28,16 @@ export type EnrollOutcome =
       enrolledAt: string;
       /** The raw key as hex, for the caller's one-shot export or cloud upload. */
       keyHex: string;
+      /** The agent confirmed it stored the key and signs its own traffic. */
+      nodeHoldsKey: boolean;
     }
   | {
       kind: "unconfirmed";
       keyId: string;
       enrolledAt: string;
       keyHex: string;
+      /** The agent confirmed it stored the key; false when it never answered. */
+      nodeHoldsKey: boolean;
       /** The key kept beside the new one, if this browser had one. */
       previousKeyId: string | null;
       /** Why the FC's state is unknown, or null when the agent sent the key
@@ -54,12 +58,14 @@ export async function enrollNewKey(opts: {
   droneId: string;
   linkId: number;
   userId: string | null;
+  /** Also store the key on the node so the agent signs its own traffic. */
+  agentHoldsKey?: boolean;
 }): Promise<EnrollOutcome> {
-  const { client, droneId, linkId, userId } = opts;
+  const { client, droneId, linkId, userId, agentHoldsKey = false } = opts;
   const rawBytes = generateRandomKey();
   const keyHex = keyBytesToHex(rawBytes);
 
-  async function storeUnconfirmed(reason: string | null): Promise<EnrollOutcome> {
+  async function storeUnconfirmed(reason: string | null, nodeHoldsKey: boolean): Promise<EnrollOutcome> {
     try {
       const record = await importAndStore({
         droneId, userId, keyBytes: rawBytes, linkId,
@@ -71,6 +77,7 @@ export async function enrollNewKey(opts: {
         enrolledAt: record.enrolledAt,
         keyHex,
         previousKeyId: record.previous?.keyId ?? null,
+        nodeHoldsKey,
         reason,
       };
     } catch (storeErr) {
@@ -82,7 +89,7 @@ export async function enrollNewKey(opts: {
 
   let result: SigningEnrollResult;
   try {
-    result = await client.enrollSigningKey(keyHex, linkId);
+    result = await client.enrollSigningKey(keyHex, linkId, agentHoldsKey);
   } catch (e) {
     if (e instanceof AgentHttpError) {
       // The agent answered and sent nothing: the FC still has its old key.
@@ -93,12 +100,12 @@ export async function enrollNewKey(opts: {
     const reason = e instanceof SigningPartialEnrollError
       ? "The first key frame reached the flight controller but the repeat failed."
       : `The enrollment request did not complete (${message(e)}); it may have reached the flight controller.`;
-    return storeUnconfirmed(reason);
+    return storeUnconfirmed(reason, false);
   }
 
   if (!result.verified) {
     // Sent, but the FC was never seen signing with the new key.
-    return storeUnconfirmed(null);
+    return storeUnconfirmed(null, result.agent_holds_key === true);
   }
 
   try {
@@ -110,5 +117,11 @@ export async function enrollNewKey(opts: {
       error: `The flight controller was sent the new key, but it could not be stored in this browser: ${message(storeErr)}`,
     };
   }
-  return { kind: "enrolled", keyId: result.key_id, enrolledAt: result.enrolled_at, keyHex };
+  return {
+    kind: "enrolled",
+    keyId: result.key_id,
+    enrolledAt: result.enrolled_at,
+    keyHex,
+    nodeHoldsKey: result.agent_holds_key === true,
+  };
 }

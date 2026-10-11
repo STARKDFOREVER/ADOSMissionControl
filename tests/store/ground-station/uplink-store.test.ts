@@ -25,6 +25,7 @@ const EMPTY_UPLINK: UplinkSlice = {
   cloud_relay: null,
   shareUplinkApplied: null,
   shareUplinkAppliedReason: null,
+  routeApplied: null,
   loading: false,
   error: null,
   fetchedAt: null,

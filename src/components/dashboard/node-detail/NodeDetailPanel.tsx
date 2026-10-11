@@ -60,6 +60,7 @@ import { NodeTabStrip } from "./NodeTabStrip";
 import { NodeHeaderActions } from "./NodeHeaderActions";
 import { NodeAuthorityChip, NodeConnectChip } from "./NodeHeaderChips";
 import { RelayedNodeNotices } from "./RelayedNodeNotices";
+import { AgentDiagnosticsStrip } from "./AgentDiagnosticsStrip";
 
 interface NodeDetailPanelProps {
   droneId: string;
@@ -256,6 +257,7 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
           reachedVia={drone.reachedVia}
           relayReach={relayReach}
         />
+        {!immersiveMode && <AgentDiagnosticsStrip agentDeviceId={agentDeviceId} />}
         {/* The surface key carries BOTH the tab and the node id: the panel is
             not remounted per node, so keying on the tab alone would carry one
             node's surface state (and a dirty parameter edit) onto the next. */}

@@ -39,7 +39,7 @@ import { agentSupports, fetchVersionInfo } from "./version-cache";
 import { legacyLogEntry } from "./logging-wire";
 import {
   configWriteFailure,
-  persistFailureBody,
+  configWriteRefusalBody,
   type ConfigWriteResult,
 } from "@/lib/agent/config-write";
 
@@ -288,8 +288,9 @@ export function getConfig(ctx: RequestContext): Promise<Record<string, unknown>>
  * Dot-separated key paths are supported by the agent
  * (e.g. `ground_station.display.type`). The agent coerces the string
  * value to the underlying field type, so the caller hands in a plain string.
- * Returns the agent's answer, including the 500 persist-failure body, so
- * `configWriteFailure` names the node's own reason.
+ * Returns the agent's answer, including its refusal bodies (the 500 persist
+ * failure, the 422 `E_INVALID` / `E_VALIDATION`), so `configWriteFailure`
+ * names the node's own reason.
  */
 export async function setConfigValue(
   ctx: RequestContext,
@@ -309,7 +310,7 @@ export async function setConfigValue(
       } catch {
         throw err;
       }
-      const failure = persistFailureBody(body);
+      const failure = configWriteRefusalBody(body);
       if (failure) return failure;
     }
     throw err;

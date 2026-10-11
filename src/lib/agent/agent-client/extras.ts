@@ -312,13 +312,17 @@ export class SigningPartialEnrollError extends Error {
   }
 }
 
-/** Enroll a signing key on the FC. Throws `SigningPartialEnrollError` when
- * the agent reports a partially-applied enrollment; every other non-2xx
- * answer stays an `AgentHttpError`. */
+/** Enroll a signing key on the FC. With `agentHoldsKey` the node also keeps
+ * the key so its own traffic (heartbeat, stream rates, param sweep, swarm
+ * setpoints) is signed; that only takes effect where the node enables agent
+ * signing. Throws `SigningPartialEnrollError` when the agent reports a
+ * partially-applied enrollment; every other non-2xx answer stays an
+ * `AgentHttpError`. */
 export async function enrollSigningKey(
   ctx: RequestContext,
   keyHex: string,
   linkId: number,
+  agentHoldsKey = false,
 ): Promise<SigningEnrollResult> {
   try {
     return await agentRequest<SigningEnrollResult>(
@@ -326,7 +330,11 @@ export async function enrollSigningKey(
       "/api/mavlink/signing/enroll-fc",
       {
         method: "POST",
-        body: JSON.stringify({ key_hex: keyHex, link_id: linkId }),
+        body: JSON.stringify({
+          key_hex: keyHex,
+          link_id: linkId,
+          agent_holds_key: agentHoldsKey,
+        }),
         timeoutMs: SIGNING_WRITE_TIMEOUT_MS,
       },
     );

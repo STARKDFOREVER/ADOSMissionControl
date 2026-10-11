@@ -10,6 +10,10 @@
 
 import { GS_FETCH_TIMEOUT_MS, type RequestContext } from "./request";
 import { timedFetch } from "@/lib/agent/agent-client/timeout";
+import {
+  DASHBOARD_SESSION_HEADER,
+  dashboardSessionFor,
+} from "@/lib/agent/local-pair/dashboard-session";
 
 /** Subprotocol marker the agent expects as the first entry when a
  *  browser presents a one-shot ticket. The agent echoes this exact
@@ -52,9 +56,11 @@ interface TicketMintResponse {
 /**
  * Exchange the pairing key for a one-shot WS ticket scoped to ``scope``.
  *
- * Returns ``null`` when the context carries no pairing key: an unpaired
- * agent takes an open posture on its WS handlers, so the handshake
- * succeeds without a ticket and the caller dials with no subprotocol.
+ * With no pairing key, an operator-LAN browser holding a dashboard PIN
+ * session for this node mints with that session instead: an unpaired node
+ * admits its WebSocket relays to the operator LAN only with a ticket minted
+ * under the PIN. Returns ``null`` when the context carries neither, and the
+ * caller dials with no subprotocol (on-box and first-boot lifeline callers).
  *
  * Throws on a non-OK mint response or a malformed body so the caller
  * can fall through to a legacy / relayed path.
@@ -64,9 +70,11 @@ export async function mintWsTicket(
   scope: WsAuthScope,
   signal?: AbortSignal,
 ): Promise<string | null> {
-  if (!ctx.apiKey) {
-    return null;
-  }
+  const session = ctx.apiKey ? null : dashboardSessionFor(ctx.baseUrl);
+  let credential: Record<string, string>;
+  if (ctx.apiKey) credential = { "X-ADOS-Key": ctx.apiKey };
+  else if (session) credential = { [DASHBOARD_SESSION_HEADER]: session };
+  else return null;
   const url = `${ctx.baseUrl.replace(/\/$/, "")}/api/_ws/ticket`;
   // A ticket mint gates the WebSocket dial behind it, so an unbounded one
   // wedges the whole relayed-MAVLink bring-up: `signal` is optional and
@@ -75,10 +83,7 @@ export async function mintWsTicket(
     url,
     {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-ADOS-Key": ctx.apiKey,
-      },
+      headers: { "Content-Type": "application/json", ...credential },
       body: JSON.stringify({ scope }),
       signal,
     },

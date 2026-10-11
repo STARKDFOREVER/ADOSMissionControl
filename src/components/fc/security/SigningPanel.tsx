@@ -7,7 +7,8 @@
  * Key material lives in this browser's IndexedDB as raw bytes (MAVLink
  * signing hashes the key itself), readable by script running on the page.
  * The agent is a transparent pipe plus a one-shot enrollment helper; it
- * never persists a key.
+ * keeps a copy of the key only when the operator lets it sign its own
+ * traffic.
  *
  * This file is a thin composition. State and action handlers live in
  * `signing/use-signing-actions.ts`. Branch UIs live as sub-components in
@@ -27,6 +28,7 @@ import { SigningUnsupportedNotice } from "./signing/SigningUnsupportedNotice";
 import { SigningDisabledSection } from "./signing/SigningDisabledSection";
 import { SigningEnabledSection } from "./signing/SigningEnabledSection";
 import { InboundSigningSection } from "./signing/InboundSigningSection";
+import { UnsignedRiskBanner } from "./signing/UnsignedRiskBanner";
 
 export function SigningPanel() {
   const client = useAgentConnectionStore((s) => s.client);
@@ -66,6 +68,8 @@ export function SigningPanel() {
           actions.setEnrollFailed(false);
           actions.setBusy(false);
         }}
+        agentHoldsKey={actions.agentHoldsKey}
+        onAgentHoldsKeyChange={actions.setAgentHoldsKey}
       />
     );
   } else {
@@ -87,6 +91,7 @@ export function SigningPanel() {
         onSettleDisable={(signingOff) => void actions.handleSettleDisable(signingOff)}
         onExport={() => actions.setExportOpen(true)}
         onCloudSyncToggle={actions.handleCloudSyncToggle}
+        nodeHoldsKey={actions.nodeHoldsKey}
       />
     );
   }
@@ -110,6 +115,9 @@ export function SigningPanel() {
           >
             Private browsing detected. Signing keys enrolled in this window are scoped to the session. They will be lost when the window closes.
           </div>
+        )}
+        {droneId && (
+          <UnsignedRiskBanner risk={state?.capability?.agent_commands_unsigned_rejected_risk} />
         )}
         {bodyNode}
         {droneId && <InboundSigningSection />}

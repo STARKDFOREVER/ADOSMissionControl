@@ -19,6 +19,9 @@ export interface SigningDisabledSectionProps {
   onImport: () => void;
   onResetEnroll: () => void;
   onCancelEnroll: () => void;
+  /** Whether the enrollment also stores the key on the node. */
+  agentHoldsKey: boolean;
+  onAgentHoldsKeyChange: (holds: boolean) => void;
 }
 
 export function SigningDisabledSection({
@@ -29,6 +32,8 @@ export function SigningDisabledSection({
   onImport,
   onResetEnroll,
   onCancelEnroll,
+  agentHoldsKey,
+  onAgentHoldsKeyChange,
 }: SigningDisabledSectionProps) {
   return (
     <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
@@ -37,9 +42,28 @@ export function SigningDisabledSection({
         <span className="font-medium">MAVLink signing is off</span>
       </div>
       <p className="text-sm text-text-tertiary">
-        Enable signing to require a 32-byte HMAC key on every command sent to this drone.
-        The key lives only in this browser. A copy is pushed to the flight controller once.
+        Enable signing to require a 32-byte HMAC key on every command sent to this drone.{" "}
+        {agentHoldsKey
+          ? "The key is kept in this browser and on the node, which signs its own traffic with it. A copy is pushed to the flight controller once."
+          : "The key lives only in this browser. A copy is pushed to the flight controller once."}
       </p>
+      <label className="flex items-start gap-2 text-sm text-text-secondary">
+        <input
+          type="checkbox"
+          className="mt-0.5"
+          checked={agentHoldsKey}
+          disabled={busy || enrollStartedAt !== null}
+          onChange={(e) => onAgentHoldsKeyChange(e.target.checked)}
+        />
+        <span>
+          Let the agent sign its own traffic (stores the key on the node)
+          <span className="block text-xs text-text-tertiary">
+            Without this, the flight controller drops the agent&apos;s own frames once
+            signing is on over a serial link: stream rates, the parameter sweep and
+            swarm commands.
+          </span>
+        </span>
+      </label>
       {enrollStartedAt !== null ? (
         <EnrollmentProgress
           startedAt={enrollStartedAt}

@@ -25,6 +25,26 @@ export interface DashboardPinStatus {
   locked: boolean;
   /** Unix seconds the lockout expires, when `locked`. */
   lockedUntil: number | null;
+  /** `node` when every device is locked out (the node-wide failure budget is
+   * spent), `peer` when only the asking device is; null when not locked. */
+  lockScope: "node" | "peer" | null;
+}
+
+/** Operator copy for a locked dashboard PIN. A node-scope lock refuses every
+ * device until it expires or the key holder resets the PIN; a peer lock is
+ * only the device that kept guessing. Null when not locked. */
+export function dashboardPinLockCopy(
+  status: Pick<DashboardPinStatus, "locked" | "lockedUntil" | "lockScope">,
+  nowUnixS: number,
+): string | null {
+  if (!status.locked) return null;
+  const wait =
+    status.lockedUntil !== null
+      ? ` for ${Math.max(1, Math.ceil((status.lockedUntil - nowUnixS) / 60))} min`
+      : "";
+  return status.lockScope === "node"
+    ? `Too many wrong PIN attempts from across the network: the dashboard is locked for every device${wait}. Resetting the PIN here lifts the lock.`
+    : `One device entered too many wrong PINs and is locked out${wait}.`;
 }
 
 /** Pull a human message out of an agent error body (`{ detail }`). */
@@ -66,11 +86,13 @@ export async function getDashboardPinStatus(
     pin_set?: boolean;
     locked?: boolean;
     locked_until?: number | null;
+    scope?: string | null;
   } | null;
   return {
     pinSet: !!data?.pin_set,
     locked: !!data?.locked,
     lockedUntil: typeof data?.locked_until === "number" ? data.locked_until : null,
+    lockScope: data?.scope === "node" || data?.scope === "peer" ? data.scope : null,
   };
 }
 

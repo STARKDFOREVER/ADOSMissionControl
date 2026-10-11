@@ -520,6 +520,9 @@ export interface FullStatusResponse {
       hls?: string;
       live?: boolean | null;
     }[];
+    /** The hardware encoder failed and the encoder was pinned to software.
+     * Absent on agents that predate the field. */
+    encoder_forced_software?: boolean;
   };
   telemetry: Record<string, unknown>;
   /** WFB radio snapshot (camelCase) for the LAN-direct path. Optional for older agents. */
@@ -592,6 +595,39 @@ export interface FullStatusResponse {
    * mac-pins state. Absent on a node that has pinned nothing. Already camelCase
    * at the source — never remap it. */
   macStability?: Record<string, unknown> | null;
+  /** The FC identity reconciler's last verdict, or null before its first
+   * tick. Absent on agents that predate the reconciler. */
+  fc_identity?: FcIdentityVerdictWire | null;
+  /** The router's direct-GCS proxy posture: the configured binds plus the
+   * edges it actually holds. Null when the router has not published it. */
+  mavlink_proxy_posture?: MavlinkProxyPostureWire | null;
+  /** True when the FC drops the agent's unsigned frames; null unmeasured. */
+  agent_commands_unsigned_rejected_risk?: boolean | null;
+  /** `active` | `inactive_no_local_arbiter` | `off`; null unpublished. */
+  injector_arbitration?: string | null;
+  /** Whether the agent signs its own frames: `off` | `active` | `no_key`. */
+  agent_signing?: string | null;
+}
+
+/** `fc_identity` on `/api/status/full`: the reconciler's sidecar verbatim. */
+export interface FcIdentityVerdictWire {
+  version?: number;
+  enabled?: boolean;
+  /** `disabled` | `in_sync` | `deferred_armed` | `written` | `error`. */
+  outcome?: string;
+  wanted_system_id?: number | null;
+  current_system_id?: number | null;
+  at_ms?: number;
+}
+
+/** `mavlink_proxy_posture`: configured binds plus the per-edge listening
+ * flags. `ws_listening` is null with no WebSocket endpoint configured. */
+export interface MavlinkProxyPostureWire {
+  tcp_listening?: boolean;
+  /** One flag per configured UDP port, in port order. */
+  udp_listening?: boolean[];
+  ws_listening?: boolean | null;
+  [configured: string]: unknown;
 }
 
 // ── Pairing ─────────────────────────────────────────────

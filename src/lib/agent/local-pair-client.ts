@@ -43,6 +43,12 @@ export {
   getDashboardPinStatus,
   setDashboardPin,
   clearDashboardPin,
+  dashboardPinLockCopy,
 } from "./local-pair/dashboard-pin";
+export {
+  dashboardSessionFor,
+  forgetDashboardSession,
+  verifyDashboardPin,
+} from "./local-pair/dashboard-session";
 export { looksLikePairCode, probeByCode } from "./local-pair/code-pair";
 export { findHostByCodeOnLan } from "./discovery/mdns-client";

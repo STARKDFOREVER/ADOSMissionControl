@@ -33,6 +33,7 @@ import * as battery from "./battery";
 import { LoggingService } from "./logging";
 import type { ArmedOverrideOptions, RequestContext } from "./transport";
 import { agentSupports, fetchVersionInfo } from "./version-cache";
+import { parseAgentDiagnostics, type AgentDiagnostics } from "../agent-diagnostics";
 import type {
   CameraListResponse,
   RecordingControlResponse,
@@ -138,6 +139,13 @@ export class AgentClient {
 
   getFullStatus(): Promise<FullStatusResponse | null> {
     return system.getFullStatus(this.ctx);
+  }
+
+  /** The agent's command-path verdicts off `/api/status/full`, or null on an
+   * agent that predates the consolidated status. */
+  async getAgentDiagnostics(): Promise<AgentDiagnostics | null> {
+    const full = await system.getFullStatus(this.ctx);
+    return full ? parseAgentDiagnostics(full) : null;
   }
 
   /** Enumerate serial devices the router can bind as the FC link. */
@@ -325,8 +333,12 @@ export class AgentClient {
     return extras.getSigningCapability(this.ctx);
   }
 
-  enrollSigningKey(keyHex: string, linkId: number): Promise<SigningEnrollResult> {
-    return extras.enrollSigningKey(this.ctx, keyHex, linkId);
+  enrollSigningKey(
+    keyHex: string,
+    linkId: number,
+    agentHoldsKey = false,
+  ): Promise<SigningEnrollResult> {
+    return extras.enrollSigningKey(this.ctx, keyHex, linkId, agentHoldsKey);
   }
 
   disableSigningOnFc(): Promise<SigningDisableResult> {

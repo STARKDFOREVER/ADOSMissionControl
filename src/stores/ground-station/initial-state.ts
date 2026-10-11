@@ -78,6 +78,7 @@ export const INITIAL_UPLINK: UplinkSlice = {
   failover_log: [],
   data_cap: null,
   cloud_relay: null,
+  routeApplied: null,
   shareUplinkApplied: null,
   shareUplinkAppliedReason: null,
   loading: false,

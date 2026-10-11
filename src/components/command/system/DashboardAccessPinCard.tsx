@@ -24,6 +24,7 @@ import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import {
   clearDashboardPin,
+  dashboardPinLockCopy,
   getDashboardPinStatus,
   setDashboardPin,
   type DashboardPinStatus,
@@ -151,6 +152,12 @@ export function DashboardAccessPinCard({ nodeDeviceId }: { nodeDeviceId: string 
             Retry
           </Button>
         </div>
+      )}
+
+      {status?.locked && (
+        <p role="status" className="mb-4 text-sm text-status-warning">
+          {dashboardPinLockCopy(status, Math.floor(Date.now() / 1000))}
+        </p>
       )}
 
       {/* Reach URL */}

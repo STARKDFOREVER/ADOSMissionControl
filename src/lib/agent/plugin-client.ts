@@ -18,6 +18,7 @@
 import { timedFetch } from "@/lib/agent/agent-client/timeout";
 import { AgentArmedRefusal, armedRefusalFrom } from "@/lib/agent/agent-client/transport";
 import { reportPluginWarning, withPluginArmedRetry } from "./plugin-lifecycle";
+import { contentDigestHeader, uploadRefusalCopy } from "./upload-digest";
 import {
   WS_TICKET_PROTOCOL,
   mintWsTicket,
@@ -265,20 +266,25 @@ export class PluginAgentClient {
     form.append("file", file);
     const res = await this.fetchImpl(
       `${this.baseUrl}/api/plugins/parse`,
-      { method: "POST", headers: this.authHeader(), body: form },
+      {
+        method: "POST",
+        headers: { ...this.authHeader(), ...(await contentDigestHeader(file)) },
+        body: form,
+      },
       PLUGIN_TRANSFER_TIMEOUT_MS,
     );
     return this.parse<PluginAgentParseSummary>(res);
   }
 
   async install(file: File): Promise<PluginAgentInstallSummary> {
+    const digest = await contentDigestHeader(file);
     return withPluginArmedRetry(async (force) => {
       const form = new FormData();
       form.append("file", file);
       // Multipart carries no JSON body, so the override rides the query.
       const res = await this.fetchImpl(
         `${this.baseUrl}/api/plugins/install${force ? "?force=1" : ""}`,
-        { method: "POST", headers: this.authHeader(), body: form },
+        { method: "POST", headers: { ...this.authHeader(), ...digest }, body: form },
         PLUGIN_TRANSFER_TIMEOUT_MS,
       );
       return this.parse<PluginAgentInstallSummary>(res);
@@ -449,6 +455,14 @@ export class PluginAgentClient {
       throw new AgentArmedRefusal(text);
     }
     if (!res.ok) {
+      const refusal = uploadRefusalCopy(res.status, body);
+      if (refusal) {
+        throw new PluginAgentError(
+          res.status,
+          res.status === 429 ? "busy" : "digest_mismatch",
+          refusal,
+        );
+      }
       if (
         body &&
         typeof body === "object" &&

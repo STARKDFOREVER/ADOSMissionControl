@@ -12,6 +12,10 @@
 
 import { timedFetch } from "@/lib/agent/agent-client/timeout";
 import { armedRefusalFrom } from "@/lib/agent/agent-client/transport";
+import {
+  DASHBOARD_SESSION_HEADER,
+  dashboardSessionFor,
+} from "@/lib/agent/local-pair/dashboard-session";
 
 /**
  * Per-request deadline for ground-station REST calls.
@@ -51,6 +55,10 @@ export async function gsRequest<T>(
   };
   if (ctx.apiKey) {
     headers["X-ADOS-Key"] = ctx.apiKey;
+  } else {
+    // An operator-LAN browser unlocked with the node's dashboard PIN.
+    const session = dashboardSessionFor(ctx.baseUrl);
+    if (session) headers[DASHBOARD_SESSION_HEADER] = session;
   }
   const res = await timedFetch(
     `${ctx.baseUrl}${path}`,

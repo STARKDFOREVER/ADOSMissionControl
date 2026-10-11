@@ -397,6 +397,7 @@ export class MockAgentClient extends MockAgentClientExtras {
     firmware_name: string | null;
     firmware_version: string | null;
     signing_params_present: boolean;
+    agent_commands_unsigned_rejected_risk: boolean | null;
   }> {
     await delay(50);
     return {
@@ -405,12 +406,14 @@ export class MockAgentClient extends MockAgentClientExtras {
       firmware_name: "ArduPilot",
       firmware_version: "4.5.0",
       signing_params_present: true,
+      agent_commands_unsigned_rejected_risk: false,
     };
   }
 
   async enrollSigningKey(
     keyHex: string,
     _linkId: number,
+    agentHoldsKey = false,
   ): Promise<SigningEnrollResult> {
     await delay(400);
     // Derive a fake fingerprint from the first 8 hex chars of SHA-256.
@@ -421,6 +424,7 @@ export class MockAgentClient extends MockAgentClientExtras {
       verified: true,
       key_id: keyId,
       enrolled_at: new Date().toISOString(),
+      agent_holds_key: agentHoldsKey,
     };
   }
 

@@ -22,6 +22,8 @@ import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useToast } from "@/components/ui/toast";
 import type { RecordingFileEntry } from "@/lib/agent/client";
+import type { RecordingControlResponse } from "@/lib/agent/agent-client/types";
+import { RecordingResultList } from "./RecordingResultList";
 import { cn } from "@/lib/utils";
 
 function formatBytes(bytes: number): string {
@@ -85,6 +87,8 @@ export function LcdRecordingMonitor() {
   // The recording state a successful request asked for that the heartbeat
   // never confirmed within OPTIMISTIC_CONFIRM_MS.
   const [unconfirmed, setUnconfirmed] = useState<boolean | null>(null);
+  // The last stop's summary: its segment files and interruption count.
+  const [lastResult, setLastResult] = useState<RecordingControlResponse | null>(null);
 
   const isRecording = optimisticRecording ?? Boolean(videoRecording);
 
@@ -176,7 +180,7 @@ export function LcdRecordingMonitor() {
     setUnconfirmed(null);
     setPending(true);
     try {
-      await client.stopRecording();
+      setLastResult(await client.stopRecording());
       void fetchList();
     } catch (err) {
       setOptimisticRecording(true);
@@ -274,6 +278,7 @@ export function LcdRecordingMonitor() {
             {t("streamIdleHint")}
           </p>
         ) : null}
+        {lastResult ? <RecordingResultList result={lastResult} /> : null}
 
         <div
           className="max-h-64 overflow-y-auto rounded border border-border-default bg-bg-tertiary"

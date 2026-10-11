@@ -32,6 +32,9 @@ export interface SigningEnabledSectionProps {
   onSettleDisable: (signingOff: boolean) => void;
   onExport: () => void;
   onCloudSyncToggle: () => void;
+  /** What the last enrollment said about the node keeping the key; null when
+   * no enrollment ran in this session. */
+  nodeHoldsKey: boolean | null;
 }
 
 export function SigningEnabledSection({
@@ -51,6 +54,7 @@ export function SigningEnabledSection({
   onSettleDisable,
   onExport,
   onCloudSyncToggle,
+  nodeHoldsKey,
 }: SigningEnabledSectionProps) {
   const settling = state.enrollmentState === "unconfirmed" || state.enrollmentState === "disable_unconfirmed";
 
@@ -169,6 +173,13 @@ export function SigningEnabledSection({
           </p>
         )}
       </div>
+      {nodeHoldsKey !== null && (
+        <p className="text-xs text-text-tertiary">
+          {nodeHoldsKey
+            ? "The node kept the key and signs its own traffic."
+            : "The key lives only in this browser; the node does not sign its own traffic."}
+        </p>
+      )}
       {error && (
         <div
           className="flex items-start gap-2 text-sm text-status-error"

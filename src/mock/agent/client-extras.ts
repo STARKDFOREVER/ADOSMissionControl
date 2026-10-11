@@ -31,6 +31,8 @@ import type {
   VideoProfileLeaseRequest,
 } from "@/lib/agent/agent-client/extras";
 import { delay } from "./utils";
+import { parseAgentDiagnostics, type AgentDiagnostics } from "@/lib/agent/agent-diagnostics";
+import { DEMO_STATUS_EXTRAS } from "./status-extras";
 
 /** Simulated round trip, the same order as the rest of the demo client. */
 const DEMO_LATENCY_MS = 60;
@@ -53,6 +55,12 @@ export class MockAgentClientExtras {
   async getFullStatus(): Promise<FullStatusResponse | null> {
     await delay(DEMO_LATENCY_MS);
     return null;
+  }
+
+  /** The demo node's command-path verdicts: a healthy drone at system id 1. */
+  async getAgentDiagnostics(): Promise<AgentDiagnostics | null> {
+    await delay(DEMO_LATENCY_MS);
+    return parseAgentDiagnostics(DEMO_STATUS_EXTRAS);
   }
 
   async setDisplayPage(page: string): Promise<{ ok?: boolean; activePage?: string }> {
@@ -167,6 +175,8 @@ export class MockAgentClientExtras {
       started_at: rec.startedAt,
       stopped_at: stoppedAt,
       duration_seconds: Math.round((stoppedAt - rec.startedAt) / 1000),
+      segments: [rec.filename],
+      interrupted_count: 0,
     };
   }
 

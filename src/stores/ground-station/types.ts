@@ -97,6 +97,10 @@ export interface UplinkSlice {
   failover_log: UplinkFailoverEntry[];
   data_cap: UplinkDataCap | null;
   cloud_relay: UplinkCloudRelay | null;
+  /** Whether the uplink router's default route for the active uplink is
+   * installed. `false` means the node claims an uplink the kernel does not
+   * route through; null when the node has not reported it. */
+  routeApplied: boolean | null;
   /**
    * Result of the last share-uplink toggle. `null` until a toggle is made;
    * `true` when the firewall/NAT rule took effect, `false` when the flag was

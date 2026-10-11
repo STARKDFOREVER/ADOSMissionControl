@@ -27,6 +27,7 @@ import type { SurfaceSpec } from "../surface-types";
 import { surfaceNodeDeviceId } from "../surface-types";
 import { STATUS_GROUP, LINK_GROUP, DEVICE_GROUP } from "../surface-groups";
 import { AGENT_SURFACE } from "../agent/agent-surface";
+import { DashboardPinUnlockCard } from "@/components/command/nodes/ground-station/DashboardPinUnlockCard";
 
 // Every tab body loads on first open: the panel renders one at a time.
 const GroundStationOverview = dynamic(() =>
@@ -76,7 +77,13 @@ export const GROUND_STATION_SURFACES: SurfaceSpec[] = [
     id: "overview",
     labelKey: "dronePanel.overview",
     group: STATUS_GROUP,
-    render: (ctx) => <GroundStationOverview name={ctx.displayName} />,
+    // An unpaired node needs its dashboard PIN before any tab can read it.
+    render: (ctx) => (
+      <>
+        <DashboardPinUnlockCard nodeDeviceId={surfaceNodeDeviceId(ctx)} />
+        <GroundStationOverview name={ctx.displayName} />
+      </>
+    ),
   },
   {
     // A ground station flies the drone it carries: its cockpit hands over to

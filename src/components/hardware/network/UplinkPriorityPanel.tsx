@@ -49,6 +49,8 @@ interface UplinkState {
   active: string | null;
   priority: string[];
   failover_log: FailoverEntry[];
+  /** False when the active uplink's default route is not installed. */
+  routeApplied?: boolean | null;
 }
 
 interface Props {
@@ -82,6 +84,15 @@ export function UplinkPriorityPanel({
         <p className="mb-3 text-[11px] text-text-tertiary">
           Drag to reorder. The first healthy uplink takes traffic.
         </p>
+        {uplink.routeApplied === false && uplink.active !== null && (
+          <p
+            role="alert"
+            className="mb-3 rounded border border-status-warning/40 bg-status-warning/5 px-3 py-2 text-[11px] text-status-warning"
+          >
+            Route not applied: the node selected {ifaceLabel(uplink.active)} but its
+            default route is not installed. The router retries every few seconds.
+          </p>
+        )}
         <UplinkPriorityList
           priority={uplink.priority}
           active={uplink.active}

@@ -46,7 +46,7 @@ import { useLocalNodesStore, type LocalNode } from "@/stores/local-nodes-store";
 import { usePairingStore, type PairedDrone } from "@/stores/pairing-store";
 import type { RelayReach } from "@/lib/nodes/relay-reach";
 import {
-  persistFailureBody,
+  configWriteRefusalBody,
   type ConfigWriteResult,
 } from "@/lib/agent/config-write";
 import { timedFetch } from "@/lib/agent/agent-client/timeout";
@@ -290,9 +290,10 @@ async function proxyConfigRequest(
     json = null;
   }
   if (!res.ok) {
-    // The write route's own failure answer (500, `persisted: false`) is a
-    // result, so `configWriteFailure` names the node's reason.
-    if (method === "PUT" && persistFailureBody(json)) return json;
+    // The write route's own refusals (500 `persisted: false`, 422 `E_INVALID`
+    // / `E_VALIDATION`) are results, so `configWriteFailure` names the
+    // node's reason.
+    if (method === "PUT" && configWriteRefusalBody(json)) return json;
     const row = (json ?? {}) as { message?: unknown; error?: unknown };
     const message =
       typeof row.message === "string"

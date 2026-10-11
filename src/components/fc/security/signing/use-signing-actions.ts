@@ -46,6 +46,12 @@ export interface SigningActions {
   importOpen: boolean;
   cloudSyncBusy: boolean;
   cloudSyncError: string | null;
+  /** Enroll with the key also stored on the node, so the agent signs its own traffic. */
+  agentHoldsKey: boolean;
+  setAgentHoldsKey: (holds: boolean) => void;
+  /** What the last enrollment's answer said about the node keeping the key;
+   * null before an enrollment in this session. */
+  nodeHoldsKey: boolean | null;
   // Cloud sync flags
   cloudRowPresent: boolean;
   cloudSyncIntent: boolean;
@@ -86,6 +92,8 @@ export function useSigningActions(droneId: string): SigningActions {
   const [importOpen, setImportOpen] = useState(false);
   const [cloudSyncBusy, setCloudSyncBusy] = useState(false);
   const [cloudSyncError, setCloudSyncError] = useState<string | null>(null);
+  const [agentHoldsKey, setAgentHoldsKey] = useState(false);
+  const [nodeHoldsKey, setNodeHoldsKey] = useState<boolean | null>(null);
 
   const convexClient: ConvexReactClient = useConvex();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -208,7 +216,11 @@ export function useSigningActions(droneId: string): SigningActions {
     try {
       // The outcome is honoured whenever it arrives: a late answer still
       // decides what this browser keeps.
-      const outcome = await enrollNewKey({ client, droneId, linkId, userId });
+      const outcome = await enrollNewKey({ client, droneId, linkId, userId, agentHoldsKey });
+      if (outcome.kind !== "failed") setNodeHoldsKey(outcome.nodeHoldsKey);
+      const nodeRefusedKey = agentHoldsKey && outcome.kind !== "failed" && !outcome.nodeHoldsKey;
+      const nodeKeyWarning =
+        "The node did not keep the key, so the agent cannot sign its own traffic. Over a serial link the flight controller drops the agent's own frames while signing is on.";
 
       if (outcome.kind === "failed") {
         setError(outcome.error);
@@ -223,7 +235,7 @@ export function useSigningActions(droneId: string): SigningActions {
           enrollmentState: "unconfirmed",
           previousKeyId: outcome.previousKeyId,
         });
-        setError(outcome.reason ?? t("enrollSentNotConfirmed"));
+        setError(outcome.reason ?? (nodeRefusedKey ? `${t("enrollSentNotConfirmed")} ${nodeKeyWarning}` : t("enrollSentNotConfirmed")));
         return;
       }
 
@@ -233,6 +245,7 @@ export function useSigningActions(droneId: string): SigningActions {
         enrollmentState: "enrolled",
       });
       setEnrollStartedAt(null);
+      if (nodeRefusedKey) setError(nodeKeyWarning);
       void emitSigningEvent(convexClient, isAuthenticated, {
         droneId,
         eventType: prevKeyId ? "rotation" : "enrollment",
@@ -242,7 +255,7 @@ export function useSigningActions(droneId: string): SigningActions {
     } finally {
       setBusy(false);
     }
-  }, [client, droneId, setBrowserKey, convexClient, isAuthenticated, state?.keyId, t]);
+  }, [client, droneId, setBrowserKey, convexClient, isAuthenticated, state?.keyId, t, agentHoldsKey]);
 
   const handleDisable = useCallback(async () => {
     if (!client || !droneId) return;
@@ -329,6 +342,9 @@ export function useSigningActions(droneId: string): SigningActions {
     importOpen,
     cloudSyncBusy,
     cloudSyncError,
+    agentHoldsKey,
+    setAgentHoldsKey,
+    nodeHoldsKey,
     cloudRowPresent,
     cloudSyncIntent,
     isAuthenticated,

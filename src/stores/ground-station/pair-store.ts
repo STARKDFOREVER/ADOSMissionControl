@@ -84,6 +84,10 @@ export const createPairSlice: GroundStationSliceCreator<PairSlice> = (
           active: net.active_uplink ?? currentUplink.active,
           priority: net.priority ?? currentUplink.priority,
           data_cap: dataCapFromModem(modemFromNet) ?? currentUplink.data_cap,
+          routeApplied:
+            "route_applied" in net && typeof net.route_applied === "boolean"
+              ? net.route_applied
+              : currentUplink.routeApplied,
           fetchedAt: Date.now(),
         },
         lastError: null,
