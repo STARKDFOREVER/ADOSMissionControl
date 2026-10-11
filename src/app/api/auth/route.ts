@@ -1,7 +1,9 @@
 import "server-only";
 import { NextRequest, NextResponse } from "next/server";
-import { cookies, headers } from "next/headers";
 import { fetchAction } from "convex/nextjs";
+import { makeFunctionReference } from "convex/server";
+
+import { authCookieConfig, type AuthCookieConfig } from "./cookie-config";
 
 /**
  * Route handler that proxies auth actions (signIn/signOut) to Convex backend.
@@ -18,37 +20,17 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
-function isLocalHost(host: string): boolean {
-  return /(localhost|127\.0\.0\.1):\d+/.test(host ?? "");
-}
-
-async function getCookieConfig() {
-  const headerStore = await headers();
-  const host = headerStore.get("Host") ?? "";
-  const localhost = isLocalHost(host);
-  const prefix = localhost ? "" : "__Host-";
-  return {
-    tokenName: prefix + "__convexAuthJWT",
-    refreshTokenName: prefix + "__convexAuthRefreshToken",
-    localhost,
-  };
-}
-
-function cookieOptions(localhost: boolean) {
-  return {
-    secure: !localhost,
+function setAuthCookies(
+  response: NextResponse,
+  config: AuthCookieConfig,
+  tokens: { token: string; refreshToken: string } | null,
+) {
+  const opts = {
+    secure: config.secure,
     httpOnly: true,
     sameSite: "lax" as const,
     path: "/",
   };
-}
-
-async function setAuthCookies(
-  response: NextResponse,
-  tokens: { token: string; refreshToken: string } | null,
-) {
-  const config = await getCookieConfig();
-  const opts = cookieOptions(config.localhost);
 
   if (tokens === null) {
     response.cookies.set(config.tokenName, "", {
@@ -91,20 +73,34 @@ export async function POST(request: NextRequest) {
     return new Response("Invalid origin", { status: 403 });
   }
 
-  const { action, args } = await request.json();
+  let action: unknown;
+  let args: Record<string, unknown> & { params?: { code?: unknown } };
+  try {
+    const body: unknown = await request.json();
+    if (typeof body !== "object" || body === null || Array.isArray(body)) {
+      throw new Error("body is not an object");
+    }
+    const raw = body as { action?: unknown; args?: unknown };
+    if (typeof raw.args !== "object" || raw.args === null || Array.isArray(raw.args)) {
+      throw new Error("args is not an object");
+    }
+    action = raw.action;
+    args = raw.args as typeof args;
+  } catch {
+    return jsonResponse({ error: "Invalid request body" }, 400);
+  }
 
   if (action !== "auth:signIn" && action !== "auth:signOut") {
     return new Response("Invalid action", { status: 400 });
   }
 
   // Read existing auth cookies
-  const cookieStore = await cookies();
-  const config = await getCookieConfig();
+  const config = authCookieConfig(request);
   let token: string | undefined;
 
   if (action === "auth:signIn" && args.refreshToken !== undefined) {
     // The client has a dummy refreshToken, the real one is only stored in cookies
-    const refreshToken = cookieStore.get(config.refreshTokenName)?.value ?? null;
+    const refreshToken = request.cookies.get(config.refreshTokenName)?.value ?? null;
     if (refreshToken === null) {
       console.error(
         "Convex Auth: Unexpected missing refreshToken cookie during client refresh",
@@ -115,7 +111,7 @@ export async function POST(request: NextRequest) {
   } else {
     // Make sure the proxy is authenticated if the client is,
     // important for signOut and any other logic working with existing sessions
-    token = cookieStore.get(config.tokenName)?.value ?? undefined;
+    token = request.cookies.get(config.tokenName)?.value ?? undefined;
   }
 
   if (action === "auth:signIn") {
@@ -128,7 +124,11 @@ export async function POST(request: NextRequest) {
 
     let result;
     try {
-      result = await fetchAction(action, args, fetchActionAuthOptions);
+      result = await fetchAction(
+        makeFunctionReference<"action">(action),
+        args,
+        fetchActionAuthOptions,
+      );
     } catch (error: unknown) {
       console.error("Hit error while running `auth:signIn`:");
       console.error(error);
@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
         { error: sanitizeAuthError(error instanceof Error ? error.message : "") },
         400,
       );
-      await setAuthCookies(response, null);
+      setAuthCookies(response, config, null);
       return response;
     }
 
@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
             ? { token: result.tokens.token, refreshToken: "dummy" }
             : null,
       });
-      await setAuthCookies(response, result.tokens);
+      setAuthCookies(response, config, result.tokens);
       return response;
     }
 
@@ -160,13 +160,13 @@ export async function POST(request: NextRequest) {
   } else {
     // auth:signOut
     try {
-      await fetchAction(action, args, { token });
+      await fetchAction(makeFunctionReference<"action">(action), args, { token });
     } catch (error) {
       console.error("Hit error while running `auth:signOut`:");
       console.error(error);
     }
     const response = jsonResponse(null);
-    await setAuthCookies(response, null);
+    setAuthCookies(response, config, null);
     return response;
   }
 }

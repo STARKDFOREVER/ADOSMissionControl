@@ -19,37 +19,45 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { OFFICIAL_PLUGIN_REGISTRY_URL } from "@/lib/config/endpoints";
-import { readArrayBufferWithLimit } from "@/lib/net/fetch-with-timeout";
+import {
+  AllowlistedFetchError,
+  fetchAllowlisted,
+  readAllowlistedBody,
+  type AllowRule,
+} from "@/lib/server/allowlisted-fetch";
 
 export const runtime = "nodejs";
 
 const UPSTREAM_TIMEOUT_MS = 30_000;
 const MAX_BYTES = 64 * 1024 * 1024; // 64 MB ceiling for a plugin archive.
-const MAX_REDIRECTS = 5;
-
-/** CDN hosts a GitHub release download redirects to. */
-const RELEASE_ASSET_HOSTS: ReadonlySet<string> = new Set([
-  "objects.githubusercontent.com",
-  "release-assets.githubusercontent.com",
-]);
 
 /** `/<owner>/<repo>/releases/download/<tag>/<asset>` on github.com. */
 const GITHUB_RELEASE_PATH = /^\/[^/]+\/[^/]+\/releases\/download\/[^/]+\/[^/]+$/;
 
-/** True when `url` is an https archive location the proxy may fetch. */
-function isAllowedArchiveUrl(url: URL): boolean {
-  if (url.protocol !== "https:" || url.username || url.password || url.port) {
-    return false;
-  }
-  const host = url.hostname.toLowerCase();
-  if (host === "github.com") return GITHUB_RELEASE_PATH.test(url.pathname);
-  if (RELEASE_ASSET_HOSTS.has(host)) return true;
+/** Release downloads, GitHub's release-asset CDN hosts, and the registry host. */
+function archiveAllowRules(): AllowRule[] {
+  const rules: AllowRule[] = [
+    { host: "github.com", path: GITHUB_RELEASE_PATH },
+    { host: "objects.githubusercontent.com" },
+    { host: "release-assets.githubusercontent.com" },
+  ];
   try {
-    return host === new URL(OFFICIAL_PLUGIN_REGISTRY_URL).hostname.toLowerCase();
+    rules.push({ host: new URL(OFFICIAL_PLUGIN_REGISTRY_URL).hostname });
   } catch {
-    return false;
+    // An unparsable registry URL adds no host.
   }
+  return rules;
 }
+
+/** Wire error codes the install finalizer already understands. */
+const ERROR_CODES: Record<AllowlistedFetchError["code"], string> = {
+  not_allowed: "host_not_allowed",
+  bad_redirect: "bad_redirect",
+  upstream_error: "upstream_error",
+  too_large: "too_large",
+  timeout: "fetch_failed",
+  fetch_failed: "fetch_failed",
+};
 
 function refuse(status: number, error: string, message: string): NextResponse {
   return NextResponse.json({ error, message }, { status });
@@ -58,63 +66,22 @@ function refuse(status: number, error: string, message: string): NextResponse {
 export async function GET(req: NextRequest) {
   const raw = req.nextUrl.searchParams.get("url");
   if (!raw) return refuse(400, "missing_url", "url query parameter is required");
-
-  let target: URL;
-  try {
-    target = new URL(raw);
-  } catch {
-    return refuse(400, "bad_url", "url is not a valid absolute URL");
-  }
-
-  if (!isAllowedArchiveUrl(target)) {
-    return refuse(
-      403,
-      "host_not_allowed",
-      `archive location ${target.hostname} is not on the allowlist`,
-    );
-  }
-
-  const signal = AbortSignal.timeout(UPSTREAM_TIMEOUT_MS);
-  let upstream: Response;
-  try {
-    for (let hop = 0; ; hop++) {
-      upstream = await fetch(target.toString(), { redirect: "manual", signal });
-      if (upstream.status < 300 || upstream.status >= 400) break;
-      await upstream.body?.cancel();
-      const location = upstream.headers.get("location");
-      if (!location || hop >= MAX_REDIRECTS) {
-        return refuse(502, "bad_redirect", "archive host redirected too often or without a location");
-      }
-      target = new URL(location, target);
-      if (!isAllowedArchiveUrl(target)) {
-        return refuse(
-          403,
-          "host_not_allowed",
-          `archive redirect to ${target.hostname} is not on the allowlist`,
-        );
-      }
-    }
-  } catch (err) {
-    return refuse(502, "fetch_failed", err instanceof Error ? err.message : String(err));
-  }
-
-  if (!upstream.ok) {
-    return refuse(
-      upstream.status === 404 ? 404 : 502,
-      "upstream_error",
-      `archive host returned HTTP ${upstream.status}`,
-    );
-  }
+  if (!URL.canParse(raw)) return refuse(400, "bad_url", "url is not a valid absolute URL");
 
   let buf: ArrayBuffer;
   try {
-    buf = await readArrayBufferWithLimit(upstream, MAX_BYTES);
+    const upstream = await fetchAllowlisted(raw, {
+      allow: archiveAllowRules(),
+      maxBytes: MAX_BYTES,
+      timeoutMs: UPSTREAM_TIMEOUT_MS,
+      signal: req.signal,
+    });
+    buf = await readAllowlistedBody(upstream);
   } catch (err) {
-    await upstream.body?.cancel().catch(() => undefined);
-    const message = err instanceof Error ? err.message : String(err);
-    return message === "Upstream response too large"
-      ? refuse(413, "too_large", "archive exceeds the size ceiling")
-      : refuse(502, "fetch_failed", message);
+    if (err instanceof AllowlistedFetchError) {
+      return refuse(err.code === "timeout" ? 502 : err.status, ERROR_CODES[err.code], err.message);
+    }
+    return refuse(502, "fetch_failed", err instanceof Error ? err.message : String(err));
   }
 
   return new NextResponse(buf, {
