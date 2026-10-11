@@ -18,7 +18,9 @@
  * Controls drive the agent REST surface; in demo the surface reads the seeded
  * ground-station store (the demo agent URL has no REST endpoint, so the tabs'
  * polls no-op — see groundStationApiFromAgent). Demo WRITES are inert and say
- * so rather than swallowing the click.
+ * so rather than swallowing the click. Mesh & RX is the exception: it drives an
+ * in-memory demo mesh client (see meshApiFromAgent), so its role switch and
+ * receiver pairing window work in demo.
  * @license GPL-3.0-only
  */
 

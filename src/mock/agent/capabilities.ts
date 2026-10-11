@@ -210,6 +210,8 @@ export interface MockPerceptionOverride {
   npuTops?: number;
   hasAccelerator?: boolean;
   npuAvailable?: boolean;
+  /** The drone's vision engine is not running (no model, no summary). */
+  visionEngineOff?: boolean;
 }
 
 export function getMockCapabilities(
@@ -377,6 +379,25 @@ export function getMockCapabilities(
       caps.hasAccelerator = perception.hasAccelerator;
     if (perception.npuAvailable !== undefined)
       caps.compute.npu_available = perception.npuAvailable;
+    // An engine that is not running loads no model and reports an idle
+    // summary (no active model), so the store never keeps an older one.
+    if (perception.visionEngineOff) {
+      caps.vision = {
+        ...caps.vision,
+        engine_state: "off",
+        active_behavior: null,
+        behavior_state: null,
+        fps: 0,
+        inference_ms: 0,
+        model_loaded: null,
+        track_count: 0,
+        target_locked: false,
+        target_confidence: 0,
+        nearest_obstacle_m: null,
+      };
+      caps.visionSummary = { activeModel: null, backend: null };
+      caps.models.installed = caps.models.installed.map((m) => ({ ...m, loaded: false }));
+    }
   }
 
   return caps;
@@ -389,7 +410,7 @@ export function getMockCapabilities(
  * WiFi-powersave / management-link health the Network tab surfaces. Leaner than
  * a drone's caps (no NPU / vision / cameras — a ground node does not fly a
  * vision pipeline); the profile + role are set so the capability store reads the
- * relay ground-station honestly.
+ * receiver ground-station honestly (a receiver has no Radio tab of its own).
  */
 export function getMockGroundStationCapabilities(): AgentCapabilities & {
   radio: Partial<RadioState>;
@@ -403,9 +424,9 @@ export function getMockGroundStationCapabilities(): AgentCapabilities & {
     radioStackState: "ok",
     // profile / role are read loosely off the payload by deriveProfile /
     // deriveRole (not declared AgentCapabilities fields), so the capability
-    // store reads the relay ground-station honestly.
+    // store reads the receiver ground-station honestly.
     profile: "ground-station",
-    role: "relay",
+    role: "receiver",
     macStability: {
       adapters: [
         {

@@ -7,7 +7,7 @@
 import type {
   DroneProtocol, Transport, VehicleInfo, CommandResult, ParameterValue,
   ProtocolCapabilities, FirmwareHandler, MissionItem, UnifiedFlightMode,
-  LogEntry, LogDownloadProgressCallback, FtpDownloadProgressCallback, FtpDirEntry, AccelCalPosition,
+  LogEntry, LogDownloadProgressCallback, FtpDownloadProgressCallback, AccelCalPosition,
   SysStatusCallback, RadioCallback, EkfCallback, VibrationCallback,
   ServoOutputCallback, WindCallback, TerrainCallback, ScaledImuCallback,
   ScaledPressureCallback, HomePositionCallback, PowerStatusCallback,
@@ -30,10 +30,12 @@ import type { ManualControlSample } from "./mock-control-samples";
 import * as E from "./mock-protocol-emitters";
 import { mockStartCalibration, type CalibrationContext } from "./mock-protocol-calibration";
 import { handleSerialCommand, startTelemetryTick, type TelemetryTickContext } from "./mock-protocol-serial";
-import { MOCK_FENCE_POLYGON, MOCK_VEHICLE_INFO, HELI_VEHICLE_INFO, PX4_VEHICLE_INFO, PX4_VTOL_VEHICLE_INFO, ARDUPLANE_VEHICLE_INFO, ARDUPLANE_VTOL_VEHICLE_INFO, ARDUPLANE_TAILSITTER_VEHICLE_INFO, ARDUPLANE_TILTROTOR_VEHICLE_INFO, ARDUROVER_VEHICLE_INFO, ARDUBOAT_VEHICLE_INFO, ARDUSUB_VEHICLE_INFO, BETAFLIGHT_VEHICLE_INFO, INAV_FW_VEHICLE_INFO, getMockMission, getMockLogList } from "./mock-protocol-data";
+import { MOCK_FENCE_POLYGON, MOCK_VEHICLE_INFO, HELI_VEHICLE_INFO, PX4_VEHICLE_INFO, PX4_VTOL_VEHICLE_INFO, ARDUPLANE_VEHICLE_INFO, ARDUPLANE_VTOL_VEHICLE_INFO, ARDUPLANE_TAILSITTER_VEHICLE_INFO, ARDUPLANE_TILTROTOR_VEHICLE_INFO, ARDUROVER_VEHICLE_INFO, ARDUBOAT_VEHICLE_INFO, ARDUSUB_VEHICLE_INFO, BETAFLIGHT_VEHICLE_INFO, INAV_FW_VEHICLE_INFO } from "./mock-protocol-data";
 import type { DisplayPortOp } from "@/lib/protocol/msp/decoders/config/displayport";
 import { MockRanges } from "./mock-protocol-ranges";
-import { MockBfStorage } from "./mock-protocol-bf-storage";
+import { MockBfStorage, startMockDisplayPort } from "./mock-protocol-bf-storage";
+import { MockMission } from "./mock-protocol-mission";
+import { MockFcFiles } from "./mock-protocol-files";
 import { createMockFrameFeed } from "./mock-mavlink-frames";
 import type { LinkInfo } from "@/lib/protocol/types";
 
@@ -154,6 +156,8 @@ export class MockProtocol implements DroneProtocol {
   emitSystemTime(d: Parameters<SystemTimeCallback>[0]): void { E.emitSystemTime(this.cbs, d); }
   emitAutopilotVersion(d: Parameters<AutopilotVersionCallback>[0]): void { E.emitAutopilotVersion(this.cbs, d); }
   emitCanFrame(d: Parameters<CanFrameCallback>[0]): void { E.emitCanFrame(this.cbs, d); }
+  /** MISSION_CURRENT: the mission item the vehicle is flying toward. */
+  emitMissionCurrent(seq: number): void { for (const cb of this.cbs.missionProgressCbs) cb({ currentSeq: seq }); }
 
   // ── Connection ─────────────────────────────────────────
   get isConnected(): boolean { return this._connected; }
@@ -190,7 +194,7 @@ export class MockProtocol implements DroneProtocol {
   async guidedGoto(lat: number, lon: number, alt: number): Promise<CommandResult> { return ok(`Goto ${lat.toFixed(6)}, ${lon.toFixed(6)} @ ${alt}m`); }
   async pauseMission(): Promise<CommandResult> { return ok("Mission paused"); }
   async resumeMission(): Promise<CommandResult> { return ok("Mission resumed"); }
-  async clearMission(): Promise<CommandResult> { return ok("Mission cleared"); }
+  async clearMission(): Promise<CommandResult> { this.mission.clear(); return ok("Mission cleared"); }
   async commitParamsToFlash(): Promise<CommandResult> { return ok("Params saved to flash"); }
   async setHome(): Promise<CommandResult> { return ok("Home set"); }
   async changeSpeed(): Promise<CommandResult> { return ok("Speed changed"); }
@@ -301,8 +305,11 @@ export class MockProtocol implements DroneProtocol {
   }
 
   // ── Mission ────────────────────────────────────────────
-  async uploadMission(): Promise<CommandResult> { return ok("Mission uploaded"); }
-  async downloadMission(): Promise<MissionItem[]> { await new Promise((r) => setTimeout(r, 800)); return getMockMission(this._vehicleInfo.firmwareType.startsWith("ardupilot-")); }
+  private mission = new MockMission(() => this._vehicleInfo.firmwareType.startsWith("ardupilot-"));
+  /** Seed the mission this vehicle holds without a transfer (the demo route it flies). */
+  loadMission(items: readonly MissionItem[]): void { this.mission.load(items); }
+  async uploadMission(items: MissionItem[]): Promise<CommandResult> { return this.mission.upload(items); }
+  async downloadMission(): Promise<MissionItem[]> { return this.mission.download(); }
   async setCurrentMissionItem(): Promise<CommandResult> { return ok("Mission item set"); }
 
   // ── Calibration (delegated) ────────────────────────────
@@ -334,53 +341,16 @@ export class MockProtocol implements DroneProtocol {
   private clearAccelTimers(): void { for (const t of this.accelCalTimers) clearTimeout(t); this.accelCalTimers = []; }
   private clearCompassTimers(): void { for (const t of this.compassCalTimers) { clearTimeout(t as ReturnType<typeof setTimeout>); clearInterval(t as ReturnType<typeof setInterval>); } this.compassCalTimers = []; }
 
-  // ── Log Download ───────────────────────────────────────
-  async getLogList(): Promise<LogEntry[]> { return getMockLogList(); }
-  async downloadLog(_id: number, onProgress?: LogDownloadProgressCallback): Promise<Uint8Array> {
-    const total = 4096, chunk = 90;
-    for (let i = 0; i < Math.ceil(total / chunk); i++) { await new Promise((r) => setTimeout(r, 100)); if (onProgress) onProgress(Math.min((i + 1) * chunk, total), total); }
-    const data = new Uint8Array(total); data[0] = 0xa3; data[1] = 0x95; return data;
-  }
+  // ── Log Download / FTP (delegated) ─────────────────────
+  private files = new MockFcFiles();
+  getLogList(): Promise<LogEntry[]> { return this.files.getLogList(); }
+  downloadLog(id: number, onProgress?: LogDownloadProgressCallback): Promise<Uint8Array> { return this.files.downloadLog(id, onProgress); }
   async eraseAllLogs(): Promise<CommandResult> { this.emitStatusText(6, "All logs erased"); return ok("Logs erased"); }
   cancelLogDownload(): void {}
-  async downloadFileViaFtp(_path: string, onProgress?: FtpDownloadProgressCallback): Promise<Uint8Array> {
-    const total = 2048, chunk = 239;
-    const data = new Uint8Array(total);
-    for (let i = 0; i < total; i++) data[i] = i & 0xff;
-    for (let ofs = 0; ofs < total; ofs += chunk) {
-      await new Promise((r) => setTimeout(r, 60));
-      if (onProgress) onProgress(Math.min(ofs + chunk, total), total);
-    }
-    return data;
-  }
-
-  /** In-memory FC file store so the Scripts tab round-trips in demo mode. */
-  private _mockFtpFiles = new Map<string, number>([
-    ["APM/scripts/rangefinder_test.lua", 1420],
-    ["APM/scripts/hello_world.lua", 210],
-  ]);
-
-  async uploadFileViaFtp(path: string, bytes: Uint8Array, onProgress?: (written: number, total: number) => void): Promise<void> {
-    const total = bytes.length;
-    for (let ofs = 0; ofs <= total; ofs += 239) {
-      await new Promise((r) => setTimeout(r, 40));
-      if (onProgress) onProgress(Math.min(ofs + 239, total), total);
-    }
-    this._mockFtpFiles.set(path, total);
-  }
-
-  async listDirectoryViaFtp(path: string): Promise<FtpDirEntry[]> {
-    await new Promise((r) => setTimeout(r, 120));
-    const prefix = path.endsWith("/") ? path : path + "/";
-    return [...this._mockFtpFiles.entries()]
-      .filter(([p]) => p.startsWith(prefix))
-      .map(([p, size]) => ({ name: p.slice(prefix.length), size, isDir: false }));
-  }
-
-  async removeFileViaFtp(path: string): Promise<void> {
-    await new Promise((r) => setTimeout(r, 80));
-    this._mockFtpFiles.delete(path);
-  }
+  downloadFileViaFtp(path: string, onProgress?: FtpDownloadProgressCallback): Promise<Uint8Array> { return this.files.downloadFileViaFtp(path, onProgress); }
+  uploadFileViaFtp(...a: Parameters<MockFcFiles["uploadFileViaFtp"]>): Promise<void> { return this.files.uploadFileViaFtp(...a); }
+  listDirectoryViaFtp(path: string) { return this.files.listDirectoryViaFtp(path); }
+  removeFileViaFtp(path: string): Promise<void> { return this.files.removeFileViaFtp(path); }
 
   /** Demo mode never has a real FC-served metadata overlay. */
   getComponentMetadataUri(): string | null { return null; }
@@ -436,24 +406,7 @@ export class MockProtocol implements DroneProtocol {
 
   // ── DisplayPort OSD push (mock) ────────────────────────
   onDisplayPort(cb: (op: DisplayPortOp) => void): () => void {
-    let t = 0;
-    const write = (row: number, col: number, text: string) =>
-      cb({ kind: "writeString", row, col, attr: 0, fontPage: 0, blink: false, text });
-    const emit = () => {
-      t++;
-      const alt = 100 + (t % 25);
-      const batt = (16.8 - (t % 60) * 0.02).toFixed(1);
-      cb({ kind: "clear" });
-      write(1, 8, "ADOS DEMO OSD");
-      write(4, 2, `ALT ${alt}m`);
-      write(4, 20, "SPD 12m/s");
-      write(6, 2, `BAT ${batt}V`);
-      write(6, 20, "SAT 17");
-      write(14, 9, "RTH 0.42km");
-      cb({ kind: "draw" });
-    };
-    emit();
-    const id = setInterval(emit, 500);
+    const id = startMockDisplayPort(cb);
     this.tickTimers.push(id);
     return () => clearInterval(id);
   }

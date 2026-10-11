@@ -105,14 +105,15 @@ const FOLLOW_DEMO_PARAMETERS: PluginParameter[] = [
 
 const DEMO_PLUGIN_INSTALLS: DemoPluginInstall[] = [
   // ── Drone 1: enabled vision-nav + follow-me plugins + telemetry logger ──
-  // Vision-nav declares no parameters (its manifest has none); follow-me
-  // carries the native parameter set.
+  // Vision-nav declares no parameters (its manifest has none); its tab body
+  // is the demo inline panel (`mock-vision-nav`). Follow-me carries the
+  // native parameter set.
   {
     installId: "demo-install-001",
     agentId: "alpha-1",
     pluginId: "com.altnautica.vision-nav",
-    name: "ADOS Vision Nav (OpenVINS)",
-    version: "0.1.0",
+    name: "ADOS Vision Navigation",
+    version: "0.5.0",
     status: "running",
     signed: true,
     firstParty: true,
@@ -121,6 +122,7 @@ const DEMO_PLUGIN_INSTALLS: DemoPluginInstall[] = [
     droneDetailTabIcon: "compass",
     droneDetailTabOrder: 60,
     droneDetailTabPanelId: "vision-nav-tab",
+    droneDetailTabProfile: ["drone"],
   },
   {
     installId: "demo-install-006",

@@ -40,13 +40,18 @@ import { VideoLatencyBreakdown } from "./VideoLatencyBreakdown";
 import { useVideoLatencyPoll } from "@/hooks/use-video-latency-poll";
 import { useDroneClockOffset } from "@/hooks/use-drone-clock-offset";
 import { useResolvedAgentVideo } from "@/hooks/use-resolved-agent-video";
+import { CockpitDemoStream, useDemoFeedPlaying, useDemoFeedRoster } from "@/components/cockpit/CockpitDemoStream";
 
 interface VideoFeedCardProps {
   className?: string;
   onPopOut?: () => void;
+  /** The node shown; in demo mode its synthetic feed plays here as in the cockpit. */
+  droneId?: string;
+  /** The node is a ground station: its demo feed is the one drone downlink it relays. */
+  downlink?: boolean;
 }
 
-export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
+export function VideoFeedCard({ className, onPopOut, droneId, downlink = false }: VideoFeedCardProps) {
   const isStreaming = useVideoStore((s) => s.isStreaming);
   const fps = useVideoStore((s) => s.fps);
   const latencyMs = useVideoStore((s) => s.latencyMs);
@@ -76,6 +81,10 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
   );
   // User transport preference (persisted to IndexedDB)
   const transportMode = useSettingsStore((s) => s.videoTransportMode);
+  // The demo node's synthetic feed is the picture unless video is switched
+  // Off; nothing real is dialled behind it.
+  useDemoFeedRoster(droneId, downlink);
+  const demoFeed = useDemoFeedPlaying(droneId);
 
   // Air-side SEI poll (1Hz) + drone↔browser clock-offset poll (30s).
   // Both are no-ops when the agent isn't paired / video isn't running,
@@ -187,9 +196,12 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
     transportMode,
     videoEl,
     agentVideoState,
+    suspended: demoFeed,
   });
 
   const hasVideo = isStreaming;
+  // Any picture on screen, the demo feed included, covers every placeholder.
+  const covered = hasVideo || demoFeed;
   const cameraGate = useSurfaceGate("capability:camera");
   const noCamera = cameraGate.mode === "capability-missing";
   const tLink = useTranslations("linkUp");
@@ -204,9 +216,9 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
     CAMERA_RECOVERY_ACTIVE_STATES.has(cameraUsbRecovery.state);
   const airCameraMissing = liveCameraState === "missing";
   const showAirSideCamera =
-    (airCameraMissing || airCameraRecovering) && !hasVideo;
+    (airCameraMissing || airCameraRecovering) && !covered;
   const showNoSignal =
-    !hasVideo &&
+    !covered &&
     !showConnecting &&
     cascadeState !== "failed" &&
     !noCamera &&
@@ -238,6 +250,7 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
             !hasVideo && "hidden"
           )}
         />
+        {demoFeed && droneId && <CockpitDemoStream droneId={droneId} />}
 
         {/* Interactive transport switcher (always rendered, not gated on
             hasVideo so users can pin a mode before video starts). Surfaces
@@ -336,7 +349,7 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
             signal" so the operator knows to attach a camera, not debug the
             link. Suppressed when the live air-side overlay is showing so the
             two never stack. */}
-        {noCamera && !hasVideo && !showAirSideCamera && (
+        {noCamera && !covered && !showAirSideCamera && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-1.5 bg-bg-primary p-4 text-center">
             <CameraOff className="w-8 h-8 text-text-tertiary" />
             <span className="text-xs font-medium text-text-secondary">
@@ -377,7 +390,7 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
         )}
 
         {/* Connecting state — z-10 so transport switcher (z-20) stays on top */}
-        {showConnecting && !hasVideo && (
+        {showConnecting && !covered && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-bg-primary">
             <Loader2 className="w-6 h-6 text-accent-primary animate-spin" />
             <span className="text-xs text-text-tertiary font-mono tracking-widest">
@@ -388,7 +401,7 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
 
         {/* Error state with retry — z-10 so the transport switcher
             (z-20) stays clickable on top of this overlay. */}
-        {error && !hasVideo && (
+        {error && !covered && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-bg-primary">
             <CameraOff className="w-8 h-8 text-status-error" />
             <span className="text-xs text-status-error font-mono">

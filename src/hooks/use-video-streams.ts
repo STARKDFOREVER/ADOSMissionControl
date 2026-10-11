@@ -41,7 +41,7 @@ import {
   type StreamRole,
   type StreamSwitchKind,
 } from "@/stores/video-streams-store";
-import type { CameraCapability } from "@/lib/agent/feature-types";
+import type { CameraCapability, VideoStreamLeg } from "@/lib/agent/feature-types";
 
 /** How long the optimistic "switching…" state holds while a `switchable`
  * encoder restarts before showing the new feed. Mirrors LcdCameraSwitch's
@@ -70,6 +70,31 @@ function camerasToDescriptors(cameras: CameraCapability[]): StreamDescriptor[] {
     role: inferRole(cam),
     kind: "switchable" as const,
     devicePath: cam.device,
+  }));
+}
+
+/**
+ * A node's stream list, in population priority: the agent's host-resolved
+ * per-leg WHEP streams (`concurrent` — an instant client-side flip), else the
+ * capability roster (`switchable` — a single-encoder switchCamera restart).
+ */
+export function streamDescriptorsFor(
+  videoStreams: VideoStreamLeg[],
+  cameras: CameraCapability[],
+): StreamDescriptor[] {
+  if (videoStreams.length === 0) return camerasToDescriptors(cameras);
+  return videoStreams.map((leg, i) => ({
+    id: leg.id,
+    index: i + 1,
+    label: leg.role ?? leg.id,
+    role: leg.role,
+    kind: "concurrent" as const,
+    live: leg.live,
+    address: {
+      whepPath: `${leg.id}/whep`,
+      whepUrl: leg.whepUrl,
+      codec: leg.codec as "h264" | "h265" | undefined,
+    },
   }));
 }
 
@@ -121,27 +146,10 @@ export function useVideoStreams(droneId: string): void {
     }
   }, [droneId]);
 
-  // Population, in priority: the agent's host-resolved per-leg WHEP streams
-  // (`concurrent` — an instant client-side flip), else the capability roster
-  // (`switchable` — a single-encoder switchCamera restart).
+  // Population, in priority (see streamDescriptorsFor).
   useEffect(() => {
     if (!droneId) return;
-    const descriptors: StreamDescriptor[] =
-      videoStreams.length > 0
-        ? videoStreams.map((leg, i) => ({
-            id: leg.id,
-            index: i + 1,
-            label: leg.role ?? leg.id,
-            role: leg.role,
-            kind: "concurrent" as const,
-            live: leg.live,
-            address: {
-              whepPath: `${leg.id}/whep`,
-              whepUrl: leg.whepUrl,
-              codec: leg.codec as "h264" | "h265" | undefined,
-            },
-          }))
-        : camerasToDescriptors(cameras);
+    const descriptors = streamDescriptorsFor(videoStreams, cameras);
     // A change of switch mechanism (a pod hot-swap / capability transition)
     // invalidates any concurrent leg override and the "first is default" guard:
     // the auto-selected first leg of the NEW set must not be treated as a user

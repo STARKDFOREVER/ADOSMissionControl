@@ -128,13 +128,14 @@ export const DEMO_WORKSTATION = {
 
 /**
  * The demo ground-station node — id shared like {@link DEMO_WORKSTATION}. A
- * relay role so its mesh + distributed-RX surfaces are exercised.
+ * mesh receiver so its mesh, combined-stream and pairing-window surfaces are
+ * exercised (the Mesh & RX seed in mock/ground-station-mesh matches).
  */
 export const DEMO_GROUND_STATION = {
   deviceId: "groundstation-1",
   name: "Ground Station Alpha",
   board: "Ground Node",
-  role: "relay",
+  role: "receiver",
 } as const;
 
 /**

@@ -31,6 +31,7 @@ export interface MeshNeighbor {
   mac: string;
   iface: string;
   tq: number;
+  /** Epoch ms the agent last heard this neighbour. */
   last_seen_ms: number;
 }
 
@@ -85,6 +86,7 @@ export interface WfbRelayStatus {
 
 export interface WfbReceiverRelay {
   mac: string;
+  /** Epoch ms the receiver last saw this relay. */
   last_seen_ms: number;
   /** Fragments this relay forwarded; null when not measured. */
   fragments: number | null;

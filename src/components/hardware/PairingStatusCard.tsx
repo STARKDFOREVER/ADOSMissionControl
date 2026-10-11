@@ -11,7 +11,7 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useGroundStationStore } from "@/stores/ground-station-store";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
-import { groundStationApiFromAgent } from "@/lib/api/ground-station-api";
+import { meshApiFromAgent } from "@/lib/api/ground-station/mesh-source";
 
 /** Cadence of the pairing-window poll while the window is open. */
 const PAIRING_POLL_MS = 1000;
@@ -43,7 +43,7 @@ export function PairingStatusCard() {
 
   useEffect(() => {
     if (role !== "receiver" || !distRx.pairingWindowOpen) return;
-    const api = groundStationApiFromAgent(agentUrl, apiKey);
+    const api = meshApiFromAgent(agentUrl, apiKey);
     if (!api) return;
     // Self-scheduling: a 1 Hz fixed interval with no in-flight guard and no
     // `document.hidden` check stacked requests onto the agent while the tab
@@ -78,7 +78,7 @@ export function PairingStatusCard() {
 
   const onOpen = async () => {
     if (openPending) return;
-    const api = groundStationApiFromAgent(agentUrl, apiKey);
+    const api = meshApiFromAgent(agentUrl, apiKey);
     if (!api) return;
     setOpenPending(true);
     try {
@@ -90,7 +90,7 @@ export function PairingStatusCard() {
 
   const onClose = async () => {
     if (closePending) return;
-    const api = groundStationApiFromAgent(agentUrl, apiKey);
+    const api = meshApiFromAgent(agentUrl, apiKey);
     if (!api) return;
     setClosePending(true);
     try {
@@ -102,7 +102,7 @@ export function PairingStatusCard() {
 
   const onApprove = async (deviceId: string) => {
     if (approvePending[deviceId]) return;
-    const api = groundStationApiFromAgent(agentUrl, apiKey);
+    const api = meshApiFromAgent(agentUrl, apiKey);
     if (!api) return;
     setApprovePending((prev) => ({ ...prev, [deviceId]: true }));
     try {

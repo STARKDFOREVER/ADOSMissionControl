@@ -216,7 +216,7 @@ function CompanionBand({ droneId }: { droneId: string }) {
       <OverviewSection>
         {/* Live video — the prime tile, top-left. */}
         <OverviewTile span="half" rowSpan={2}>
-          <VideoFeedCard />
+          <VideoFeedCard droneId={droneId} />
         </OverviewTile>
         {status && (
           <OverviewTile span="half">

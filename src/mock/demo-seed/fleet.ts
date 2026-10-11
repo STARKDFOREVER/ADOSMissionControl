@@ -72,7 +72,7 @@ export const DEMO_AGENTS: PairedDrone[] = [
     fcConnected: false,
     pairedAt: Date.now() - 48_000_000,
     profile: "ground-station",
-    role: "relay",
+    role: DEMO_GROUND_STATION.role,
   },
 ];
 

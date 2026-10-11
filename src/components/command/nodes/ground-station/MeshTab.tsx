@@ -18,7 +18,7 @@
 
 import { useTranslations } from "next-intl";
 import { useGroundStationStore } from "@/stores/ground-station-store";
-import { groundStationApiFromAgent } from "@/lib/api/ground-station-api";
+import { meshApiFromAgent } from "@/lib/api/ground-station/mesh-source";
 import { useNodeDirectAgent } from "@/components/command/settings/use-node-direct-agent";
 import { MeshHealthCard } from "@/components/hardware/MeshHealthCard";
 import { MeshNeighborsTable } from "@/components/hardware/MeshNeighborsTable";
@@ -44,7 +44,7 @@ export function MeshTab({ nodeDeviceId }: MeshTabProps) {
   const direct = useNodeDirectAgent(nodeDeviceId);
   const agentUrl = direct?.agentUrl ?? null;
   const apiKey = direct?.apiKey ?? null;
-  const target = groundStationApiFromAgent(agentUrl, apiKey)?.baseUrl ?? null;
+  const target = meshApiFromAgent(agentUrl, apiKey)?.baseUrl ?? null;
   // The role and mesh slices are shown only when they were read from this node.
   const owned = useGroundStationStore((s) => target !== null && s.meshFor === target);
   const loadRole = useGroundStationStore((s) => s.loadRole);
@@ -60,14 +60,20 @@ export function MeshTab({ nodeDeviceId }: MeshTabProps) {
   const roleError = owned ? storeRoleError : null;
   const meshError = owned ? storeMeshError : null;
 
-  useGroundStationPoll(agentUrl, apiKey, POLL_INTERVAL_MS, async (api) => {
-    await loadRole(api);
-    await loadMesh(api);
-    await loadDistributedRx(api);
-  });
+  useGroundStationPoll(
+    agentUrl,
+    apiKey,
+    POLL_INTERVAL_MS,
+    async (api) => {
+      await loadRole(api);
+      await loadMesh(api);
+      await loadDistributedRx(api);
+    },
+    meshApiFromAgent,
+  );
 
   const retry = () => {
-    const api = groundStationApiFromAgent(agentUrl, apiKey);
+    const api = meshApiFromAgent(agentUrl, apiKey);
     if (api) void loadMesh(api);
   };
 

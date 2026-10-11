@@ -15,10 +15,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Select } from "@/components/ui/select";
 import { useGroundStationStore } from "@/stores/ground-station-store";
-import {
-  groundStationApiFromAgent,
-  type GroundStationRole,
-} from "@/lib/api/ground-station-api";
+import type { GroundStationRole } from "@/lib/api/ground-station-api";
+import { meshApiFromAgent } from "@/lib/api/ground-station/mesh-source";
 import { useNodeDirectAgent } from "@/components/command/settings/use-node-direct-agent";
 import { useArmedOverrideConfirm } from "@/hooks/use-armed-override-confirm";
 import { AgentArmedRefusal } from "@/lib/agent/agent-client/transport";
@@ -48,7 +46,7 @@ export function RoleChangeCard({ nodeDeviceId, variant = "switch" }: RoleChangeC
   const direct = useNodeDirectAgent(nodeDeviceId);
   const agentUrl = direct?.agentUrl ?? null;
   const apiKey = direct?.apiKey ?? null;
-  const target = groundStationApiFromAgent(agentUrl, apiKey)?.baseUrl ?? null;
+  const target = meshApiFromAgent(agentUrl, apiKey)?.baseUrl ?? null;
   const owned = useGroundStationStore((s) => target !== null && s.meshFor === target);
   const storeRole = useGroundStationStore((s) => s.role);
   const role = owned ? storeRole : { ...storeRole, info: null, error: null, switching: false };
@@ -109,10 +107,10 @@ export function RoleChangeCard({ nodeDeviceId, variant = "switch" }: RoleChangeC
   const onApply = async () => {
     if (!agentUrl || selected === role.info?.current) return;
     setLocalTimeoutError(null);
-    const api = groundStationApiFromAgent(agentUrl, apiKey);
+    const api = meshApiFromAgent(agentUrl, apiKey);
     if (!api) {
-      // Demo mode has a truthy agent URL but no REST endpoint, so a bare
-      // early return here left Apply looking live and doing nothing.
+      // A demo session before its mesh client is installed has a truthy
+      // agent URL but nothing to send to; say so rather than looking live.
       if (isDemoMode()) toast(t("demoReadOnly"), "info");
       return;
     }

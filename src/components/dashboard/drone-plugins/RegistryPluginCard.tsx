@@ -32,6 +32,7 @@ import type { RegistryCategory, RegistryPluginRow } from "@/lib/plugins/registry
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { cn } from "@/lib/utils";
 
+import { RegistryInstalledPill } from "./RegistryCatalogBrowser";
 import { RegistryNodePicker } from "./RegistryNodePicker";
 
 import { useRegistryCompatibility } from "../../plugins/install-dialog/use-registry-compatibility";
@@ -322,11 +323,7 @@ export function RegistryPluginCard({
               <span className="text-xs text-text-tertiary">
                 v{plugin.latest_version}
               </span>
-              {installed && (
-                <Badge variant="success" size="sm">
-                  {t("card.installedPill")}
-                </Badge>
-              )}
+              {installed && <RegistryInstalledPill />}
             </div>
             <div className="flex flex-wrap gap-1">
               <span

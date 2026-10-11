@@ -12,7 +12,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useGroundStationStore } from "@/stores/ground-station-store";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
-import { groundStationApiFromAgent } from "@/lib/api/ground-station-api";
+import { meshApiFromAgent } from "@/lib/api/ground-station/mesh-source";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { WfbReceiverRelay } from "@/lib/api/ground-station-api";
 
@@ -37,7 +37,7 @@ export function RelayCard({ relay }: RelayCardProps) {
   const [confirming, setConfirming] = useState(false);
 
   const onConfirm = async () => {
-    const api = groundStationApiFromAgent(agentUrl, apiKey);
+    const api = meshApiFromAgent(agentUrl, apiKey);
     if (!api) return;
     await revokeRelay(api, relay.mac);
     setConfirming(false);

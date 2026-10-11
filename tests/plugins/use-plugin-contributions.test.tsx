@@ -7,7 +7,7 @@
  *   - contributions omitted until the bundle blob resolves
  *   - blob URLs revoked + handler factories disposed on unmount
  *   - slot filtering
- *   - [] when unauthenticated; only the inline fixture page in demo mode
+ *   - [] when unauthenticated; only the demo inline mounts in demo mode
  */
 
 import {
@@ -21,6 +21,7 @@ import {
 import { renderHook, waitFor, act, cleanup } from "@testing-library/react";
 import { useSettingsStore } from "@/stores/settings-store";
 import { DEMO_INLINE_FIXTURE_PLUGIN_ID } from "@/mock/inline-fixture-plugin";
+import { VISION_NAV_PLUGIN_ID } from "@/mock/mock-vision-nav";
 
 // --- Mocks ----------------------------------------------------------
 
@@ -135,6 +136,20 @@ describe("usePluginContributions", () => {
     expect(result.current.map((c) => [c.pluginId, c.slot, c.isolation])).toEqual([
       [DEMO_INLINE_FIXTURE_PLUGIN_ID, "node.agent.page", "inline"],
     ]);
+  });
+
+  it("adds the demo Vision Nav tab body on the drone running that extension", () => {
+    useSettingsStore.setState({ demoMode: true });
+    useConvexSkipQueryMock.mockReturnValue(ROWS);
+    const { result } = renderHook(() => usePluginContributions("alpha-1", undefined, "drone"));
+    expect(result.current.map((c) => [c.pluginId, c.slot, c.panelId, c.isolation])).toEqual([
+      [VISION_NAV_PLUGIN_ID, "node.detail.tab", "vision-nav-tab", "inline"],
+      [DEMO_INLINE_FIXTURE_PLUGIN_ID, "node.agent.page", "hello", "inline"],
+    ]);
+    const narrowed = renderHook(() =>
+      usePluginContributions("alpha-1", "node.detail.tab", "ground-station"),
+    );
+    expect(narrowed.result.current).toEqual([]);
   });
 
   it("produces one contribution per matching gcsContributes entry", async () => {

@@ -6,12 +6,16 @@
  * and unreachable under `npm run demo`, so this renders a small fixture of
  * representative extensions and opens the same install / detail pop-up against
  * their parsed manifests — letting the operator explore the full pop-up surface
- * with no backend. Rendered only from `RegistryPluginGrid` when `isDemoMode()`.
+ * with no backend. The search box, category chips and empty state come from the
+ * same `RegistryCatalogBrowser` the live grid renders through, and a card is
+ * marked Installed when the demo drone's fixture install list (the one its
+ * Extensions tab shows) carries that plugin. Rendered only from
+ * `RegistryPluginGrid` when `isDemoMode()`.
  *
  * @license GPL-3.0-only
  */
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { resolveNamedIcon } from "@/lib/icons/icon-registry";
@@ -23,10 +27,25 @@ import type {
 } from "@/components/plugins/install-dialog/types";
 import { parseManifestYaml } from "@/components/plugins/transports/manifest-parse";
 import { toInstallSummary } from "@/components/plugins/transports/manifest-summary";
+import { useLocalPluginInstallsStore } from "@/stores/local-plugin-installs-store";
+import type { RegistryPluginRow } from "@/lib/plugins/registry-row";
 import {
   DEMO_REGISTRY_ENTRIES,
   type DemoRegistryEntry,
 } from "@/mock/first-party-registry";
+import { getDemoDronePluginInstalls } from "@/mock/mock-plugins";
+
+import {
+  RegistryCatalogBrowser,
+  RegistryInstalledPill,
+} from "./RegistryCatalogBrowser";
+
+const DEMO_ROWS: ReadonlyArray<RegistryPluginRow> = DEMO_REGISTRY_ENTRIES.map(
+  (e) => e.row,
+);
+const DEMO_ENTRY_BY_ID: ReadonlyMap<string, DemoRegistryEntry> = new Map(
+  DEMO_REGISTRY_ENTRIES.map((e) => [e.row.plugin_id, e]),
+);
 
 interface PendingInstall {
   manifest: InstallManifestSummary;
@@ -39,8 +58,22 @@ export function DemoRegistryGrid({
 }: {
   target?: InstallTargetDrone | null;
 }) {
-  const t = useTranslations("pluginRegistry.browse");
   const [pending, setPending] = useState<PendingInstall | null>(null);
+  const deviceId = target?.deviceId ?? null;
+
+  // Installed = the demo drone's fixture installs (what its Extensions tab
+  // lists) plus anything installed locally on it during this session.
+  const localInstalls = useLocalPluginInstallsStore((s) => s.installs);
+  const installedIds = useMemo(() => {
+    const ids = new Set<string>();
+    if (deviceId) {
+      for (const p of getDemoDronePluginInstalls(deviceId)) ids.add(p.pluginId);
+    }
+    for (const i of localInstalls) {
+      if (i.deviceId === deviceId) ids.add(i.pluginId);
+    }
+    return ids;
+  }, [deviceId, localInstalls]);
 
   const open = useCallback((entry: DemoRegistryEntry) => {
     const parsed = parseManifestYaml(entry.manifestYaml);
@@ -67,18 +100,21 @@ export function DemoRegistryGrid({
   }, []);
 
   return (
-    <section className="space-y-3">
-      <header className="space-y-0.5">
-        <h3 className="text-base font-semibold text-text-primary">
-          {t("title")}
-        </h3>
-        <p className="text-xs text-text-tertiary">{t("subtitle")}</p>
-      </header>
-      <ul className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-        {DEMO_REGISTRY_ENTRIES.map((entry) => (
-          <DemoCard key={entry.row.plugin_id} entry={entry} onOpen={open} />
-        ))}
-      </ul>
+    <RegistryCatalogBrowser
+      rows={DEMO_ROWS}
+      renderCard={(row) => {
+        const entry = DEMO_ENTRY_BY_ID.get(row.plugin_id);
+        if (!entry) return null;
+        return (
+          <DemoCard
+            key={row.plugin_id}
+            entry={entry}
+            installed={installedIds.has(row.plugin_id)}
+            onOpen={open}
+          />
+        );
+      }}
+    >
       <PluginInstallDialog
         open={pending !== null}
         onClose={() => setPending(null)}
@@ -87,15 +123,17 @@ export function DemoRegistryGrid({
         initialManifestHash={pending?.manifestHash}
         initialSource={pending?.source}
       />
-    </section>
+    </RegistryCatalogBrowser>
   );
 }
 
 function DemoCard({
   entry,
+  installed,
   onOpen,
 }: {
   entry: DemoRegistryEntry;
+  installed: boolean;
   onOpen: (entry: DemoRegistryEntry) => void;
 }) {
   const t = useTranslations("pluginRegistry.browse");
@@ -103,7 +141,7 @@ function DemoCard({
   const Icon = resolveNamedIcon(row.icon);
 
   return (
-    <li className="h-full">
+    <li className="h-full" data-plugin-id={row.plugin_id}>
       <div
         role="button"
         tabIndex={0}
@@ -114,7 +152,7 @@ function DemoCard({
             onOpen(entry);
           }
         }}
-        aria-label={t("card.viewDetails")}
+        aria-label={`${t("card.viewDetails")} — ${row.name}`}
         className="flex h-full cursor-pointer flex-col gap-2 rounded-lg border border-border-default bg-bg-secondary p-3 transition-colors hover:border-border-strong hover:bg-bg-tertiary/40 focus:outline-none focus-visible:ring-1 focus-visible:ring-accent-primary"
       >
         <div className="flex items-start gap-3">
@@ -129,6 +167,7 @@ function DemoCard({
               <span className="text-xs text-text-tertiary">
                 v{row.latest_version}
               </span>
+              {installed && <RegistryInstalledPill />}
             </div>
             <div className="flex flex-wrap items-center gap-1.5">
               <span className="rounded-md border border-border-default/50 bg-bg-tertiary/50 px-2 py-0.5 text-[11px] text-text-secondary">

@@ -8,6 +8,7 @@
  */
 
 import { FLIGHT_PATHS } from "./flight-paths";
+import { holdsHomeSlot, missionSeqForTarget } from "./engine-mission";
 import { generateStatusMessage } from "./status-messages";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import type { MockProtocol } from "./mock-protocol";
@@ -159,6 +160,14 @@ export function emitSelectedDroneTelemetry(ctx: TelemetryTickContext): number {
     ctx.protocol.emitHeartbeat(
       ctx.status === "in_mission",
       ctx.flightMode as UnifiedFlightMode,
+    );
+  }
+
+  // MissionCurrent at 1Hz: the mission item the drone is flying toward.
+  if (ctx.tickCount % 5 === 0) {
+    const targetIdx = (ctx.currentWaypointIdx + 1) % path.length;
+    ctx.protocol.emitMissionCurrent(
+      missionSeqForTarget(path, targetIdx, holdsHomeSlot(ctx.protocol)),
     );
   }
 

@@ -69,6 +69,12 @@ the project follows [Semantic Versioning](https://semver.org/).
   give up. Relayed nodes show why a relay ticket was refused, and relayed
   logs support live tail and export.
 - Node capabilities come from what the agent declares, not from a SoC table.
+- **Flight map mission route.** While the aircraft flies a mission the open
+  plan matches, the Flight map and cockpit minimap draw its route and mark the
+  waypoint it is heading to. In demo mode each flying drone holds its loop as
+  its mission, reports the waypoint it is flying toward, and selecting it
+  downloads that mission, so the WP readout, route and PLAN overlay are live.
+  The Overview and ground-station downlink video cards play the demo feed.
 
 ### Removed
 

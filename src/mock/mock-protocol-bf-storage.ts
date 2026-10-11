@@ -2,13 +2,14 @@
  * Demo-mode Betaflight OSD config and onboard blackbox flash, with the same
  * contracts as the MSP adapter: reads return the stored layout, writes update
  * it; the flash reports its used size, downloads that many bytes and erases
- * to empty.
+ * to empty. Also the DisplayPort OSD push a canvas OSD preview renders.
  *
  * @license GPL-3.0-only
  */
 
 import type { CommandResult, MspOsdConfig, MspOsdGeneralConfig } from "@/lib/protocol/types";
 import type { MspVtxTablePowerLevel } from "@/lib/protocol/msp/msp-decoders-ext";
+import type { DisplayPortOp } from "@/lib/protocol/msp/decoders/config/displayport";
 
 /** Demo VTX table: a four-level SmartAudio power table. */
 const DEMO_VTX_POWER_LEVELS: MspVtxTablePowerLevel[] = [
@@ -81,4 +82,29 @@ export class MockBfStorage {
   async getVtxPowerLevels(): Promise<MspVtxTablePowerLevel[]> {
     return DEMO_VTX_POWER_LEVELS.map((l) => ({ ...l }));
   }
+}
+
+/**
+ * Push a demo DisplayPort OSD frame now and every 500 ms, as an FC streaming
+ * its OSD does. Returns the interval so the owner can stop it.
+ */
+export function startMockDisplayPort(cb: (op: DisplayPortOp) => void): ReturnType<typeof setInterval> {
+  let t = 0;
+  const write = (row: number, col: number, text: string) =>
+    cb({ kind: "writeString", row, col, attr: 0, fontPage: 0, blink: false, text });
+  const emit = () => {
+    t++;
+    const alt = 100 + (t % 25);
+    const batt = (16.8 - (t % 60) * 0.02).toFixed(1);
+    cb({ kind: "clear" });
+    write(1, 8, "ADOS DEMO OSD");
+    write(4, 2, `ALT ${alt}m`);
+    write(4, 20, "SPD 12m/s");
+    write(6, 2, `BAT ${batt}V`);
+    write(6, 20, "SAT 17");
+    write(14, 9, "RTH 0.42km");
+    cb({ kind: "draw" });
+  };
+  emit();
+  return setInterval(emit, 500);
 }

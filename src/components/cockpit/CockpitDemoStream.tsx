@@ -17,7 +17,7 @@
  * the active theme (night vision included).
  *
  * Reused for both the main view (the active stream) and the PiP inset (a
- * specific stream id).
+ * specific stream id), and by the Overview video card.
  *
  * @license GPL-3.0-only
  */
@@ -25,21 +25,59 @@
 import { useEffect, useRef } from "react";
 
 import { useDemoMode } from "@/hooks/use-demo-mode";
+import { streamDescriptorsFor } from "@/hooks/use-video-streams";
+import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
+import { useSettingsStore } from "@/stores/settings-store";
 import {
   useVideoStreamsStore,
+  type StreamDescriptor,
   type StreamRole,
 } from "@/stores/video-streams-store";
 
 /**
  * True when the cockpit for `droneId` shows the synthetic demo feed: demo
- * mode on and a multi-stream demo node. False for an absent drone.
+ * mode on and a demo node with at least one stream. False for an absent drone.
  */
 export function useDemoFeedActive(droneId: string | undefined): boolean {
   const demo = useDemoMode();
   const count = useVideoStreamsStore((s) =>
     droneId ? (s.streamsByDrone[droneId]?.length ?? 0) : 0,
   );
-  return demo && count > 1;
+  return demo && count > 0;
+}
+
+/**
+ * {@link useDemoFeedActive} for a card with a transport menu: the demo feed is
+ * the picture unless the operator switched video Off there.
+ */
+export function useDemoFeedPlaying(droneId: string | undefined): boolean {
+  const off = useSettingsStore((s) => s.videoTransportMode === "off");
+  return useDemoFeedActive(droneId) && !off;
+}
+
+/** The one stream a ground station republishes: the drone downlink it receives. */
+const DEMO_DOWNLINK: StreamDescriptor[] = [
+  { id: "downlink", index: 1, label: "downlink", kind: "concurrent" },
+];
+
+/**
+ * In demo mode, list a node's streams for a surface that shows the demo feed
+ * without the cockpit's stream switcher (which owns the list, and its
+ * transport side effects, there), so {@link useDemoFeedActive} answers the
+ * same on an Overview card as in the cockpit: the focused node's capability
+ * roster, or with `downlink` the single relayed stream of a ground station.
+ * A no-op outside demo mode.
+ */
+export function useDemoFeedRoster(droneId: string | undefined, downlink = false): void {
+  const demo = useDemoMode();
+  const cameras = useAgentCapabilitiesStore((s) => s.cameras);
+  const videoStreams = useAgentCapabilitiesStore((s) => s.videoStreams);
+  useEffect(() => {
+    if (!demo || !droneId) return;
+    useVideoStreamsStore
+      .getState()
+      .setStreams(droneId, downlink ? DEMO_DOWNLINK : streamDescriptorsFor(videoStreams, cameras));
+  }, [demo, droneId, downlink, cameras, videoStreams]);
 }
 
 interface FeedPalette {

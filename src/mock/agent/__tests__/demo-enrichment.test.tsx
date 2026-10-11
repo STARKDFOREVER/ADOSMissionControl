@@ -231,13 +231,14 @@ describe("demo ground-station capabilities", () => {
     expect(radio?.state).toBe("connected");
     expect(radio?.linkDiag).toBe("healthy");
 
-    // Fed through the capability store, both the radio and crsf gates light so
-    // the Radio + RC/ELRS Link tabs appear, and the role reads relay.
+    // Fed through the capability store, both the radio and crsf readings land
+    // (the RC/ELRS Link tab gates on the lane), and the role reads receiver,
+    // matching the demo ground station's Mesh & RX seed.
     useAgentCapabilitiesStore.getState().setCapabilities(caps);
     const s = useAgentCapabilitiesStore.getState();
     expect(s.radio).not.toBeNull();
     expect(s.crsf).not.toBeNull();
-    expect(s.role).toBe("relay");
+    expect(s.role).toBe("receiver");
   });
 
   it("renders the RC/ELRS tab populated against the demo lane", () => {

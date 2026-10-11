@@ -29,6 +29,13 @@ export function useGroundStationPoll(
   apiKey: string | null,
   baseMs: number,
   run: (api: GroundStationApi) => Promise<void>,
+  /** Builds the client from the connection. The Mesh & RX surface passes
+   * `meshApiFromAgent`, which serves the in-memory demo mesh client in demo.
+   * Must be a stable (module-level) function. */
+  resolveApi: (
+    agentUrl: string | null,
+    apiKey: string | null,
+  ) => GroundStationApi | null = groundStationApiFromAgent,
 ): void {
   const runRef = useRef(run);
   useEffect(() => {
@@ -36,10 +43,10 @@ export function useGroundStationPoll(
   });
 
   useEffect(() => {
-    const api = groundStationApiFromAgent(agentUrl, apiKey);
-    // Null in demo mode and with no agent URL. Gating on the CLIENT rather
-    // than the raw URL is what stops a demo session fetching the non-HTTP
-    // `mock://demo` forever.
+    const api = resolveApi(agentUrl, apiKey);
+    // `groundStationApiFromAgent` is null in demo mode and with no agent URL.
+    // Gating on the CLIENT rather than the raw URL is what stops a demo
+    // session fetching the non-HTTP `mock://demo` forever.
     if (!api) return;
 
     let cancelled = false;
@@ -62,5 +69,5 @@ export function useGroundStationPoll(
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [agentUrl, apiKey, baseMs]);
+  }, [agentUrl, apiKey, baseMs, resolveApi]);
 }

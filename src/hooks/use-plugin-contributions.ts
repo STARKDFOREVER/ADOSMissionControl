@@ -76,6 +76,7 @@ import {
   DEMO_INLINE_FIXTURE_PANEL_ID,
   DEMO_INLINE_FIXTURE_PLUGIN_ID,
 } from "@/mock/inline-fixture-plugin";
+import { getDemoVisionNavContribution } from "@/mock/mock-vision-nav";
 
 /** Slot fallback sort hint, matching the slot-13 contract default. */
 const DEFAULT_ORDER = 60;
@@ -133,47 +134,53 @@ function entryMounts(
   );
 }
 
-/** The demo fixture's inline Agent page on a drone: the in-memory module
- * handed straight to the host (no trust gate, no agent). */
+/** The demo's inline mounts on a drone: the fixture's Agent page, plus the
+ * Vision Nav tab body on the demo drone running that extension. In-memory
+ * modules handed straight to the host (no trust gate, no agent). */
 function demoInlineContributions(
   deviceId: string | null,
   slot: PluginSlotName | undefined,
   nodeProfile: PairedNodeProfile | undefined,
 ): ReadonlyArray<SlottedContribution> {
+  if (deviceId === null) return EMPTY;
+  const out: SlottedContribution[] = [];
+  const visionNav = getDemoVisionNavContribution(deviceId);
+  if (visionNav && entryMounts(visionNav.entry, slot, nodeProfile)) {
+    out.push(visionNav.contribution);
+  }
   const entry: GcsContributeRow = {
     slot: "node.agent.page",
     panelId: DEMO_INLINE_FIXTURE_PANEL_ID,
     profile: ["drone"],
   };
-  if (deviceId === null || !entryMounts(entry, slot, nodeProfile)) return EMPTY;
-  return [
-    {
-      slot: "node.agent.page",
-      pluginId: DEMO_INLINE_FIXTURE_PLUGIN_ID,
-      panelId: DEMO_INLINE_FIXTURE_PANEL_ID,
-      title: "Inline Fixture",
-      bundleUrl: "",
-      isolation: "inline",
-      inline: {
-        status: "ready",
-        bundle: {
-          kind: "inline",
-          module: DEMO_INLINE_FIXTURE_MODULE,
-          trust: {
-            pluginId: DEMO_INLINE_FIXTURE_PLUGIN_ID,
-            version: "0.0.0-demo",
-            signerId: "demo",
-            entrypoint: "gcs/fixture.mjs",
-            paths: [],
-          },
-          readAsset: () => Promise.reject(new Error("the demo fixture ships no assets")),
+  if (!entryMounts(entry, slot, nodeProfile)) return out;
+  out.push({
+    slot: "node.agent.page",
+    pluginId: DEMO_INLINE_FIXTURE_PLUGIN_ID,
+    panelId: DEMO_INLINE_FIXTURE_PANEL_ID,
+    title: "Inline Fixture",
+    bundleUrl: "",
+    isolation: "inline",
+    inline: {
+      status: "ready",
+      bundle: {
+        kind: "inline",
+        module: DEMO_INLINE_FIXTURE_MODULE,
+        trust: {
+          pluginId: DEMO_INLINE_FIXTURE_PLUGIN_ID,
+          version: "0.0.0-demo",
+          signerId: "demo",
+          entrypoint: "gcs/fixture.mjs",
+          paths: [],
         },
+        readAsset: () => Promise.reject(new Error("the demo fixture ships no assets")),
       },
-      grantedCapabilities: new Set([slotToCapability("node.agent.page")]),
-      handlers: {},
-      pluginInstallId: DEMO_INLINE_FIXTURE_PLUGIN_ID,
     },
-  ];
+    grantedCapabilities: new Set([slotToCapability("node.agent.page")]),
+    handlers: {},
+    pluginInstallId: DEMO_INLINE_FIXTURE_PLUGIN_ID,
+  });
+  return out;
 }
 
 /**
@@ -186,7 +193,8 @@ function demoInlineContributions(
  * identity while the install set, loaded bundles, and built handlers are
  * unchanged) sorted by manifest `order` then `pluginId`. Returns `[]` when
  * unauthenticated, before the query resolves, or while iframe bundles are
- * still loading; demo mode yields only the inline fixture page.
+ * still loading; demo mode yields only the demo inline mounts (the fixture
+ * Agent page and the Vision Nav tab body).
  */
 export function usePluginContributions(
   deviceId: string | null,

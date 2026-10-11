@@ -74,13 +74,18 @@ export function NodeTabStrip({
       className="flex items-center self-stretch overflow-x-auto scrollbar-hide flex-1 min-w-0"
     >
       {/* Each group wrapper is `role="presentation"` so the tablist still
-          OWNS its tabs; the section label is decoration (`aria-hidden`). */}
+          OWNS its tabs; the section label is decoration (`aria-hidden`).
+          `shrink-0` is load-bearing: a shrinkable group collapses to its
+          min-content width (a multi-word tab's longest word) while its
+          `shrink-0` tabs keep full width, so "Carried drones" painted over
+          the next group's label. Unshrunk groups overflow the strip, which
+          scrolls instead. */}
       {tabGroups.map((group, groupIdx) => (
         <div
           key={group.key}
           role="presentation"
           className={cn(
-            "flex items-center self-stretch",
+            "flex items-center self-stretch shrink-0",
             groupIdx > 0 && "ml-2 pl-2 border-l border-border-default/60",
           )}
         >
@@ -108,7 +113,7 @@ export function NodeTabStrip({
                   if (moveTab(e.key)) e.preventDefault();
                 }}
                 className={cn(
-                  "self-stretch flex items-center gap-1 px-2.5 text-xs font-medium transition-colors cursor-pointer shrink-0 -mb-px border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary",
+                  "self-stretch flex items-center gap-1 px-2.5 text-xs font-medium whitespace-nowrap transition-colors cursor-pointer shrink-0 -mb-px border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary",
                   visibleTab === id
                     ? "text-accent-primary border-accent-primary"
                     : "text-text-secondary hover:text-text-primary border-transparent",

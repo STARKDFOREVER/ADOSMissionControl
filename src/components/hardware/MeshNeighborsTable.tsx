@@ -53,6 +53,9 @@ export function MeshNeighborsTable() {
     );
   }
 
+  // `last_seen_ms` is the epoch time the agent last heard the neighbour
+  // (batctl's age subtracted from its clock), so the column shows the age.
+  const now = Date.now();
   return (
     <div className="bg-bg-primary border border-border-default/40">
       <div className="px-4 py-2 text-sm font-medium text-text-primary border-b border-border-default/40">
@@ -89,7 +92,7 @@ export function MeshNeighborsTable() {
               <td className="px-4 py-2 text-text-secondary">{n.iface}</td>
               <td className="px-4 py-2 text-right font-mono text-text-primary">{n.tq}</td>
               <td className="px-4 py-2 text-right font-mono text-text-secondary">
-                {n.last_seen_ms} ms
+                {Math.max(0, now - n.last_seen_ms)} ms
               </td>
             </tr>
           ))}

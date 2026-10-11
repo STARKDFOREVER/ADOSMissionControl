@@ -15,6 +15,7 @@
  */
 
 import { timedFetch } from "@/lib/agent/agent-client/timeout";
+import { isDemoMode } from "@/lib/utils";
 
 export interface AgentRequestContext {
   baseUrl: string;
@@ -91,29 +92,48 @@ function parseErrorBody(body: unknown): {
   return { code, message, needsForce };
 }
 
-async function request<T>(
+/** Send one request and return its status and raw body text. */
+async function send(
   ctx: AgentRequestContext,
   path: string,
   init?: RequestInit,
-): Promise<T> {
+): Promise<{ status: number; text: string }> {
+  // DEMO-MODE BRANCH (gated on isDemoMode, real fleets unaffected): the demo
+  // agent URL `mock://demo` is not an HTTP endpoint, so the in-memory demo
+  // agent answers instead, through the same status/body handling below. The
+  // import is dynamic because production code never statically imports
+  // `src/mock/` (AGENTS.md); the mock chunk loads only in a demo session.
+  if (isDemoMode() && ctx.baseUrl.startsWith("mock://")) {
+    const { mockWifiRoute } = await import("@/mock/agent/wifi");
+    const res = mockWifiRoute(init?.method ?? "GET", path, init?.body);
+    return { status: res.status, text: JSON.stringify(res.body) };
+  }
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(init?.headers as Record<string, string>),
   };
   if (ctx.apiKey) headers["X-ADOS-Key"] = ctx.apiKey;
   const res = await timedFetch(`${ctx.baseUrl}${path}`, { ...init, headers });
-  const text = await res.text().catch(() => "");
+  return { status: res.status, text: await res.text().catch(() => "") };
+}
+
+async function request<T>(
+  ctx: AgentRequestContext,
+  path: string,
+  init?: RequestInit,
+): Promise<T> {
+  const { status, text } = await send(ctx, path, init);
   let json: unknown = null;
   try {
     json = text ? (JSON.parse(text) as unknown) : null;
   } catch {
     json = null;
   }
-  if (!res.ok) {
+  if (status < 200 || status > 299) {
     const { code, message, needsForce } = parseErrorBody(json);
     throw new AgentNetworkError(
-      res.status,
-      message ?? `Agent API ${res.status}: ${text || "Unknown error"}`,
+      status,
+      message ?? `Agent API ${status}: ${text || "Unknown error"}`,
       code,
       needsForce,
     );

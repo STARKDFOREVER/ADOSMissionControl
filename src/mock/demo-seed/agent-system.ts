@@ -15,6 +15,7 @@ import { DEMO_WORKSTATION } from "@/mock/drones";
 import { setMockAgentOverride } from "@/mock/agent/client";
 import { setMockConfigProfile } from "@/mock/agent/config";
 import { getMockCapabilities, getMockGroundStationCapabilities, type MockPerceptionOverride } from "@/mock/agent/capabilities";
+import { VISION_OFF_DEMO_DRONE } from "@/mock/mock-detections";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 
 /** A small +/- wobble so seeded metrics read as live rather than pinned. */
@@ -210,8 +211,10 @@ export function seedFocusedAgentSystem(now: number): void {
 
 /**
  * One demo drone runs its detector by OFFLOADING to the workstation (no onboard
- * NPU); the rest run LOCAL on their own NPU. Returns the perception override for
- * a companion drone, or null for a node that runs no perception (the FC-only
+ * NPU); the rest run LOCAL on their own NPU, except the vision-off drone, whose
+ * engine is not running (its detection stream reports `available:false`, so its
+ * caps report the engine off too). Returns the perception override for a
+ * companion drone, or null for a node that runs no perception (the FC-only
  * baseline, the workstation, the ground station) so we don't seed drone caps
  * over it.
  */
@@ -229,6 +232,9 @@ function demoPerceptionFor(agent: PairedDrone): MockPerceptionOverride | null {
       hasAccelerator: false,
       npuAvailable: false,
     };
+  }
+  if (agent.deviceId === VISION_OFF_DEMO_DRONE) {
+    return { perceptionTier: "local", perceptionOffloadTarget: null, visionEngineOff: true };
   }
   return { perceptionTier: "local", perceptionOffloadTarget: null };
 }

@@ -20,18 +20,17 @@
  * @license GPL-3.0-only
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
-import { Package, Search } from "lucide-react";
 
 import { api } from "../../../../convex/_generated/api";
 import { useConvexAvailable } from "@/hooks/use-convex-available";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import { useLocalPluginInstallsStore } from "@/stores/local-plugin-installs-store";
 import { useNodePluginList } from "@/hooks/use-node-plugin-list";
-import { isDemoMode, cn } from "@/lib/utils";
+import { isDemoMode } from "@/lib/utils";
 
 import { PluginInstallDialog } from "@/components/plugins/PluginInstallDialog";
 import type {
@@ -42,8 +41,12 @@ import type {
 import { parseManifestYaml } from "@/components/plugins/transports/manifest-parse";
 import { toInstallSummary } from "@/components/plugins/transports/manifest-summary";
 
-import type { RegistryCategory, RegistryPluginRow } from "@/lib/plugins/registry-row";
+import type { RegistryPluginRow } from "@/lib/plugins/registry-row";
 
+import {
+  RegistryCatalogBrowser,
+  RegistrySectionHeader,
+} from "./RegistryCatalogBrowser";
 import { RegistryPluginCard } from "./RegistryPluginCard";
 // The demo catalog is a fixture set that only ever renders under demo mode.
 // Loaded on demand so its fixtures stay out of the initial bundle.
@@ -51,16 +54,6 @@ const DemoRegistryGrid = dynamic(
   () => import("./DemoRegistryGrid").then((m) => m.DemoRegistryGrid),
   { ssr: false },
 );
-
-type CategoryFilter = "all" | RegistryCategory;
-
-const CATEGORIES: ReadonlyArray<RegistryCategory> = [
-  "drivers",
-  "ui",
-  "ai",
-  "telemetry",
-  "tools",
-];
 
 interface ListPluginsResult {
   items: ReadonlyArray<RegistryPluginRow>;
@@ -130,8 +123,6 @@ export function RegistryPluginGrid({
     return ids;
   }, [installs, nodeInstalls, localInstalls, deviceId]);
 
-  const [search, setSearch] = useState("");
-  const [category, setCategory] = useState<CategoryFilter>("all");
   const [cardState, setCardState] = useState<Record<string, CardState>>({});
   const [pending, setPending] = useState<PendingInstall | null>(null);
   const [pendingFetch, setPendingFetch] = useState<{
@@ -150,32 +141,6 @@ export function RegistryPluginGrid({
   );
 
   const installTarget = target;
-
-  const gridRef = useRef<HTMLUListElement | null>(null);
-
-  const filtered = useMemo(() => {
-    if (!catalog) return [];
-    const needle = search.trim().toLowerCase();
-    return catalog.items.filter((p) => {
-      if (category !== "all" && p.category !== category) return false;
-      if (needle) {
-        const haystack = `${p.name} ${p.description}`.toLowerCase();
-        if (!haystack.includes(needle)) return false;
-      }
-      return true;
-    });
-  }, [catalog, search, category]);
-
-  // A Settings "Install on a node…" hand-off lands here with the plugin's
-  // id; scroll it into view once the catalog has loaded far enough to
-  // contain it. `RegistryPluginCard.highlighted` draws the ring.
-  useEffect(() => {
-    if (!preselectPluginId || !gridRef.current) return;
-    const el = gridRef.current.querySelector<HTMLElement>(
-      `[data-plugin-id="${CSS.escape(preselectPluginId)}"]`,
-    );
-    el?.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, [preselectPluginId, filtered]);
 
   // Once the version row resolves, parse its embedded manifest yaml
   // and open the dialog with a registry-source descriptor.
@@ -253,44 +218,29 @@ export function RegistryPluginGrid({
   if (!convexAvailable) {
     return (
       <section className="space-y-2">
-        <SectionHeader t={t} />
+        <RegistrySectionHeader />
         <ErrorMessage text={t("error.unavailable")} />
       </section>
     );
   }
 
   return (
-    <section className="space-y-3">
-      <SectionHeader t={t} />
-      <Toolbar
-        search={search}
-        setSearch={setSearch}
-        category={category}
-        setCategory={setCategory}
-        t={t}
-      />
-
-      {catalog === undefined && <SkeletonList />}
-
-      {catalog !== undefined && filtered.length === 0 && <EmptyState t={t} />}
-
-      {catalog !== undefined && filtered.length > 0 && (
-        <ul ref={gridRef} className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-          {filtered.map((plugin) => (
-            <RegistryPluginCard
-              key={plugin._id}
-              plugin={plugin}
-              installed={installedIds.has(plugin.plugin_id)}
-              state={cardState[plugin.plugin_id]}
-              onInstall={() => handleInstall(plugin)}
-              surface={surface}
-              targetDeviceId={installTarget?.deviceId ?? null}
-              highlighted={preselectPluginId === plugin.plugin_id}
-            />
-          ))}
-        </ul>
+    <RegistryCatalogBrowser
+      rows={catalog?.items}
+      preselectPluginId={preselectPluginId}
+      renderCard={(plugin) => (
+        <RegistryPluginCard
+          key={plugin._id}
+          plugin={plugin}
+          installed={installedIds.has(plugin.plugin_id)}
+          state={cardState[plugin.plugin_id]}
+          onInstall={() => handleInstall(plugin)}
+          surface={surface}
+          targetDeviceId={installTarget?.deviceId ?? null}
+          highlighted={preselectPluginId === plugin.plugin_id}
+        />
       )}
-
+    >
       <PluginInstallDialog
         open={pending !== null}
         onClose={() => setPending(null)}
@@ -299,104 +249,7 @@ export function RegistryPluginGrid({
         initialManifestHash={pending?.manifestHash}
         initialSource={pending?.source}
       />
-    </section>
-  );
-}
-
-type T = ReturnType<typeof useTranslations>;
-
-function SectionHeader({ t }: { t: T }) {
-  return (
-    <header className="space-y-0.5">
-      <h3 className="text-base font-semibold text-text-primary">
-        {t("title")}
-      </h3>
-      <p className="text-xs text-text-tertiary">{t("subtitle")}</p>
-    </header>
-  );
-}
-
-function Toolbar({
-  search,
-  setSearch,
-  category,
-  setCategory,
-  t,
-}: {
-  search: string;
-  setSearch: (v: string) => void;
-  category: CategoryFilter;
-  setCategory: (v: CategoryFilter) => void;
-  t: T;
-}) {
-  return (
-    <div className="space-y-2">
-      <div className="relative">
-        <Search
-          className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-tertiary"
-          aria-hidden
-        />
-        <input
-          type="search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder={t("searchPlaceholder")}
-          className="w-full rounded-md border border-border-default bg-bg-secondary py-1.5 pl-7 pr-2 text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent-primary focus:outline-none"
-          aria-label={t("searchPlaceholder")}
-        />
-      </div>
-      <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter">
-        <CategoryChip
-          active={category === "all"}
-          onClick={() => setCategory("all")}
-          label={t("category.all")}
-        />
-        {CATEGORIES.map((c) => (
-          <CategoryChip
-            key={c}
-            active={category === c}
-            onClick={() => setCategory(c)}
-            label={t(`category.${c}`)}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function CategoryChip({
-  active,
-  onClick,
-  label,
-}: {
-  active: boolean;
-  onClick: () => void;
-  label: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={cn(
-        "rounded-md border px-2 py-0.5 text-xs transition-colors",
-        active
-          ? "border-accent-primary bg-accent-primary/10 text-accent-primary"
-          : "border-border-default bg-bg-secondary text-text-secondary hover:border-border-strong",
-      )}
-    >
-      {label}
-    </button>
-  );
-}
-
-function EmptyState({ t }: { t: T }) {
-  return (
-    <div className="flex flex-col items-center justify-center gap-1 rounded-md border border-dashed border-border-default p-6 text-center">
-      <Package className="h-6 w-6 text-text-tertiary" aria-hidden />
-      <p className="text-sm text-text-primary">{t("empty.title")}</p>
-      <p className="text-xs text-text-tertiary">{t("empty.subtitle")}</p>
-    </div>
+    </RegistryCatalogBrowser>
   );
 }
 
@@ -405,18 +258,5 @@ function ErrorMessage({ text }: { text: string }) {
     <div className="rounded-md border border-status-error/30 bg-status-error/10 p-3 text-sm text-status-error">
       {text}
     </div>
-  );
-}
-
-function SkeletonList() {
-  return (
-    <ul className="grid grid-cols-1 gap-3 lg:grid-cols-2" aria-hidden>
-      {[0, 1, 2, 3].map((i) => (
-        <li
-          key={i}
-          className="h-[120px] animate-pulse rounded-md border border-border-default bg-bg-secondary"
-        />
-      ))}
-    </ul>
   );
 }

@@ -6,6 +6,19 @@
 
 import { useGroundStationStore } from "@/stores/ground-station-store";
 import type { PhoneInvite } from "@/lib/api/ground-station/types";
+import type { GroundStationApi } from "@/lib/api/ground-station-api";
+import { setDemoMeshApi } from "@/lib/api/ground-station/mesh-source";
+import {
+  DEMO_GS_ROLE,
+  DEMO_MESH_BASE_URL,
+  DEMO_MESH_GATEWAYS,
+  DEMO_MESH_HEALTH,
+  DEMO_MESH_ROUTES,
+  DEMO_RECEIVER_COMBINED,
+  demoGroundStationMesh,
+  demoMeshNeighbors,
+  demoReceiverRelays,
+} from "@/mock/ground-station-mesh";
 
 /** Phone receivers waiting for approval on the demo ground station. The expiry
  * is a far-future constant: the demo has no agent to lapse it. */
@@ -28,9 +41,17 @@ export const DEMO_PHONE_INVITES: readonly PhoneInvite[] = [
  * Overview cards (link health, uplink, paired drone, mesh role/health) plus the
  * Radio / Network / Mesh / Distributed-RX / Display / Physical-UI / Peripherals
  * tables. In demo the GS REST client is null (groundStationApiFromAgent), so the
- * tabs' load-on-mount polls no-op and this seeded data renders untouched. */
+ * tabs' load-on-mount polls no-op and this seeded data renders untouched.
+ *
+ * The Mesh & RX surface is the exception: it resolves the in-memory demo mesh
+ * client (mock/ground-station-mesh), reset and installed here, and the mesh
+ * slices are tagged with that client's origin (`meshFor`) so the surface
+ * reads them as this node's own. */
 export function seedGroundStationStore(): void {
+  demoGroundStationMesh.reset();
+  setDemoMeshApi(demoGroundStationMesh as unknown as GroundStationApi);
   useGroundStationStore.setState({
+    meshFor: DEMO_MESH_BASE_URL,
     status: {
       paired_drone: "alpha-1",
       profile: "ground_station",
@@ -128,10 +149,12 @@ export function seedGroundStationStore(): void {
       error: null,
       fetchedAt: Date.now(),
     },
+    // A mesh receiver: it combines the streams its relays forward, so Mesh &
+    // RX shows the relay list, combined-stream stats and the pairing window.
     role: {
       info: {
-        current: "relay",
-        configured: "relay",
+        current: DEMO_GS_ROLE,
+        configured: DEMO_GS_ROLE,
         supported: ["direct", "relay", "receiver"],
         mesh_capable: true,
       },
@@ -143,38 +166,11 @@ export function seedGroundStationStore(): void {
     // batman-adv mesh: neighbors, routes, and the elected cloud gateway for the
     // Mesh tab's neighbor / gateway tables + health card.
     mesh: {
-      health: {
-        up: true,
-        peer_count: 2,
-        selected_gateway: "aa:bb:cc:00:11:01",
-        partition: false,
-        mesh_id: "ados-mesh-01",
-      },
-      neighbors: [
-        { mac: "aa:bb:cc:00:11:02", iface: "bat0", tq: 244, last_seen_ms: 320 },
-        { mac: "aa:bb:cc:00:11:03", iface: "bat0", tq: 198, last_seen_ms: 640 },
-      ],
-      routes: [
-        { dest: "aa:bb:cc:00:11:02", via: null, metric: 244 },
-        { dest: "aa:bb:cc:00:11:03", via: "aa:bb:cc:00:11:02", metric: 210 },
-      ],
-      gateways: [
-        {
-          mac: "aa:bb:cc:00:11:01",
-          class_up_kbps: 20000,
-          class_down_kbps: 100000,
-          tq: 255,
-          selected: true,
-        },
-        {
-          mac: "aa:bb:cc:00:11:02",
-          class_up_kbps: 8000,
-          class_down_kbps: 40000,
-          tq: 220,
-          selected: false,
-        },
-      ],
-      selectedGateway: "aa:bb:cc:00:11:01",
+      health: { ...DEMO_MESH_HEALTH },
+      neighbors: demoMeshNeighbors(Date.now()),
+      routes: DEMO_MESH_ROUTES.map((r) => ({ ...r })),
+      gateways: DEMO_MESH_GATEWAYS.map((g) => ({ ...g })),
+      selectedGateway: DEMO_MESH_HEALTH.selected_gateway,
       lastTransientEvent: null,
       wsState: "connected",
       wsDisconnectedAt: null,
@@ -182,29 +178,13 @@ export function seedGroundStationStore(): void {
       error: null,
       fetchedAt: Date.now(),
     },
-    // Distributed-RX relay forwarder state (this node is a relay) for the
-    // Distributed RX tab.
+    // Distributed-RX receiver state: the relays feeding this node and the
+    // combined stream, with the pairing window closed until the operator
+    // opens it.
     distributedRx: {
-      // Two relays with measured fragment counts and one not yet measured
-      // (null renders as "—", never a fabricated 0).
-      receiverRelays: [
-        { mac: "aa:bb:cc:00:11:02", last_seen_ms: 320, fragments: 148102 },
-        { mac: "aa:bb:cc:00:11:03", last_seen_ms: 640, fragments: 52310 },
-        { mac: "aa:bb:cc:00:11:04", last_seen_ms: 1200, fragments: null },
-      ],
-      combined: null,
-      relayStatus: {
-        role: "relay",
-        drone_iface: "wlan1",
-        receiver_ip: "10.0.0.2",
-        receiver_port: 5800,
-        receiver_last_seen_ms: 240,
-        fragments_seen: 148230,
-        fragments_forwarded: 148102,
-        up: true,
-        mesh_iface: "bat0",
-        stale: false,
-      },
+      receiverRelays: demoReceiverRelays(Date.now()),
+      combined: { ...DEMO_RECEIVER_COMBINED },
+      relayStatus: null,
       pairingWindowOpen: false,
       pairingWindowExpiresAt: null,
       pairingCode: null,

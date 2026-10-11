@@ -10,12 +10,7 @@
  * depend on getSelectedProtocol() returning a real protocol.
  */
 
-import {
-  DEMO_DRONES,
-  DEMO_WORKSTATION,
-  DEMO_GROUND_STATION,
-  type DemoDroneConfig,
-} from "./drones";
+import { DEMO_DRONES, type DemoDroneConfig } from "./drones";
 import { FLIGHT_PATHS, interpolatePath } from "./flight-paths";
 import { generateAlert } from "./alerts";
 import { MockProtocol } from "./mock-protocol";
@@ -32,15 +27,13 @@ function createDemoProtocol(firmware: string | undefined): DemoProtocol {
 import { MockTransport } from "./mock-transport";
 import { BOOT_MESSAGES } from "./status-messages";
 import { emitSelectedDroneTelemetry } from "./engine-telemetry";
+import { seedDemoNodes } from "./engine-seed";
+import { DemoMissionLoader, holdsHomeSlot, pathMissionItems } from "./engine-mission";
 import { DEMO_PX4_EVENT_FRAMES } from "./px4-demo-events";
 import { mockCanBus } from "./mock-can-bus";
 import { useFleetStore } from "@/stores/fleet-store";
 import { useDroneManager } from "@/stores/drone-manager";
-import { useDroneMetadataStore } from "@/stores/drone-metadata-store";
-import {
-  useNodeRegistryStore,
-  resolveNodeId,
-} from "@/stores/node-registry";
+import { useNodeRegistryStore, resolveNodeId } from "@/stores/node-registry";
 import { randomId } from "@/lib/utils";
 import type { FleetDrone, FlightRecord } from "@/lib/types";
 import { haversineDistance } from "@/lib/geo/distance";
@@ -90,6 +83,8 @@ class MockFlightEngine {
   private intervalId: ReturnType<typeof setInterval> | null = null;
   private states: DroneSimState[] = [];
   private tickRate = 200;
+  /** Loads the selected flying drone's mission into the planner (see engine-mission). */
+  private missionLoader = new DemoMissionLoader();
   private running = false;
 
   constructor() {
@@ -103,6 +98,10 @@ class MockFlightEngine {
         }
       }
       const protocol = createDemoProtocol(cfg.firmware);
+      // The loop this drone flies is the mission it holds onboard.
+      if (path && path.length >= 2 && protocol instanceof MockProtocol) {
+        protocol.loadMission(pathMissionItems(path, holdsHomeSlot(protocol)));
+      }
 
       return {
         config: cfg, pathProgress: 0, currentWaypointIdx: 0,
@@ -122,84 +121,10 @@ class MockFlightEngine {
     this.tickRate = intervalMs;
     this.running = true;
 
-    // Seed the canonical node registry: it is the fleet's single write target
-    // and the fleet projection reads it. Each demo drone gets `"local"`
-    // presence + an attached FC + an initial telemetry seed so it renders once
-    // with its configured arm/mode/battery/position. The flying drones then
-    // receive live telemetry through `bridgeTelemetry` (also into the registry).
-    const registry = useNodeRegistryStore.getState();
-    const now = Date.now();
-    for (const cfg of DEMO_DRONES) {
-      const id = nid(cfg.id);
-      // An FC-only drone (`hasAgent === false`) is a direct MAVLink connection
-      // with no companion agent. Seed its presence WITHOUT deviceId/cloudDeviceId
-      // so the fleet projection yields `cloudDeviceId: undefined` → the node
-      // console's `agentDeviceId` is null → it renders the FC-only overview (FC
-      // band + "add a companion computer" CTA, no companion band). A full drone
-      // carries both ids. The FC is attached and telemetry flows for both, so the
-      // FC band populates identically once the drone is selected.
-      const fcOnly = cfg.hasAgent === false;
-      registry.upsertPresence(
-        id,
-        {
-          ...(fcOnly ? {} : { deviceId: cfg.id, cloudDeviceId: cfg.id }),
-          name: cfg.name,
-          profile: "drone",
-          cloudPosture: "local",
-          lastHeartbeat: now,
-        },
-        "local",
-      );
-      registry.attachFc(id, id);
-      registry.updateFcTelemetry(id, this.seedTelemetry(cfg, now));
-    }
-
-    // The non-flying demo nodes: a workstation (compute) node and a ground
-    // station. Presence only, no attached FC — the projection then renders each
-    // with its own profile (workstation / ground-station) and hides the
-    // FC-gated battery/GPS telemetry. Their liveness rides the command-fleet
-    // status `updatedAt` (refreshed by DemoProvider), the same path a real
-    // cloud-only node uses. The ground-station store (link/uplink/mesh) is seeded
-    // in DemoProvider.
-    registry.upsertPresence(
-      nid(DEMO_WORKSTATION.deviceId),
-      {
-        deviceId: DEMO_WORKSTATION.deviceId,
-        name: DEMO_WORKSTATION.name,
-        profile: "workstation",
-        cloudPosture: "local",
-        cloudDeviceId: DEMO_WORKSTATION.deviceId,
-        lastHeartbeat: now,
-      },
-      "local",
-    );
-    registry.upsertPresence(
-      nid(DEMO_GROUND_STATION.deviceId),
-      {
-        deviceId: DEMO_GROUND_STATION.deviceId,
-        name: DEMO_GROUND_STATION.name,
-        profile: "ground-station",
-        role: DEMO_GROUND_STATION.role,
-        cloudPosture: "local",
-        cloudDeviceId: DEMO_GROUND_STATION.deviceId,
-        lastHeartbeat: now,
-      },
-      "local",
-    );
-
-    const metadataStore = useDroneMetadataStore.getState();
-    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
-    for (const cfg of DEMO_DRONES) {
-      // Metadata is keyed by the fleet row id (the node id), so the drone card's
-      // `profiles[drone.id]` display-name lookup resolves.
-      metadataStore.ensureProfile(nid(cfg.id), {
-        displayName: cfg.name, serial: `ALT-${cfg.id.toUpperCase()}`,
-        computeModule: "RPi CM4", weightClass: "Micro",
-        totalFlights: cfg.pathIndex >= 0 ? 47 : 12,
-        totalHours: cfg.pathIndex >= 0 ? 23.4 : 5.1,
-        enrolledAt: thirtyDaysAgo,
-      });
-    }
+    // Seed the node registry (presence, attached FC, first telemetry sample)
+    // and the drone metadata profiles; the tick loop then keeps it live.
+    seedDemoNodes(Date.now());
+    this.missionLoader = new DemoMissionLoader();
 
     // Demo boots with NO drone pre-selected so the dashboard lands on the Agent
     // Overview grid (the whole fleet), not a single drone's detail panel.
@@ -260,53 +185,6 @@ class MockFlightEngine {
   }
 
   /**
-   * Initial FC telemetry for a demo drone, derived from its config. Used to
-   * seed the registry so each drone renders with its configured
-   * arm/mode/battery/position before the live tick loop takes over.
-   */
-  private seedTelemetry(cfg: DemoDroneConfig, now: number): Parameters<
-    ReturnType<typeof useNodeRegistryStore.getState>["updateFcTelemetry"]
-  >[1] {
-    const flying = cfg.pathIndex >= 0;
-    const armed = cfg.status === "in_mission";
-    const alt = flying ? 50 : 0;
-    return {
-      status: cfg.status,
-      flightMode: cfg.flightMode,
-      armState: armed ? "armed" : "disarmed",
-      healthScore: cfg.healthScore,
-      lastHeartbeat: now,
-      position: {
-        timestamp: now,
-        lat: cfg.homeLat,
-        lon: cfg.homeLon,
-        alt,
-        relativeAlt: alt,
-        heading: 0,
-        groundSpeed: 0,
-        airSpeed: 0,
-        climbRate: 0,
-      },
-      battery: {
-        timestamp: now,
-        voltage: 22.2 * (cfg.batteryStart / 100),
-        current: armed ? 12.5 : 0,
-        remaining: cfg.batteryStart,
-        consumed: (100 - cfg.batteryStart) * 22,
-      },
-      gps: {
-        timestamp: now,
-        fixType: cfg.status === "maintenance" ? 0 : 3,
-        satellites: cfg.status === "maintenance" ? 0 : 17,
-        hdop: 1.0,
-        lat: cfg.homeLat,
-        lon: cfg.homeLon,
-        alt: 10,
-      },
-    };
-  }
-
-  /**
    * Stop and resume telemetry without tearing the demo down, so the
    * freshness-gated surfaces can be exercised without hardware.
    *
@@ -359,6 +237,16 @@ class MockFlightEngine {
     const fleetStore = useFleetStore.getState();
     const selectedId = useDroneManager.getState().selectedDroneId;
     const now = Date.now();
+
+    // A newly selected flying drone's onboard mission goes into the planner
+    // through the download an operator runs (see engine-mission).
+    const selectedFlying = this.states.find(
+      (s) => s.config.pathIndex >= 0 && nid(s.config.id) === selectedId,
+    )?.protocol;
+    void this.missionLoader.onSelection(
+      selectedId,
+      selectedFlying instanceof MockProtocol ? selectedFlying : null,
+    );
 
     for (const state of this.states) {
       state.tickCount++;

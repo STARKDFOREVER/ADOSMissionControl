@@ -12,7 +12,7 @@ import { useRef } from "react";
 import { useTranslations } from "next-intl";
 import { useGroundStationStore } from "@/stores/ground-station-store";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
-import { groundStationApiFromAgent } from "@/lib/api/ground-station-api";
+import { meshApiFromAgent } from "@/lib/api/ground-station/mesh-source";
 
 export function MeshGatewaysTable() {
   const t = useTranslations("hardware.mesh");
@@ -25,13 +25,13 @@ export function MeshGatewaysTable() {
   const rowRefs = useRef<Array<HTMLTableRowElement | null>>([]);
 
   const onPin = async (mac: string) => {
-    const api = groundStationApiFromAgent(agentUrl, apiKey);
+    const api = meshApiFromAgent(agentUrl, apiKey);
     if (!api) return;
     await pinMeshGateway(api, { mode: "pinned", pinned_mac: mac });
   };
 
   const onAuto = async () => {
-    const api = groundStationApiFromAgent(agentUrl, apiKey);
+    const api = meshApiFromAgent(agentUrl, apiKey);
     if (!api) return;
     await pinMeshGateway(api, { mode: "auto" });
   };

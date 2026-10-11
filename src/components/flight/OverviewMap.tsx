@@ -26,6 +26,7 @@ import { buildSkillContext, activate } from "@/lib/skills";
 import { MapFollower } from "@/components/map/MapFollower";
 import { MeasureToolManager } from "@/components/map/MeasureToolManager";
 import { FleetPluginSlot } from "@/components/plugins/FleetPluginSlot";
+import { MissionRouteOverlay } from "@/components/flight/MissionRouteOverlay";
 
 const GcsMarker = dynamic(
   () => import("@/components/map/GcsMarker").then((m) => ({ default: m.GcsMarker })),
@@ -208,10 +209,6 @@ export function OverviewMap({
   const guidanceTrackWpEnabled = useSettingsStore((s) => s.guidanceTrackWpEnabled);
   const guidanceTgtHdgEnabled = useSettingsStore((s) => s.guidanceTgtHdgEnabled);
 
-  // Next waypoint from mission store for Track-WP line
-  const missionWaypoints = useMissionStore((s) => s.waypoints);
-  const currentWaypoint = useMissionStore((s) => s.currentWaypoint);
-
   // Fleet drones for multi-drone markers
   const fleetDrones = useFleetDrones();
   const profiles = useDroneMetadataStore((s) => s.profiles);
@@ -324,6 +321,9 @@ export function OverviewMap({
 
         {/* Interactive geofence editing */}
         <EditableGeofenceOverlay />
+
+        {/* The mission the aircraft is flying + the waypoint it is heading to */}
+        <MissionRouteOverlay />
 
         {/* Planned vs actual path comparison */}
         {showPlannedPath && <PlannedVsActualOverlay />}
