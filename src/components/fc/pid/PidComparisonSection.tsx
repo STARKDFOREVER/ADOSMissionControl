@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useDroneStore } from "@/stores/drone-store";
 import { useTelemetryStore } from "@/stores/telemetry-store";
+import type { AttitudeData } from "@/lib/types";
 import { useParamLabel } from "@/hooks/use-param-label";
 import { useParamMetadataMap } from "@/hooks/use-param-metadata";
 import { PidResponseChart } from "./PidResponseChart";
@@ -121,7 +122,12 @@ export function LivePidResponseGraph({ connected }: { connected: boolean }) {
 
   const recentAttitude = useMemo(() => {
     const cutoff = Date.now() - 15_000;
-    return attitudeRing.toArray().filter((a) => a.timestamp >= cutoff);
+    // forEach reads the ring in place; toArray() would copy it every 200 ms.
+    const recent: AttitudeData[] = [];
+    attitudeRing.forEach((a) => {
+      if (a.timestamp >= cutoff) recent.push(a);
+    });
+    return recent;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tick, attitudeRing.length]);
 

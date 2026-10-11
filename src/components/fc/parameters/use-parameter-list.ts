@@ -127,6 +127,9 @@ export function useParameterList(onReset: () => void): ParameterListState {
       setParameters([]);
       void downloadParams();
     }
+    // A slower metadata load for a previous selection must not land after
+    // the current one's.
+    let cancelled = false;
     const drone = useDroneManager.getState().getSelectedDrone();
     if (drone?.vehicleInfo) {
       loadParamMetadata({
@@ -134,8 +137,13 @@ export function useParameterList(onReset: () => void): ParameterListState {
         vehicleClass: drone.vehicleInfo.vehicleClass,
         firmwareVersion: drone.vehicleInfo.firmwareVersionString,
         protocol: drone.protocol,
-      }).then(setMetadata);
+      }).then((meta) => {
+        if (!cancelled) setMetadata(meta);
+      });
     }
+    return () => {
+      cancelled = true;
+    };
   }, [selectedDroneId, selectedProtocol, downloadParams]);
 
   const applyWritten = useCallback((values: Map<string, number>) => {

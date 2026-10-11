@@ -7,6 +7,7 @@
 
 export { generateSurvey } from "./survey-generator";
 export { generateOrbit } from "./orbit-generator";
+export { generatePerimeter } from "./perimeter-generator";
 export { generateCorridor } from "./corridor-generator";
 export { generateExpandingSquare, generateSectorSearch, generateParallelTrack } from "./sar-generators";
 export { generateStructureScan } from "./structure-scan-generator";

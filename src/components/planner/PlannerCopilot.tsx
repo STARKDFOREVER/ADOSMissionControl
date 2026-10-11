@@ -33,7 +33,13 @@ import { polygonArea } from "@/lib/drawing/geo-utils";
 import { randomId, cn } from "@/lib/utils";
 
 /** Pattern-store pattern types the copilot can activate from a parsed intent. */
-export type CopilotPatternType = "survey" | "orbit" | "corridor";
+export type CopilotPatternType =
+  | "survey"
+  | "orbit"
+  | "corridor"
+  | "perimeter"
+  | "expandingSquare"
+  | "structureScan";
 
 /**
  * The survey config carries a few UI-only extended fields (overlap percentages
@@ -48,10 +54,8 @@ type SurveyConfigExt = Partial<SurveyConfig> & {
 
 /** A deterministic plan derived from a parsed {@link MissionIntent}. */
 export interface CopilotPlan {
-  /** Pattern type to activate, or null when none/unsupported. */
+  /** Pattern type to activate, or null when the intent names none. */
   patternType: CopilotPatternType | null;
-  /** A pattern was recognized but has no generator yet (e.g. "perimeter"). */
-  unsupportedPattern: MissionPattern | null;
   /** Altitude AGL to apply, metres. */
   altitudeM?: number;
   /** Cruise speed to apply, m/s. */
@@ -67,12 +71,15 @@ export interface CopilotPlan {
 }
 
 /** Deterministic map: parsed pattern → the pattern-store pattern the copilot sets. */
-const PATTERN_TYPE_MAP: Record<MissionPattern, CopilotPatternType | null> = {
+const PATTERN_TYPE_MAP: Record<MissionPattern, CopilotPatternType> = {
   survey: "survey",
   orbit: "orbit",
   corridor: "corridor",
-  // No perimeter generator exists; recognized but not directly applicable.
-  perimeter: null,
+  perimeter: "perimeter",
+  // A search with no further shape starts as the standard expanding square
+  // from a datum; the other SAR patterns stay one selector change away.
+  sar: "expandingSquare",
+  "structure-scan": "structureScan",
 };
 
 /** ~500 m half-span (degrees latitude) for the approximate map-center fallback. */
@@ -84,15 +91,11 @@ const DEFAULT_MAP_ALTITUDE_M = 50;
 
 /**
  * Turn a parsed {@link MissionIntent} into a deterministic {@link CopilotPlan}.
- * Pure: no store, no network. Only fields present in the intent are carried,
- * and `perimeter` (which has no generator) is flagged as unsupported rather
- * than silently dropped.
+ * Pure: no store, no network. Only fields present in the intent are carried.
  */
 export function planCopilotActions(intent: MissionIntent): CopilotPlan {
-  const mapped = intent.pattern ? PATTERN_TYPE_MAP[intent.pattern] : null;
   const plan: CopilotPlan = {
-    patternType: mapped,
-    unsupportedPattern: intent.pattern && mapped === null ? intent.pattern : null,
+    patternType: intent.pattern ? PATTERN_TYPE_MAP[intent.pattern] : null,
     actionable: false,
   };
   if (intent.altitudeM !== undefined) plan.altitudeM = intent.altitudeM;
@@ -178,6 +181,13 @@ export function applyCopilotPlan(plan: CopilotPlan): AppliedSummary {
     store.updateSurveyConfig(numeric);
     if (active === "orbit") store.updateOrbitConfig(numeric);
     else if (active === "corridor") store.updateCorridorConfig(numeric);
+    else if (active === "perimeter") store.updatePerimeterConfig(numeric);
+    else if (active === "expandingSquare") store.updateSarExpandingSquareConfig(numeric);
+    // A structure scan flies a bottom-to-top altitude band, so only speed carries.
+    else if (active === "structureScan") {
+      if (numeric.speed !== undefined) store.updateStructureScanConfig({ speed: numeric.speed });
+      delete applied.altitudeM;
+    }
   }
 
   // Radius only has a home on an orbit; skip it (and its chip) otherwise.
@@ -394,11 +404,6 @@ export function PlannerCopilot() {
                 <Chip label={t("copilot.chipRadius", { value: feedback.applied.radiusM })} />
               )}
             </div>
-          )}
-          {feedback.plan.unsupportedPattern && (
-            <p className="text-[10px] text-status-warning">
-              {t("copilot.patternUnsupported", { pattern: feedback.plan.unsupportedPattern })}
-            </p>
           )}
           {feedback.plan.place && (
             <p className="text-[10px] text-text-tertiary">

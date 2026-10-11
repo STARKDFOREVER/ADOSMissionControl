@@ -49,7 +49,7 @@ describe("migrateSettings", () => {
     expect(result.locale).toBe("en");
     expect(result.themeMode).toBe("dark");
     expect(result.accentColor).toBe("blue");
-    expect(result.paramFilterPresets).toEqual([]);
+    expect("paramFilterPresets" in result).toBe(false);
     expect(result.guidanceHdgEnabled).toBe(true);
     expect(result.guidanceTrackWpEnabled).toBe(true);
     expect(result.guidanceTgtHdgEnabled).toBe(true);
@@ -78,9 +78,9 @@ describe("migrateSettings", () => {
     expect(result.mapTileSource).toBe("satellite");
   });
 
-  it("v22 initialises empty paramFilterPresets when missing", () => {
-    const result = migrateSettings({}, 21);
-    expect(result.paramFilterPresets).toEqual([]);
+  it("v52 drops the stored parameter filter presets", () => {
+    const result = migrateSettings({ paramFilterPresets: [{ id: "p1" }] }, 51);
+    expect("paramFilterPresets" in result).toBe(false);
   });
 
   it("v27 initialises a populated telemetry deck", () => {

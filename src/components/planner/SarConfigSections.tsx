@@ -8,6 +8,7 @@
 
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
+import { MIN_LINE_SPACING_M, parseSpacing } from "@/lib/patterns/types";
 import { usePatternStore } from "@/stores/pattern-store";
 import { usePlannerStore } from "@/stores/planner-store";
 import type { DatumPattern } from "@/lib/planner-mode";
@@ -49,8 +50,8 @@ export function SarExpandingSquareConfig() {
         <span>{config.center ? `Datum: ${config.center[0].toFixed(4)}, ${config.center[1].toFixed(4)}` : t("clickMapSetDatum")}</span>
       </div>
       <SetDatumButton pattern="expandingSquare" />
-      <Input label={t("legSpacing")} type="number" unit="m" value={String(config.legSpacing ?? 50)}
-        onChange={(e) => update({ legSpacing: parseFloat(e.target.value) || 50 })} />
+      <Input label={t("legSpacing")} type="number" unit="m" min={MIN_LINE_SPACING_M} step={0.1} value={String(config.legSpacing ?? 50)}
+        onChange={(e) => update({ legSpacing: parseSpacing(e.target.value, 50) })} />
       <Input label={t("maxLegs")} type="number" value={String(config.maxLegs ?? 20)}
         onChange={(e) => update({ maxLegs: parseInt(e.target.value) || 20 })} />
       <Input label={t("startBearing")} type="number" unit="deg" value={String(config.startBearing ?? 0)}
@@ -105,8 +106,8 @@ export function SarParallelTrackConfig() {
       <SetDatumButton pattern="parallelTrack" />
       <Input label={t("trackLength")} type="number" unit="m" value={String(config.trackLength ?? 500)}
         onChange={(e) => update({ trackLength: parseFloat(e.target.value) || 500 })} />
-      <Input label={t("trackSpacing")} type="number" unit="m" value={String(config.trackSpacing ?? 50)}
-        onChange={(e) => update({ trackSpacing: parseFloat(e.target.value) || 50 })} />
+      <Input label={t("trackSpacing")} type="number" unit="m" min={MIN_LINE_SPACING_M} step={0.1} value={String(config.trackSpacing ?? 50)}
+        onChange={(e) => update({ trackSpacing: parseSpacing(e.target.value, 50) })} />
       <Input label={t("trackCount")} type="number" value={String(config.trackCount ?? 10)}
         onChange={(e) => update({ trackCount: parseInt(e.target.value) || 10 })} />
       <Input label={t("bearing")} type="number" unit="deg" value={String(config.bearing ?? 0)}

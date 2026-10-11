@@ -1,3 +1,7 @@
+// @vitest-environment jsdom
+// DOMPurify relies on DOM behaviour happy-dom does not implement faithfully
+// (event-handler attributes and some elements survive there), so the
+// sanitizer is verified against jsdom, which matches browsers here.
 import { describe, expect, it } from "vitest";
 
 import { sanitizeChangelogHtml } from "@/lib/community-html";

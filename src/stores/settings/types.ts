@@ -15,7 +15,6 @@ import type {
   MapTileSource,
   ParamColumnId,
   ParamColumnVisibility,
-  ParameterFilterPreset,
   TelemetryDeckMetricId,
   TelemetryDeckPageId,
   ThemeMode,
@@ -108,7 +107,6 @@ export interface SettingsStoreState {
   locale: string;
   themeMode: ThemeMode;
   accentColor: AccentColor;
-  paramFilterPresets: ParameterFilterPreset[];
   guidanceHdgLength: number;
   guidanceHdgWidth: number;
   guidanceHdgLineType: GuidanceLineType;
@@ -202,8 +200,6 @@ export interface SettingsStoreState {
   /** Set the no-fly dataset region, or null to clear it. */
   setNoFlyRegion: (region: string | null) => void;
   setOfflineTileCaching: (enabled: boolean) => void;
-  saveParamFilterPreset: (preset: ParameterFilterPreset) => void;
-  removeParamFilterPreset: (id: string) => void;
   setGuidanceHdgLength: (v: number) => void;
   setGuidanceHdgWidth: (v: number) => void;
   setGuidanceHdgLineType: (v: GuidanceLineType) => void;

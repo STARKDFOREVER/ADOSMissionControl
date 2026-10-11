@@ -277,19 +277,22 @@ export function mergeRelayedNodes(
   );
   if (relayed.length === 0) return base;
 
-  // Copy the base rows so carrying reachedVia onto an upgraded row never mutates
-  // the memoized inputs.
-  const result = base.map((n) => ({ ...n }));
-  const byDeviceId = new Map(result.map((n) => [n.deviceId, n]));
+  // Only an upgraded row is copied, so carrying reachedVia never mutates the
+  // memoized inputs and every untouched row keeps its identity (memoised rows
+  // downstream skip re-rendering).
+  const result = base.slice();
+  const indexByDeviceId = new Map(result.map((n, i) => [n.deviceId, i]));
   const extras: FleetNodeEntry[] = [];
-  const takenDeviceIds = new Set(byDeviceId.keys());
+  const takenDeviceIds = new Set(indexByDeviceId.keys());
 
   for (const e of relayed) {
     const deviceId = e.presence.deviceId;
-    const existing = byDeviceId.get(deviceId);
-    if (existing) {
+    const idx = indexByDeviceId.get(deviceId);
+    if (idx !== undefined) {
       // Upgrade in place: the direct row keeps the relay hop as provenance.
-      existing.reachedVia = e.presence.reachedVia;
+      if (result[idx].reachedVia !== e.presence.reachedVia) {
+        result[idx] = { ...result[idx], reachedVia: e.presence.reachedVia };
+      }
       continue;
     }
     if (takenDeviceIds.has(deviceId)) continue;
@@ -300,20 +303,58 @@ export function mergeRelayedNodes(
   return extras.length === 0 ? result : [...result, ...extras];
 }
 
+/**
+ * Per-row memo of {@link enrichNodeWithLiveFc}: the same base row with the
+ * same live status object yields the same enriched object, so a heartbeat for
+ * one node does not hand every other row a new identity.
+ */
+const enrichCache = new WeakMap<
+  FleetNodeEntry,
+  { status: CommandCloudStatus | undefined; out: FleetNodeEntry }
+>();
+
+function enrichStable(
+  node: FleetNodeEntry,
+  status: CommandCloudStatus | undefined,
+): FleetNodeEntry {
+  const hit = enrichCache.get(node);
+  if (hit && hit.status === status) return hit.out;
+  const out = enrichNodeWithLiveFc(node, status);
+  enrichCache.set(node, { status, out });
+  return out;
+}
+
+/**
+ * Change signal for the registry's relayed nodes: only the fields the fleet
+ * projection reads. A registry update that touches nothing here (telemetry
+ * streaming for directly-reached nodes) leaves it unchanged, so consumers do
+ * not re-render. Exported for unit tests.
+ */
+export function relayedSignature(registryNodes: Record<string, NodeEntry>): string {
+  let sig = "";
+  for (const e of Object.values(registryNodes)) {
+    const p = e.presence;
+    if (!p.deviceId || !p.sources.includes("relayed")) continue;
+    sig += `${p.deviceId}|${p.name}|${p.reachedVia ?? ""}|${p.lastHeartbeat}|${p.profile}\n`;
+  }
+  return sig;
+}
+
 export function useFleetNodes(): FleetNodeEntry[] {
   const cloudPaired = usePairingStore((s) => s.pairedDrones);
   const localNodes = useLocalNodesStore((s) => s.nodes);
   const cloudStatuses = useCommandFleetStore((s) => s.cloudStatuses);
   const managed = useDroneManager((s) => s.drones);
-  const registryNodes = useNodeRegistryStore((s) => s.nodes);
-  const registryUpdate = useNodeRegistryStore((s) => s.lastUpdate);
+  const relayedKey = useNodeRegistryStore((s) => relayedSignature(s.nodes));
+
+  const merged = useMemo(
+    () => mergeFleetNodes(cloudPaired, localNodes),
+    [cloudPaired, localNodes],
+  );
 
   const paired = useMemo(
-    () =>
-      mergeFleetNodes(cloudPaired, localNodes).map((n) =>
-        enrichNodeWithLiveFc(n, cloudStatuses[n.deviceId]),
-      ),
-    [cloudPaired, localNodes, cloudStatuses],
+    () => merged.map((n) => enrichStable(n, cloudStatuses[n.deviceId])),
+    [merged, cloudStatuses],
   );
 
   const withDirect = useMemo(
@@ -323,15 +364,12 @@ export function useFleetNodes(): FleetNodeEntry[] {
 
   // Fold in the registry's relayed nodes (a WFB-linked drone reached through a
   // paired ground node). A relayed drone that is also paired directly upgrades
-  // its direct row in place; a relayed-only drone becomes its own row.
-  return useMemo(
-    () =>
-      mergeRelayedNodes(withDirect, registryNodes).map((n) =>
-        n.isRelayed ? enrichNodeWithLiveFc(n, cloudStatuses[n.deviceId]) : n,
-      ),
-    // registryUpdate is a scalar change signal; it keeps the projection live
-    // without depending on the identity of registryNodes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [withDirect, registryNodes, registryUpdate, cloudStatuses],
-  );
+  // its direct row in place; a relayed-only drone becomes its own row. The
+  // relayed signature is the change signal, so the registry is read here.
+  return useMemo(() => {
+    if (relayedKey === "") return withDirect;
+    return mergeRelayedNodes(withDirect, useNodeRegistryStore.getState().nodes).map((n) =>
+      n.isRelayed ? enrichStable(n, cloudStatuses[n.deviceId]) : n,
+    );
+  }, [withDirect, relayedKey, cloudStatuses]);
 }

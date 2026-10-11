@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useConnectDialogStore } from "@/stores/connect-dialog-store";
@@ -70,9 +70,11 @@ export function DroneListPanel({ collapsed, onToggleCollapse }: DroneListPanelPr
       .map(({ n }) => n);
   }, [nodes, search]);
 
-  function openContext(nodeId: string, x: number, y: number) {
+  // Stable callbacks so the memoised rows only re-render for their own entry.
+  const openContext = useCallback((nodeId: string, x: number, y: number) => {
     setContextMenu({ nodeId, x, y });
-  }
+  }, []);
+  const selectNode = useCallback((n: FleetNodeEntry) => selectDrone(n._id), [selectDrone]);
 
   const activeContextNode = contextMenu
     ? nodes.find((n) => n._id === contextMenu.nodeId) ?? null
@@ -100,7 +102,7 @@ export function DroneListPanel({ collapsed, onToggleCollapse }: DroneListPanelPr
       <NodeRow
         node={node}
         selected={node._id === selectedDroneId}
-        onSelect={(n) => selectDrone(n._id)}
+        onSelect={selectNode}
         onContext={openContext}
       />
     );

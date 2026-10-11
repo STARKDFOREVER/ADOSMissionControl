@@ -141,7 +141,9 @@ export function FirmwareFcWizard({ fw }: { fw: FirmwareState }) {
               bfCustomBuild={fw.bfCustomBuild} setBfCustomBuild={fw.setBfCustomBuild}
               bfBuildOptions={fw.bfBuildOptions} bfSelectedOptions={fw.bfSelectedOptions}
               bfBuildStatus={fw.bfBuildStatus} bfBuildPolling={fw.bfBuildPolling}
+              bfBuildRetrying={fw.bfBuildRetrying} bfBuildTimedOut={fw.bfBuildTimedOut}
               onCloudBuild={fw.handleBfCloudBuild} onToggleOption={fw.toggleBfOption}
+              onCheckBuildAgain={fw.checkBfBuildAgain}
               onRetry={fw.loadBfTargetsRetry}
             />
           )}

@@ -59,28 +59,47 @@ const ACCENT_VARS = [
   "--alt-accent-secondary",
 ] as const;
 
+type Messages = Record<string, unknown>;
+type LocaleImporter = (locale: string) => Promise<{ default: unknown }>;
+
+const EN_MESSAGES = enMessages as Messages;
+
+const importLocaleBundle: LocaleImporter = (locale) =>
+  import(`../../../locales/${locale}.json`);
+
+/**
+ * Resolve the message bundle for a locale. English is already in the static
+ * import, so it never triggers a dynamic import or a merge; any other locale
+ * loads its bundle and falls back to English for missing keys (or entirely,
+ * if the bundle fails to load).
+ */
+export async function loadLocaleMessages(
+  locale: string,
+  importLocale: LocaleImporter = importLocaleBundle,
+): Promise<Messages> {
+  if (locale === "en") return EN_MESSAGES;
+  try {
+    const m = await importLocale(locale);
+    return mergeMessages(EN_MESSAGES, m.default as Messages);
+  } catch {
+    return EN_MESSAGES;
+  }
+}
+
 export function LocaleProvider({ children }: LocaleProviderProps) {
   const locale = useSettingsStore((s) => s.locale);
   const themeMode = useSettingsStore((s) => s.themeMode);
   const accentColor = useSettingsStore((s) => s.accentColor);
-  const [messages, setMessages] = useState<Record<string, unknown>>(
-    enMessages as Record<string, unknown>
-  );
+  const [messages, setMessages] = useState<Messages>(EN_MESSAGES);
 
   useEffect(() => {
-    // Dynamic import based on locale — only loads the needed bundle
-    import(`../../../locales/${locale}.json`)
-      .then((m) => {
-        const localeMessages = m.default as Record<string, unknown>;
-        const fallbackMessages = enMessages as Record<string, unknown>;
-        setMessages(mergeMessages(fallbackMessages, localeMessages));
-      })
-      .catch(() => {
-        // Fallback to English if locale bundle fails to load
-        import("../../../locales/en.json").then((m: { default: Record<string, unknown> }) =>
-          setMessages(m.default as Record<string, unknown>)
-        );
-      });
+    let cancelled = false;
+    loadLocaleMessages(locale).then((m) => {
+      if (!cancelled) setMessages(m);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [locale]);
 
   useEffect(() => {

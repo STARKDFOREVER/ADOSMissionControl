@@ -10,7 +10,13 @@
  */
 
 /** Coarse flight-pattern the operator asked for. */
-export type MissionPattern = "survey" | "orbit" | "corridor" | "perimeter";
+export type MissionPattern =
+  | "survey"
+  | "orbit"
+  | "corridor"
+  | "perimeter"
+  | "sar"
+  | "structure-scan";
 
 /** A parsed mission intent. Every field is optional; absent means not stated. */
 export interface MissionIntent {
@@ -36,6 +42,8 @@ const PATTERN_KEYWORDS: { re: RegExp; pattern: MissionPattern }[] = [
   { re: /\binspect(?:s|ing|ion|ions|ed)?\b/i, pattern: "orbit" },
   { re: /\bcorridor(?:s)?\b/i, pattern: "corridor" },
   { re: /\bperimeter(?:s)?\b/i, pattern: "perimeter" },
+  { re: /\b(?:sar|search(?:\s+and\s+rescue)?)\b/i, pattern: "sar" },
+  { re: /\bstructure(?:s)?(?:[\s-]+scan(?:s|ning)?)?\b/i, pattern: "structure-scan" },
 ];
 
 // "radius 100m" / "radius of 80 metres" / "radius 50".

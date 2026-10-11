@@ -125,10 +125,6 @@ export function migrateSettings(
     // v21: global accent preset
     state.accentColor = "blue";
   }
-  if (version < 22) {
-    // v22: parameter filter presets
-    state.paramFilterPresets = [];
-  }
   if (version < 23) {
     // v23: guidance vector line settings
     state.guidanceHdgLength = 100;
@@ -325,6 +321,10 @@ export function migrateSettings(
     // enforcement is opt-in.
     state.gcsManagesTelemetryRates = true;
     state.enforceInboundSigning = false;
+  }
+  if (version < 52) {
+    // v52: parameter filter presets never had a UI; the stored list goes.
+    delete state.paramFilterPresets;
   }
   return state as Partial<SettingsStoreState>;
 }

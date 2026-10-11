@@ -37,18 +37,18 @@ export function DebugPanel() {
   // vision-navigation derived channels, folded into one set of named values.
   useEffect(() => {
     const s = useTelemetryStore.getState();
-    const debug = channels.drain("debug", s.debug.toArray(), (e) => e.timestamp, (e) => ({
+    const debug = channels.drain("debug", s.debug, (e) => e.timestamp, (e) => ({
       key: e.type === "debug" ? `DEBUG[${e.name}]` : e.name,
       type: e.type,
       value: e.value,
     }));
-    const flowQ = channels.drain("flowQuality", s.flowQuality.toArray(), (e) => e.ts, (e) => ({
+    const flowQ = channels.drain("flowQuality", s.flowQuality, (e) => e.ts, (e) => ({
       key: "Flow Quality", type: "int", value: e.value,
     }));
-    const flowD = channels.drain("flowDistance", s.flowDistance.toArray(), (e) => e.ts, (e) => ({
+    const flowD = channels.drain("flowDistance", s.flowDistance, (e) => e.ts, (e) => ({
       key: "Flow Distance", type: "float", value: e.value,
     }));
-    const vioQ = channels.drain("vioQuality", s.vioQuality.toArray(), (e) => e.ts, (e) => ({
+    const vioQ = channels.drain("vioQuality", s.vioQuality, (e) => e.ts, (e) => ({
       key: "VIO Quality", type: "float", value: e.value,
     }));
     if (debug || flowQ || flowD || vioQ) bumpRevision();

@@ -60,6 +60,19 @@ export interface OrbitConfig {
   targetHeight?: number;
 }
 
+// ── Perimeter (boundary loop) ────────────────────────────────
+
+export interface PerimeterConfig {
+  /** Boundary polygon vertices as [lat, lon] pairs. */
+  polygon: [number, number][];
+  /** Inward offset from the boundary in meters (0 flies the boundary itself). */
+  offsetM: number;
+  /** Altitude above home in meters (written in the `relative` frame). */
+  altitude: number;
+  /** Cruise speed in m/s. */
+  speed: number;
+}
+
 // ── Corridor (path scan) ─────────────────────────────────────
 
 export interface CorridorConfig {
@@ -154,4 +167,64 @@ export interface PatternResult {
   stats: PatternStats;
   /** Transect preview lines for map overlay: [[startLat, startLon], [endLat, endLon]]. */
   previewLines?: [[number, number], [number, number]][];
+}
+
+// ── Generation limits ────────────────────────────────────────
+
+/** Smallest line, leg or track spacing (and trigger distance) a generator accepts, meters. */
+export const MIN_LINE_SPACING_M = 0.5;
+/** Upper bound on transects (or legs/tracks) per generated pattern. */
+export const MAX_TRANSECTS = 2000;
+/** Upper bound on estimated camera triggers per generated pattern. */
+export const MAX_PHOTOS = 100_000;
+
+/**
+ * Thrown when a pattern config would produce an unbounded amount of work
+ * (tiny spacing over a large area). The pattern store surfaces the message.
+ */
+export class PatternLimitError extends Error {
+  constructor(
+    readonly limit: "spacing" | "transects" | "photos",
+    message: string,
+  ) {
+    super(message);
+    this.name = "PatternLimitError";
+  }
+}
+
+/** Parse a spacing input; empty or invalid falls back, anything below the minimum clamps up. */
+export function parseSpacing(raw: string, fallback: number): number {
+  const v = parseFloat(raw);
+  if (!Number.isFinite(v) || v <= 0) return fallback;
+  return Math.max(MIN_LINE_SPACING_M, v);
+}
+
+/** Reject a spacing below {@link MIN_LINE_SPACING_M}. */
+export function assertSpacing(spacing: number, label: string): void {
+  if (spacing < MIN_LINE_SPACING_M) {
+    throw new PatternLimitError(
+      "spacing",
+      `${label} ${spacing} m is below the ${MIN_LINE_SPACING_M} m minimum`,
+    );
+  }
+}
+
+/** Reject a pattern that would need more than {@link MAX_TRANSECTS} transects. */
+export function assertTransectCount(count: number): void {
+  if (count > MAX_TRANSECTS) {
+    throw new PatternLimitError(
+      "transects",
+      `pattern needs ${Math.ceil(count)} transects (limit ${MAX_TRANSECTS}); increase the spacing`,
+    );
+  }
+}
+
+/** Reject a pattern that would trigger the camera more than {@link MAX_PHOTOS} times. */
+export function assertPhotoCount(count: number): void {
+  if (count > MAX_PHOTOS) {
+    throw new PatternLimitError(
+      "photos",
+      `pattern needs ${Math.ceil(count)} photos (limit ${MAX_PHOTOS}); increase the trigger distance`,
+    );
+  }
 }

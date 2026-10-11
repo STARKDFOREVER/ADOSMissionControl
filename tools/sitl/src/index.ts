@@ -170,6 +170,9 @@ Options:
   --list-presets      List all available build presets and exit
   --scenario <id>     Use a named test scenario (sets drones, preset, location, wind, speedup)
   --list-scenarios    List all available test scenarios and exit
+  --with-gazebo       Run SITL against Gazebo physics with a camera stream
+  --gazebo-world <w>  Gazebo world to load (default: multi-copter)
+  --gazebo-headless   Run Gazebo without its GUI window
   --no-dashboard      Disable terminal dashboard (log to stdout instead)
   -h, --help          Show this help
 

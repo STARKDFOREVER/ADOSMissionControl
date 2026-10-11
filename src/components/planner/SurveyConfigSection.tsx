@@ -10,6 +10,7 @@ import { useMemo, useCallback, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { MIN_LINE_SPACING_M, parseSpacing } from "@/lib/patterns/types";
 import { Toggle } from "@/components/ui/toggle";
 import { usePatternStore } from "@/stores/pattern-store";
 import { useDrawingStore } from "@/stores/drawing-store";
@@ -299,8 +300,8 @@ export function SurveyConfig() {
         </div>
       ) : (
         <>
-          <Input label={t("lineSpacing")} type="number" unit="m" value={String(surveyConfig.lineSpacing ?? 25)}
-            onChange={(e) => updateSurveyConfig({ lineSpacing: parseFloat(e.target.value) || 25 })} />
+          <Input label={t("lineSpacing")} type="number" unit="m" min={MIN_LINE_SPACING_M} step={0.1} value={String(surveyConfig.lineSpacing ?? 25)}
+            onChange={(e) => updateSurveyConfig({ lineSpacing: parseSpacing(e.target.value, 25) })} />
         </>
       )}
 

@@ -27,6 +27,7 @@ import {
 } from "./PatternConfigSections";
 import { FixedWingLandingConfig } from "./FixedWingLandingConfigSection";
 import { VtolLandingConfig } from "./VtolLandingConfigSection";
+import { PerimeterConfig } from "./PerimeterConfigSection";
 import type { SurveyConfig as SurveyConfigType } from "@/lib/patterns/types";
 import { CAMERA_PROFILES, computeLineSpacing, computeTriggerDistance } from "@/lib/patterns/gsd-calculator";
 
@@ -57,6 +58,7 @@ export function PatternEditor({ onApply }: PatternEditorProps) {
   const orbitConfig = usePatternStore((s) => s.orbitConfig);
   const structureScanConfig = usePatternStore((s) => s.structureScanConfig);
   const corridorConfig = usePatternStore((s) => s.corridorConfig);
+  const perimeterConfig = usePatternStore((s) => s.perimeterConfig);
   const sarExpandingSquareConfig = usePatternStore((s) => s.sarExpandingSquareConfig);
   const sarSectorSearchConfig = usePatternStore((s) => s.sarSectorSearchConfig);
   const sarParallelTrackConfig = usePatternStore((s) => s.sarParallelTrackConfig);
@@ -89,6 +91,7 @@ export function PatternEditor({ onApply }: PatternEditorProps) {
       case "survey": return !!(surveyConfig.polygon || polygons.length > 0);
       case "orbit": return !!(orbitConfig.center || circles.length > 0);
       case "structureScan": return !!(structureScanConfig.structurePolygon || polygons.length > 0);
+      case "perimeter": return !!(perimeterConfig.polygon || polygons.length > 0);
       case "corridor": return !!corridorConfig.pathPoints;
       case "expandingSquare": return !!sarExpandingSquareConfig?.center;
       case "sectorSearch": return !!sarSectorSearchConfig?.center;
@@ -98,7 +101,7 @@ export function PatternEditor({ onApply }: PatternEditorProps) {
       default: return false;
     }
   }, [activeType, surveyConfig.polygon, polygons.length, orbitConfig.center, circles.length,
-    structureScanConfig.structurePolygon, corridorConfig.pathPoints,
+    structureScanConfig.structurePolygon, perimeterConfig.polygon, corridorConfig.pathPoints,
     sarExpandingSquareConfig?.center, sarSectorSearchConfig?.center, sarParallelTrackConfig?.startPoint,
     fixedWingLandingConfig?.landingPoint, vtolLandingConfig?.landingPoint]);
 
@@ -108,6 +111,7 @@ export function PatternEditor({ onApply }: PatternEditorProps) {
     const cfg = activeType === "survey" ? surveyConfig
       : activeType === "orbit" ? orbitConfig
       : activeType === "corridor" ? corridorConfig
+      : activeType === "perimeter" ? perimeterConfig
       : activeType === "expandingSquare" ? sarExpandingSquareConfig
       : activeType === "sectorSearch" ? sarSectorSearchConfig
       : activeType === "parallelTrack" ? sarParallelTrackConfig
@@ -115,7 +119,7 @@ export function PatternEditor({ onApply }: PatternEditorProps) {
       : activeType === "vtolLanding" ? vtolLandingConfig
       : structureScanConfig;
     return JSON.stringify(cfg);
-  }, [activeType, surveyConfig, orbitConfig, corridorConfig, structureScanConfig,
+  }, [activeType, surveyConfig, orbitConfig, corridorConfig, perimeterConfig, structureScanConfig,
     sarExpandingSquareConfig, sarSectorSearchConfig, sarParallelTrackConfig,
     fixedWingLandingConfig, vtolLandingConfig]);
 
@@ -150,6 +154,7 @@ export function PatternEditor({ onApply }: PatternEditorProps) {
       {activeType === "sectorSearch" && <SarSectorSearchConfig />}
       {activeType === "parallelTrack" && <SarParallelTrackConfig />}
       {activeType === "structureScan" && <StructureScanConfig />}
+      {activeType === "perimeter" && <PerimeterConfig />}
       {activeType === "fixedWingLanding" && <FixedWingLandingConfig />}
       {activeType === "vtolLanding" && <VtolLandingConfig />}
 
@@ -169,7 +174,7 @@ export function PatternEditor({ onApply }: PatternEditorProps) {
           <>
             <div className="w-1.5 h-1.5 rounded-full bg-status-warning" />
             <span className="text-[10px] font-mono text-status-warning">
-              {activeType === "survey" || activeType === "structureScan" ? t("drawPolygonFirst") :
+              {activeType === "survey" || activeType === "structureScan" || activeType === "perimeter" ? t("drawPolygonFirst") :
                activeType === "orbit" ? t("drawCircleFirst") :
                activeType === "corridor" ? t("setPathPoints") :
                activeType === "parallelTrack" ? t("setStartPoint") :

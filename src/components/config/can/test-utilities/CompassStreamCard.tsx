@@ -53,11 +53,17 @@ export function CompassStreamCard({ client }: CompassStreamCardProps = {}) {
 
   const [nodeIdRaw, setNodeIdRaw] = useState("");
   const [durationRaw, setDurationRaw] = useState("10");
-  // Samples live in a ring (latest MAX_SAMPLES); `sampleCount` drives renders
-  // so a stream does not copy the whole array on every sample.
+  // Samples live in a ring (latest MAX_SAMPLES). Pushes bump `version` at
+  // most once per animation frame; the plot reads a decimated view.
   const [ring] = useState(() => new RingBuffer<MagSample>(MAX_SAMPLES));
-  const [, setSampleCount] = useState(0);
-  const samples = ring.toArray();
+  const [version, setVersion] = useState(0);
+  const rafRef = useRef<number | null>(null);
+  const sampleCount = ring.length;
+  const plot = useMemo(
+    () => decimateMag(ring, PLOT_WIDTH),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- version is the ring's change signal
+    [ring, version],
+  );
   const [capturing, setCapturing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const unsubRef = useRef<(() => void) | null>(null);
@@ -72,6 +78,11 @@ export function CompassStreamCard({ client }: CompassStreamCardProps = {}) {
       clearTimeout(timerRef.current);
       timerRef.current = null;
     }
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    setVersion((v) => v + 1);
   }, []);
 
   useEffect(() => cleanup, [cleanup]);
@@ -91,14 +102,19 @@ export function CompassStreamCard({ client }: CompassStreamCardProps = {}) {
     cleanup();
     setError(null);
     ring.clear();
-    setSampleCount(0);
+    setVersion((v) => v + 1);
     setCapturing(true);
     try {
       const startedAt = Date.now();
       unsubRef.current = client.subscribeMag2(parsedNodeId, (mag) => {
         const [x, y, z] = mag.magneticFieldGa;
         ring.push({ ts: Date.now() - startedAt, x, y, z });
-        setSampleCount((n) => n + 1);
+        if (rafRef.current === null) {
+          rafRef.current = requestAnimationFrame(() => {
+            rafRef.current = null;
+            setVersion((v) => v + 1);
+          });
+        }
       });
       timerRef.current = setTimeout(() => {
         cleanup();
@@ -111,14 +127,14 @@ export function CompassStreamCard({ client }: CompassStreamCardProps = {}) {
   }, [client, parsedNodeId, durationMs, cleanup, ring]);
 
   const exportCsv = useCallback(() => {
-    if (samples.length === 0) return;
+    if (ring.length === 0) return;
     const lines = ["t_ms,x_ga,y_ga,z_ga"];
-    for (const s of samples) {
+    ring.forEach((s) => {
       lines.push(`${s.ts},${s.x.toFixed(6)},${s.y.toFixed(6)},${s.z.toFixed(6)}`);
-    }
+    });
     const blob = new Blob([lines.join("\n")], { type: "text/csv" });
     downloadBlob(blob, `compass-${Date.now()}.csv`);
-  }, [samples]);
+  }, [ring]);
 
   return (
     <Card title={t("title")}>
@@ -162,7 +178,7 @@ export function CompassStreamCard({ client }: CompassStreamCardProps = {}) {
           size="sm"
           icon={<Gauge size={12} />}
           onClick={exportCsv}
-          disabled={samples.length === 0}
+          disabled={sampleCount === 0}
           data-testid="compass-export"
         >
           {t("exportCsv")}
@@ -177,17 +193,91 @@ export function CompassStreamCard({ client }: CompassStreamCardProps = {}) {
         )}
       </div>
       <div className="mt-3" data-testid="compass-plot">
-        <CompassPlot samples={samples} />
+        <CompassPlot plot={plot} />
       </div>
       <div className="mt-1 text-[10px] text-text-tertiary font-mono">
-        {samples.length} {t("samples")}
+        {sampleCount} {t("samples")}
       </div>
     </Card>
   );
 }
 
-function CompassPlot({ samples }: { samples: MagSample[] }) {
-  if (samples.length < 2) {
+interface MagPlot {
+  /** Per-axis decimated points (time-ordered), at most 2 per pixel column. */
+  x: Array<[number, number]>;
+  y: Array<[number, number]>;
+  z: Array<[number, number]>;
+  min: number;
+  max: number;
+  lastTs: number;
+}
+
+/**
+ * Reduce the ring to at most two points (min and max) per pixel column for
+ * each axis, so the SVG never carries more than 2 x `width` points per line.
+ */
+export function decimateMag(
+  ring: RingBuffer<MagSample>,
+  width: number,
+): MagPlot {
+  const plot: MagPlot = { x: [], y: [], z: [], min: 0, max: 0, lastTs: 1 };
+  if (ring.length === 0) return plot;
+  const lastTs = ring.latest()?.ts || 1;
+  plot.lastTs = lastTs;
+  const axes = ["x", "y", "z"] as const;
+  let col = -1;
+  const lo = { x: 0, y: 0, z: 0 };
+  const hi = { x: 0, y: 0, z: 0 };
+  const loTs = { x: 0, y: 0, z: 0 };
+  const hiTs = { x: 0, y: 0, z: 0 };
+  let first = true;
+  const flush = () => {
+    for (const a of axes) {
+      if (lo[a] === hi[a]) {
+        plot[a].push([loTs[a], lo[a]]);
+      } else if (loTs[a] <= hiTs[a]) {
+        plot[a].push([loTs[a], lo[a]], [hiTs[a], hi[a]]);
+      } else {
+        plot[a].push([hiTs[a], hi[a]], [loTs[a], lo[a]]);
+      }
+    }
+  };
+  ring.forEach((s) => {
+    if (first) {
+      plot.min = Math.min(s.x, s.y, s.z);
+      plot.max = Math.max(s.x, s.y, s.z);
+      first = false;
+    } else {
+      plot.min = Math.min(plot.min, s.x, s.y, s.z);
+      plot.max = Math.max(plot.max, s.x, s.y, s.z);
+    }
+    const c = Math.min(width - 1, Math.floor((s.ts / lastTs) * width));
+    if (c !== col) {
+      if (col >= 0) flush();
+      col = c;
+      for (const a of axes) {
+        lo[a] = hi[a] = s[a];
+        loTs[a] = hiTs[a] = s.ts;
+      }
+      return;
+    }
+    for (const a of axes) {
+      if (s[a] < lo[a]) {
+        lo[a] = s[a];
+        loTs[a] = s.ts;
+      }
+      if (s[a] > hi[a]) {
+        hi[a] = s[a];
+        hiTs[a] = s.ts;
+      }
+    }
+  });
+  flush();
+  return plot;
+}
+
+function CompassPlot({ plot }: { plot: MagPlot }) {
+  if (plot.x.length < 2) {
     return (
       <svg
         width={PLOT_WIDTH}
@@ -196,35 +286,24 @@ function CompassPlot({ samples }: { samples: MagSample[] }) {
       />
     );
   }
-  let min = samples[0].x;
-  let max = samples[0].x;
-  for (const s of samples) {
-    if (s.x < min) min = s.x;
-    if (s.y < min) min = s.y;
-    if (s.z < min) min = s.z;
-    if (s.x > max) max = s.x;
-    if (s.y > max) max = s.y;
-    if (s.z > max) max = s.z;
-  }
-  const span = max - min || 1;
-  const lastTs = samples[samples.length - 1].ts || 1;
-  const project = (s: MagSample, key: "x" | "y" | "z"): string => {
-    const xPx = (s.ts / lastTs) * PLOT_WIDTH;
-    const yPx = PLOT_HEIGHT - ((s[key] - min) / span) * PLOT_HEIGHT;
-    return `${xPx.toFixed(1)},${yPx.toFixed(1)}`;
-  };
-  const pointsX = samples.map((s) => project(s, "x")).join(" ");
-  const pointsY = samples.map((s) => project(s, "y")).join(" ");
-  const pointsZ = samples.map((s) => project(s, "z")).join(" ");
+  const span = plot.max - plot.min || 1;
+  const toPoints = (pts: Array<[number, number]>): string =>
+    pts
+      .map(([ts, v]) => {
+        const xPx = (ts / plot.lastTs) * PLOT_WIDTH;
+        const yPx = PLOT_HEIGHT - ((v - plot.min) / span) * PLOT_HEIGHT;
+        return `${xPx.toFixed(1)},${yPx.toFixed(1)}`;
+      })
+      .join(" ");
   return (
     <svg
       width={PLOT_WIDTH}
       height={PLOT_HEIGHT}
       className="bg-bg-secondary rounded"
     >
-      <polyline points={pointsX} fill="none" stroke="var(--color-status-error)" strokeWidth={1} />
-      <polyline points={pointsY} fill="none" stroke="var(--color-status-success)" strokeWidth={1} />
-      <polyline points={pointsZ} fill="none" stroke="var(--color-accent-primary)" strokeWidth={1} />
+      <polyline points={toPoints(plot.x)} fill="none" stroke="var(--color-status-error)" strokeWidth={1} />
+      <polyline points={toPoints(plot.y)} fill="none" stroke="var(--color-status-success)" strokeWidth={1} />
+      <polyline points={toPoints(plot.z)} fill="none" stroke="var(--color-accent-primary)" strokeWidth={1} />
     </svg>
   );
 }

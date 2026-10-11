@@ -212,7 +212,9 @@ export function useFirmwareState() {
     bfCustomBuild: bf.bfCustomBuild, setBfCustomBuild: bf.setBfCustomBuild,
     bfBuildOptions: bf.bfBuildOptions, bfSelectedOptions: bf.bfSelectedOptions,
     bfBuildStatus: bf.bfBuildStatus, bfBuildPolling: bf.bfBuildPolling,
+    bfBuildRetrying: bf.bfBuildRetrying, bfBuildTimedOut: bf.bfBuildTimedOut,
     handleBfCloudBuild: bf.handleBfCloudBuild, toggleBfOption: bf.toggleBfOption,
+    checkBfBuildAgain: bf.checkBfBuildAgain,
     loadBfTargetsRetry: bf.loadBfTargetsRetry,
     // PX4
     px4Releases: px4.px4Releases, px4Loading: px4.px4Loading, px4Error: px4.px4Error,

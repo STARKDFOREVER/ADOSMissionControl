@@ -33,10 +33,21 @@ export function useBetaflightFirmware(firmwareStack: FirmwareStack, toast: Toast
   const [bfSelectedOptions, setBfSelectedOptions] = useState<string[]>([]);
   const [bfBuildStatus, setBfBuildStatus] = useState<BetaflightBuildStatus | null>(null);
   const [bfBuildPolling, setBfBuildPolling] = useState(false);
+  // A poll request failed; polling continues at the fixed interval.
+  const [bfBuildRetrying, setBfBuildRetrying] = useState(false);
+  // The poll budget ran out with the build still pending (not a build error).
+  const [bfBuildTimedOut, setBfBuildTimedOut] = useState(false);
   const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const disposedRef = useRef(false);
+  const buildKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
-    return () => { if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current); };
+    disposedRef.current = false;
+    return () => {
+      disposedRef.current = true;
+      if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current);
+      pollTimeoutRef.current = null;
+    };
   }, []);
 
   async function loadBfTargets() {
@@ -72,24 +83,50 @@ export function useBetaflightFirmware(firmwareStack: FirmwareStack, toast: Toast
 
   async function handleBfCloudBuild() {
     if (!selectedBfTarget || !selectedBfRelease) return;
-    setBfBuildPolling(true); setBfBuildStatus(null);
+    clearTimeout(pollTimeoutRef.current ?? undefined);
+    pollTimeoutRef.current = null;
+    setBfBuildPolling(true); setBfBuildStatus(null); setBfBuildRetrying(false); setBfBuildTimedOut(false);
     try {
       const status = await bfManifest.requestBuild({ target: selectedBfTarget, release: selectedBfRelease, options: bfSelectedOptions });
+      if (disposedRef.current) return;
       setBfBuildStatus(status);
+      buildKeyRef.current = status.key;
       if (status.status !== "success" && status.status !== "error") pollBfBuild(status.key);
-    } catch (err) { setBfBuildPolling(false); toast(err instanceof Error ? err.message : "Cloud build failed", "error"); }
+      else setBfBuildPolling(false);
+    } catch (err) {
+      if (disposedRef.current) return;
+      setBfBuildPolling(false);
+      toast(err instanceof Error ? err.message : "Cloud build failed", "error");
+    }
   }
 
   function pollBfBuild(key: string, attempt = 0) {
-    if (attempt > 60) { setBfBuildPolling(false); setBfBuildStatus((prev) => prev ? { ...prev, status: "error" } : null); return; }
+    if (disposedRef.current) return;
+    if (attempt > 60) { setBfBuildPolling(false); setBfBuildRetrying(false); setBfBuildTimedOut(true); return; }
     pollTimeoutRef.current = setTimeout(async () => {
+      pollTimeoutRef.current = null;
       try {
         const status = await bfManifest.pollBuildStatus(key);
+        if (disposedRef.current) return;
         setBfBuildStatus(status);
+        setBfBuildRetrying(false);
         if (status.status === "success" || status.status === "error") { setBfBuildPolling(false); return; }
-        pollBfBuild(key, attempt + 1);
-      } catch { setBfBuildPolling(false); }
+      } catch {
+        if (disposedRef.current) return;
+        // Transient failure: keep polling at the same fixed interval.
+        setBfBuildRetrying(true);
+      }
+      pollBfBuild(key, attempt + 1);
     }, 5000);
+  }
+
+  /** Resume polling a build whose poll budget ran out. */
+  function checkBfBuildAgain() {
+    const key = buildKeyRef.current;
+    if (!key || pollTimeoutRef.current) return;
+    setBfBuildTimedOut(false);
+    setBfBuildPolling(true);
+    pollBfBuild(key);
   }
 
   function toggleBfOption(option: string) {
@@ -102,7 +139,8 @@ export function useBetaflightFirmware(firmwareStack: FirmwareStack, toast: Toast
     selectedBfRelease, setSelectedBfRelease,
     bfCustomBuild, setBfCustomBuild,
     bfBuildOptions, bfSelectedOptions, bfBuildStatus, bfBuildPolling,
-    handleBfCloudBuild, toggleBfOption,
+    bfBuildRetrying, bfBuildTimedOut,
+    handleBfCloudBuild, toggleBfOption, checkBfBuildAgain,
     loadBfTargets,
     loadBfTargetsRetry: () => { bfManifest.clearCache(); loadBfTargets(); },
   };

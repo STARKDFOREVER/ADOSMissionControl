@@ -10,6 +10,7 @@ export const PATTERN_TYPE_OPTIONS = [
   { value: "survey", label: "Survey Grid", description: "Grid/lawnmower pattern for area coverage and mapping" },
   { value: "orbit", label: "Orbit", description: "Circular flight around a point of interest" },
   { value: "corridor", label: "Corridor", description: "Linear corridor sweep along a path" },
+  { value: "perimeter", label: "Perimeter", description: "One closed loop around a boundary, optionally inset" },
   { value: "expandingSquare", label: "SAR: Expanding Square", description: "Search pattern expanding outward from a datum point" },
   { value: "sectorSearch", label: "SAR: Sector Search", description: "Pie-slice search radiating from a datum point" },
   { value: "parallelTrack", label: "SAR: Parallel Track", description: "Systematic parallel sweeps across a search area" },

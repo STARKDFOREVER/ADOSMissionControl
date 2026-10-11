@@ -35,6 +35,7 @@ export type DatumPattern =
   | "sectorSearch"
   | "parallelTrack"
   | "structureScan"
+  | "perimeter"
   | null;
 
 /** The map-drawing shape a `draw` mode produces. */

@@ -111,6 +111,11 @@ export function useKeyboardShortcuts({
       if (isTypingTarget(e.target)) return;
 
       const isMeta = e.metaKey || e.ctrlKey;
+      // Chord letter independent of Shift and CapsLock: `e.key` is uppercase
+      // with either held, so prefer the physical `e.code` (KeyZ -> "z").
+      const chord = /^Key[A-Z]$/.test(e.code ?? "")
+        ? e.code.slice(3).toLowerCase()
+        : (e.key ?? "").toLowerCase();
       const draw = getActiveDrawApi();
       // The store-driven tool says a drawing tool is selected; the manager API
       // says a draw is actually in progress. Prefer the live manager state when
@@ -182,12 +187,12 @@ export function useKeyboardShortcuts({
       }
 
       // 3. Undo / redo.
-      if (isMeta && e.key === "z" && !e.shiftKey) {
+      if (isMeta && chord === "z" && !e.shiftKey) {
         e.preventDefault();
         undo();
         return;
       }
-      if (isMeta && e.key === "z" && e.shiftKey) {
+      if (isMeta && ((chord === "z" && e.shiftKey) || (chord === "y" && !e.shiftKey))) {
         e.preventDefault();
         redo();
         return;
@@ -196,7 +201,7 @@ export function useKeyboardShortcuts({
       // 3b. Copy / paste of the selected waypoint(s). Never hijack a real text
       // selection: if the user has text highlighted on the page, leave the
       // browser's native copy alone. (Typing targets are already handled above.)
-      if (isMeta && e.key.toLowerCase() === "c") {
+      if (isMeta && chord === "c") {
         if (!onCopy) return;
         const selection = typeof window !== "undefined" ? window.getSelection?.() : null;
         if (selection && selection.toString().length > 0) return;
@@ -204,7 +209,7 @@ export function useKeyboardShortcuts({
         onCopy();
         return;
       }
-      if (isMeta && e.key.toLowerCase() === "v") {
+      if (isMeta && chord === "v") {
         if (!onPaste) return;
         e.preventDefault();
         onPaste();
@@ -250,12 +255,12 @@ export function useKeyboardShortcuts({
       }
 
       // 6. Save / Save-As.
-      if (isMeta && e.key === "s" && e.shiftKey) {
+      if (isMeta && chord === "s" && e.shiftKey) {
         e.preventDefault();
         handleSaveAs?.();
         return;
       }
-      if (isMeta && e.key === "s" && !e.shiftKey) {
+      if (isMeta && chord === "s" && !e.shiftKey) {
         e.preventDefault();
         handleSave();
         return;
@@ -263,13 +268,13 @@ export function useKeyboardShortcuts({
 
       // 7. New / Open accelerator chords — desktop only. In the browser these
       // are native chords (new window / open file) and must not be hijacked.
-      if (isMeta && e.key === "n") {
+      if (isMeta && chord === "n") {
         if (!isElectron()) return;
         e.preventDefault();
         handleNewPlan?.();
         return;
       }
-      if (isMeta && e.key === "o") {
+      if (isMeta && chord === "o") {
         if (!isElectron()) return;
         e.preventDefault();
         handleFocusSearch?.();

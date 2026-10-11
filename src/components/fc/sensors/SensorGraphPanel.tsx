@@ -76,11 +76,12 @@ export function SensorGraphPanel() {
     if (windowedSamples.length > 0) return null;
     const cutoff = Date.now() - timeWindow * 1000;
     const rates: { roll: number; pitch: number; yaw: number }[] = [];
-    for (const a of attitudeRing.toArray()) {
-      if (a.timestamp < cutoff) continue;
-      if (a.rollSpeed === undefined || a.pitchSpeed === undefined || a.yawSpeed === undefined) continue;
+    // forEach reads the ring in place; toArray() would copy it on every tick.
+    attitudeRing.forEach((a) => {
+      if (a.timestamp < cutoff) return;
+      if (a.rollSpeed === undefined || a.pitchSpeed === undefined || a.yawSpeed === undefined) return;
       rates.push({ roll: a.rollSpeed * RAD_TO_DEG, pitch: a.pitchSpeed * RAD_TO_DEG, yaw: a.yawSpeed * RAD_TO_DEG });
-    }
+    });
     return rates;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeWindow, tick, windowedSamples.length, attitudeRing.length]);

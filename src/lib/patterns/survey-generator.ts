@@ -20,6 +20,7 @@
  */
 
 import type { SurveyConfig, PatternResult, PatternWaypoint } from "./types";
+import { assertPhotoCount, assertSpacing, assertTransectCount } from "./types";
 import { polygonArea, polygonCentroid } from "@/lib/drawing/geo-utils";
 import { EARTH_RADIUS_M, haversineDistance, lonDelta, normalizeLon, pointInPolygon } from "@/lib/geo/distance";
 
@@ -267,6 +268,8 @@ function generateSinglePass(config: SurveyGenConfig): PatternResult {
   if (polygon.length < 3 || lineSpacing <= 0) {
     return { waypoints: [], stats: { totalDistance: 0, estimatedTime: 0, photoCount: 0, coveredArea: 0, transectCount: 0 } };
   }
+  assertSpacing(lineSpacing, "line spacing");
+  if (cameraTriggerDistance > 0) assertSpacing(cameraTriggerDistance, "trigger distance");
 
   // Reference point = polygon centroid, taken with longitudes unwrapped
   // around the first vertex so a polygon across 180° centres on itself.
@@ -312,6 +315,7 @@ function generateSinglePass(config: SurveyGenConfig): PatternResult {
   // (keep-out) holes are present, split each transect at the hole edges so no
   // line or waypoint enters an excluded area.
   const transects: Transect[] = [];
+  assertTransectCount((maxY - minY) / lineSpacing);
   const firstY = minY + lineSpacing / 2;
   for (let y = firstY; y <= maxY; y += lineSpacing) {
     const xs = horizontalIntersections(rotatedPoly, y);
@@ -440,6 +444,7 @@ function generateSinglePass(config: SurveyGenConfig): PatternResult {
     }
     lastNav = runOut;
   }
+  assertPhotoCount(photoCount);
 
   // Stats — sum distances between navigation waypoints only (exclude camera triggers)
   const navWaypoints = waypoints.filter((wp) => wp.command === "WAYPOINT" || wp.command === "SPLINE_WAYPOINT");

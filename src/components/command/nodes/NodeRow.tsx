@@ -12,6 +12,8 @@
  * @license GPL-3.0-only
  */
 
+import { memo } from "react";
+import { useClockTick } from "@/lib/agent/freshness";
 import { MoreHorizontal, Wifi } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
@@ -140,7 +142,13 @@ interface NodeRowProps {
   onContext: (nodeId: string, x: number, y: number) => void;
 }
 
-export function NodeRow({ node, selected, onSelect, onContext }: NodeRowProps) {
+/**
+ * Memoised on entry identity: the fleet projection keeps an unchanged node's
+ * row object stable, so a heartbeat for one node re-renders only its row. The
+ * row subscribes to the shared 1 Hz clock itself so freshness still advances.
+ */
+export const NodeRow = memo(function NodeRow({ node, selected, onSelect, onContext }: NodeRowProps) {
+  useClockTick();
   const t = useTranslations("nodeConsole");
   const effProfile = effProfileForNode(node);
   const status = nodeStatusLevel(node);
@@ -317,4 +325,4 @@ export function NodeRow({ node, selected, onSelect, onContext }: NodeRowProps) {
       {row}
     </Tooltip>
   );
-}
+});

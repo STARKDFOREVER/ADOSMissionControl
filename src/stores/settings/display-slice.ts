@@ -94,7 +94,6 @@ export const displayDefaults: Partial<SettingsStoreState> = {
   locale: "en",
   themeMode: "dark",
   accentColor: "blue",
-  paramFilterPresets: [],
   guidanceHdgLength: 100,
   guidanceHdgWidth: 2,
   guidanceHdgLineType: "solid",
@@ -156,8 +155,6 @@ export const createDisplayActions: SettingsSliceFactory<
     | "setShowNoFlyZones"
     | "setNoFlyRegion"
     | "setOfflineTileCaching"
-    | "saveParamFilterPreset"
-    | "removeParamFilterPreset"
     | "setGuidanceHdgLength"
     | "setGuidanceHdgWidth"
     | "setGuidanceHdgLineType"
@@ -240,17 +237,6 @@ export const createDisplayActions: SettingsSliceFactory<
   setShowNoFlyZones: (showNoFlyZones) => set({ showNoFlyZones }),
   setNoFlyRegion: (noFlyRegion) => set({ noFlyRegion }),
   setOfflineTileCaching: (offlineTileCaching) => set({ offlineTileCaching }),
-  saveParamFilterPreset: (preset) =>
-    set((s) => ({
-      paramFilterPresets: [
-        ...s.paramFilterPresets.filter((p) => p.id !== preset.id),
-        preset,
-      ],
-    })),
-  removeParamFilterPreset: (id) =>
-    set((s) => ({
-      paramFilterPresets: s.paramFilterPresets.filter((p) => p.id !== id),
-    })),
   setGuidanceHdgLength: (v) => {
     const n = clampGuidanceValue(v, GUIDANCE_LENGTH_RANGE);
     if (n !== undefined) set({ guidanceHdgLength: n });

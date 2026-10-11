@@ -500,60 +500,107 @@ gcs:
 const VISION_NAV_MANIFEST = `schema_version: 2
 id: com.altnautica.vision-nav
 name: "ADOS Vision Navigation"
-version: "0.3.3"
-icon: "navigation"
-description: "GPS-denied navigation. Optical flow (downward camera) and visual-inertial odometry (forward or downward camera). Supports ArduPilot, PX4, and iNav 7.0+ on USB UVC or CSI cameras."
+version: "0.4.1"
+description: "GPS-denied navigation. Optical flow from a downward camera. Supports ArduPilot, PX4, and iNav 7.0+ on USB UVC or CSI cameras."
 description_long: |
-  Lets the drone hold position when GPS is unreliable — indoors, under
-  bridges, in urban canyons. A camera and the IMU feed the flight controller
-  a 30 Hz position estimate over MAVLink, so position-hold, loiter, and
-  missions keep working unchanged.
+  Lets the drone hold position when GPS is unreliable — indoors, under bridges, in urban canyons. A downward camera and the flight controller's gyro feed a 30 Hz angular-flow measurement over MAVLink, so position-hold, loiter, and missions keep working unchanged.
 
-  Six modes: optical flow with a rangefinder, without one, OpenVINS VIO,
-  VINS-Fusion VIO, Hybrid (both), or Off. Every 250 ms it checks itself and
-  steps down the fallback ladder — VIO → optical flow → barometer hover →
-  land — warning the GCS at each step.
+  Three modes: optical flow with a rangefinder (low altitude on textured ground), optical flow without one (barometer height for scale, or GPS height in outdoor mode; drifts above 5 m), or Off.
+
+  Every tick it checks itself. If flow quality drops or the scale source goes unhealthy it steps down the scale ladder and warns the GCS at each step; a sustained degraded streak flips the companion node to CRITICAL.
+
+  Works with ArduPilot 4.5+, PX4 1.14+, and iNav 7.0+. Rolling-shutter USB or CSI cameras are fine. Watch flow quality and the camera-IMU sync offset on the Vision Nav panel.
 features:
   - "Optical flow with or without rangefinder (Lucas-Kanade tracker)"
-  - "Monocular VIO via OpenVINS or VINS-Fusion"
-  - "Hybrid mode: optical flow and VIO running side by side"
-  - "Auto-detect ArduPilot, PX4, or iNav and emit appropriate MAVLink"
+  - "Rangefinder-free scale ladder (baro, GPS altitude in outdoor mode, then a static fallback)"
+  - "Firmware selected in the plugin config (ArduPilot, PX4, iNav)"
   - "Per-mode pre-arm checks with degradation fallback ladder"
-  - "Live telemetry: feature count, drift, sync offset, mode state"
+  - "Live telemetry: flow quality, flow rate, scale source, sync offset, mode state"
 hardware_requirements:
   cameras: "USB UVC global-shutter or rolling-shutter, or CSI via V4L2"
   fc_firmware: "ArduPilot 4.5+, PX4 1.14+, iNav 7.0+"
   boards: ["cm4", "cm5", "rock-5c-lite", "rk3588s2", "rk3576", "rpi5"]
+  optional:
+    - "Rangefinder for the optical-flow mode: a TF-Luna on a companion serial port, or any rangefinder the flight controller publishes as DISTANCE_SENSOR"
 resource_impact:
   output_rate_hz: 30
   cpu_percent_peak: 80
   ram_mb: 512
   pids: 24
   startup_time_seconds: 5
+required_fc_parameters:
+  ardupilot:
+    - param: "FLOW_TYPE"
+      value: "5"
+      note: "Accept OPTICAL_FLOW over MAVLink"
+    - param: "EK3_SRC_OPTIONS"
+      note: "Select the optical-flow velocity source for the active EKF lane"
+  px4:
+    - param: "EKF2_OF_CTRL"
+      note: "Enable optical-flow fusion"
+  inav:
+    - param: "opflow_hardware"
+      value: "MAVLINK"
+    - param: "nav_use_optflow_for_poshold"
+      value: "ON"
 telemetry_fields:
-  - "navigation.estimator_state"
-  - "navigation.feature_count"
-  - "navigation.drift_m"
   - "navigation.mode"
+  - "navigation.estimatorState"
+  - "navigation.companionState"
+  - "navigation.flowQuality"
+  - "navigation.flowRateHz"
+  - "navigation.flowDistanceM"
+  - "navigation.flowScaleSource"
+  - "navigation.rangefinderTopology"
+  - "navigation.imuSource"
+  - "navigation.imuRateHz"
+  - "navigation.cameraIntrinsicsLoaded"
+  - "navigation.cameraImuSyncOffsetMs"
+  - "navigation.preArmReport"
+  - "navigation.emitErrors"
+  - "navigation.rangefinderError"
+  - "navigation.degradedReasons"
+  - "navigation.fcParams"
 documentation_url: "https://docs.altnautica.com/drone-agent/vision-nav-overview"
-homepage: "https://github.com/altnautica/ADOSExtensions/tree/main/extensions/vision-nav"
 author: "Altnautica"
+homepage: "https://github.com/altnautica/ADOSExtensions/tree/main/extensions/vision-nav"
 license: "GPL-3.0-or-later"
 risk: high
+
+compatibility:
+  ados_version: ">=0.99.125"
+  gcs_version: ">=0.56.0"
+  supported_boards: ["cm4", "cm5", "rock-5c-lite", "rk3588s2", "rk3576", "rpi5"]
+
 agent:
   runtime: rust
+  entrypoint: "bin/vision-nav"
+  isolation: subprocess
+  per_drone_config: true
   permissions:
     - id: vision.frame.read
+    - id: hardware.uart
+    - id: telemetry.extend
+    - id: event.publish
     - id: mavlink.read
     - id: mavlink.write
     - id: mavlink.component.vio
-    - id: estimator.pose.inject
+  resources:
+    max_ram_mb: 512
+    max_cpu_percent: 80
+    max_pids: 24
+  mavlink_components:
+    - component_id: 198
+      component_kind: vio
+      sub_id: 1
+
 gcs:
+  entrypoint: "gcs/plugin.bundle.js"
+  isolation: iframe
   permissions:
     - id: ui.slot.node-detail-tab
     - id: ui.slot.flight-skill
-    - id: ui.slot.notification-channel
-    - id: command.send
+    - id: telemetry.subscribe.navigation
   contributes:
     tabs:
       - id: vision-nav-tab
@@ -562,10 +609,6 @@ gcs:
         icon: "compass"
         order: 60
         profile: ["drone"]
-    notifications:
-      - id: vision-nav-degraded
-        title: "Vision navigation degraded"
-        severity: warning
     skills:
       - id: engage
         label: "Engage"
@@ -577,6 +620,8 @@ gcs:
         default_binding: { key: "shift+n" }
         activation: { via: config, config_key: active }
         state: { via: event, topic: "navigation.engage" }
+  locales:
+    - en
 `;
 
 function row(
@@ -696,17 +741,20 @@ export const DEMO_REGISTRY_ENTRIES: ReadonlyArray<DemoRegistryEntry> = [
       plugin_id: "com.altnautica.vision-nav",
       name: "ADOS Vision Navigation",
       description:
-        "GPS-denied navigation via optical flow and visual-inertial odometry on ArduPilot, PX4, and iNav.",
+        "GPS-denied navigation via optical flow from a downward camera on ArduPilot, PX4, and iNav.",
       category: "ai",
-      latest_version: "0.3.3",
+      // The manifest body mirrors the current extension manifest; the version
+      // and asset stay on the last published tag (0.4.1) so the demo install
+      // downloads and verifies a real archive.
+      latest_version: "0.4.1",
       icon: "navigation",
     }),
     manifestYaml: VISION_NAV_MANIFEST,
     downloadUrl:
-      "https://github.com/altnautica/ADOSExtensions/releases/download/vision-nav-v0.3.3/com.altnautica.vision-nav-0.3.3.signed.adosplug",
+      "https://github.com/altnautica/ADOSExtensions/releases/download/vision-nav-v0.4.1/com.altnautica.vision-nav-0.4.1.signed.adosplug",
     archiveSha256:
-      "d255afdb3746abfa81ca98698470bd1e8bf54c73364de209c756d2976444cf57",
-    archiveSizeBytes: 1126629,
+      "7fc82f0ceb64595a0a93526344ed097778a997a53ab9ea274bbbc238e3baa93f",
+    archiveSizeBytes: 1050810,
     signerKeyId: "altnautica-2026-A",
     supportedBoards: ["cm4", "cm5", "rock-5c-lite", "rk3588s2", "rk3576", "rpi5"],
   },

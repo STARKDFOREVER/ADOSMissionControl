@@ -11,6 +11,7 @@
  */
 
 import type { PatternResult, PatternStats } from "./types";
+import { assertSpacing, assertTransectCount } from "./types";
 import {
   offsetPoint,
 } from "@/lib/drawing/geo-utils";
@@ -65,6 +66,8 @@ export interface ParallelTrackConfig {
 export function generateExpandingSquare(config: ExpandingSquareConfig): PatternResult {
   const { center, legSpacing, maxLegs, altitude, speed, startBearing } = config;
   const waypoints: PatternResult["waypoints"] = [];
+  assertSpacing(legSpacing, "leg spacing");
+  assertTransectCount(maxLegs);
 
   // Start at datum
   let currentLat = center[0];
@@ -127,6 +130,7 @@ export function generateExpandingSquare(config: ExpandingSquareConfig): PatternR
 export function generateSectorSearch(config: SectorSearchConfig): PatternResult {
   const { center, radius, sweeps, altitude, speed, startBearing } = config;
   const waypoints: PatternResult["waypoints"] = [];
+  assertTransectCount(sweeps * 2);
   const angleStep = 360 / (sweeps * 2); // Angular spacing between outbound legs
 
   // Start at datum
@@ -192,6 +196,8 @@ export function generateSectorSearch(config: SectorSearchConfig): PatternResult 
 export function generateParallelTrack(config: ParallelTrackConfig): PatternResult {
   const { startPoint, trackLength, trackSpacing, trackCount, bearing, altitude, speed } = config;
   const waypoints: PatternResult["waypoints"] = [];
+  if (trackCount > 1) assertSpacing(trackSpacing, "track spacing");
+  assertTransectCount(trackCount);
 
   // Perpendicular bearing for spacing between tracks
   const perpBearing = (bearing + 90) % 360;

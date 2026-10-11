@@ -8,6 +8,7 @@
 
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
+import { MIN_LINE_SPACING_M, parseSpacing } from "@/lib/patterns/types";
 import { usePatternStore } from "@/stores/pattern-store";
 import { usePlannerStore } from "@/stores/planner-store";
 import { Route, PenLine } from "lucide-react";
@@ -39,8 +40,8 @@ export function CorridorConfig() {
       </button>
       <Input label={t("corridorWidth")} type="number" unit="m" value={String(corridorConfig.corridorWidth ?? 50)}
         onChange={(e) => updateCorridorConfig({ corridorWidth: parseFloat(e.target.value) || 50 })} />
-      <Input label={t("lineSpacing")} type="number" unit="m" value={String(corridorConfig.lineSpacing ?? 20)}
-        onChange={(e) => updateCorridorConfig({ lineSpacing: parseFloat(e.target.value) || 20 })} />
+      <Input label={t("lineSpacing")} type="number" unit="m" min={MIN_LINE_SPACING_M} step={0.1} value={String(corridorConfig.lineSpacing ?? 20)}
+        onChange={(e) => updateCorridorConfig({ lineSpacing: parseSpacing(e.target.value, 20) })} />
       <div className="grid grid-cols-2 gap-2">
         <Input label={t("altitudeAboveHome")} type="number" unit="m" value={String(corridorConfig.altitude ?? 50)}
           onChange={(e) => updateCorridorConfig({ altitude: parseFloat(e.target.value) || 50 })} />

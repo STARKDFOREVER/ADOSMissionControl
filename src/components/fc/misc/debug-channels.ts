@@ -28,21 +28,27 @@ export class DebugChannels {
   /**
    * Fold every sample of `samples` (oldest first) newer than the last drain of
    * `source` into its channel. Returns true when anything new was seen.
+   *
+   * Reads the ring by index, so a drain per telemetry update copies nothing:
+   * `toArray()` would rebuild the whole ring after every push.
    */
   drain<T>(
     source: string,
-    samples: readonly T[],
+    samples: Pick<RingBuffer<T>, "length" | "get">,
     tsOf: (sample: T) => number,
     entryOf: (sample: T) => DebugEntry,
   ): boolean {
+    const at = (i: number): T => samples.get(i) as T;
+    const count = samples.length;
     const cursor = this.cursors.get(source) ?? -Infinity;
     // Walk back to the first sample past the cursor; the rest are already in.
-    let first = samples.length;
-    while (first > 0 && tsOf(samples[first - 1]) > cursor) first--;
-    if (first === samples.length) return false;
-    for (let i = first; i < samples.length; i++) {
-      const ts = tsOf(samples[i]);
-      const { key, type, value } = entryOf(samples[i]);
+    let first = count;
+    while (first > 0 && tsOf(at(first - 1)) > cursor) first--;
+    if (first === count) return false;
+    for (let i = first; i < count; i++) {
+      const sample = at(i);
+      const ts = tsOf(sample);
+      const { key, type, value } = entryOf(sample);
       if (value === null || !Number.isFinite(value)) continue;
       let ring = this.history.get(key);
       if (!ring) {
@@ -53,7 +59,7 @@ export class DebugChannels {
       if (!last || ts > last.t) ring.push({ t: ts, v: value });
       this.values.set(key, { name: key, value, type, lastUpdate: ts });
     }
-    this.cursors.set(source, tsOf(samples[samples.length - 1]));
+    this.cursors.set(source, tsOf(at(count - 1)));
     return true;
   }
 

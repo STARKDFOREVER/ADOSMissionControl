@@ -15,7 +15,6 @@ describe("planCopilotActions", () => {
   it("maps a survey pattern to the survey pattern type and is actionable", () => {
     const plan = planCopilotActions({ pattern: "survey" });
     expect(plan.patternType).toBe("survey");
-    expect(plan.unsupportedPattern).toBeNull();
     expect(plan.actionable).toBe(true);
   });
 
@@ -32,11 +31,23 @@ describe("planCopilotActions", () => {
     expect(plan.actionable).toBe(true);
   });
 
-  it("flags perimeter as unsupported (no generator) and not actionable on its own", () => {
+  it("maps perimeter to the perimeter generator", () => {
     const plan = planCopilotActions({ pattern: "perimeter" });
-    expect(plan.patternType).toBeNull();
-    expect(plan.unsupportedPattern).toBe("perimeter");
-    expect(plan.actionable).toBe(false);
+    expect(plan.patternType).toBe("perimeter");
+    expect(plan.actionable).toBe(true);
+  });
+
+  it("copilot_maps_sar: a search intent activates the expanding-square SAR pattern", () => {
+    const plan = planCopilotActions(parseMissionIntent("search and rescue at 40m") as MissionIntent);
+    expect(plan.patternType).toBe("expandingSquare");
+    expect(plan.altitudeM).toBe(40);
+    expect(plan.actionable).toBe(true);
+  });
+
+  it("maps a structure scan intent to the structure scan pattern", () => {
+    const plan = planCopilotActions(parseMissionIntent("structure scan at 5 m/s") as MissionIntent);
+    expect(plan.patternType).toBe("structureScan");
+    expect(plan.speedMps).toBe(5);
   });
 
   it("carries altitude / speed / overlap numeric fields and is actionable", () => {
@@ -108,5 +119,13 @@ describe("applyCopilotPlan", () => {
     expect(cfg.cameraTriggerDistance).toBeCloseTo(computeTriggerDistance(25, camera, 0.8), 1);
     expect(cfg._sidelap).toBe(70);
     expect(cfg._frontlap).toBe(80);
+  });
+
+  it("copilot_maps_sar: applying a search plan activates SAR and carries altitude", () => {
+    const applied = applyCopilotPlan(planCopilotActions(parseMissionIntent("sar at 35m") as MissionIntent));
+    expect(applied.pattern).toBe("expandingSquare");
+    const state = usePatternStore.getState();
+    expect(state.activePatternType).toBe("expandingSquare");
+    expect(state.sarExpandingSquareConfig.altitude).toBe(35);
   });
 });

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * The AI PID analysis route checks the model's suggestions against the
  * safety ranges and the vehicle values sent with the request before
@@ -10,22 +11,22 @@ import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from "vite
 import { NextRequest } from "next/server";
 
 let sessionCookie: string | null = "session-token";
-vi.mock("next/headers", () => ({
-  headers: async () => new Headers({ Host: "localhost:4000" }),
-  cookies: async () => ({ get: () => (sessionCookie ? { value: sessionCookie } : undefined) }),
-}));
 
-const { fetchMutation } = vi.hoisted(() => ({
-  fetchMutation: vi.fn(async () => ({ allowed: true, remaining: 4, weeklyLimit: 5 })),
+const { fetchMutation, fetchQuery } = vi.hoisted(() => ({
+  fetchMutation: vi.fn(async () => ({ recorded: true, remaining: 4, weeklyLimit: 5 })),
+  fetchQuery: vi.fn(async () => ({ remaining: 5, weeklyLimit: 5, usedThisWeek: 0 })),
 }));
-vi.mock("convex/nextjs", () => ({ fetchMutation }));
+vi.mock("convex/nextjs", () => ({ fetchMutation, fetchQuery }));
 
 import { POST } from "@/app/api/pid-analysis/route";
 
 function postJson(body: unknown): NextRequest {
   return new NextRequest("http://localhost:4000/api/pid-analysis", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(sessionCookie ? { cookie: `__convexAuthJWT=${sessionCookie}` } : {}),
+    },
     body: JSON.stringify(body),
   });
 }
@@ -59,6 +60,7 @@ describe("POST /api/pid-analysis", () => {
     vi.stubEnv("NEXT_PUBLIC_CONVEX_URL", "https://example.com");
     sessionCookie = "session-token";
     fetchMutation.mockClear();
+    fetchQuery.mockClear();
     fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
   });

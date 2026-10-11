@@ -101,7 +101,11 @@ interface PluginIframeHostProps {
  * subscribe to the theme via `ctx.theme.onChange(...)`.
  *
  * The iframe has no pause/resume protocol: a drone switch or tab switch
- * unmounts it, so a plugin persists anything it needs as it goes.
+ * unmounts it. Before teardown the host posts `{ type: "unmount" }` into the
+ * frame and, where the browser can move a frame without reloading it
+ * (`moveBefore`), keeps the document alive for {@link UNMOUNT_GRACE_MS} so
+ * the plugin's unmount hook can run. A plugin still persists anything it
+ * needs as it goes: the grace window is best-effort.
  *
  * Every RPC the bridge refuses is logged once per (reason, method) for the
  * iframe's lifetime, so a plugin failing its calls leaves a trace without
@@ -121,7 +125,47 @@ export function PluginIframeHost({
   token,
   hostEvent,
 }: PluginIframeHostProps) {
-  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const hasBundle = Boolean(bundleUrl);
+
+  // The iframe is created imperatively (not as a JSX child) so that on
+  // unmount it can be moved out of React's tree and outlive it for the grace
+  // window. Layout effects run before every passive effect below, so the
+  // bridge and the event channels always see the element.
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const iframe = document.createElement("iframe");
+    iframe.setAttribute("sandbox", "allow-scripts");
+    // No delegated permissions: an empty `allow` denies every
+    // Permissions-Policy-gated feature (camera, microphone, geolocation,
+    // usb, serial, …) to the frame regardless of what the page holds.
+    iframe.setAttribute("allow", "");
+    // The frame must not leak the operator's URL (which carries node ids)
+    // to anything it references.
+    iframe.setAttribute("referrerpolicy", "no-referrer");
+    container.appendChild(iframe);
+    iframeRef.current = iframe;
+    return () => {
+      iframeRef.current = null;
+      retireIframe(iframe);
+    };
+  }, [hasBundle]);
+
+  useLayoutEffect(() => {
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+    // Re-assigning an identical src would reload the frame.
+    if (iframe.getAttribute("src") !== bundleUrl) iframe.setAttribute("src", bundleUrl);
+    iframe.title = title ?? pluginId;
+    iframe.className = className ?? "";
+    iframe.dataset.pluginId = pluginId;
+    iframe.dataset.slot = slot;
+    if (agentId) iframe.dataset.agentId = agentId;
+    else delete iframe.dataset.agentId;
+  }, [hasBundle, bundleUrl, title, pluginId, className, slot, agentId]);
+
   const themeVars = useHostThemeVars();
 
   // Refs hold the latest handler set + cap set so the bridge
@@ -332,23 +376,45 @@ export function PluginIframeHost({
   // resolvable bundle has nothing to show, so render nothing instead.
   if (!bundleUrl) return null;
 
-  return (
-    <iframe
-      ref={iframeRef}
-      src={bundleUrl}
-      sandbox="allow-scripts"
-      // No delegated permissions: an empty `allow` denies every
-      // Permissions-Policy-gated feature (camera, microphone, geolocation,
-      // usb, serial, …) to the frame regardless of what the page holds.
-      allow=""
-      // The frame must not leak the operator's URL (which carries node ids)
-      // to anything it references.
-      referrerPolicy="no-referrer"
-      title={title ?? pluginId}
-      data-plugin-id={pluginId}
-      data-slot={slot}
-      data-agent-id={agentId ?? undefined}
-      className={className}
-    />
-  );
+  // `display: contents` keeps the parent slot sizing the iframe directly.
+  return <div ref={containerRef} style={{ display: "contents" }} />;
+}
+
+/** How long a retired plugin frame stays alive after `unmount` is posted. */
+export const UNMOUNT_GRACE_MS = 500;
+
+let parkingLot: HTMLDivElement | null = null;
+
+/** Off-screen holder for frames inside their unmount grace window. */
+function getParkingLot(): HTMLDivElement {
+  if (!parkingLot || !parkingLot.isConnected) {
+    parkingLot = document.createElement("div");
+    parkingLot.setAttribute("aria-hidden", "true");
+    parkingLot.dataset.pluginParking = "true";
+    parkingLot.style.cssText =
+      "position:fixed;left:0;top:0;width:0;height:0;overflow:hidden;pointer-events:none;";
+    document.body.appendChild(parkingLot);
+  }
+  return parkingLot;
+}
+
+type MovableParent = HTMLElement & {
+  moveBefore?: (node: Node, child: Node | null) => void;
+};
+
+/**
+ * Tell the plugin it is being torn down, then keep its document alive for the
+ * grace window. Only `moveBefore` moves a frame without reloading it; where it
+ * is missing the frame goes with its React parent right away.
+ */
+function retireIframe(iframe: HTMLIFrameElement): void {
+  iframe.contentWindow?.postMessage({ type: "unmount" }, "*");
+  const lot: MovableParent = getParkingLot();
+  if (typeof lot.moveBefore !== "function") return;
+  try {
+    lot.moveBefore(iframe, null);
+  } catch {
+    return;
+  }
+  setTimeout(() => iframe.remove(), UNMOUNT_GRACE_MS);
 }

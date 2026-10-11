@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Settings, AlertTriangle, LogOut, CloudOff, Zap, X, Star, BookOpen } from "lucide-react";
@@ -8,7 +9,6 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { CommandNav } from "./CommandNav";
 import { RightRail } from "./RightRail";
 import { ShellBridges } from "./ShellBridges";
-import { CommandPalette } from "@/components/shared/command-palette";
 import { FailsafeAlertBanner } from "@/components/flight/FailsafeAlertBanner";
 import { PluginCrashBanner } from "@/components/plugins/PluginCrashBanner";
 import { SlcanModeBanner } from "@/components/shared/SlcanModeBanner";
@@ -19,11 +19,7 @@ import { releaseGrant } from "@/stores/mqtt-control-grant-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { LocalStorageBanner } from "@/components/ui/local-storage-banner";
 import { useUiStore } from "@/stores/ui-store";
-import { SignInModal } from "@/components/auth/SignInModal";
 import { useAuthActions } from "@convex-dev/auth/react";
-import { ConnectDialog } from "@/components/connect/ConnectDialog";
-import { WelcomeModal } from "@/components/onboarding/WelcomeModal";
-import { DisclaimerGate } from "@/components/onboarding/DisclaimerGate";
 import { useGcsLocation } from "@/hooks/use-gcs-location";
 import { usePlatform } from "@/hooks/use-platform";
 import { useDisconnectGuard } from "@/hooks/use-disconnect-guard";
@@ -61,6 +57,32 @@ import { FleetNotificationChannelHost } from "@/components/plugins/FleetNotifica
 // drives the right-rail MCP panel + the auto-navigate bridge, shell-wide.
 import { McpActivityFeed } from "@/components/mcp/watch/McpActivityFeed";
 import { McpAutoNavBridge } from "@/components/mcp/watch/McpAutoNavBridge";
+import { DISCLAIMER_VERSION } from "@/components/onboarding/constants";
+import { useConnectDialogStore } from "@/stores/connect-dialog-store";
+import { usePairDialogStore } from "@/stores/pair-dialog-store";
+
+// Rarely-open modals load as separate chunks so they stay out of every
+// route's first load (same pattern as CockpitView's sheets).
+const CommandPalette = dynamic(
+  () => import("@/components/shared/command-palette").then((m) => m.CommandPalette),
+  { ssr: false },
+);
+const SignInModal = dynamic(
+  () => import("@/components/auth/SignInModal").then((m) => m.SignInModal),
+  { ssr: false },
+);
+const ConnectDialog = dynamic(
+  () => import("@/components/connect/ConnectDialog").then((m) => m.ConnectDialog),
+  { ssr: false },
+);
+const WelcomeModal = dynamic(
+  () => import("@/components/onboarding/WelcomeModal").then((m) => m.WelcomeModal),
+  { ssr: false },
+);
+const DisclaimerGate = dynamic(
+  () => import("@/components/onboarding/DisclaimerGate").then((m) => m.DisclaimerGate),
+  { ssr: false },
+);
 
 /**
  * User menu with sign-out. Must only mount when ConvexAuthNextjsProvider exists
@@ -156,6 +178,17 @@ export function CommandShell({ children }: { children: React.ReactNode }) {
   const immersiveMode = useUiStore((s) => s.immersiveMode);
   const exitImmersiveMode = useUiStore((s) => s.exitImmersiveMode);
   const [signInOpen, setSignInOpen] = useState(false);
+  const hasHydrated = useSettingsStore((s) => s._hasHydrated);
+  const onboarded = useSettingsStore((s) => s.onboarded);
+  const disclaimerCurrent = useSettingsStore(
+    (s) => s.disclaimerAccepted && s.disclaimerVersion >= DISCLAIMER_VERSION,
+  );
+  const connectOpen = useConnectDialogStore((s) => s.open);
+  const pairOpen = usePairDialogStore((s) => s.open);
+  // The connect dialog stays mounted once opened: it owns a post-pair
+  // selection timer that must outlive the close.
+  const [connectMounted, setConnectMounted] = useState(false);
+  if ((connectOpen || pairOpen) && !connectMounted) setConnectMounted(true);
 
   // Listen for sign-in requests from AuthGate and other components
   useEffect(() => {
@@ -190,10 +223,10 @@ export function CommandShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex flex-col h-dvh">
       {/* Welcome onboarding modal */}
-      <WelcomeModal />
+      {hasHydrated && !onboarded && <WelcomeModal />}
 
       {/* Disclaimer gate for existing users who haven't accepted yet */}
-      <DisclaimerGate />
+      {hasHydrated && onboarded && !disclaimerCurrent && <DisclaimerGate />}
 
       {/* Changelog "What's New" notification modal */}
       <ChangelogNotificationGate />
@@ -341,10 +374,10 @@ export function CommandShell({ children }: { children: React.ReactNode }) {
       {!immersiveMode && <LocalStorageBanner onSignIn={() => setSignInOpen(true)} />}
 
       {/* Sign-in modal */}
-      <SignInModal open={signInOpen} onClose={() => setSignInOpen(false)} />
+      {signInOpen && <SignInModal open={signInOpen} onClose={() => setSignInOpen(false)} />}
 
       {/* Connect dialog */}
-      <ConnectDialog />
+      {connectMounted && <ConnectDialog />}
 
       {/* Disconnect guard — warns about uncommitted param writes */}
       <DisconnectGuard

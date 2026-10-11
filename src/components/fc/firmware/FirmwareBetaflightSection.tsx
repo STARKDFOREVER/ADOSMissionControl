@@ -24,7 +24,10 @@ interface Props {
   bfSelectedOptions: string[];
   bfBuildStatus: BetaflightBuildStatus | null;
   bfBuildPolling: boolean;
+  bfBuildRetrying: boolean;
+  bfBuildTimedOut: boolean;
   onCloudBuild: () => void;
+  onCheckBuildAgain: () => void;
   onToggleOption: (option: string) => void;
   onRetry: () => void;
 }
@@ -61,7 +64,8 @@ export function FirmwareBetaflightSection({
   selectedBfRelease, setSelectedBfRelease,
   bfCustomBuild, setBfCustomBuild,
   bfBuildOptions, bfSelectedOptions, bfBuildStatus, bfBuildPolling,
-  onCloudBuild, onToggleOption, onRetry,
+  bfBuildRetrying, bfBuildTimedOut,
+  onCloudBuild, onCheckBuildAgain, onToggleOption, onRetry,
 }: Props) {
   const targetGroups = useMemo(() => buildBetaflightSelectGroups(bfTargets), [bfTargets])
 
@@ -155,6 +159,7 @@ export function FirmwareBetaflightSection({
               }`}>
                 <p className="font-semibold">Build: {bfBuildStatus.status}</p>
                 {bfBuildStatus.progress !== undefined && <p>Progress: {bfBuildStatus.progress}%</p>}
+                {bfBuildRetrying && <p>Status check failed, retrying...</p>}
                 {bfBuildStatus.status === "success" && bfBuildStatus.file && (
                   <p className="font-mono mt-1">{bfBuildStatus.file}</p>
                 )}
@@ -167,6 +172,19 @@ export function FirmwareBetaflightSection({
                     <RefreshCw size={10} />
                     Retry Build
                   </button>
+                )}
+                {bfBuildTimedOut && (
+                  <div className="mt-1.5">
+                    <p>The build is still running. Status checks stopped after 5 minutes.</p>
+                    <button
+                      onClick={onCheckBuildAgain}
+                      disabled={bfBuildPolling}
+                      className="mt-1 flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold border border-border-default text-text-secondary hover:bg-bg-tertiary disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                    >
+                      <RefreshCw size={10} />
+                      Check again
+                    </button>
+                  </div>
                 )}
               </div>
             )}

@@ -121,6 +121,7 @@ export function seedGroundStationStore(): void {
         forwarding_video: true,
         forwarding_telemetry: true,
       },
+      routeApplied: true,
       shareUplinkApplied: null,
       shareUplinkAppliedReason: null,
       loading: false,

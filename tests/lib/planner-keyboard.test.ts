@@ -210,8 +210,43 @@ describe("planner keyboard dispatcher", () => {
     press("s", { metaKey: true });
     expect(params.handleSave).toHaveBeenCalledTimes(1);
 
-    press("s", { metaKey: true, shiftKey: true });
+    // With Shift held on Windows/Linux the browser reports an uppercase key.
+    press("S", { ctrlKey: true, shiftKey: true, code: "KeyS" });
     expect(params.handleSaveAs).toHaveBeenCalledTimes(1);
+    expect(params.handleSave).toHaveBeenCalledTimes(1);
+  });
+
+  it("Save still fires under CapsLock (uppercase key, no Shift)", () => {
+    const params = makeParams();
+    renderHook(() => useKeyboardShortcuts(params));
+    const ev = press("S", { ctrlKey: true });
+    expect(params.handleSave).toHaveBeenCalledTimes(1);
+    expect(ev.defaultPrevented).toBe(true);
+  });
+
+  describe("undo / redo chords", () => {
+    it("Ctrl+Shift+Z (uppercase key) redoes", () => {
+      const params = makeParams();
+      renderHook(() => useKeyboardShortcuts(params));
+      press("Z", { ctrlKey: true, shiftKey: true, code: "KeyZ" });
+      expect(params.redo).toHaveBeenCalledTimes(1);
+      expect(params.undo).not.toHaveBeenCalled();
+    });
+
+    it("Ctrl+Y redoes", () => {
+      const params = makeParams();
+      renderHook(() => useKeyboardShortcuts(params));
+      press("y", { ctrlKey: true, code: "KeyY" });
+      expect(params.redo).toHaveBeenCalledTimes(1);
+    });
+
+    it("CapsLock Ctrl+Z undoes", () => {
+      const params = makeParams();
+      renderHook(() => useKeyboardShortcuts(params));
+      press("Z", { ctrlKey: true });
+      expect(params.undo).toHaveBeenCalledTimes(1);
+      expect(params.redo).not.toHaveBeenCalled();
+    });
   });
 
   describe("arrow-key nudge of the selected waypoint", () => {

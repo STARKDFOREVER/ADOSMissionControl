@@ -13,6 +13,7 @@
  */
 
 import type { CorridorConfig, PatternResult, PatternWaypoint } from "./types";
+import { assertSpacing, assertTransectCount } from "./types";
 import {
   bearing,
   offsetPoint,
@@ -26,6 +27,7 @@ export function generateCorridor(config: CorridorConfig): PatternResult {
   if (pathPoints.length < 2 || corridorWidth <= 0 || lineSpacing <= 0) {
     return { waypoints: [], stats: { totalDistance: 0, estimatedTime: 0, photoCount: 0, coveredArea: 0, transectCount: 0 } };
   }
+  assertSpacing(lineSpacing, "line spacing");
 
   const halfWidth = corridorWidth / 2;
 
@@ -74,6 +76,7 @@ export function generateCorridor(config: CorridorConfig): PatternResult {
   }
 
   // Generate perpendicular transects at lineSpacing intervals along the path
+  assertTransectCount(totalPathLength / lineSpacing);
   const transects: { left: [number, number]; right: [number, number] }[] = [];
 
   let distanceCovered = 0;

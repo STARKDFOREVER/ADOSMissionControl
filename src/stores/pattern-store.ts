@@ -12,23 +12,27 @@ import type {
   OrbitConfig,
   CorridorConfig,
   PatternResult,
+  PerimeterConfig,
   FixedWingLandingConfig,
   VtolLandingConfig,
 } from "@/lib/patterns/types";
 import type { ExpandingSquareConfig, SectorSearchConfig, ParallelTrackConfig } from "@/lib/patterns/sar-generators";
 import type { StructureScanConfig } from "@/lib/patterns/structure-scan-generator";
-import { generateSurvey } from "@/lib/patterns/survey-generator";
-import { generateOrbit } from "@/lib/patterns/orbit-generator";
 import { generateCorridor } from "@/lib/patterns/corridor-generator";
 import { generateExpandingSquare, generateSectorSearch, generateParallelTrack } from "@/lib/patterns/sar-generators";
-import { generateStructureScan } from "@/lib/patterns/structure-scan-generator";
 import { generateFixedWingLanding } from "@/lib/patterns/landing-generator";
 import { generateVtolLanding } from "@/lib/patterns/vtol-landing-generator";
 import { offsetPoint } from "@/lib/drawing/geo-utils";
 import { formatErrorMessage } from "@/lib/utils";
 import { useDrawingStore } from "./drawing-store";
+import {
+  generateOrbitPattern,
+  generatePerimeterPattern,
+  generateStructureScanPattern,
+  generateSurveyPattern,
+} from "./pattern-generation";
 
-export type PatternType = "survey" | "orbit" | "corridor" | "expandingSquare" | "sectorSearch" | "parallelTrack" | "structureScan" | "fixedWingLanding" | "vtolLanding" | null;
+export type PatternType = "survey" | "orbit" | "corridor" | "expandingSquare" | "sectorSearch" | "parallelTrack" | "structureScan" | "perimeter" | "fixedWingLanding" | "vtolLanding" | null;
 
 /**
  * A faint outline captured from the last-applied pattern's input geometry.
@@ -55,6 +59,7 @@ interface PatternStoreState {
   sarSectorSearchConfig: Partial<SectorSearchConfig>;
   sarParallelTrackConfig: Partial<ParallelTrackConfig>;
   structureScanConfig: Partial<StructureScanConfig>;
+  perimeterConfig: Partial<PerimeterConfig>;
   fixedWingLandingConfig: Partial<FixedWingLandingConfig>;
   vtolLandingConfig: Partial<VtolLandingConfig>;
   patternResult: PatternResult | null;
@@ -76,6 +81,7 @@ interface PatternStoreState {
   updateSarSectorSearchConfig: (update: Partial<SectorSearchConfig>) => void;
   updateSarParallelTrackConfig: (update: Partial<ParallelTrackConfig>) => void;
   updateStructureScanConfig: (update: Partial<StructureScanConfig>) => void;
+  updatePerimeterConfig: (update: Partial<PerimeterConfig>) => void;
   updateFixedWingLandingConfig: (update: Partial<FixedWingLandingConfig>) => void;
   updateVtolLandingConfig: (update: Partial<VtolLandingConfig>) => void;
   generate: () => void;
@@ -149,6 +155,12 @@ const defaultStructureScan: Partial<StructureScanConfig> = {
   direction: "bottom-up",
 };
 
+const defaultPerimeter: Partial<PerimeterConfig> = {
+  offsetM: 0,
+  altitude: 50,
+  speed: 5,
+};
+
 // No default approach heading: the final is flown along it, so the operator
 // chooses it and no landing is generated until they do.
 const defaultFixedWingLanding: Partial<FixedWingLandingConfig> = {
@@ -163,81 +175,6 @@ const defaultVtolLanding: Partial<VtolLandingConfig> = {
   descentSpeed: 2,
   speed: 8,
 };
-
-/** Merge multiple survey results into one combined result. */
-function mergeSurveyResults(results: PatternResult[]): PatternResult {
-  return {
-    waypoints: results.flatMap((r) => r.waypoints),
-    previewLines: results.flatMap((r) => r.previewLines ?? []),
-    stats: {
-      totalDistance: results.reduce((s, r) => s + r.stats.totalDistance, 0),
-      estimatedTime: results.reduce((s, r) => s + r.stats.estimatedTime, 0),
-      photoCount: results.reduce((s, r) => s + r.stats.photoCount, 0),
-      coveredArea: results.reduce((s, r) => s + r.stats.coveredArea, 0),
-      transectCount: results.reduce((s, r) => s + r.stats.transectCount, 0),
-    },
-  };
-}
-
-/** Generate a survey pattern, handling multi-polygon selection from drawing store. */
-function generateSurveyPattern(cfg: Partial<SurveyConfig>, exclusionIds: string[]): PatternResult | null {
-  const fullCfg = cfg as SurveyConfig;
-  const drawState = useDrawingStore.getState();
-
-  // Resolve the marked exclusion (keep-out) rings from the drawn polygons.
-  const exclusions: [number, number][][] = exclusionIds.length > 0
-    ? drawState.polygons
-        .filter((p) => exclusionIds.includes(p.id) && p.vertices.length >= 3)
-        .map((p) => p.vertices)
-    : [];
-
-  if (fullCfg.polygon && fullCfg.polygon.length >= 3) {
-    return generateSurvey({ ...fullCfg, exclusions });
-  }
-  const selectedIds = drawState.selectedPolygonIds;
-  const candidate = selectedIds.length > 0
-    ? drawState.polygons.filter((p) => selectedIds.includes(p.id))
-    : drawState.polygons.slice(-1);
-  // Exclusion polygons are keep-outs, never survey boundaries.
-  const polygons = candidate.filter((p) => !exclusionIds.includes(p.id));
-
-  if (polygons.length === 1 && polygons[0].vertices.length >= 3) {
-    return generateSurvey({ ...fullCfg, polygon: polygons[0].vertices, exclusions });
-  }
-  if (polygons.length > 1) {
-    const results = polygons
-      .filter((p) => p.vertices.length >= 3)
-      .map((p) => generateSurvey({ ...fullCfg, polygon: p.vertices, exclusions }));
-    return results.length > 0 ? mergeSurveyResults(results) : null;
-  }
-  return null;
-}
-
-/** Generate an orbit pattern, falling back to the last drawn circle. */
-function generateOrbitPattern(cfg: Partial<OrbitConfig>): PatternResult | null {
-  const fullCfg = cfg as OrbitConfig;
-  if (fullCfg.center) return generateOrbit(fullCfg);
-  const drawState = useDrawingStore.getState();
-  if (drawState.circles.length > 0) {
-    const lastCircle = drawState.circles[drawState.circles.length - 1];
-    return generateOrbit({ ...fullCfg, center: lastCircle.center, radius: lastCircle.radius ?? fullCfg.radius } as OrbitConfig);
-  }
-  return null;
-}
-
-/** Generate a structure scan, falling back to the last drawn polygon. */
-function generateStructureScanPattern(cfg: Partial<StructureScanConfig>): PatternResult | null {
-  const fullCfg = cfg as StructureScanConfig;
-  if (fullCfg.structurePolygon && fullCfg.structurePolygon.length >= 3) {
-    return generateStructureScan(fullCfg);
-  }
-  const drawState = useDrawingStore.getState();
-  const lastPoly = drawState.polygons[drawState.polygons.length - 1];
-  if (lastPoly && lastPoly.vertices.length >= 3) {
-    return generateStructureScan({ ...fullCfg, structurePolygon: lastPoly.vertices } as StructureScanConfig);
-  }
-  return null;
-}
 
 /** Dispatch pattern generation by type. Returns null if input geometry is missing. */
 function generatePattern(state: PatternStoreState): PatternResult | null {
@@ -261,6 +198,7 @@ function generatePattern(state: PatternStoreState): PatternResult | null {
       return cfg.startPoint ? generateParallelTrack(cfg) : null;
     }
     case "structureScan": return generateStructureScanPattern(state.structureScanConfig);
+    case "perimeter": return generatePerimeterPattern(state.perimeterConfig);
     case "fixedWingLanding": {
       const cfg = state.fixedWingLandingConfig as FixedWingLandingConfig;
       return cfg.landingPoint ? generateFixedWingLanding(cfg) : null;
@@ -281,6 +219,7 @@ const MISSING_GEOMETRY_MESSAGES: Record<string, string> = {
   sectorSearch: "Click map to set datum point",
   parallelTrack: "Click map to set start point",
   structureScan: "Draw structure boundary polygon on map",
+  perimeter: "Draw a polygon on the map first",
   fixedWingLanding: "Set the landing point first",
   vtolLanding: "Set the landing point first",
 };
@@ -326,6 +265,12 @@ function deriveInputGeometry(state: PatternStoreState): AppliedBoundary | null {
     case "structureScan": {
       const poly = state.structureScanConfig.structurePolygon && state.structureScanConfig.structurePolygon.length >= 3
         ? state.structureScanConfig.structurePolygon
+        : drawnPolygon;
+      return poly ? { kind: "polygon", positions: poly } : null;
+    }
+    case "perimeter": {
+      const poly = state.perimeterConfig.polygon && state.perimeterConfig.polygon.length >= 3
+        ? state.perimeterConfig.polygon
         : drawnPolygon;
       return poly ? { kind: "polygon", positions: poly } : null;
     }
@@ -377,6 +322,7 @@ export const usePatternStore = create<PatternStoreState>()((set, get) => ({
   sarSectorSearchConfig: { ...defaultSectorSearch },
   sarParallelTrackConfig: { ...defaultParallelTrack },
   structureScanConfig: { ...defaultStructureScan },
+  perimeterConfig: { ...defaultPerimeter },
   fixedWingLandingConfig: { ...defaultFixedWingLanding },
   vtolLandingConfig: { ...defaultVtolLanding },
   patternResult: null,
@@ -399,6 +345,7 @@ export const usePatternStore = create<PatternStoreState>()((set, get) => ({
   showCoverageOverlay: false,
       surveyConfig: { ...get().surveyConfig, polygon: undefined },
       structureScanConfig: { ...get().structureScanConfig, structurePolygon: undefined },
+      perimeterConfig: { ...get().perimeterConfig, polygon: undefined },
     });
   },
 
@@ -433,6 +380,9 @@ export const usePatternStore = create<PatternStoreState>()((set, get) => ({
 
   updateStructureScanConfig: (update) =>
     set((s) => ({ structureScanConfig: { ...s.structureScanConfig, ...update } })),
+
+  updatePerimeterConfig: (update) =>
+    set((s) => ({ perimeterConfig: { ...s.perimeterConfig, ...update } })),
 
   updateFixedWingLandingConfig: (update) =>
     set((s) => ({ fixedWingLandingConfig: { ...s.fixedWingLandingConfig, ...update } })),
@@ -476,6 +426,7 @@ export const usePatternStore = create<PatternStoreState>()((set, get) => ({
       sarSectorSearchConfig: { ...defaultSectorSearch },
       sarParallelTrackConfig: { ...defaultParallelTrack },
       structureScanConfig: { ...defaultStructureScan },
+      perimeterConfig: { ...defaultPerimeter },
       fixedWingLandingConfig: { ...defaultFixedWingLanding },
       vtolLandingConfig: { ...defaultVtolLanding },
       patternResult: null,

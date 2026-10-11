@@ -77,12 +77,3 @@ export type ParamColumnId = "index" | "name" | "description" | "value" | "range"
 
 export type ParamColumnVisibility = Record<ParamColumnId, boolean>;
 
-export interface ParameterFilterPreset {
-  id: string;
-  name: string;
-  filter: string;
-  category: string | null;
-  showModifiedOnly: boolean;
-  showNonDefault: boolean;
-  showFavorites: boolean;
-}

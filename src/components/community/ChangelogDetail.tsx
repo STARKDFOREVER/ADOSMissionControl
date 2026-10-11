@@ -7,7 +7,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
 import { communityApi } from "@/lib/community-api";
-import { sanitizeChangelogHtml } from "@/lib/community-html";
+import { useSanitizedChangelogHtml } from "@/lib/community-html";
 import { useConvexSkipQueryState } from "@/hooks/use-convex-skip-query";
 import { useToast } from "@/components/ui/toast";
 import { formatDate } from "@/lib/utils";
@@ -34,6 +34,9 @@ export function ChangelogDetail({ id }: ChangelogDetailProps) {
   const router = useRouter();
   const { toast } = useToast();
   const t = useTranslations("community.changelogDetail");
+  const bodyHtml = useSanitizedChangelogHtml(
+    (entry as ChangelogEntry | null | undefined)?.bodyHtml ?? "",
+  );
 
   if (state === "skipped") {
     return (
@@ -151,7 +154,7 @@ export function ChangelogDetail({ id }: ChangelogDetailProps) {
         ) : typedEntry.bodyHtml ? (
           <div
             className="text-sm text-text-secondary leading-relaxed changelog-body"
-            dangerouslySetInnerHTML={{ __html: sanitizeChangelogHtml(typedEntry.bodyHtml) }}
+            dangerouslySetInnerHTML={{ __html: bodyHtml }}
           />
         ) : (
           <div className="text-sm text-text-secondary whitespace-pre-wrap leading-relaxed">
