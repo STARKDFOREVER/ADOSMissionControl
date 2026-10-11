@@ -10,6 +10,9 @@ export interface PeripheralMatch {
   vid?: string;
   pid?: string;
   regex?: string;
+  /** sysfs attribute path (relative to /sys/class/<class>/<node>) to the
+   *  regex its value must fullmatch; narrows a `regex` match. */
+  sysfs?: Record<string, string>;
 }
 
 export interface PeripheralAction {
