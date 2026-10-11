@@ -57,17 +57,14 @@ The manual steps below cover the same ground if you prefer direct control or nee
      +-----------+   +-----------+      +-------------+
      |  Convex   |   | Mosquitto |      | Video Relay |
      |  Backend  |   |  (MQTT)   |      | (ffmpeg)    |
-     +-----------+   +-----+-----+      +------+------+
-                           |                   |
-                     +-----+-----+             |
-                     |MQTT Bridge|        RTSP source
-                     | (Node.js) |        (drone agent)
-                     +-----+-----+
-                           |
-                     Convex HTTP API
+     +-----+-----+   +-----+-----+      +------+------+
+           |               |                   |
+   HTTPS heartbeat   MQTT relay planes    RTSP source
+           \               |                  /
+            +------- drone agent ------------+
 ```
 
-The MQTT bridge subscribes to drone telemetry topics and forwards them to Convex so the GCS can display data. The video relay converts RTSP streams from the drone agent into fragmented MP4 over WebSocket for browser playback.
+The drone agent sends its status straight to Convex over HTTPS (`/agent/status`). Mosquitto carries the relay planes (MAVLink, MSP, WebRTC signalling, vision and plugin topics) between the agent and the browser; nothing forwards MQTT into Convex. The video relay converts RTSP streams from the drone agent into fragmented MP4 over WebSocket for browser playback.
 
 ---
 
@@ -122,7 +119,7 @@ NEXT_PUBLIC_CONVEX_URL=http://convex.your.domain:3210
 A self-hosted Convex backend exposes two origins that are not interchangeable:
 
 - **`:3210`** client API — the GCS browser bundle (`NEXT_PUBLIC_CONVEX_URL`) and `convex deploy` use this.
-- **`:3211`** site / HTTP actions — the drone agent heartbeat and the MQTT bridge POST to this (`CONVEX_URL` → `${CONVEX_URL}/agent/status`). The agent's `server.self_hosted.url` and `pairing.convex_url` also point here.
+- **`:3211`** site / HTTP actions — the drone agent heartbeat POSTs to this (`CONVEX_URL` → `${CONVEX_URL}/agent/status`), and `mqtt-auth-sync` reads broker credentials from it. The agent's `server.self_hosted.url` and `pairing.convex_url` also point here.
 
 Cross them and the GCS loads but no drone ever appears, or sign-in works but commands never reach the agent.
 </details>
@@ -184,14 +181,14 @@ cp .env.example .env
 
 Edit `.env`:
 ```env
-MQTT_BROKER_URL=mqtt://mosquitto:1883
 MQTT_USERNAME=ados
 MQTT_PASSWORD=<your-password>
-CONVEX_URL=https://convex.your.domain
 CLOUDFLARE_TUNNEL_TOKEN=<your-token>    # optional, skip if using port forwarding
 ```
 
-### 2b. Create MQTT password
+### 2b. Create MQTT credentials
+
+Seed the `ados` service account, then let `scripts/regenerate-passwd.sh` add every paired agent and operator grant from Convex. It needs `MQTT_AUTH_RELAY_SECRET`, set to the same value on Convex (`npx convex env set MQTT_AUTH_RELAY_SECRET "<value>"`; generate with `openssl rand -hex 32`). See `tools/mqtt-bridge/deploy/README.md` for the full auth runbook.
 
 ```bash
 docker compose up -d mosquitto
@@ -210,9 +207,6 @@ Verify:
 ```bash
 # Check mosquitto is accepting connections
 docker compose logs mosquitto | tail -5
-
-# Check bridge is connected
-docker compose logs bridge | tail -5
 ```
 
 ### 2d. DNS / Tunnel
@@ -332,11 +326,11 @@ The ready-made all-in-one compose lives at `tools/selfhost/`. It brings up the
 whole stack on one host: a self-hosted **Convex backend** (`:3210` client API,
 `:3211` site / HTTP actions) + **Convex dashboard** (`:6791`), the **Mission
 Control web GCS** (`:4000`, built from the repo `Dockerfile`), **Mosquitto**
-(`:1883` / `:9001`), the **MQTT bridge**, and the **video relay** (`:3001`).
+(`:1883` / `:9001`) with its **mqtt-auth-sync** credential loop, and the **video relay** (`:3001`).
 
 ```bash
 cd tools/selfhost
-cp .env.example .env       # set CONVEX_INSTANCE_SECRET, MQTT_PASSWORD, origins
+cp .env.example .env       # set CONVEX_INSTANCE_SECRET, MQTT_PASSWORD, MQTT_AUTH_RELAY_SECRET, VIDEO_RELAY_SECRET, origins
 
 # 1. start the backend, then push functions + auth keys out-of-band
 docker compose up -d convex-backend
@@ -354,7 +348,7 @@ docker compose up -d
 | Endpoint | Goes to | Variable |
 |---|---|---|
 | GCS browser client | Convex client API `:3210` | `NEXT_PUBLIC_CONVEX_URL` |
-| MQTT bridge + agent heartbeat | Convex site `:3211` (`/agent/status`) | `CONVEX_URL` |
+| Agent heartbeat + mqtt-auth-sync | Convex site `:3211` (`/agent/status`, `/admin/mqtt-auth-entries`) | `CONVEX_URL` |
 | Drone agent `server.self_hosted.url` + `pairing.convex_url` | Convex site `:3211` | (agent config) |
 
 Functions are pushed out-of-band with `npx convex deploy --url http://<host>:3210 --admin-key <key>`. A single Mission Control image that pushes functions on boot is a future goal, not built yet.
@@ -379,10 +373,11 @@ See `tools/selfhost/README.md` for the full runbook. The minimal MQTT + video-re
 - "Cloud video relay is not configured" means `VIDEO_RELAY_SECRET` is unset on Convex. A viewer that reports the relay refused the connection usually means the Convex and relay secrets differ.
 - Browser must support MediaSource Extensions (all modern browsers except iOS Safari).
 
-**Bridge not forwarding to Convex**
-- Check `CONVEX_URL` in your `.env` points to the correct Convex backend URL.
-- Check `docker compose logs mqtt-bridge` for HTTP errors.
-- The bridge debounces at 3s per device. You won't see every single MQTT message forwarded.
+**Drone never appears in the GCS**
+- Agent status reaches Convex only through the agent's HTTPS heartbeat, not MQTT. Check the agent's `server.self_hosted.url` points at the Convex site origin (`:3211`).
+
+**Agents refused by the broker**
+- Check `docker compose logs mqtt-auth-sync`: it needs `MQTT_AUTH_RELAY_SECRET` set to the same value on Convex and in `.env`.
 
 **MQTT password not working**
 - The password file must be created inside the Mosquitto container using `mosquitto_passwd`.
@@ -396,7 +391,7 @@ See `tools/selfhost/README.md` for the full runbook. The minimal MQTT + video-re
 |-----------|-----|-----|------|
 | Convex backend | 2+ cores | 4+ GB | 10+ GB (SQLite grows with data) |
 | Mosquitto | minimal | ~50 MB | minimal |
-| MQTT bridge | minimal | ~100 MB | none |
+| mqtt-auth-sync | minimal | minimal | none |
 | Video relay | 1 core per stream | ~200 MB per stream | none |
 
 For a small deployment (1-5 drones), a single 4-core / 8GB machine handles everything including Convex.

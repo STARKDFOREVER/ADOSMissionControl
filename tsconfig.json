@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    /* ES2022, matching electron/ and the four tools/ projects; convex/ is
+    /* ES2022, matching electron/ and the three tools/ projects; convex/ is
      * ESNext because Convex requires it. This project was the last one left on
      * the Next scaffold default of ES2017, which was never a decision and was
      * incoherent with the `lib` below: the checker was told every modern API

@@ -424,7 +424,7 @@ impl Step for MqttPasswd {
     }
 }
 
-/// Copy the committed bridge-only ACL policy to the generated ACL path when
+/// Copy the committed service-account-only ACL policy to the generated ACL path when
 /// that path holds no file yet.
 fn seed_acl(repo_root: &std::path::Path) -> std::io::Result<()> {
     let target = repo_root.join(crate::deploy::plan::ACL_FILE);
@@ -456,7 +456,7 @@ impl Step for UpRest {
         let root = ctx.repo_root.clone();
         let services = ctx.config.compose_services();
         // `--no-deps`: only the explicitly-listed services start. Without it,
-        // `depends_on: convex-backend` on mission-control + mqtt-bridge would drag
+        // `depends_on: convex-backend` on mission-control would drag
         // a rogue local convex-backend up under a managed-Convex / relay-only
         // deploy; in all-in-one the convex containers were already started by
         // up_convex, so they need no dependency pull here either (C2).

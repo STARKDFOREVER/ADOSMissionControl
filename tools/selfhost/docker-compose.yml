@@ -1,7 +1,7 @@
 # Self-host the full Mission Control cloud stack on one host.
 #
 # Brings up: a self-hosted Convex backend + dashboard, the Mission Control
-# web GCS, the MQTT broker + bridge, and the video relay.
+# web GCS, the MQTT broker + its auth sync, and the video relay.
 #
 # Quick start:
 #   1. cp .env.example .env   and edit the values
@@ -22,7 +22,7 @@
 #
 # Port wiring (critical):
 #   - GCS browser client  -> Convex CLIENT-API origin  :3210  (NEXT_PUBLIC_CONVEX_URL)
-#   - agent + MQTT bridge -> Convex SITE / HTTP-actions :3211  (CONVEX_URL, server.self_hosted.url, pairing.convex_url)
+#   - agent + mqtt-auth-sync -> Convex SITE / HTTP-actions :3211  (CONVEX_URL, server.self_hosted.url, pairing.convex_url)
 #   - Convex dashboard UI  :6791
 #   - Mission Control web  :4000
 #
@@ -35,7 +35,7 @@ services:
     restart: unless-stopped
     ports:
       - "3210:3210" # client API (browser / NEXT_PUBLIC_CONVEX_URL)
-      - "3211:3211" # site / HTTP actions (agent heartbeat + MQTT bridge)
+      - "3211:3211" # site / HTTP actions (agent heartbeat + mqtt-auth-sync)
     environment:
       - INSTANCE_NAME=${CONVEX_INSTANCE_NAME}
       - INSTANCE_SECRET=${CONVEX_INSTANCE_SECRET}
@@ -93,7 +93,7 @@ services:
 
   # Materializes every paired agent (`ados-<device_id>` + its apiKey) and every
   # live operator grant from Convex into passwd/acl.conf, then SIGHUPs the
-  # broker. Without it only the bridge principal can log in. It shares the
+  # broker. Without it only the `ados` service account can log in. It shares the
   # broker's PID namespace for the signal; no docker socket is mounted.
   mqtt-auth-sync:
     build:
@@ -114,21 +114,6 @@ services:
     volumes:
       - ./passwd:/work/passwd
       - ./acl.conf:/work/acl.conf
-
-  mqtt-bridge:
-    build:
-      context: ../mqtt-bridge
-      dockerfile: deploy/Dockerfile
-    restart: unless-stopped
-    depends_on:
-      - mosquitto
-      - convex-backend
-    environment:
-      - MQTT_BROKER_URL=mqtt://mosquitto:1883
-      - MQTT_USERNAME=${MQTT_USERNAME:-ados}
-      - MQTT_PASSWORD=${MQTT_PASSWORD}
-      # Convex SITE origin. The bridge POSTs to ${CONVEX_URL}/agent/status.
-      - CONVEX_URL=${CONVEX_URL}
 
   video-relay:
     build:

@@ -2,7 +2,7 @@
 
 A single Docker Compose file that brings up the whole Mission Control cloud
 relay on one host: a self-hosted Convex backend + dashboard, the Mission
-Control web GCS, the MQTT broker + bridge, and the video relay.
+Control web GCS, the MQTT broker + its auth sync, and the video relay.
 
 This is the all-in-one path. If you only need the MQTT relay or only the
 video relay, use the per-tool compose files in `../mqtt-bridge/deploy/` and
@@ -13,11 +13,11 @@ video relay, use the per-tool compose files in `../mqtt-bridge/deploy/` and
 | Service | Port | Used by |
 |---|---|---|
 | `convex-backend` (client API) | `3210` | GCS browser client (`NEXT_PUBLIC_CONVEX_URL`) |
-| `convex-backend` (site / HTTP actions) | `3211` | agent heartbeat + MQTT bridge (`CONVEX_URL`) |
+| `convex-backend` (site / HTTP actions) | `3211` | agent heartbeat + `mqtt-auth-sync` (`CONVEX_URL`) |
 | `convex-dashboard` | `6791` | admin dashboard UI |
 | `mission-control` | `4000` | the web GCS |
 | `mosquitto` | `1883` (TCP), `9001` (WebSocket) | MQTT |
-| `mqtt-bridge` | internal | forwards MQTT to Convex |
+| `mqtt-auth-sync` | internal | rewrites broker `passwd`/`acl.conf` from Convex |
 | `video-relay` | `3001` | RTSP-to-WebSocket video |
 
 ## Critical port wiring
@@ -26,10 +26,10 @@ Convex exposes two origins and they are not interchangeable:
 
 - **`:3210`** is the client API. The GCS browser bundle talks to this
   (`NEXT_PUBLIC_CONVEX_URL`). Functions are also deployed here.
-- **`:3211`** is the site / HTTP-actions origin. The agent heartbeat and the
-  MQTT bridge POST to this (`CONVEX_URL` → `${CONVEX_URL}/agent/status`). The
-  drone agent's `server.self_hosted.url` and `pairing.convex_url` also point
-  here.
+- **`:3211`** is the site / HTTP-actions origin. The agent heartbeat POSTs to
+  this (`CONVEX_URL` → `${CONVEX_URL}/agent/status`), and `mqtt-auth-sync`
+  reads broker credentials from it. The drone agent's
+  `server.self_hosted.url` and `pairing.convex_url` also point here.
 
 Cross them and the GCS loads but no drone ever appears (heartbeat went to the
 client-API origin), or sign-in works but commands never reach the agent.
@@ -41,7 +41,7 @@ client-API origin), or sign-in works but commands never reach the agent.
    ```bash
    cp .env.example .env
    # set CONVEX_INSTANCE_SECRET (openssl rand -hex 32), MQTT_PASSWORD,
-   # and the origins for your host
+   # MQTT_AUTH_RELAY_SECRET, VIDEO_RELAY_SECRET and the origins for your host
    ```
 
 2. Start the backend first:

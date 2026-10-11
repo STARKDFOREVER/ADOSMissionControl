@@ -166,7 +166,7 @@ impl DeployConfig {
         }
     }
 
-    /// `CONVEX_URL` — the agent + bridge → Convex site / HTTP-actions origin.
+    /// `CONVEX_URL` — the agent + mqtt-auth-sync → Convex site / HTTP-actions origin.
     pub fn convex_site_url(&self) -> String {
         match &self.convex {
             // A managed Convex advertises one origin; the site origin is derived
@@ -258,7 +258,6 @@ impl DeployConfig {
         }
         if !self.mqtt.is_managed() {
             svc.push(SVC_MOSQUITTO);
-            svc.push(SVC_MQTT_BRIDGE);
             svc.push(SVC_MQTT_AUTH_SYNC);
         }
         if !self.video.is_managed() {
@@ -399,7 +398,7 @@ mod tests {
             SVC_CONVEX_DASHBOARD,
             SVC_MISSION_CONTROL,
             SVC_MOSQUITTO,
-            SVC_MQTT_BRIDGE,
+            SVC_MQTT_AUTH_SYNC,
             SVC_VIDEO_RELAY,
         ] {
             assert!(all.contains(&svc), "all-in-one is missing {svc}");
@@ -414,7 +413,7 @@ mod tests {
         assert!(s.contains(&SVC_CONVEX_BACKEND));
         assert!(s.contains(&SVC_MISSION_CONTROL));
         assert!(!s.contains(&SVC_MOSQUITTO));
-        assert!(!s.contains(&SVC_MQTT_BRIDGE));
+        assert!(!s.contains(&SVC_MQTT_AUTH_SYNC));
         assert!(!s.contains(&SVC_VIDEO_RELAY));
 
         // GCS unchecked drops just the mission-control container.

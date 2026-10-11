@@ -317,7 +317,7 @@ npx convex dev
 
 Set `NEXT_PUBLIC_CONVEX_URL` in `.env.local`. The first user to sign up becomes admin.
 
-For self-hosted MQTT and video relay, run `npm run deploy -- deploy` for a guided wizard (port selection, conflict detection, config file generation, optional service start), or follow the manual steps in [SELFHOSTING.md](SELFHOSTING.md). Source for each service: [`tools/mqtt-bridge/`](tools/mqtt-bridge/), [`tools/video-relay/`](tools/video-relay/).
+For self-hosted MQTT and video relay, run `npm run deploy -- deploy` for a guided wizard (port selection, conflict detection, config file generation, optional service start), or follow the manual steps in [SELFHOSTING.md](SELFHOSTING.md). Broker assets: [`tools/mqtt-bridge/`](tools/mqtt-bridge/); relay source: [`tools/video-relay/`](tools/video-relay/).
 
 ### Environment variables (`.env.local`)
 
@@ -336,7 +336,7 @@ All variables are optional. Set them by editing `.env.local` directly (or re-run
 | Tool | Path | Description |
 |------|------|-------------|
 | SITL launcher | `tools/sitl/` | ArduPilot SITL plus TCP-to-WebSocket bridge |
-| MQTT bridge | `tools/mqtt-bridge/` | Mosquitto broker plus MQTT-to-Convex bridge (Docker Compose) |
+| MQTT broker | `tools/mqtt-bridge/` | Mosquitto broker config, ACL and credential-sync scripts (Docker Compose) |
 | Video relay | `tools/video-relay/` | RTSP-to-WebSocket fMP4 relay via ffmpeg (Docker Compose) |
 
 ---

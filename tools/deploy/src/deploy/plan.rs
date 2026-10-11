@@ -18,7 +18,7 @@ pub const PASSWD_FILE: &str = "tools/selfhost/passwd";
 /// The generated broker ACL, relative to the repo root. Seeded from
 /// [`ACL_POLICY_FILE`] and kept current by the `mqtt-auth-sync` sidecar.
 pub const ACL_FILE: &str = "tools/selfhost/acl.conf";
-/// The committed bridge-only ACL policy the seed starts as.
+/// The committed service-account-only ACL policy the seed starts as.
 pub const ACL_POLICY_FILE: &str = "tools/mqtt-bridge/deploy/acl.conf";
 
 const REDACTED: &str = "<redacted>";
@@ -126,7 +126,7 @@ fn planned_files(cfg: &DeployConfig) -> Vec<PlannedFile> {
         });
         files.push(PlannedFile {
             path: ACL_FILE.to_string(),
-            note: "broker ACL seed (bridge only; mqtt-auth-sync adds devices)".to_string(),
+            note: "broker ACL seed (service account; mqtt-auth-sync adds devices)".to_string(),
             redacted_content: format!("user {}\ntopic read ados/#\n", cfg.mqtt_username),
         });
     }

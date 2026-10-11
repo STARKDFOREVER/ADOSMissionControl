@@ -8,7 +8,6 @@ pub const SVC_CONVEX_BACKEND: &str = "convex-backend";
 pub const SVC_CONVEX_DASHBOARD: &str = "convex-dashboard";
 pub const SVC_MISSION_CONTROL: &str = "mission-control";
 pub const SVC_MOSQUITTO: &str = "mosquitto";
-pub const SVC_MQTT_BRIDGE: &str = "mqtt-bridge";
 pub const SVC_MQTT_AUTH_SYNC: &str = "mqtt-auth-sync";
 pub const SVC_VIDEO_RELAY: &str = "video-relay";
 
@@ -17,7 +16,7 @@ pub const SVC_VIDEO_RELAY: &str = "video-relay";
 pub struct Ports {
     /// Convex client API (browser → `NEXT_PUBLIC_CONVEX_URL`).
     pub convex_client: u16,
-    /// Convex site / HTTP actions (agent + bridge → `CONVEX_URL`).
+    /// Convex site / HTTP actions (agent + mqtt-auth-sync → `CONVEX_URL`).
     pub convex_site: u16,
     /// Convex dashboard UI.
     pub dashboard: u16,
