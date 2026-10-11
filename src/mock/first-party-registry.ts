@@ -500,7 +500,7 @@ gcs:
 const VISION_NAV_MANIFEST = `schema_version: 2
 id: com.altnautica.vision-nav
 name: "ADOS Vision Navigation"
-version: "0.4.1"
+version: "0.5.0"
 description: "GPS-denied navigation. Optical flow from a downward camera. Supports ArduPilot, PX4, and iNav 7.0+ on USB UVC or CSI cameras."
 description_long: |
   Lets the drone hold position when GPS is unreliable — indoors, under bridges, in urban canyons. A downward camera and the flight controller's gyro feed a 30 Hz angular-flow measurement over MAVLink, so position-hold, loiter, and missions keep working unchanged.
@@ -743,18 +743,18 @@ export const DEMO_REGISTRY_ENTRIES: ReadonlyArray<DemoRegistryEntry> = [
       description:
         "GPS-denied navigation via optical flow from a downward camera on ArduPilot, PX4, and iNav.",
       category: "ai",
-      // The manifest body mirrors the current extension manifest; the version
-      // and asset stay on the last published tag (0.4.1) so the demo install
-      // downloads and verifies a real archive.
-      latest_version: "0.4.1",
+      // The manifest body mirrors the published 0.5.0 manifest, and the asset
+      // is that release's archive, so the demo install downloads and verifies
+      // a real archive.
+      latest_version: "0.5.0",
       icon: "navigation",
     }),
     manifestYaml: VISION_NAV_MANIFEST,
     downloadUrl:
-      "https://github.com/altnautica/ADOSExtensions/releases/download/vision-nav-v0.4.1/com.altnautica.vision-nav-0.4.1.signed.adosplug",
+      "https://github.com/altnautica/ADOSExtensions/releases/download/vision-nav-v0.5.0/com.altnautica.vision-nav-0.5.0.signed.adosplug",
     archiveSha256:
-      "7fc82f0ceb64595a0a93526344ed097778a997a53ab9ea274bbbc238e3baa93f",
-    archiveSizeBytes: 1050810,
+      "bcafb98403631d320e808d434ff6741df63e4613d3cd140b3396111a2a0517ff",
+    archiveSizeBytes: 800780,
     signerKeyId: "altnautica-2026-A",
     supportedBoards: ["cm4", "cm5", "rock-5c-lite", "rk3588s2", "rk3576", "rpi5"],
   },
