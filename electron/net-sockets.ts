@@ -65,8 +65,8 @@ interface OpenSpec {
 interface UdpHandle {
   proto: "udp";
   socket: dgram.Socket;
-  /** Where GCS→drone bytes go: the fixed target, or the peer learned once in
-   *  listen mode. */
+  /** Where GCS→drone bytes go: the fixed target, or the peer learned in
+   *  listen mode (re-learned only after it falls silent). */
   peers: UdpPeerTracker;
 }
 interface TcpHandle {
@@ -106,11 +106,16 @@ function openSocket(rawSpec: unknown): Promise<{ id: string }> {
 
       socket.on("message", (msg, rinfo) => {
         // Non-local sources are dropped before they can reach the MAVLink
-        // parser or become the peer. The peer is learned once, from the first
-        // local MAVLink frame; the shipped default binds 0.0.0.0:14550, so a
-        // later sender (a spoofed datagram from the field network) must never
-        // redirect arm/disarm, mode changes or mission uploads.
-        if (handle.peers.observe(rinfo.address, rinfo.port, msg) === "drop") return;
+        // parser or become the peer. While the learned peer is live, every
+        // other source is dropped too: the shipped default binds
+        // 0.0.0.0:14550, so a second sender must never redirect arm/disarm,
+        // mode changes or mission uploads. A peer silent for 3 s is replaced
+        // by the next local MAVLink sender (a restarted router or SITL).
+        const verdict = handle.peers.observe(rinfo.address, rinfo.port, msg);
+        if (verdict === "drop") return;
+        if (verdict === "relearned") {
+          pushToRenderer("net:peer", { id, host: rinfo.address, port: rinfo.port });
+        }
         pushToRenderer("net:data", { id, data: msg });
       });
 
@@ -236,7 +241,7 @@ export function setupNetSockets(window: BrowserWindow): void {
   mainWindow = window;
 
   /** Only the main window's own frame may drive these sockets. */
-  const fromMainWindow = (event: Electron.IpcMainInvokeEvent): boolean =>
+  const fromMainWindow = (event: { sender: Electron.WebContents }): boolean =>
     mainWindow !== null &&
     !mainWindow.isDestroyed() &&
     event.sender === mainWindow.webContents;
@@ -245,8 +250,10 @@ export function setupNetSockets(window: BrowserWindow): void {
     if (!fromMainWindow(e)) throw new Error("net:open: unauthorized sender");
     return openSocket(spec);
   });
-  ipcMain.handle("net:send", (e, id: string, data: Uint8Array) => {
-    if (!fromMainWindow(e)) throw new Error("net:send: unauthorized sender");
+  // Fire-and-forget: outbound MAVLink runs at up to 50 Hz, so a promise and
+  // reply per frame is pure overhead. A frame from any other sender is ignored.
+  ipcMain.on("net:send", (e, id: string, data: Uint8Array) => {
+    if (!fromMainWindow(e)) return;
     sendSocket(id, data);
   });
   ipcMain.handle("net:close", (e, id: string) => {

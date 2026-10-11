@@ -1,7 +1,8 @@
 /**
- * The desktop UDP listen socket learns its send peer ONCE, from the first
- * local MAVLink frame, and client-side route changes never tear the native
- * sockets down.
+ * The desktop UDP listen socket learns its send peer from the first local
+ * MAVLink frame, drops every other source while that peer is live, re-learns
+ * only after the peer has been silent for 3 s, and client-side route changes
+ * never tear the native sockets down.
  *
  * The shipped default is `{host: "0.0.0.0", port: 14550, mode: "listen"}`,
  * which binds every interface, so a peer that could be (re)learned from any
@@ -19,12 +20,14 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import dgram from "node:dgram";
 import { once } from "node:events";
 
-const { ipcHandlers, inbound, closes, navListeners } = vi.hoisted(() => ({
+const { ipcHandlers, inbound, closes, peers, navListeners } = vi.hoisted(() => ({
   ipcHandlers: new Map<string, (...args: unknown[]) => unknown>(),
   /** Every `net:data` push the module made to the renderer. */
   inbound: [] as unknown[],
   /** Every `net:close` push the module made to the renderer. */
   closes: [] as unknown[],
+  /** Every `net:peer` push the module made to the renderer. */
+  peers: [] as unknown[],
   /** `did-start-navigation` listeners the module registered. */
   navListeners: [] as ((...args: unknown[]) => void)[],
 }));
@@ -33,6 +36,9 @@ vi.mock("electron", () => ({
   app: { isPackaged: true },
   ipcMain: {
     handle: (channel: string, handler: (...args: unknown[]) => unknown) => {
+      ipcHandlers.set(channel, handler);
+    },
+    on: (channel: string, handler: (...args: unknown[]) => unknown) => {
       ipcHandlers.set(channel, handler);
     },
   },
@@ -52,6 +58,7 @@ const fakeWindow = {
     send: (channel: string, payload: unknown) => {
       if (channel === "net:data") inbound.push(payload);
       if (channel === "net:close") closes.push(payload);
+      if (channel === "net:peer") peers.push(payload);
     },
   },
 };
@@ -162,6 +169,7 @@ describe("UDP listen-mode peer learning", () => {
     ipcHandlers.clear();
     inbound.length = 0;
     closes.length = 0;
+    peers.length = 0;
     navListeners.length = 0;
     setupNetSockets(
       fakeWindow as unknown as Parameters<typeof setupNetSockets>[0],
@@ -169,6 +177,7 @@ describe("UDP listen-mode peer learning", () => {
   });
 
   afterEach(async () => {
+    vi.useRealTimers();
     closeAllSockets("test teardown");
     for (const s of opened) {
       s.close();
@@ -183,21 +192,60 @@ describe("UDP listen-mode peer learning", () => {
     return { id, port };
   }
 
-  it("keeps the FIRST sender as the peer when a second sender appears", async () => {
+  it("keeps the live peer and drops a second sender's frames", async () => {
     const { id, port } = await listen();
     const vehicle = await boundSocket();
     const attacker = await boundSocket();
     opened.push(vehicle.socket, attacker.socket);
 
     // The real vehicle speaks first; an attacker on the same network speaks
-    // second. Both are observed before anything is sent back.
+    // second, then the vehicle again. Loopback delivers in send order, so the
+    // vehicle's second frame arriving means the attacker's was observed.
     await sendTo(vehicle.socket, port, mavlinkFrame(1));
     await sendTo(attacker.socket, port, mavlinkFrame(1));
+    await sendTo(vehicle.socket, port, mavlinkFrame(1));
     await awaitInbound(2);
+    expect(inbound.length).toBe(2);
+    expect(peers).toEqual([]);
 
     const winner = firstReceiver(vehicle.socket, attacker.socket);
-    await handler("net:send")(mainWindowEvent, id, new Uint8Array([0xfd, 0xaa]));
+    handler("net:send")(mainWindowEvent, id, new Uint8Array([0xfd, 0xaa]));
     expect(await winner).toBe("first");
+  });
+
+  it("re-learns a new source once the peer has been silent for 3 s", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(1_000_000);
+    const { id, port } = await listen();
+    const oldPeer = await boundSocket();
+    const newPeer = await boundSocket();
+    opened.push(oldPeer.socket, newPeer.socket);
+
+    await sendTo(oldPeer.socket, port, mavlinkFrame(1));
+    await awaitInbound(1);
+    vi.setSystemTime(1_000_000 + 3000);
+    await sendTo(newPeer.socket, port, mavlinkFrame(1));
+    await awaitInbound(2);
+
+    expect(peers).toEqual([{ id, host: "127.0.0.1", port: newPeer.port }]);
+    const winner = firstReceiver(oldPeer.socket, newPeer.socket);
+    handler("net:send")(mainWindowEvent, id, new Uint8Array([0xfd, 0xaa]));
+    expect(await winner).toBe("second");
+  });
+
+  it("ignores a net:send from any frame other than the main window", async () => {
+    const { id, port } = await listen();
+    const vehicle = await boundSocket();
+    opened.push(vehicle.socket);
+    await sendTo(vehicle.socket, port, mavlinkFrame(1));
+    await awaitInbound(1);
+
+    handler("net:send")({ sender: {} }, id, new Uint8Array([0xfd, 0xaa]));
+    // The legitimate frame sent next is the first thing the vehicle sees.
+    const legit = once(vehicle.socket, "message");
+    handler("net:send")(mainWindowEvent, id, new Uint8Array([0xfd, 0xbb]));
+    const [msg] = await legit;
+    expect(Array.from(msg as Buffer)).toEqual([0xfd, 0xbb]);
   });
 
   it("does not learn the peer from a datagram that is not a MAVLink frame", async () => {
@@ -211,7 +259,7 @@ describe("UDP listen-mode peer learning", () => {
     await awaitInbound(2);
 
     const winner = firstReceiver(noise.socket, vehicle.socket);
-    await handler("net:send")(mainWindowEvent, id, new Uint8Array([0xfd, 0xaa]));
+    handler("net:send")(mainWindowEvent, id, new Uint8Array([0xfd, 0xaa]));
     expect(await winner).toBe("second");
   });
 
@@ -230,7 +278,7 @@ describe("UDP listen-mode peer learning", () => {
     // An attacker writes to whatever ephemeral port the module bound. Even
     // if it found it, target mode must never relearn.
     const atTarget = once(target.socket, "message");
-    await handler("net:send")(mainWindowEvent, id, new Uint8Array([0xfd, 0xbb]));
+    handler("net:send")(mainWindowEvent, id, new Uint8Array([0xfd, 0xbb]));
     await atTarget;
 
     expect(inbound.length).toBe(0);

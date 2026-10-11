@@ -25,20 +25,17 @@ const ALLOWED_PERMISSIONS = new Set([
   // split `local-network` / `loopback-network` pair plus the legacy combined
   // `local-network-access` spelling, and which one a given Chromium asks for
   // depends on its version, so all three are accepted. Still origin-gated:
-  // `isTrustedOrigin` keeps this to the app's own loopback window.
+  // only the app's own loopback origin is granted anything.
   "local-network",
   "loopback-network",
   "local-network-access",
 ]);
 
-function isTrustedOrigin(origin?: string): boolean {
+/** Whether `origin` is exactly the app's own server, `http://127.0.0.1:<port>`. */
+export function isTrustedOrigin(origin: string | undefined, port: number): boolean {
   if (!origin) return false;
   try {
-    const parsed = new URL(origin);
-    return (
-      parsed.protocol === "http:" &&
-      (parsed.hostname === "127.0.0.1" || parsed.hostname === "localhost")
-    );
+    return new URL(origin).origin === `http://127.0.0.1:${port}`;
   } catch {
     return false;
   }
@@ -50,17 +47,19 @@ function getOwnerWindow(webContents: Electron.WebContents): BrowserWindow | null
 
 /**
  * Setup device permissions for WebSerial and WebUSB.
- * Electron requires explicit permission handling for these APIs.
+ * Electron requires explicit permission handling for these APIs. Every grant
+ * is limited to the app's own origin on `port`; another loopback origin (a
+ * different local server rendered in a frame) gets nothing.
  */
-export function setupPermissions(): void {
+export function setupPermissions(port: number): void {
   const ses = session.defaultSession;
 
   ses.setDevicePermissionHandler((details) => {
-    return isTrustedOrigin(details.origin);
+    return isTrustedOrigin(details.origin, port);
   });
 
   ses.setPermissionCheckHandler((_webContents, permission, requestingOrigin) => {
-    return ALLOWED_PERMISSIONS.has(permission) && isTrustedOrigin(requestingOrigin);
+    return ALLOWED_PERMISSIONS.has(permission) && isTrustedOrigin(requestingOrigin, port);
   });
 
   ses.setPermissionRequestHandler((webContents, permission, callback, details) => {
@@ -70,7 +69,7 @@ export function setupPermissions(): void {
     } catch {
       origin = "";
     }
-    callback(ALLOWED_PERMISSIONS.has(permission) && isTrustedOrigin(origin));
+    callback(ALLOWED_PERMISSIONS.has(permission) && isTrustedOrigin(origin, port));
   });
 
   ses.on("select-serial-port", (event, portList, webContents, callback) => {

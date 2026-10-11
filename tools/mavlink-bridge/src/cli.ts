@@ -262,6 +262,9 @@ function main(): void {
       log(`UDP socket closed (${host}:${port}), rebinding...`),
     );
     udp.on('peer-learned', ({ host, port }) => log(`Learned UDP peer ${host}:${port}`));
+    udp.on('peer-relearned', ({ host, port }) =>
+      log(`UDP peer went silent; re-learned peer ${host}:${port}`),
+    );
     udp.on('ws-client-connected', ({ remoteAddress }) =>
       log(`GCS connected from ${remoteAddress} (${udp.wsClientCount} client(s))`),
     );

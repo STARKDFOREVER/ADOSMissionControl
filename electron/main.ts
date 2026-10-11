@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain } from "electron";
+import { app, dialog, session } from "electron";
 import { setupPermissions } from "./permissions";
 import { startServer, stopServer } from "./server";
 import { applyNavigationPolicy, createMainWindow } from "./window";
@@ -43,22 +43,22 @@ if (!gotLock) {
 
 app.whenReady().then(async () => {
   try {
-    // Setup device permissions (WebSerial, WebUSB)
-    setupPermissions();
-
     // Start the embedded server. In dev (--dev, unpackaged) this is a live
     // `next dev` server with HMR; otherwise it's the production standalone bundle.
     const port = await startServer({ demo: isDemoMode, dev: isDevMode });
 
-    // In packaged builds, passively log /_next/static requests for diagnostics
-    // (no interception — Chromium talks directly to the localhost server)
-    if (app.isPackaged) {
-      const { session } = require("electron");
-      const filter = { urls: ["http://127.0.0.1:*/_next/*"] };
-      session.defaultSession.webRequest.onCompleted(filter, (details: any) => {
+    // Device permissions (WebSerial, WebUSB) are granted only to the app's
+    // own origin, which is known once the server has its port.
+    setupPermissions(port);
+
+    // Request diagnostics for /_next/* are opt-in: logging every request for
+    // the life of a long session buries the errors that matter.
+    if (app.isPackaged && process.env.ADOS_DEBUG_REQUESTS === "1") {
+      const filter = { urls: [`http://127.0.0.1:${port}/_next/*`] };
+      session.defaultSession.webRequest.onCompleted(filter, (details) => {
         console.log(`[req] ${details.statusCode} ${details.url.substring(0, 120)}`);
       });
-      session.defaultSession.webRequest.onErrorOccurred(filter, (details: any) => {
+      session.defaultSession.webRequest.onErrorOccurred(filter, (details) => {
         console.error(`[req] ERR ${details.error} ${details.url.substring(0, 120)}`);
       });
     }
@@ -72,26 +72,6 @@ app.whenReady().then(async () => {
 
     // Create the main browser window
     const win = createMainWindow(port);
-
-    // IPC handlers for window controls.
-    //
-    // Resolved from the SENDER, not from the captured `win`: a popup calling
-    // `window:close` used to close the main window, which on the only
-    // platform-independent path quits the app.
-    const senderWindow = (e: Electron.IpcMainInvokeEvent) =>
-      BrowserWindow.fromWebContents(e.sender);
-    ipcMain.handle("window:minimize", (e) => senderWindow(e)?.minimize());
-    ipcMain.handle("window:maximize", (e) => {
-      const w = senderWindow(e);
-      if (!w) return;
-      if (w.isMaximized()) {
-        w.unmaximize();
-      } else {
-        w.maximize();
-      }
-    });
-    ipcMain.handle("window:close", (e) => senderWindow(e)?.close());
-    ipcMain.handle("app:version", () => app.getVersion());
 
     // Native UDP/TCP MAVLink sockets (the browser can't open raw sockets).
     setupNetSockets(win);

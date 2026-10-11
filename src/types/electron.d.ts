@@ -4,7 +4,8 @@ interface ElectronNetOpenSpec {
   host: string;
   port: number;
   /** UDP only. "listen" binds host:port and learns the peer from the first
-   *  datagram (the common autopilot case); "target" sends to a fixed host:port.
+   *  MAVLink datagram (the common autopilot case), re-learning only after 3 s
+   *  of silence; "target" sends to a fixed host:port.
    *  Ignored for TCP (always a client connect). */
   mode?: "listen" | "target";
 }
@@ -16,16 +17,25 @@ interface ElectronNetCloseMessage {
   id: string;
   reason?: string;
 }
+/** A listen-mode UDP socket replaced a peer that had gone silent. */
+interface ElectronNetPeerMessage {
+  id: string;
+  host: string;
+  port: number;
+}
 /** Native UDP/TCP socket bridge owned by the Electron main process. The renderer
  *  only ever holds an opaque socket id; the real socket never leaves main. */
 interface ElectronNetAPI {
   open: (spec: ElectronNetOpenSpec) => Promise<{ id: string }>;
-  send: (id: string, data: Uint8Array) => Promise<void>;
+  /** Fire-and-forget: a frame for an unknown id is ignored. */
+  send: (id: string, data: Uint8Array) => void;
   close: (id: string) => Promise<void>;
   /** Subscribe to inbound bytes for any open socket. Returns an unsubscribe. */
   onData: (cb: (msg: ElectronNetDataMessage) => void) => () => void;
   /** Subscribe to socket close/error events. Returns an unsubscribe. */
   onClose: (cb: (msg: ElectronNetCloseMessage) => void) => () => void;
+  /** Subscribe to listen-mode peer re-learns. Returns an unsubscribe. */
+  onPeer: (cb: (msg: ElectronNetPeerMessage) => void) => () => void;
 }
 
 /** Update status the main process pushes; mirrors `UpdateStatus` in electron/updater.ts. */
@@ -35,7 +45,10 @@ export type ElectronUpdateStatus =
   | { state: "available"; version: string; installable: boolean; releasesUrl: string }
   | { state: "downloading"; version: string }
   | { state: "downloaded"; version: string }
-  | { state: "error"; message: string };
+  /** The release channel could not be reached; normal for an offline GCS. */
+  | { state: "check-failed"; message: string }
+  /** A download or install failed; a failed download can be retried. */
+  | { state: "error"; phase: "download" | "install"; message: string };
 
 interface ElectronUpdatesAPI {
   /** The latest status, including a result that arrived before this page mounted. */
@@ -46,6 +59,8 @@ interface ElectronUpdatesAPI {
   download: () => Promise<void>;
   /** Quit and install the downloaded version. */
   install: () => Promise<void>;
+  /** Check the release channel now; resolves with the resulting status. */
+  check: () => Promise<ElectronUpdateStatus>;
 }
 
 /** Seals paired-node API keys with the OS key store (Electron `safeStorage`)
@@ -60,10 +75,6 @@ interface ElectronLocalNodesAPI {
 interface ElectronAPI {
   isElectron: true;
   platform: "darwin" | "win32" | "linux";
-  getVersion: () => Promise<string>;
-  minimize: () => Promise<void>;
-  maximize: () => Promise<void>;
-  close: () => Promise<void>;
   updates: ElectronUpdatesAPI;
   /** Native UDP/TCP MAVLink sockets — desktop builds only (absent in browsers). */
   net?: ElectronNetAPI;

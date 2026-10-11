@@ -98,17 +98,19 @@ first MAVLink frame, and relays both directions. Connect the GCS to the printed
 
 | Spec | Mode | Behavior |
 |------|------|----------|
-| `udp:HOST:PORT` | listen | Bind to `HOST:PORT`, learn the remote peer once from the first MAVLink datagram sent from a local address, then send GCS traffic back to that peer. |
+| `udp:HOST:PORT` | listen | Bind to `HOST:PORT`, learn the remote peer from the first MAVLink datagram sent from a local address, then send GCS traffic back to that peer. |
 | `udpin:HOST:PORT` | listen | Same as `udp:` (explicit). |
 | `udpout:HOST:PORT` | target | Send to a fixed `HOST:PORT` from the start, and receive replies on the same socket. |
 | `tcp:HOST:PORT` | tcp | Connect out to a TCP MAVLink server, with automatic reconnect and exponential backoff. |
 
 The `listen` mode follows MAVProxy semantics: the drone or simulator sends to
 the bridge, the bridge learns where it came from, and replies route back to that
-learned peer. The peer is learned once, for the life of the bridge: a later
-sender never redirects GCS traffic, and datagrams from outside loopback,
-private (RFC 1918), link-local and carrier-grade NAT (100.64.0.0/10) addresses
-are dropped. Restart the bridge if the vehicle's address changes.
+learned peer. While that peer is live, datagrams from any other source are
+dropped, so a second sender can neither redirect GCS traffic nor mix bytes into
+the stream. After 3 s of silence from the peer, the next local MAVLink sender
+replaces it, so a vehicle that comes back on a new address or port is followed
+without a restart. Datagrams from outside loopback, private (RFC 1918),
+link-local and carrier-grade NAT (100.64.0.0/10) addresses are always dropped.
 
 ## CLI Options
 
@@ -129,7 +131,8 @@ are dropped. Restart the bridge if the vehicle's address changes.
   where only a datagram that starts with a MAVLink v1/v2 frame can set the peer.
 - UDP is connectionless. In `listen` mode the bridge cannot send GCS traffic
   until it has seen a MAVLink frame from the vehicle and learned the peer. On a
-  socket error it rebinds with exponential backoff and keeps the learned peer.
+  socket error it rebinds with exponential backoff and keeps the learned peer
+  until it has been silent for 3 s.
 - TCP reconnects automatically with exponential backoff if the upstream server
   drops or is not yet up.
 

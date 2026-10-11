@@ -46,10 +46,12 @@ import {
 
 const PACKAGED_MAC: UpdateEnvironment = { platform: "darwin", isPackaged: true };
 const PACKAGED_WIN: UpdateEnvironment = { platform: "win32", isPackaged: true };
+/** A signed AppImage: the only environment where self-install is real. */
 const PACKAGED_APPIMAGE: UpdateEnvironment = {
   platform: "linux",
   isPackaged: true,
   appImagePath: "/tmp/AltnauticaCommand.AppImage",
+  codeSigned: true,
 };
 
 /** A window stand-in; the updater only ever asks whether it can still be sent to. */
@@ -114,12 +116,27 @@ describe("resolveUpdateCapability", () => {
     expect(cap.mode === "manual" && cap.reason).toMatch(/code-signed/);
   });
 
-  it("reports Linux as self-updating only when running from an AppImage", () => {
+  it("refuses to self-install on Linux while the build is unsigned", () => {
+    // The AppImage carries no signature either, so it gets the same answer as
+    // Windows rather than a quit-time install guarded by metadata SHA-512 only.
+    const unsigned = resolveUpdateCapability({
+      platform: "linux",
+      isPackaged: true,
+      appImagePath: "/tmp/AltnauticaCommand.AppImage",
+    });
+    expect(unsigned.mode).toBe("manual");
+    expect(unsigned.mode === "manual" && unsigned.reason).toMatch(
+      /Linux build is not code-signed/,
+    );
+  });
+
+  it("reports a signed Linux build as self-updating only from an AppImage", () => {
     expect(resolveUpdateCapability(PACKAGED_APPIMAGE)).toEqual({ mode: "auto" });
 
     const outsideAppImage = resolveUpdateCapability({
       platform: "linux",
       isPackaged: true,
+      codeSigned: true,
     });
     expect(outsideAppImage.mode).toBe("manual");
     expect(outsideAppImage.mode === "manual" && outsideAppImage.reason).toMatch(
@@ -166,16 +183,22 @@ describe("setupAutoUpdater", () => {
 
   it("listens for updater errors and reports them", () => {
     const win = fakeWindow();
-    setupAutoUpdater(win, PACKAGED_WIN);
+    setupAutoUpdater(win, PACKAGED_APPIMAGE);
 
     const registered = (autoUpdater.on.mock.calls as [string, unknown][]).map(
       ([name]) => name,
     );
     expect(registered).toContain("error");
 
+    emit("update-downloaded", { version: "1.2.3" });
+    ipcHandlers.get("update:install")!();
     emit("error", new Error("install exploded"));
-    expect(errorSpy).toHaveBeenCalled();
     expect(errorSpy.mock.calls.flat().join(" ")).toMatch(/install exploded/);
+    expect(ipcHandlers.get("update:status")!()).toEqual({
+      state: "error",
+      phase: "install",
+      message: "install exploded",
+    });
   });
 
   it("refuses an install request instead of pretending it was accepted", async () => {
@@ -220,6 +243,11 @@ describe("setupAutoUpdater", () => {
     emit("update-available", { version: "1.2.3" });
     await ipcHandlers.get("update:download")!();
     emit("error", new Error("connection reset"));
+    expect(ipcHandlers.get("update:status")!()).toEqual({
+      state: "error",
+      phase: "download",
+      message: "connection reset",
+    });
 
     await ipcHandlers.get("update:download")!();
     expect(autoUpdater.downloadUpdate).toHaveBeenCalledTimes(2);
@@ -253,11 +281,13 @@ describe("setupAutoUpdater", () => {
     expect(win.webContents.send).toHaveBeenLastCalledWith("update:status", available);
     expect(ipcHandlers.get("update:status")!()).toEqual(available);
 
+    // A check failure (offline in the field) is information, not a failed update.
     emit("error", new Error("feed unreachable"));
     expect(ipcHandlers.get("update:status")!()).toEqual({
-      state: "error",
+      state: "check-failed",
       message: "feed unreachable",
     });
+    expect(errorSpy).not.toHaveBeenCalled();
   });
 
   it("names the manual download route when a version it cannot install appears", () => {
@@ -270,13 +300,40 @@ describe("setupAutoUpdater", () => {
     expect(warned).toContain(RELEASES_URL);
   });
 
-  it("reports a failed update check instead of swallowing it", async () => {
+  it("reports a failed update check as check-failed instead of swallowing it", async () => {
     autoUpdater.checkForUpdates.mockRejectedValue(new Error("feed unreachable"));
     setupAutoUpdater(fakeWindow(), PACKAGED_WIN);
 
     await vi.waitFor(() => {
-      expect(errorSpy.mock.calls.flat().join(" ")).toMatch(/feed unreachable/);
+      expect(ipcHandlers.get("update:status")!()).toEqual({
+        state: "check-failed",
+        message: "feed unreachable",
+      });
     });
+    expect(warnSpy.mock.calls.flat().join(" ")).toMatch(/feed unreachable/);
+  });
+
+  it("checks again on request and resolves with the resulting status", async () => {
+    autoUpdater.checkForUpdates.mockRejectedValueOnce(new Error("offline"));
+    setupAutoUpdater(fakeWindow(), PACKAGED_WIN);
+    await vi.waitFor(() => {
+      expect(ipcHandlers.get("update:status")!()).toMatchObject({ state: "check-failed" });
+    });
+
+    autoUpdater.checkForUpdates.mockImplementationOnce(async () => {
+      emit("update-not-available", { version: "1.0.0" });
+      return { updateInfo: { version: "1.0.0" } };
+    });
+    await expect(ipcHandlers.get("update:check")!()).resolves.toEqual({ state: "idle" });
+    expect(autoUpdater.checkForUpdates).toHaveBeenCalledTimes(2);
+  });
+
+  it("refuses a manual check where there is no release channel", async () => {
+    setupAutoUpdater(fakeWindow(), { platform: "win32", isPackaged: false });
+    await expect(
+      Promise.resolve().then(() => ipcHandlers.get("update:check")!()),
+    ).rejects.toThrow(/unpackaged/);
+    expect(autoUpdater.checkForUpdates).not.toHaveBeenCalled();
   });
 
   it("checks on macOS even though it cannot install", async () => {

@@ -25,6 +25,13 @@ export interface UpdateEnvironment {
   isPackaged: boolean;
   /** `process.env.APPIMAGE` — set only when the app runs from an AppImage. */
   appImagePath?: string;
+  /**
+   * Whether this build carries a code signature the updater verifies before
+   * installing. `electron-builder.yml` signs nothing today, so the shipped
+   * value is false; self-install comes back on Windows and Linux only together
+   * with real signing.
+   */
+  codeSigned?: boolean;
 }
 
 /**
@@ -61,18 +68,17 @@ export function resolveUpdateCapability(
     };
   }
 
-  if (env.platform === "win32") {
-    // `electron-builder.yml` carries no Windows signing block and no
-    // `publisherName`, so electron-updater SKIPS signature verification
-    // entirely and the only integrity control is the SHA-512 in the
-    // HTTPS-fetched metadata. The macOS branch above is honest about being
-    // unsigned; this one used to return `{mode:"auto"}` and arm
-    // `autoInstallOnAppQuit`, i.e. silently install an unverified binary at
-    // quit. Restore `auto` together with real code signing, not before.
+  // `electron-builder.yml` carries no Windows signing block and no
+  // `publisherName`, and the Linux AppImage is unsigned, so electron-updater
+  // would verify nothing and the only integrity control is the SHA-512 in the
+  // HTTPS-fetched metadata. Returning `auto` armed `autoInstallOnAppQuit`, i.e.
+  // silently installed an unverified binary at quit. Restore `auto` together
+  // with real code signing, not before.
+  if ((env.platform === "win32" || env.platform === "linux") && !env.codeSigned) {
+    const os = env.platform === "win32" ? "Windows" : "Linux";
     return {
       mode: "manual",
-      reason:
-        "this Windows build is not code-signed, so an update cannot be verified before it installs itself",
+      reason: `this ${os} build is not code-signed, so an update cannot be verified before it installs itself`,
     };
   }
 
@@ -96,6 +102,9 @@ function describe(capability: UpdateCapability): string {
     : `${capability.reason}; download updates from ${RELEASES_URL}`;
 }
 
+/** Which updater call was in flight when an `error` event arrived. */
+export type UpdatePhase = "check" | "download" | "install";
+
 /**
  * What the renderer is told about updates, pushed on `update:status` and
  * readable at any time through `update:status` (invoke), so a page that
@@ -107,7 +116,10 @@ export type UpdateStatus =
   | { state: "available"; version: string; installable: boolean; releasesUrl: string }
   | { state: "downloading"; version: string }
   | { state: "downloaded"; version: string }
-  | { state: "error"; message: string };
+  /** The release channel could not be reached; normal for a GCS offline in the field. */
+  | { state: "check-failed"; message: string }
+  /** A download or install failed; a failed download can be retried. */
+  | { state: "error"; phase: "download" | "install"; message: string };
 
 /**
  * Wire up update checking. Returns the capability that was resolved so a
@@ -122,6 +134,7 @@ export function setupAutoUpdater(
     platform: process.platform,
     isPackaged: app.isPackaged,
     appImagePath: process.env.APPIMAGE,
+    codeSigned: false,
   },
 ): UpdateCapability {
   const capability = resolveUpdateCapability(env);
@@ -146,6 +159,9 @@ export function setupAutoUpdater(
   // The newest version the channel offered. Kept apart from `status` so a
   // failed download, which publishes `error`, can still be retried.
   let availableVersion: string | null = null;
+  // Set before every updater call, so an `error` event (which carries no
+  // context) is attributed to the call that raised it.
+  let phase: UpdatePhase = "check";
   const publish = (next: UpdateStatus): void => {
     status = next;
     if (!win.isDestroyed()) win.webContents.send("update:status", next);
@@ -154,9 +170,24 @@ export function setupAutoUpdater(
   // Without a listener the library's own error dispatch hits Node's unhandled
   // 'error' behaviour and is then swallowed by the library's internal catch, so
   // this listener is what makes a failed download or install observable at all.
+  // electron-updater also emits `error` when a CHECK fails, which on a field
+  // GCS without internet is routine, so that case is reported as information,
+  // not as a failed update.
   autoUpdater.on("error", (err: Error) => {
-    console.error("[updater] update failed:", err?.stack || err?.message || err);
-    publish({ state: "error", message: err?.message || String(err) });
+    const message = err?.message || String(err);
+    if (phase === "check") {
+      console.warn("[updater] update check failed:", err?.stack || message);
+      publish({ state: "check-failed", message });
+      return;
+    }
+    console.error(`[updater] update ${phase} failed:`, err?.stack || message);
+    publish({ state: "error", phase, message });
+  });
+
+  autoUpdater.on("update-not-available", () => {
+    if (status.state === "idle" || status.state === "check-failed" || status.state === "available") {
+      publish({ state: "idle" });
+    }
   });
 
   autoUpdater.on("update-available", (info) => {
@@ -199,6 +230,7 @@ export function setupAutoUpdater(
       throw new Error(`Cannot download an update: it is already ${status.state}`);
     }
     publish({ state: "downloading", version: availableVersion });
+    phase = "download";
     // A failure is published by the `error` listener and rejects the invoke.
     await autoUpdater.downloadUpdate();
   });
@@ -216,7 +248,39 @@ export function setupAutoUpdater(
     if (status.state !== "downloaded") {
       throw new Error("Cannot install an update: nothing has been downloaded");
     }
+    phase = "install";
     autoUpdater.quitAndInstall();
+  });
+
+  const check = async (): Promise<void> => {
+    phase = "check";
+    try {
+      const result = await autoUpdater.checkForUpdates();
+      // A null result means the library declined the check; otherwise report
+      // what the channel is actually offering, so "no update" and "never
+      // asked" are distinguishable in the log.
+      if (result == null) {
+        console.warn("[updater] update check returned no result");
+      } else {
+        console.info(`[updater] latest published version is ${result.updateInfo.version}`);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.warn("[updater] update check failed:", err instanceof Error ? err.stack : message);
+      publish({ state: "check-failed", message });
+    }
+  };
+
+  // An operator-requested check, from the About section. Resolves with the
+  // status the check left behind, so the caller can say "up to date".
+  ipcMain.handle("update:check", async (): Promise<UpdateStatus> => {
+    if (capability.mode === "off") {
+      throw new Error(`Cannot check for updates: ${describe(capability)}`);
+    }
+    // A download in progress or waiting to install is newer news than a check.
+    if (status.state === "downloading" || status.state === "downloaded") return status;
+    await check();
+    return status;
   });
 
   if (capability.mode === "off") {
@@ -225,26 +289,7 @@ export function setupAutoUpdater(
   }
 
   console.info(`[updater] checking for updates: ${describe(capability)}`);
-  autoUpdater
-    .checkForUpdates()
-    .then((result) => {
-      // A null result means the library declined the check; otherwise report
-      // what the channel is actually offering, so "no update" and "never
-      // asked" are distinguishable in the log.
-      if (result == null) {
-        console.warn("[updater] update check returned no result");
-      } else {
-        console.info(
-          `[updater] latest published version is ${result.updateInfo.version}`,
-        );
-      }
-    })
-    .catch((err: Error) => {
-      console.error(
-        "[updater] update check failed:",
-        err?.stack || err?.message || err,
-      );
-    });
+  void check();
 
   return capability;
 }

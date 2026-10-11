@@ -124,26 +124,38 @@ export interface UdpPeer {
 
 /** What to do with one inbound datagram. */
 export type UdpVerdict =
-  /** Source is outside the local endpoint space: do not relay it. */
+  /** Do not relay it: a non-local source, or another source while the peer is live. */
   | 'drop'
-  /** Relay it; this datagram set the send peer. */
+  /** Relay it; this datagram set the first send peer. */
   | 'learned'
+  /** Relay it; this datagram replaced a peer that had gone silent. */
+  | 'relearned'
   /** Relay it; the send peer is unchanged. */
   | 'relay';
+
+/** How long a learned peer must stay silent before another source may replace it. */
+export const PEER_SILENCE_MS = 3000;
 
 /**
  * The send peer of a UDP link.
  *
  * Target mode starts with a fixed peer that never changes. Listen mode learns
- * the peer exactly once, from the first datagram that comes from a local
- * source AND carries a MAVLink frame, and keeps it for the life of the socket:
- * a later sender, spoofed or not, can never redirect GCS-to-vehicle traffic.
+ * the peer from the first datagram that comes from a local source AND carries
+ * a MAVLink frame. While that peer is live, datagrams from any other source
+ * are dropped, so a second sender can neither redirect GCS-to-vehicle traffic
+ * nor mix its bytes into the stream. Once the peer has been silent for
+ * PEER_SILENCE_MS, the next local MAVLink sender replaces it: a vehicle-side
+ * endpoint that restarted on a new address or port is followed instead of
+ * leaving commands addressed to a dead peer.
  */
 export class UdpPeerTracker {
   private current: UdpPeer | null;
+  private readonly fixed: boolean;
+  private lastPeerAt = 0;
 
   constructor(fixedPeer: UdpPeer | null = null) {
     this.current = fixedPeer ? { host: fixedPeer.host, port: fixedPeer.port } : null;
+    this.fixed = fixedPeer !== null;
   }
 
   /** Where GCS-to-vehicle bytes go, or null before a peer is known. */
@@ -151,12 +163,25 @@ export class UdpPeerTracker {
     return this.current;
   }
 
-  observe(host: string, port: number, datagram: Uint8Array): UdpVerdict {
+  observe(host: string, port: number, datagram: Uint8Array, now: number = Date.now()): UdpVerdict {
     if (!isLocalEndpoint(host)) return 'drop';
-    if (this.current === null && isMavlinkFrame(datagram)) {
+    if (this.fixed) return 'relay';
+    const current = this.current;
+    if (current === null) {
+      if (!isMavlinkFrame(datagram)) return 'relay';
       this.current = { host, port };
+      this.lastPeerAt = now;
       return 'learned';
     }
-    return 'relay';
+    if (current.host === host && current.port === port) {
+      this.lastPeerAt = now;
+      return 'relay';
+    }
+    if (now - this.lastPeerAt >= PEER_SILENCE_MS && isMavlinkFrame(datagram)) {
+      this.current = { host, port };
+      this.lastPeerAt = now;
+      return 'relearned';
+    }
+    return 'drop';
   }
 }

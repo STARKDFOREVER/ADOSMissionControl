@@ -40,6 +40,7 @@ export interface UdpWsBridgeConfig extends WsGuardOptions {
 
 interface UdpBridgeEvents extends BridgeEvents {
   'peer-learned': [PeerEvent];
+  'peer-relearned': [PeerEvent];
 }
 
 // ---------------------------------------------------------------------------
@@ -146,6 +147,8 @@ export class UdpWsBridge extends EventEmitter<UdpBridgeEvents> implements Bridge
       if (verdict === 'drop') return;
       if (verdict === 'learned') {
         this.emit('peer-learned', { host: rinfo.address, port: rinfo.port });
+      } else if (verdict === 'relearned') {
+        this.emit('peer-relearned', { host: rinfo.address, port: rinfo.port });
       }
       // drone → GCS: broadcast to every WS client.
       this.broadcastToWs(msg);

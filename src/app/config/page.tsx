@@ -1,6 +1,7 @@
 import { GeneralSection } from "@/components/config/GeneralSection";
 import { LanguageSection } from "@/components/config/LanguageSection";
 import { PluginSettingsSection } from "@/components/config/PluginSettingsSection";
+import { AboutSection } from "@/components/config/AboutSection";
 
 export default function ConfigurationPage() {
   return (
@@ -11,6 +12,7 @@ export default function ConfigurationPage() {
         {/* Fleet settings.section slot — a GCS-level plugin's settings iframe
             renders here. Inert until a plugin contributes. */}
         <PluginSettingsSection />
+        <AboutSection />
       </div>
     </div>
   );

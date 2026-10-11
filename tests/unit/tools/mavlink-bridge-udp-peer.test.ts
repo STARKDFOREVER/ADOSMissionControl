@@ -37,18 +37,44 @@ describe("UdpPeerTracker", () => {
     expect(peers.peer).toEqual({ host: "192.168.1.50", port: 14550 });
   });
 
-  it("learns once and relays a later sender without re-learning", () => {
+  it("learns once and drops a second sender while the peer is live", () => {
     const peers = new UdpPeerTracker();
-    expect(peers.observe("192.168.1.50", 14550, Buffer.from([1, 2, 3]))).toBe("relay");
+    expect(peers.observe("192.168.1.50", 14550, Buffer.from([1, 2, 3]), 0)).toBe("relay");
     expect(peers.peer).toBeNull();
-    expect(peers.observe("192.168.1.50", 14550, mavlinkFrame(1))).toBe("learned");
-    expect(peers.observe("192.168.1.51", 14555, mavlinkFrame(1))).toBe("relay");
+    expect(peers.observe("192.168.1.50", 14550, mavlinkFrame(1), 0)).toBe("learned");
+    expect(peers.observe("192.168.1.51", 14555, mavlinkFrame(1), 2999)).toBe("drop");
+    expect(peers.peer).toEqual({ host: "192.168.1.50", port: 14550 });
+  });
+
+  it("re-learns a new local MAVLink source after 3 s of peer silence", () => {
+    const peers = new UdpPeerTracker();
+    peers.observe("192.168.1.50", 14550, mavlinkFrame(1), 1000);
+    // The live peer refreshes its own clock.
+    expect(peers.observe("192.168.1.50", 14550, mavlinkFrame(1), 2000)).toBe("relay");
+    expect(peers.observe("192.168.1.51", 14555, mavlinkFrame(1), 4999)).toBe("drop");
+    expect(peers.observe("192.168.1.51", 14555, mavlinkFrame(1), 5000)).toBe("relearned");
+    expect(peers.peer).toEqual({ host: "192.168.1.51", port: 14555 });
+    // The old peer is now the other source, and the new one is live.
+    expect(peers.observe("192.168.1.50", 14550, mavlinkFrame(1), 5001)).toBe("drop");
+  });
+
+  it("never re-learns from a datagram that is not a MAVLink frame", () => {
+    const peers = new UdpPeerTracker();
+    peers.observe("192.168.1.50", 14550, mavlinkFrame(1), 0);
+    expect(peers.observe("192.168.1.51", 14555, Buffer.from([1, 2, 3]), 60_000)).toBe("drop");
+    expect(peers.peer).toEqual({ host: "192.168.1.50", port: 14550 });
+  });
+
+  it("never re-learns from a non-local source, however long the silence", () => {
+    const peers = new UdpPeerTracker();
+    peers.observe("192.168.1.50", 14550, mavlinkFrame(1), 0);
+    expect(peers.observe("203.0.113.9", 14550, mavlinkFrame(1), 60_000)).toBe("drop");
     expect(peers.peer).toEqual({ host: "192.168.1.50", port: 14550 });
   });
 
   it("never replaces a fixed target peer", () => {
     const peers = new UdpPeerTracker({ host: "127.0.0.1", port: 14550 });
-    expect(peers.observe("127.0.0.1", 40000, mavlinkFrame(1))).toBe("relay");
+    expect(peers.observe("127.0.0.1", 40000, mavlinkFrame(1), 60_000)).toBe("relay");
     expect(peers.peer).toEqual({ host: "127.0.0.1", port: 14550 });
   });
 });
@@ -106,7 +132,7 @@ describe("UdpWsBridge listen mode", () => {
     for (const fn of cleanup.splice(0)) fn();
   });
 
-  it("sends GCS traffic to the first sender, not a later one", async () => {
+  it("sends GCS traffic to the live first sender and drops a later one", async () => {
     const udpPort = await freeUdpPort();
     const wsPort = await freeTcpPort();
     const bridge = new UdpWsBridge({
@@ -134,7 +160,10 @@ describe("UdpWsBridge listen mode", () => {
 
     vehicle.send(mavlinkFrame(1), udpPort, "127.0.0.1");
     await once(bridge, "data");
+    // The attacker's frame is dropped; the vehicle's next frame, sent after it,
+    // arriving proves the attacker's was already observed (loopback keeps order).
     attacker.send(mavlinkFrame(1), udpPort, "127.0.0.1");
+    vehicle.send(mavlinkFrame(1), udpPort, "127.0.0.1");
     await once(bridge, "data");
     await expect.poll(() => relayed).toBe(2);
 

@@ -5,14 +5,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   isElectron: true,
   platform: process.platform,
 
-  // App info
-  getVersion: () => ipcRenderer.invoke("app:version"),
-
-  // Window controls (for custom title bar if needed)
-  minimize: () => ipcRenderer.invoke("window:minimize"),
-  maximize: () => ipcRenderer.invoke("window:maximize"),
-  close: () => ipcRenderer.invoke("window:close"),
-
   // Updates: the main process keeps the latest status, so a page that mounts
   // after the startup check reads it with `status()` and follows `onStatus`.
   updates: {
@@ -24,6 +16,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     },
     download: () => ipcRenderer.invoke("update:download"),
     install: () => ipcRenderer.invoke("update:install"),
+    check: (): Promise<UpdateStatus> => ipcRenderer.invoke("update:check"),
   },
 
   // Native UDP/TCP MAVLink sockets (the browser sandbox can't open raw sockets).
@@ -34,8 +27,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
       port: number;
       mode?: "listen" | "target";
     }) => ipcRenderer.invoke("net:open", spec),
-    send: (id: string, data: Uint8Array) =>
-      ipcRenderer.invoke("net:send", id, data),
+    send: (id: string, data: Uint8Array) => ipcRenderer.send("net:send", id, data),
     close: (id: string) => ipcRenderer.invoke("net:close", id),
     onData: (callback: (msg: { id: string; data: Uint8Array }) => void) => {
       const handler = (_e: unknown, msg: { id: string; data: Uint8Array }) =>
@@ -48,6 +40,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
         callback(msg);
       ipcRenderer.on("net:close", handler);
       return () => ipcRenderer.removeListener("net:close", handler);
+    },
+    onPeer: (callback: (msg: { id: string; host: string; port: number }) => void) => {
+      const handler = (_e: unknown, msg: { id: string; host: string; port: number }) =>
+        callback(msg);
+      ipcRenderer.on("net:peer", handler);
+      return () => ipcRenderer.removeListener("net:peer", handler);
     },
   },
 

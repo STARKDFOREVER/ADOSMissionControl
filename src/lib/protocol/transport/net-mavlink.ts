@@ -18,6 +18,7 @@
 import type { Transport } from "../types";
 import { WebSocketTransport } from "./websocket";
 import { isElectron } from "@/lib/utils";
+import { useDiagnosticsStore } from "@/stores/diagnostics-store";
 
 export type NetProto = "udp" | "tcp";
 export type UdpMode = "listen" | "target";
@@ -106,6 +107,7 @@ export class NetMavlinkTransport implements Transport {
   private socketId: string | null = null;
   private offData: (() => void) | null = null;
   private offClose: (() => void) | null = null;
+  private offPeer: (() => void) | null = null;
 
   // Browser (bridge) path
   private ws: WebSocketTransport | null = null;
@@ -152,6 +154,14 @@ export class NetMavlinkTransport implements Transport {
         msg.data instanceof Uint8Array ? msg.data : new Uint8Array(msg.data);
       this.emit("data", bytes);
     });
+    // A listen-mode socket followed the vehicle-side endpoint to a new address
+    // after the old one fell silent (router, SITL or DHCP restart).
+    this.offPeer = net.onPeer((msg) => {
+      if (msg.id !== id) return;
+      useDiagnosticsStore
+        .getState()
+        .logEvent("link_restored", `UDP peer re-learned: ${msg.host}:${msg.port}`);
+    });
     this.offClose = net.onClose((msg) => {
       if (msg.id !== id) return;
       const wasConnected = this._connected;
@@ -167,6 +177,8 @@ export class NetMavlinkTransport implements Transport {
       this.offData = null;
       this.offClose?.();
       this.offClose = null;
+      this.offPeer?.();
+      this.offPeer = null;
       this.socketId = null;
       if (wasConnected && !this._disconnecting) {
         this.emit("close", undefined as never);
@@ -205,8 +217,8 @@ export class NetMavlinkTransport implements Transport {
     const net =
       typeof window !== "undefined" ? window.electronAPI?.net : undefined;
     if (this.socketId && net) {
-      // Fire-and-forget: MAVLink tolerates loss, so we don't block on the ack.
-      void net.send(this.socketId, data).catch(() => {});
+      // Fire-and-forget over a one-way IPC message: MAVLink tolerates loss.
+      net.send(this.socketId, data);
       return;
     }
     throw new Error("Not connected");
@@ -239,6 +251,8 @@ export class NetMavlinkTransport implements Transport {
     this.offData = null;
     this.offClose?.();
     this.offClose = null;
+    this.offPeer?.();
+    this.offPeer = null;
     this.socketId = null;
 
     this._disconnecting = false;
