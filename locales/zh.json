@@ -1755,7 +1755,8 @@
     "cameraStreamUnknown": "unknown",
     "acceleratorNotReported": "Accelerator not reported yet — waiting for the node to report its compute.",
     "acceleratorPresentNoTops": "Local accelerator present (no TOPS figure reported) — this node can run a detector on-edge.",
-    "engineStatusUnavailable": "Engine status unavailable — the node has not reported which models it runs."
+    "engineStatusUnavailable": "Engine status unavailable — the node has not reported which models it runs.",
+    "visionNotRunning": "Vision not running. The node reports its detection engine is unreachable."
   },
   "nodeSettings": {
     "subtitle": "Configure this node's onboard computer. Changes write straight to the agent over the LAN.",
@@ -3139,7 +3140,6 @@
       "mapThisArea": "测绘此区域",
       "notUnderstood": "未能识别出任务。请尝试指定航线模式、高度、重叠率或速度。",
       "applied": "已应用",
-      "patternUnsupported": "尚不支持“{pattern}”的生成器。请尝试测绘、环绕或走廊。",
       "placeUnresolved": "离线状态下无法定位“{place}”。请手动绘制，或将地图居中到该处并使用“测绘此区域”。",
       "mappedSummary": "已在当前地图区域设置测绘。",
       "mappedApprox": "已在地图中心周围使用近似方框（尚未获取视口边界）。",
@@ -3285,7 +3285,9 @@
     "speedTypeGround": "Ground speed",
     "fcDefault": "FC default",
     "noCenterHint": "Pan the map to the survey area first, then add the rectangle.",
-    "orbitTargetHeight": "Target height"
+    "orbitTargetHeight": "Target height",
+    "perimeterOffset": "Inset offset",
+    "perimeterAreaSet": "Boundary polygon set"
   },
   "geofence": {
     "autoFence": "自动围栏",
@@ -4837,7 +4839,9 @@
       "startError": "Could not start recording",
       "stopError": "Could not stop recording",
       "startNotConfirmed": "The agent has not confirmed that recording started.",
-      "stopNotConfirmed": "The agent has not confirmed that recording stopped."
+      "stopNotConfirmed": "The agent has not confirmed that recording stopped.",
+      "lastResult": "Last recording: {count, plural, one {# segment} other {# segments}}",
+      "interrupted": "Interrupted {count, plural, one {# time} other {# times}}"
     },
     "androidRc": {
       "title": "ADOS 安卓 RC 控制器",
@@ -7830,7 +7834,15 @@
     "ready": "Version {version} is downloaded. Restart to install it.",
     "install": "Restart and install",
     "failed": "Update failed: {message}",
-    "dismiss": "Dismiss"
+    "dismiss": "Dismiss",
+    "checkFailed": "Could not check for updates: {message}",
+    "retry": "Retry",
+    "installBlockedArmed": "Disarm every vehicle before installing. Installing restarts the app and drops every link.",
+    "aboutTitle": "About",
+    "checkDescription": "Check the release channel for a newer version of this app.",
+    "checkForUpdates": "Check for updates",
+    "checking": "Checking…",
+    "upToDate": "You are on the latest version."
   },
   "batteryHealth": {
     "title": "Battery",

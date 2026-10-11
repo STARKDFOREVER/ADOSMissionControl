@@ -1755,7 +1755,8 @@
     "cameraStreamUnknown": "unknown",
     "acceleratorNotReported": "Accelerator not reported yet — waiting for the node to report its compute.",
     "acceleratorPresentNoTops": "Local accelerator present (no TOPS figure reported) — this node can run a detector on-edge.",
-    "engineStatusUnavailable": "Engine status unavailable — the node has not reported which models it runs."
+    "engineStatusUnavailable": "Engine status unavailable — the node has not reported which models it runs.",
+    "visionNotRunning": "Vision not running. The node reports its detection engine is unreachable."
   },
   "nodeSettings": {
     "subtitle": "Configure this node's onboard computer. Changes write straight to the agent over the LAN.",
@@ -3139,7 +3140,6 @@
       "mapThisArea": "ਇਸ ਖੇਤਰ ਨੂੰ ਮੈਪ ਕਰੋ",
       "notUnderstood": "ਇਸ ਵਿੱਚ ਕੋਈ ਮਿਸ਼ਨ ਸਮਝ ਨਹੀਂ ਆਇਆ। ਪੈਟਰਨ, ਉਚਾਈ, ਓਵਰਲੈਪ, ਜਾਂ ਗਤੀ ਦੱਸਣ ਦੀ ਕੋਸ਼ਿਸ਼ ਕਰੋ।",
       "applied": "ਲਾਗੂ ਕੀਤਾ",
-      "patternUnsupported": "'{pattern}' ਲਈ ਹਾਲੇ ਕੋਈ ਜਨਰੇਟਰ ਨਹੀਂ। ਸਰਵੇ, ਓਰਬਿਟ, ਜਾਂ ਕੌਰੀਡੋਰ ਅਜ਼ਮਾਓ।",
       "placeUnresolved": "'{place}' ਨੂੰ ਆਫਲਾਈਨ ਲੱਭ ਨਹੀਂ ਸਕੇ। ਇਸ ਨੂੰ ਖਿੱਚੋ, ਜਾਂ ਮੈਪ ਨੂੰ ਉੱਥੇ ਕੇਂਦਰਿਤ ਕਰ ਕੇ 'ਇਸ ਖੇਤਰ ਨੂੰ ਮੈਪ ਕਰੋ' ਵਰਤੋ।",
       "mappedSummary": "ਮੌਜੂਦਾ ਮੈਪ ਖੇਤਰ ਉੱਤੇ ਸਰਵੇ ਸੈੱਟ ਕੀਤਾ।",
       "mappedApprox": "ਮੈਪ ਦੇ ਕੇਂਦਰ ਦੁਆਲੇ ਇੱਕ ਅੰਦਾਜ਼ਨ ਬਾਕਸ ਵਰਤਿਆ (ਵਿਊਪੋਰਟ ਸੀਮਾਵਾਂ ਹਾਲੇ ਰਿਪੋਰਟ ਨਹੀਂ ਹੋਈਆਂ)।",
@@ -3285,7 +3285,9 @@
     "speedTypeGround": "Ground speed",
     "fcDefault": "FC default",
     "noCenterHint": "Pan the map to the survey area first, then add the rectangle.",
-    "orbitTargetHeight": "Target height"
+    "orbitTargetHeight": "Target height",
+    "perimeterOffset": "Inset offset",
+    "perimeterAreaSet": "Boundary polygon set"
   },
   "geofence": {
     "autoFence": "ਆਟੋ-ਵਾੜ",
@@ -4837,7 +4839,9 @@
       "startError": "Could not start recording",
       "stopError": "Could not stop recording",
       "startNotConfirmed": "The agent has not confirmed that recording started.",
-      "stopNotConfirmed": "The agent has not confirmed that recording stopped."
+      "stopNotConfirmed": "The agent has not confirmed that recording stopped.",
+      "lastResult": "Last recording: {count, plural, one {# segment} other {# segments}}",
+      "interrupted": "Interrupted {count, plural, one {# time} other {# times}}"
     },
     "androidRc": {
       "title": "ADOS Android RC कंट्रोलर",
@@ -7830,7 +7834,15 @@
     "ready": "Version {version} is downloaded. Restart to install it.",
     "install": "Restart and install",
     "failed": "Update failed: {message}",
-    "dismiss": "Dismiss"
+    "dismiss": "Dismiss",
+    "checkFailed": "Could not check for updates: {message}",
+    "retry": "Retry",
+    "installBlockedArmed": "Disarm every vehicle before installing. Installing restarts the app and drops every link.",
+    "aboutTitle": "About",
+    "checkDescription": "Check the release channel for a newer version of this app.",
+    "checkForUpdates": "Check for updates",
+    "checking": "Checking…",
+    "upToDate": "You are on the latest version."
   },
   "batteryHealth": {
     "title": "Battery",

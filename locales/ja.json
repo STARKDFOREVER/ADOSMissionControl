@@ -1755,7 +1755,8 @@
     "cameraStreamUnknown": "unknown",
     "acceleratorNotReported": "Accelerator not reported yet — waiting for the node to report its compute.",
     "acceleratorPresentNoTops": "Local accelerator present (no TOPS figure reported) — this node can run a detector on-edge.",
-    "engineStatusUnavailable": "Engine status unavailable — the node has not reported which models it runs."
+    "engineStatusUnavailable": "Engine status unavailable — the node has not reported which models it runs.",
+    "visionNotRunning": "Vision not running. The node reports its detection engine is unreachable."
   },
   "nodeSettings": {
     "subtitle": "Configure this node's onboard computer. Changes write straight to the agent over the LAN.",
@@ -3139,7 +3140,6 @@
       "mapThisArea": "このエリアをマッピング",
       "notUnderstood": "ミッションを認識できませんでした。パターン、高度、オーバーラップ、速度を指定してみてください。",
       "applied": "適用しました",
-      "patternUnsupported": "'{pattern}' のジェネレーターはまだありません。survey、orbit、corridor をお試しください。",
       "placeUnresolved": "オフラインでは '{place}' を特定できませんでした。手動で描画するか、地図をその場所に合わせて「このエリアをマッピング」をお使いください。",
       "mappedSummary": "現在の地図エリアに測量を設定しました。",
       "mappedApprox": "地図の中心付近のおおよその範囲を使用しました（表示範囲がまだ取得できていません）。",
@@ -3285,7 +3285,9 @@
     "speedTypeGround": "Ground speed",
     "fcDefault": "FC default",
     "noCenterHint": "Pan the map to the survey area first, then add the rectangle.",
-    "orbitTargetHeight": "Target height"
+    "orbitTargetHeight": "Target height",
+    "perimeterOffset": "Inset offset",
+    "perimeterAreaSet": "Boundary polygon set"
   },
   "geofence": {
     "autoFence": "自動フェンス",
@@ -4837,7 +4839,9 @@
       "startError": "Could not start recording",
       "stopError": "Could not stop recording",
       "startNotConfirmed": "The agent has not confirmed that recording started.",
-      "stopNotConfirmed": "The agent has not confirmed that recording stopped."
+      "stopNotConfirmed": "The agent has not confirmed that recording stopped.",
+      "lastResult": "Last recording: {count, plural, one {# segment} other {# segments}}",
+      "interrupted": "Interrupted {count, plural, one {# time} other {# times}}"
     },
     "androidRc": {
       "title": "ADOS Android RC コントローラー",
@@ -7830,7 +7834,15 @@
     "ready": "Version {version} is downloaded. Restart to install it.",
     "install": "Restart and install",
     "failed": "Update failed: {message}",
-    "dismiss": "Dismiss"
+    "dismiss": "Dismiss",
+    "checkFailed": "Could not check for updates: {message}",
+    "retry": "Retry",
+    "installBlockedArmed": "Disarm every vehicle before installing. Installing restarts the app and drops every link.",
+    "aboutTitle": "About",
+    "checkDescription": "Check the release channel for a newer version of this app.",
+    "checkForUpdates": "Check for updates",
+    "checking": "Checking…",
+    "upToDate": "You are on the latest version."
   },
   "batteryHealth": {
     "title": "Battery",

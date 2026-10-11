@@ -1755,7 +1755,8 @@
     "cameraStreamUnknown": "unknown",
     "acceleratorNotReported": "Accelerator not reported yet — waiting for the node to report its compute.",
     "acceleratorPresentNoTops": "Local accelerator present (no TOPS figure reported) — this node can run a detector on-edge.",
-    "engineStatusUnavailable": "Engine status unavailable — the node has not reported which models it runs."
+    "engineStatusUnavailable": "Engine status unavailable — the node has not reported which models it runs.",
+    "visionNotRunning": "Vision not running. The node reports its detection engine is unreachable."
   },
   "nodeSettings": {
     "subtitle": "Configure this node's onboard computer. Changes write straight to the agent over the LAN.",
@@ -3139,7 +3140,6 @@
       "mapThisArea": "이 영역 매핑",
       "notUnderstood": "미션을 인식하지 못했습니다. 패턴, 고도, 중첩 또는 속도를 지정해 보세요.",
       "applied": "적용됨",
-      "patternUnsupported": "'{pattern}' 생성기가 아직 없습니다. 측량, 궤도 또는 코리더를 사용해 보세요.",
       "placeUnresolved": "오프라인에서 '{place}' 위치를 찾을 수 없습니다. 직접 그리거나, 지도를 해당 위치로 이동한 후 이 영역 매핑을 사용하세요.",
       "mappedSummary": "현재 지도 영역에 측량이 설정되었습니다.",
       "mappedApprox": "지도 중심 주변의 대략적인 영역을 사용했습니다 (뷰포트 범위가 아직 보고되지 않음).",
@@ -3285,7 +3285,9 @@
     "speedTypeGround": "Ground speed",
     "fcDefault": "FC default",
     "noCenterHint": "Pan the map to the survey area first, then add the rectangle.",
-    "orbitTargetHeight": "Target height"
+    "orbitTargetHeight": "Target height",
+    "perimeterOffset": "Inset offset",
+    "perimeterAreaSet": "Boundary polygon set"
   },
   "geofence": {
     "autoFence": "자동 펜스",
@@ -4837,7 +4839,9 @@
       "startError": "Could not start recording",
       "stopError": "Could not stop recording",
       "startNotConfirmed": "The agent has not confirmed that recording started.",
-      "stopNotConfirmed": "The agent has not confirmed that recording stopped."
+      "stopNotConfirmed": "The agent has not confirmed that recording stopped.",
+      "lastResult": "Last recording: {count, plural, one {# segment} other {# segments}}",
+      "interrupted": "Interrupted {count, plural, one {# time} other {# times}}"
     },
     "androidRc": {
       "title": "ADOS Android RC 컨트롤러",
@@ -7830,7 +7834,15 @@
     "ready": "Version {version} is downloaded. Restart to install it.",
     "install": "Restart and install",
     "failed": "Update failed: {message}",
-    "dismiss": "Dismiss"
+    "dismiss": "Dismiss",
+    "checkFailed": "Could not check for updates: {message}",
+    "retry": "Retry",
+    "installBlockedArmed": "Disarm every vehicle before installing. Installing restarts the app and drops every link.",
+    "aboutTitle": "About",
+    "checkDescription": "Check the release channel for a newer version of this app.",
+    "checkForUpdates": "Check for updates",
+    "checking": "Checking…",
+    "upToDate": "You are on the latest version."
   },
   "batteryHealth": {
     "title": "Battery",

@@ -1681,6 +1681,7 @@
     "pipelines": "Pipelines",
     "pipelinesRunning": "{count, plural, =0 {none running} one {# running} other {# running}}",
     "noPipelines": "No pipelines running. Start a detector below to begin perception.",
+    "visionNotRunning": "Vision not running. The node reports its detection engine is unreachable.",
     "previewingStream": "Previewing {stream}",
     "previewingLatest": "Previewing latest",
     "modelCount": "Models",
@@ -3139,7 +3140,6 @@
       "mapThisArea": "Map this area",
       "notUnderstood": "Didn't catch a mission in that. Try naming a pattern, altitude, overlap, or speed.",
       "applied": "Applied",
-      "patternUnsupported": "No generator for '{pattern}' yet. Try survey, orbit, or corridor.",
       "placeUnresolved": "Couldn't locate '{place}' offline. Draw it, or center the map there and use Map this area.",
       "mappedSummary": "Survey set over the current map area.",
       "mappedApprox": "Used an approximate box around the map center (viewport bounds not reported yet).",
@@ -3285,7 +3285,9 @@
     "speedTypeGround": "Ground speed",
     "fcDefault": "FC default",
     "noCenterHint": "Pan the map to the survey area first, then add the rectangle.",
-    "orbitTargetHeight": "Target height"
+    "orbitTargetHeight": "Target height",
+    "perimeterOffset": "Inset offset",
+    "perimeterAreaSet": "Boundary polygon set"
   },
   "geofence": {
     "autoFence": "Auto-fence",
@@ -4837,7 +4839,9 @@
       "startError": "Could not start recording",
       "stopError": "Could not stop recording",
       "startNotConfirmed": "The agent has not confirmed that recording started.",
-      "stopNotConfirmed": "The agent has not confirmed that recording stopped."
+      "stopNotConfirmed": "The agent has not confirmed that recording stopped.",
+      "lastResult": "Last recording: {count, plural, one {# segment} other {# segments}}",
+      "interrupted": "Interrupted {count, plural, one {# time} other {# times}}"
     },
     "androidRc": {
       "title": "ADOS Android RC Controller",
@@ -7830,7 +7834,15 @@
     "ready": "Version {version} is downloaded. Restart to install it.",
     "install": "Restart and install",
     "failed": "Update failed: {message}",
-    "dismiss": "Dismiss"
+    "dismiss": "Dismiss",
+    "checkFailed": "Could not check for updates: {message}",
+    "retry": "Retry",
+    "installBlockedArmed": "Disarm every vehicle before installing. Installing restarts the app and drops every link.",
+    "aboutTitle": "About",
+    "checkDescription": "Check the release channel for a newer version of this app.",
+    "checkForUpdates": "Check for updates",
+    "checking": "Checking…",
+    "upToDate": "You are on the latest version."
   },
   "batteryHealth": {
     "title": "Battery",
