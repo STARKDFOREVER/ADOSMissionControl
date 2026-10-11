@@ -244,6 +244,35 @@ jobs:
           fi
           echo "PASS: every mirrored generated file matches"
 
+  file-size:
+    name: Source files stay within the size ratchet
+    runs-on: ubuntu-latest
+    steps:
+      # Every .ts/.tsx under src/, electron/ and convex/ is held to 500 lines;
+      # the files already past it are listed in .file-size-baseline and may
+      # shrink but never grow.
+      - uses: actions/checkout@v7
+
+      - name: Check catches a planted growth and a planted oversize file
+        run: |
+          set -uo pipefail
+          fail=0
+          grown="$(grep -v '^#' .file-size-baseline | grep . | head -n1 | cut -d' ' -f2-)"
+          cp "$grown" "$RUNNER_TEMP/grown.ts"
+          { echo '// planted'; cat "$RUNNER_TEMP/grown.ts"; } > "$grown"
+          rc=0; node scripts/check-file-size.mjs || rc=$?
+          cp "$RUNNER_TEMP/grown.ts" "$grown"
+          if [ "$rc" -ne 1 ]; then echo "SELF-TEST FAILED: growth of $grown exited $rc, expected 1"; fail=1; fi
+          planted=src/planted-oversize.ts
+          seq 1 501 | sed 's#^#// #' > "$planted"
+          rc=0; node scripts/check-file-size.mjs || rc=$?
+          rm -f "$planted"
+          if [ "$rc" -ne 1 ]; then echo "SELF-TEST FAILED: a new 501-line file exited $rc, expected 1"; fail=1; fi
+          exit "$fail"
+
+      - name: Source sizes are within the ratchet
+        run: node scripts/check-file-size.mjs
+
   convex-exposure:
     name: Convex exposure and authorization
     runs-on: ubuntu-latest
