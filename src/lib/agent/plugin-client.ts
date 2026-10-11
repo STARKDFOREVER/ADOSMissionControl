@@ -414,16 +414,14 @@ export class PluginAgentClient {
   }
 
   async enable(pluginId: string): Promise<void> {
-    await withPluginArmedRetry((force) => this.toggle(pluginId, "enable", force));
+    await withPluginArmedRetry((force) => this.toggle(this.pluginUrl(pluginId, "enable"), force));
   }
 
   async disable(pluginId: string): Promise<void> {
-    await withPluginArmedRetry((force) => this.toggle(pluginId, "disable", force));
+    await withPluginArmedRetry((force) => this.toggle(this.pluginUrl(pluginId, "disable"), force));
   }
 
-  private async toggle(pluginId: string, op: "enable" | "disable", force: boolean): Promise<void> {
-    const url =
-      op === "enable" ? this.pluginUrl(pluginId, "enable") : this.pluginUrl(pluginId, "disable");
+  private async toggle(url: string, force: boolean): Promise<void> {
     const res = await this.fetchImpl(url, {
       method: "POST",
       headers: force
