@@ -11,6 +11,7 @@ import { internalMutation, internalQuery, mutation, query } from "./_generated/s
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
+import { deleteLiveness } from "./cmdDroneLiveness";
 
 /**
  * A paired-drone row as the row's OWNER is allowed to see it.
@@ -43,6 +44,10 @@ import type { Doc, Id } from "./_generated/dataModel";
  * to `getAuthUserId(ctx)` and returns nothing at all to an anonymous or
  * non-owner caller. `cmdDrones.getAgentKey` is the scoped single-device read
  * that new code uses instead of taking the key off a fleet-wide list.
+ *
+ * There is no `lastSeen` here: liveness moves on every heartbeat and lives in
+ * `cmd_droneLiveness`, read through `cmdDroneLiveness.listMyDroneLiveness`, so
+ * this list only re-runs when a fleet-card value changes.
  */
 interface DroneRowForOwner {
   _id: Id<"cmd_drones">;
@@ -57,7 +62,6 @@ interface DroneRowForOwner {
   os?: string;
   mdnsHost?: string;
   lastIp?: string;
-  lastSeen?: number;
   fcConnected?: boolean;
   pairedAt: number;
   runtimeMode?: string;
@@ -89,7 +93,6 @@ function toOwnerRow(row: Doc<"cmd_drones">): DroneRowForOwner {
     os: row.os,
     mdnsHost: row.mdnsHost,
     lastIp: row.lastIp,
-    lastSeen: row.lastSeen,
     fcConnected: row.fcConnected,
     pairedAt: row.pairedAt,
     runtimeMode: row.runtimeMode,
@@ -228,6 +231,7 @@ export const deduplicateDrones = internalMutation({
       if (drones.length <= 1) continue;
       drones.sort((a, b) => (b.pairedAt || 0) - (a.pairedAt || 0));
       for (let i = 1; i < drones.length; i++) {
+        await deleteLiveness(ctx, drones[i]._id);
         await ctx.db.delete(drones[i]._id);
         deleted++;
       }

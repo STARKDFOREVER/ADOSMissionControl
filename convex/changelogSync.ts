@@ -69,6 +69,14 @@ async function summarizeBatch(
   groqKey: string,
   repoLabel: string
 ): Promise<GroqCommitSummary[] | null> {
+  // Deployment-specific style rules (one per line) come from the environment,
+  // so a deployment can add its own constraints without forking this file.
+  const extraRules = (process.env.CHANGELOG_EXTRA_RULES ?? "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .map((line) => `- ${line}\n`)
+    .join("");
   const systemPrompt = `You summarize git commits for a software changelog. Project: ${repoLabel} by Altnautica (open-source drone software).
 
 Given N commits, return a JSON array of N objects in the SAME order:
@@ -79,6 +87,13 @@ Given N commits, return a JSON array of N objects in the SAME order:
 
 Tags: feature, fix, improvement, refactor, docs, ui, performance, security (pick 1-2).
 For trivial commits (bump version, merge, typo), keep body to one short sentence.
+
+WRITING RULES (strict, non-negotiable):
+- NEVER use em dashes (—). Use periods, commas, or "and".
+- BANNED words: comprehensive, robust, seamless, streamlined, holistic, multifaceted, nuanced, cutting-edge, state-of-the-art, revolutionary, game-changing, paradigm shift, delve, tapestry, leverage (as verb — use "use"), harness (as verb).
+- Avoid "comprehensive X" — just say "X". Avoid stacking three adjectives. Vary sentence length.
+- Plain, direct, engineering-report tone. No marketing fluff. No press-release phrasing.
+${extraRules}
 JSON array only. No code fences.`;
 
   const userMessage = commits

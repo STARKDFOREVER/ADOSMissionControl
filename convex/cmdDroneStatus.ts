@@ -11,6 +11,7 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { requireOwnedDroneByDeviceId } from "./cmdDroneAccess";
 import type { Doc } from "./_generated/dataModel";
 import type { WithoutSystemFields } from "convex/server";
+import { readLastSeen, recordLiveness } from "./cmdDroneLiveness";
 
 /**
  * Every top-level key the cloud heartbeat may carry.
@@ -567,17 +568,26 @@ export const pushStatus = internalMutation({
       }
     }
 
-    // Also update the cmd_drones table lastSeen, fcConnected, lastIp
+    // Liveness goes to its own row every tick; the `cmd_drones` row is only
+    // patched when a denormalised fleet-card value actually changes, so the
+    // fleet list does not re-run for every subscriber on every heartbeat.
     const drone = await ctx.db
       .query("cmd_drones")
       .withIndex("by_deviceId", (q) => q.eq("deviceId", args.deviceId))
       .first();
     if (drone) {
-      // Every denormalized fleet-card column is written present-with-undefined
-      // each tick, derived from THIS payload, exactly as the status row above
-      // is: a pill whose source vanished (LCD unplugged, LAN URL withdrawn,
-      // camera gone) clears instead of rendering the last value forever.
-      const fleetCard: Partial<Doc<"cmd_drones">> = {
+      await recordLiveness(ctx, drone._id, now);
+      // Every denormalized fleet-card column is derived from THIS payload,
+      // exactly as the status row above is: a pill whose source vanished (LCD
+      // unplugged, LAN URL withdrawn, camera gone) clears instead of rendering
+      // the last value forever.
+      const fleetCard = {
+        // Every heartbeat carries the running agent's version; the pairing-time
+        // value would otherwise stand for the life of the pairing.
+        agentVersion: args.version,
+        fcConnected: args.fcConnected,
+        lastIp: args.lastIp,
+        mdnsHost: args.mdnsHost,
         runtimeMode: args.runtimeMode,
         attachedDisplayType,
         profileSource: args.profileSource,
@@ -589,17 +599,12 @@ export const pushStatus = internalMutation({
         cameraState: args.cameraState,
         fcLinkHint: args.fcLinkHint,
         cloudPosture: args.cloudPosture,
-      };
-      await ctx.db.patch(drone._id, {
-        lastSeen: now,
-        // Every heartbeat carries the running agent's version; the pairing-time
-        // value would otherwise stand for the life of the pairing.
-        agentVersion: args.version,
-        fcConnected: args.fcConnected,
-        lastIp: args.lastIp,
-        mdnsHost: args.mdnsHost,
-        ...fleetCard,
-      });
+      } satisfies Partial<Doc<"cmd_drones">>;
+      const current = drone as Record<string, unknown>;
+      const changed = Object.entries(fleetCard).some(([key, value]) => current[key] !== value);
+      if (changed) {
+        await ctx.db.patch(drone._id, fleetCard);
+      }
     }
 
     return { ok: true };
@@ -654,7 +659,7 @@ export const listMyCloudStatuses = query({
             os: drone.os,
             mdnsHost: drone.mdnsHost,
             lastIp: drone.lastIp,
-            lastSeen: drone.lastSeen,
+            lastSeen: await readLastSeen(ctx, drone),
             fcConnected: drone.fcConnected,
             pairedAt: drone.pairedAt,
           },

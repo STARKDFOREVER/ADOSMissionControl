@@ -1,10 +1,10 @@
 import { query, mutation } from "./_generated/server";
-import type { QueryCtx } from "./_generated/server";
+import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
 import type { Infer } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 
-const targetTypeValidator = v.union(
+export const targetTypeValidator = v.union(
   v.literal("update"),
   v.literal("milestone"),
   v.literal("document"),
@@ -16,52 +16,97 @@ const targetTypeValidator = v.union(
 
 const COMMUNITY_TARGET_TYPES = new Set(["changelog", "community_item"]);
 
+/** Roles that may read and write comments on non-community targets here. */
+const ADMIN_ONLY: ReadonlySet<string> = new Set(["admin"]);
+
 type TargetType = Infer<typeof targetTypeValidator>;
+
+interface CommentTarget {
+  targetType: TargetType;
+  targetId: string;
+}
+
+/**
+ * The comments on one target the caller may see. Community target types are
+ * open to any signed-in user with a profile; every other target type is open
+ * only to `restrictedRoles`. Soft-deleted comments are visible to admins only.
+ */
+export async function listCommentsFor(
+  ctx: QueryCtx,
+  args: CommentTarget,
+  restrictedRoles: ReadonlySet<string>,
+) {
+  const userId = await getAuthUserId(ctx);
+  if (!userId) return [];
+
+  const profile = await ctx.db
+    .query("profiles")
+    .withIndex("by_userId", (q) => q.eq("userId", userId))
+    .first();
+  if (!profile) return [];
+  if (!COMMUNITY_TARGET_TYPES.has(args.targetType) && !restrictedRoles.has(profile.role)) {
+    return [];
+  }
+
+  const comments = await ctx.db
+    .query("comments")
+    .withIndex("by_target", (q) =>
+      q.eq("targetType", args.targetType).eq("targetId", args.targetId)
+    )
+    .order("asc")
+    .collect();
+
+  const results = [];
+  for (const comment of comments) {
+    if (comment.deleted && profile.role !== "admin") continue;
+
+    const author = await ctx.db.get(comment.authorId);
+    results.push({
+      ...comment,
+      authorName: author?.fullName ?? "Unknown",
+      authorRole: author?.role ?? "pending",
+    });
+  }
+
+  return results;
+}
+
+/** Insert a comment under the same access rule as {@link listCommentsFor}. */
+export async function createCommentFor(
+  ctx: MutationCtx,
+  args: CommentTarget & { body: string },
+  restrictedRoles: ReadonlySet<string>,
+) {
+  const userId = await getAuthUserId(ctx);
+  if (!userId) throw new Error("Not authenticated");
+
+  const profile = await ctx.db
+    .query("profiles")
+    .withIndex("by_userId", (q) => q.eq("userId", userId))
+    .first();
+  if (!profile) throw new Error("Profile required");
+  if (!COMMUNITY_TARGET_TYPES.has(args.targetType) && !restrictedRoles.has(profile.role)) {
+    throw new Error("Access denied for this comment target");
+  }
+
+  const body = args.body.trim();
+  if (!body) throw new Error("Comment body cannot be empty");
+  if (body.length > 2000) throw new Error("Comment body too long (max 2000 characters)");
+
+  return await ctx.db.insert("comments", {
+    targetType: args.targetType,
+    targetId: args.targetId,
+    authorId: profile._id,
+    body,
+  });
+}
 
 export const list = query({
   args: {
     targetType: targetTypeValidator,
     targetId: v.string(),
   },
-  handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) return [];
-
-    const profile = await ctx.db
-      .query("profiles")
-      .withIndex("by_userId", (q) => q.eq("userId", userId))
-      .first();
-
-    // Community target types: any authenticated user with a profile can view
-    // Other target types: admin only
-    if (!profile) return [];
-    if (!COMMUNITY_TARGET_TYPES.has(args.targetType) && profile.role !== "admin") {
-      return [];
-    }
-
-    const comments = await ctx.db
-      .query("comments")
-      .withIndex("by_target", (q) =>
-        q.eq("targetType", args.targetType).eq("targetId", args.targetId)
-      )
-      .order("asc")
-      .collect();
-
-    // Join author profiles and filter soft-deleted for non-admins
-    const results = [];
-    for (const comment of comments) {
-      if (comment.deleted && profile.role !== "admin") continue;
-
-      const author = await ctx.db.get(comment.authorId);
-      results.push({
-        ...comment,
-        authorName: author?.fullName ?? "Unknown",
-        authorRole: author?.role ?? "pending",
-      });
-    }
-
-    return results;
-  },
+  handler: async (ctx, args) => listCommentsFor(ctx, args, ADMIN_ONLY),
 });
 
 export const create = mutation({
@@ -70,33 +115,7 @@ export const create = mutation({
     targetId: v.string(),
     body: v.string(),
   },
-  handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
-
-    const profile = await ctx.db
-      .query("profiles")
-      .withIndex("by_userId", (q) => q.eq("userId", userId))
-      .first();
-
-    // Community target types: any authenticated user with a profile
-    // Other target types: admin only
-    if (!profile) throw new Error("Profile required");
-    if (!COMMUNITY_TARGET_TYPES.has(args.targetType) && profile.role !== "admin") {
-      throw new Error("Admin access required");
-    }
-
-    const body = args.body.trim();
-    if (!body) throw new Error("Comment body cannot be empty");
-    if (body.length > 2000) throw new Error("Comment body too long (max 2000 characters)");
-
-    return await ctx.db.insert("comments", {
-      targetType: args.targetType,
-      targetId: args.targetId,
-      authorId: profile._id,
-      body,
-    });
-  },
+  handler: async (ctx, args) => createCommentFor(ctx, args, ADMIN_ONLY),
 });
 
 export const remove = mutation({

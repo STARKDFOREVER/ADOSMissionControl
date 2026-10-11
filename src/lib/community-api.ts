@@ -56,7 +56,7 @@ export const communityApi = {
     // memory for the life of the tab and never returned twice.
   },
   aiUsage: {
-    checkAndRecord: api.cmdAiUsage.checkAndRecord,
+    record: api.cmdAiUsage.record,
     getRemaining: api.cmdAiUsage.getRemaining,
   },
   plugins: {

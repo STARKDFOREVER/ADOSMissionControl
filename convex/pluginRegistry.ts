@@ -1,9 +1,8 @@
 /**
- * Public-read mirror of the registry catalog. Self-hosted GCS instances
- * query this for plugin discovery. Catalog writes (submit, approve,
- * revoke) live in the website's Convex deployment only; this side
- * exposes the read surface used by the install dialog and the agent
- * auto-update poller.
+ * Public-read registry catalog. Self-hosted GCS instances query this for
+ * plugin discovery. Catalog writes (submit, approve, revoke) are not part
+ * of this module; it exposes the read surface used by the install dialog
+ * and the agent auto-update poller.
  */
 
 import { query, internalMutation } from "./_generated/server";
@@ -154,10 +153,12 @@ export const getRevokedList = query({
 // ── Ops: set plugin status ─────────────────────────────────
 //
 // Internal mutation invoked via `npx convex run` with the admin
-// deploy key. Mirrors the same function in the website's
-// `convex/pluginRegistry.ts` per the dual-convex sync convention.
-// Both apps share one Convex deployment; the function lives in both
-// directories so the GCS deploy is self-consistent.
+// deploy key. Not exposed to public HTTP. Flips the `status` field
+// on a plugin row so deprecating a plugin removes it from the
+// browse grid (listPlugins filters by status === "published") while
+// preserving all the underlying data (versions, manifests,
+// signatures, screenshots). Re-publishing is the same call with
+// `status: "published"`.
 export const setPluginStatus = internalMutation({
   args: {
     pluginId: v.string(),

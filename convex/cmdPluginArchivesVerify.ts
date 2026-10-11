@@ -21,6 +21,9 @@
  * - `storageId` ownership is enforced against any prior registry row.
  *   The upload URL is single-use and authenticated, so a leaked id
  *   from another user's flow cannot be claimed here.
+ * - `pluginId`, `version`, `declaredPermissions` and `signerId` claims
+ *   are compared against the extracted manifest and `SIGNATURE` entry;
+ *   a mismatch is rejected with `E_MANIFEST_MISMATCH`.
  *
  * @license GPL-3.0-only
  */
@@ -33,6 +36,12 @@ import { action, type ActionCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import type { Id } from "./_generated/dataModel";
+import {
+  MANIFEST_MISMATCH,
+  findClaimMismatch,
+  parseManifestFacts,
+  type ArchiveClaims,
+} from "./lib/pluginManifestClaims";
 
 /** Largest manifest the verifier will read. Real manifests are a few KiB. */
 const MANIFEST_MAX_BYTES = 256 * 1024;
@@ -44,6 +53,9 @@ const ARCHIVE_MAX_BYTES = 32 * 1024 * 1024;
 // Filename the agent and the GCS both use for the canonical manifest
 // entry inside `.adosplug` archives.
 const MANIFEST_ENTRY_NAME = "manifest.yaml";
+
+// The detached-signature entry: signer id line, then base64 signature.
+const SIGNATURE_ENTRY_NAME = "SIGNATURE";
 
 const declaredPermissionValidator = v.object({
   id: v.string(),
@@ -60,6 +72,8 @@ const declaredPermissionValidator = v.object({
  * - `archive sha256 mismatch`
  * - `archive too large`
  * - `manifest missing` / `manifest hash mismatch`
+ * - `E_MANIFEST_MISMATCH: <field>` when a claimed plugin id, version,
+ *   permission set or signer id disagrees with the archive
  */
 export const verifyArchive = action({
   args: {
@@ -95,7 +109,12 @@ export const verifyArchive = action({
     // blob an existing row of this caller already holds is left alone.
     let checked: CheckedArchive;
     try {
-      checked = await checkArchive(ctx, args.storageId, args.sha256, args.manifestHash);
+      checked = await checkArchive(ctx, args.storageId, args.sha256, args.manifestHash, {
+        pluginId: args.pluginId,
+        version: args.version,
+        declaredPermissions: args.declaredPermissions,
+        signerId: args.signerId,
+      });
     } catch (err) {
       if (!priorClaim) {
         await ctx.storage.delete(args.storageId).catch(() => undefined);
@@ -103,7 +122,7 @@ export const verifyArchive = action({
       throw err;
     }
 
-    // (5) All gates passed. Insert via the internal mutation. The row
+    // (6) All gates passed. Insert via the internal mutation. The row
     // carries server-computed hashes, never the client claims.
     return await ctx.runMutation(internal.cmdPluginArchives._insertArchive, {
       userId,
@@ -130,14 +149,16 @@ interface CheckedArchive {
 
 /**
  * Verify a stored archive against the client's claims: size cap, storage-layer
- * (or recomputed) SHA-256, and the SHA-256 of the extracted manifest. Throws
- * with the documented rejection text on the first failed gate.
+ * (or recomputed) SHA-256, the SHA-256 of the extracted manifest, and the
+ * plugin id, version, permission set and signer id the manifest declares.
+ * Throws with the documented rejection text on the first failed gate.
  */
 async function checkArchive(
   ctx: ActionCtx,
   storageId: Id<"_storage">,
   claimedShaRaw: string,
   claimedManifestHash: string,
+  claims: ArchiveClaims,
 ): Promise<CheckedArchive> {
   // (2) Storage-layer SHA-256.
   const meta = await ctx.storage.getMetadata(storageId);
@@ -190,6 +211,18 @@ async function checkArchive(
     .digest("hex");
   if (serverManifestHash !== claimedManifestHash.toLowerCase()) {
     throw new Error("manifest hash mismatch");
+  }
+
+  // (5) Manifest claims. The row stores these fields, so they must be the
+  // ones the archive declares, not whatever the client sent.
+  const signatureBytes = extractZipEntry(archiveBytes, SIGNATURE_ENTRY_NAME);
+  const mismatch = findClaimMismatch(
+    parseManifestFacts(manifestBytes.toString("utf8")),
+    signatureBytes ? signatureBytes.toString("utf8") : null,
+    claims,
+  );
+  if (mismatch) {
+    throw new Error(`${MANIFEST_MISMATCH}: ${mismatch}`);
   }
 
   return {

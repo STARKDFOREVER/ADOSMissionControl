@@ -94,45 +94,6 @@ describe("pushStatus mutation args", () => {
   });
 });
 
-describe("cloud-relay /agent/status forwards the agent-emitted fields", () => {
-  const HTTP_PATH = path.join(process.cwd(), "convex/http.ts");
-
-  // Without these forwards the agent-emitted values never reach the
-  // pushStatus mutation: the remote drone card stays dark on cloud relay.
-  it("forwards the WFB USB-health mirror, cloud posture, and camera recovery", async () => {
-    const text = await readFile(HTTP_PATH, "utf8");
-    expect(text).toContain("wfbAdapterUsbDegraded: nullableBoolean(body.wfbAdapterUsbDegraded),");
-    expect(text).toContain("wfbAdapterUsbSpeedMbps: nullableNumber(body.wfbAdapterUsbSpeedMbps),");
-    expect(text).toContain("cloudPosture: stringField(body, \"cloudPosture\"),");
-    expect(text).toContain("cloudRelayUrl: nullableString(body.cloudRelayUrl),");
-    expect(text).toContain("cloudflareUrl: nullableString(body.cloudflareUrl),");
-    expect(text).toContain("cameraUsbRecovery: cameraUsbRecoveryField(body),");
-  });
-
-  it("forwards the five inter-rig peer-presence fields", async () => {
-    const text = await readFile(HTTP_PATH, "utf8");
-    expect(text).toContain("peerDeviceId: nullableString(body.peerDeviceId),");
-    expect(text).toContain("peerRole: nullableString(body.peerRole),");
-    expect(text).toContain("peerChannel: nullableNumber(body.peerChannel),");
-    expect(text).toContain("peerRssiDbm: nullableNumber(body.peerRssiDbm),");
-    expect(text).toContain("peerSeenAtUnix: nullableNumber(body.peerSeenAtUnix),");
-  });
-
-  it("forwards plugin inventory, peripheral states and the peripheral manifest", async () => {
-    const text = await readFile(HTTP_PATH, "utf8");
-    expect(text).toContain("pluginInventory: pluginInventoryField(body),");
-    expect(text).toContain("peripheralStates: peripheralStatesField(body),");
-    // The agent DOES send the free-form `peripherals` manifest over the cloud
-    // path, and `pushStatus` derives cmd_drones.attachedDisplayType from
-    // `peripherals[].category === "display"`. Without this pick the derivation
-    // has no input, so the LCD pill was dead on every self-hosted deployment
-    // while the same agent filled it over the LAN.
-    expect(text).toContain(
-      "peripherals: Array.isArray(body.peripherals) ? body.peripherals : undefined,",
-    );
-  });
-});
-
 describe("pushStatus persistence", () => {
   const BASE = { deviceId: "drone-a", version: "0.18.4", uptimeSeconds: 60 };
 

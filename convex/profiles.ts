@@ -1,6 +1,7 @@
 import { query, mutation, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { QueryCtx, MutationCtx } from "./_generated/server";
+import type { Doc, Id } from "./_generated/dataModel";
 import { getAuthUserId } from "@convex-dev/auth/server";
 
 /**
@@ -53,11 +54,11 @@ function firstProfileMintsAdmin(email: string | undefined | null): boolean {
 }
 
 /**
- * Internal helper: fetch profile by userId using .first() instead of .unique().
+ * Fetch profile by userId using .first() instead of .unique().
  * Resilient to duplicate profiles — always returns the oldest (first-created) one.
  * Includes fallback for legacy compound userId format (userId|sessionId).
  */
-async function getProfileByUserId(
+export async function getProfileByUserId(
   ctx: QueryCtx | MutationCtx,
   userId: string
 ) {
@@ -116,44 +117,42 @@ export const getMyProfile = query({
   },
 });
 
+/** Self-editable profile fields. A deployment may extend this set. */
+export const profileUpdateArgs = {
+  fullName: v.optional(v.string()),
+  email: v.optional(v.string()),
+  phone: v.optional(v.string()),
+  company: v.optional(v.string()),
+  linkedin: v.optional(v.string()),
+  showName: v.optional(v.boolean()),
+  showEmail: v.optional(v.boolean()),
+  showLinkedin: v.optional(v.boolean()),
+  showPhone: v.optional(v.boolean()),
+  notifyUpdates: v.optional(v.boolean()),
+  notifyMilestones: v.optional(v.boolean()),
+};
+
+/** Patch the caller's own profile with every field `args` defines. */
+export async function updateMyProfileWith(
+  ctx: MutationCtx,
+  args: Record<string, string | boolean | undefined>,
+) {
+  const userId = await getAuthUserId(ctx);
+  if (!userId) throw new Error("Not authenticated");
+
+  const profile = await getProfileByUserId(ctx, userId);
+  if (!profile) throw new Error("Profile not found");
+
+  const updates: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(args)) {
+    if (value !== undefined) updates[key] = value;
+  }
+  await ctx.db.patch(profile._id, updates);
+}
+
 export const updateMyProfile = mutation({
-  args: {
-    fullName: v.optional(v.string()),
-    email: v.optional(v.string()),
-    phone: v.optional(v.string()),
-    company: v.optional(v.string()),
-    linkedin: v.optional(v.string()),
-    showName: v.optional(v.boolean()),
-    showEmail: v.optional(v.boolean()),
-    showLinkedin: v.optional(v.boolean()),
-    showPhone: v.optional(v.boolean()),
-    notifyUpdates: v.optional(v.boolean()),
-    notifyMilestones: v.optional(v.boolean()),
-  },
-  handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
-
-    const profile = await getProfileByUserId(ctx, userId);
-    if (!profile) throw new Error("Profile not found");
-
-    const updates: Record<string, unknown> = {};
-    if (args.fullName !== undefined) updates.fullName = args.fullName;
-    if (args.email !== undefined) updates.email = args.email;
-    if (args.phone !== undefined) updates.phone = args.phone;
-    if (args.company !== undefined) updates.company = args.company;
-    if (args.linkedin !== undefined) updates.linkedin = args.linkedin;
-    if (args.showName !== undefined) updates.showName = args.showName;
-    if (args.showEmail !== undefined) updates.showEmail = args.showEmail;
-    if (args.showLinkedin !== undefined) updates.showLinkedin = args.showLinkedin;
-    if (args.showPhone !== undefined) updates.showPhone = args.showPhone;
-    if (args.notifyUpdates !== undefined)
-      updates.notifyUpdates = args.notifyUpdates;
-    if (args.notifyMilestones !== undefined)
-      updates.notifyMilestones = args.notifyMilestones;
-
-    await ctx.db.patch(profile._id, updates);
-  },
+  args: profileUpdateArgs,
+  handler: async (ctx, args) => updateMyProfileWith(ctx, args),
 });
 
 export const listAll = query({
@@ -171,108 +170,139 @@ export const listAll = query({
   },
 });
 
+/** Admin-only role change; an admin can never change their own role. */
+export async function setProfileRole(
+  ctx: MutationCtx,
+  profileId: Id<"profiles">,
+  role: Doc<"profiles">["role"],
+) {
+  const userId = await getAuthUserId(ctx);
+  if (!userId) throw new Error("Not authenticated");
+  const admin = await getProfileByUserId(ctx, userId);
+  if (!admin || admin.role !== "admin") throw new Error("Admin access required");
+
+  // Prevent self-demotion
+  const target = await ctx.db.get(profileId);
+  if (target && target.userId === userId) {
+    throw new Error("Cannot change your own role");
+  }
+
+  await ctx.db.patch(profileId, { role });
+}
+
 export const updateRole = mutation({
   args: {
     profileId: v.id("profiles"),
     role: v.union(v.literal("pending"), v.literal("admin"), v.literal("rejected"), v.literal("alpha_tester")),
   },
-  handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
-    const admin = await getProfileByUserId(ctx, userId);
-    if (!admin || admin.role !== "admin") throw new Error("Admin access required");
-
-    // Prevent self-demotion
-    const target = await ctx.db.get(args.profileId);
-    if (target && target.userId === userId) {
-      throw new Error("Cannot change your own role");
-    }
-
-    await ctx.db.patch(args.profileId, { role: args.role });
-  },
+  handler: async (ctx, args) => setProfileRole(ctx, args.profileId, args.role),
 });
 
-export const ensureProfile = mutation({
-  args: {
-    fullName: v.optional(v.string()),
-    company: v.optional(v.string()),
-    linkedin: v.optional(v.string()),
-    phone: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+/** Sign-up fields `ensureProfile` fills when missing. A deployment may extend this set. */
+export const ensureProfileArgs = {
+  fullName: v.optional(v.string()),
+  company: v.optional(v.string()),
+  linkedin: v.optional(v.string()),
+  phone: v.optional(v.string()),
+};
 
-    // Check if profile already exists (uses .first() — safe with duplicates)
-    const existing = await getProfileByUserId(ctx, userId);
-    if (existing) {
-      // If found via legacy compound userId, migrate it in-place
-      if (existing.userId !== userId) {
-        await ctx.db.patch(existing._id, { userId });
-      }
+/**
+ * Create the caller's profile, or fill its empty fields from `args`. Every
+ * key in `args` is a fill-if-missing string field on the profile row.
+ */
+export async function ensureProfileWith(
+  ctx: MutationCtx,
+  args: Record<string, string | undefined>,
+) {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) throw new Error("Not authenticated");
+  const userId = await getAuthUserId(ctx);
+  if (!userId) throw new Error("Not authenticated");
 
-      // Backfill email from auth user table if profile is missing it
-      const updates: Record<string, unknown> = {};
-      if (!existing.email) {
-        const user = await ctx.db.get(userId);
-        if (user?.email) {
-          updates.email = user.email;
-        }
-      }
-
-      // Upsert: merge non-empty args into empty fields (fill-if-missing)
-      if (args.fullName && !existing.fullName) updates.fullName = args.fullName;
-      if (args.company && !existing.company) updates.company = args.company;
-      if (args.linkedin && !existing.linkedin) updates.linkedin = args.linkedin;
-      if (args.phone && !existing.phone) updates.phone = args.phone;
-
-      if (Object.keys(updates).length > 0) {
-        await ctx.db.patch(existing._id, updates);
-      }
-      return existing._id;
+  // Check if profile already exists (uses .first() — safe with duplicates)
+  const existing = await getProfileByUserId(ctx, userId);
+  if (existing) {
+    // If found via legacy compound userId, migrate it in-place
+    if (existing.userId !== userId) {
+      await ctx.db.patch(existing._id, { userId });
     }
 
-    // Get email from auth user table if identity doesn't have it
-    let authEmail = identity.email;
-    if (!authEmail) {
+    // Backfill email from auth user table if profile is missing it
+    const updates: Record<string, unknown> = {};
+    if (!existing.email) {
       const user = await ctx.db.get(userId);
       if (user?.email) {
-        authEmail = user.email;
+        updates.email = user.email;
       }
     }
 
-    // First-profile bootstrap (SECURITY): mint admin only when the profiles
-    // table is empty AND the deployment's bootstrap policy admits this email.
-    // On a fresh or freshly-purged backend an arbitrary signup must NOT
-    // inherit admin just by being first. Everyone else starts as "pending"
-    // and a real admin promotes them via updateRole.
-    let role: "pending" | "admin" = "pending";
-    const anyProfile = await ctx.db.query("profiles").first();
-    if (!anyProfile && firstProfileMintsAdmin(authEmail)) {
-      role = "admin";
+    // Upsert: merge non-empty args into empty fields (fill-if-missing)
+    const row = existing as Record<string, unknown>;
+    for (const [key, value] of Object.entries(args)) {
+      if (value && !row[key]) updates[key] = value;
     }
 
-    return await ctx.db.insert("profiles", {
-      userId,
-      role,
-      fullName: args.fullName || (identity.name ?? undefined),
-      email: authEmail ?? undefined,
-      company: args.company,
-      linkedin: args.linkedin,
-      phone: args.phone,
-      showName: false,
-      showEmail: false,
-      showLinkedin: false,
-      showPhone: false,
-      notifyUpdates: true,
-      notifyMilestones: true,
-    });
-  },
+    if (Object.keys(updates).length > 0) {
+      await ctx.db.patch(existing._id, updates);
+    }
+    return existing._id;
+  }
+
+  // Get email from auth user table if identity doesn't have it
+  let authEmail = identity.email;
+  if (!authEmail) {
+    const user = await ctx.db.get(userId);
+    if (user?.email) {
+      authEmail = user.email;
+    }
+  }
+
+  // First-profile bootstrap (SECURITY): mint admin only when the profiles
+  // table is empty AND the deployment's bootstrap policy admits this email.
+  // On a fresh or freshly-purged backend an arbitrary signup must NOT
+  // inherit admin just by being first. Everyone else starts as "pending"
+  // and a real admin promotes them via updateRole.
+  let role: "pending" | "admin" = "pending";
+  const anyProfile = await ctx.db.query("profiles").first();
+  if (!anyProfile && firstProfileMintsAdmin(authEmail)) {
+    role = "admin";
+  }
+
+  return await ctx.db.insert("profiles", {
+    ...args,
+    userId,
+    role,
+    fullName: args.fullName || (identity.name ?? undefined),
+    email: authEmail ?? undefined,
+    showName: false,
+    showEmail: false,
+    showLinkedin: false,
+    showPhone: false,
+    notifyUpdates: true,
+    notifyMilestones: true,
+  });
+}
+
+export const ensureProfile = mutation({
+  args: ensureProfileArgs,
+  handler: async (ctx, args) => ensureProfileWith(ctx, args),
 });
 
-async function deduplicateProfilesImpl(ctx: MutationCtx) {
+/** How duplicate profiles of one user are merged into the oldest. */
+export interface ProfileMergePolicy {
+  /** Fields copied from a duplicate when the canonical row lacks them. */
+  fillKeys: readonly string[];
+  /** Higher rank wins when the duplicates disagree on role. */
+  roleRank: Readonly<Record<string, number>>;
+}
+
+export const SHARED_PROFILE_MERGE: ProfileMergePolicy = {
+  fillKeys: ["fullName", "email", "phone", "company", "linkedin"],
+  // Prefer highest role: admin > tester > pending > rejected
+  roleRank: { admin: 3, alpha_tester: 2, pilot: 1, pending: 1, rejected: 0 },
+};
+
+export async function deduplicateProfilesImpl(ctx: MutationCtx, policy: ProfileMergePolicy) {
     const allProfiles = await ctx.db.query("profiles").collect();
 
     // Group by userId
@@ -292,25 +322,18 @@ async function deduplicateProfilesImpl(ctx: MutationCtx) {
       // Sort by creation time (oldest first — _creationTime is built-in)
       profiles.sort((a, b) => a._creationTime - b._creationTime);
       const canonical = profiles[0];
+      const canonicalRow = canonical as Record<string, unknown>;
       const duplicates = profiles.slice(1);
 
       // Merge data from duplicates into canonical (fill-if-missing)
       const updates: Record<string, unknown> = {};
       for (const dup of duplicates) {
-        if (dup.fullName && !canonical.fullName && !updates.fullName)
-          updates.fullName = dup.fullName;
-        if (dup.email && !canonical.email && !updates.email)
-          updates.email = dup.email;
-        if (dup.phone && !canonical.phone && !updates.phone)
-          updates.phone = dup.phone;
-        if (dup.company && !canonical.company && !updates.company)
-          updates.company = dup.company;
-        if (dup.linkedin && !canonical.linkedin && !updates.linkedin)
-          updates.linkedin = dup.linkedin;
-        // Prefer highest role: admin > tester > pending > rejected
-        const roleRank: Record<string, number> = { admin: 3, alpha_tester: 2, pilot: 1, pending: 1, rejected: 0 };
+        const dupRow = dup as Record<string, unknown>;
+        for (const key of policy.fillKeys) {
+          if (dupRow[key] && !canonicalRow[key] && !updates[key]) updates[key] = dupRow[key];
+        }
         const currentRole = (updates.role as string) ?? canonical.role;
-        if ((roleRank[dup.role] ?? 0) > (roleRank[currentRole] ?? 0)) {
+        if ((policy.roleRank[dup.role] ?? 0) > (policy.roleRank[currentRole] ?? 0)) {
           updates.role = dup.role;
         }
       }
@@ -330,14 +353,20 @@ async function deduplicateProfilesImpl(ctx: MutationCtx) {
     return { mergedCount, deletedCount };
 }
 
+/** Admin gate for the dedupe mutation, shared with deployment overlays. */
+export async function requireAdminProfile(ctx: QueryCtx | MutationCtx) {
+  const userId = await getAuthUserId(ctx);
+  if (!userId) throw new Error("Not authenticated");
+  const admin = await getProfileByUserId(ctx, userId);
+  if (!admin || admin.role !== "admin") throw new Error("Admin access required");
+  return admin;
+}
+
 export const deduplicateProfiles = mutation({
   args: {},
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
-    const admin = await getProfileByUserId(ctx, userId);
-    if (!admin || admin.role !== "admin") throw new Error("Admin access required");
-    return await deduplicateProfilesImpl(ctx);
+    await requireAdminProfile(ctx);
+    return await deduplicateProfilesImpl(ctx, SHARED_PROFILE_MERGE);
   },
 });
 
@@ -345,7 +374,7 @@ export const deduplicateProfiles = mutation({
 export const deduplicateProfilesInternal = internalMutation({
   args: {},
   handler: async (ctx) => {
-    return await deduplicateProfilesImpl(ctx);
+    return await deduplicateProfilesImpl(ctx, SHARED_PROFILE_MERGE);
   },
 });
 

@@ -8,8 +8,6 @@
  * @license GPL-3.0-only
  */
 
-import { readFileSync, existsSync } from "node:fs";
-import { join, resolve } from "node:path";
 import { describe, it, expect } from "vitest";
 
 import { mintVideoRelayToken, VIDEO_RELAY_TOKEN_TTL_S } from "../../convex/lib/videoRelayToken";
@@ -66,21 +64,5 @@ describe("video relay viewer token", () => {
   it("refuses the bare device HMAC with no expiry", () => {
     const bare = signViewerToken("drone-1", NOW_S + 60, SECRET).split(".")[1];
     expect(verifyViewerToken(bare, "drone-1", SECRET, NOW_S)).toBe(false);
-  });
-});
-
-// The production deployment keeps its own copy of the Convex minter; it must
-// run the exact code tested above. Skipped when that sibling is not checked out.
-const MIRRORED = ["convex/lib/videoRelayToken.ts", "convex/cmdVideoRelayTokens.ts"];
-const mirrorRoot = resolve(process.cwd(), "../website");
-const mirrorPresent = MIRRORED.every((p) => existsSync(join(mirrorRoot, p)));
-
-describe("video relay token minter mirror", () => {
-  it.skipIf(!mirrorPresent)("the deployment copy is byte-identical", () => {
-    for (const rel of MIRRORED) {
-      const canonical = readFileSync(join(process.cwd(), rel), "utf-8");
-      const mirror = readFileSync(join(mirrorRoot, rel), "utf-8");
-      expect(mirror, `${rel} has drifted from its mirror`).toBe(canonical);
-    }
   });
 });

@@ -56,7 +56,7 @@ describe("retention sweeps for append-mostly tables", () => {
     const [commands, crons, schema] = await Promise.all([
       read("convex/cmdDroneCommands.ts"),
       read("convex/crons.ts"),
-      read("convex/schema.ts"),
+      read("convex/schemaTablesDrones.ts"),
     ]);
     expect(commands).toContain("export const pruneTerminalCommands = internalMutation");
     expect(commands).toContain('withIndex("by_status_completedAt"');
@@ -68,7 +68,7 @@ describe("retention sweeps for append-mostly tables", () => {
     const [windows, crons, schema] = await Promise.all([
       read("convex/cmdLogdWindows.ts"),
       read("convex/crons.ts"),
-      read("convex/schema.ts"),
+      read("convex/schemaTablesPlugins.ts"),
     ]);
     expect(windows).toContain("export const pruneOldWindows = internalMutation");
     expect(windows).toContain('withIndex("by_pushedAt"');

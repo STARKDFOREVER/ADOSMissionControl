@@ -1,7 +1,14 @@
-import { query, mutation, internalMutation } from "./_generated/server";
+import { query, mutation, internalMutation, type QueryCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
+
+/**
+ * AI feature quota. The caller checks `getRemaining` before spending an
+ * upstream call and calls `record` only after an answer was delivered, so a
+ * failed or empty upstream answer never costs a unit. There is deliberately no
+ * client-callable refund: a refund mutation would let any caller mint quota.
+ */
 
 /**
  * Get the start of the current week (Monday 00:00 UTC).
@@ -23,48 +30,15 @@ function getWeeklyLimit(): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 3;
 }
 
-export const checkAndRecord = mutation({
-  args: { feature: v.string() },
-  handler: async (ctx, { feature }) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      return { allowed: false, remaining: 0, weeklyLimit: 0, error: "auth_required" };
-    }
-
-    const weeklyLimit = getWeeklyLimit();
-    const weekStart = getWeekStart();
-
-    const usageThisWeek = await ctx.db
-      .query("cmd_ai_usage")
-      .withIndex("by_userId_feature", (q) =>
-        q.eq("userId", userId).eq("feature", feature)
-      )
-      .collect();
-
-    const usedThisWeek = usageThisWeek.filter((u) => u.usedAt >= weekStart).length;
-
-    if (usedThisWeek >= weeklyLimit) {
-      return {
-        allowed: false,
-        remaining: 0,
-        weeklyLimit,
-        error: "weekly_limit_reached",
-      };
-    }
-
-    await ctx.db.insert("cmd_ai_usage", {
-      userId,
-      feature,
-      usedAt: Date.now(),
-    });
-
-    return {
-      allowed: true,
-      remaining: weeklyLimit - usedThisWeek - 1,
-      weeklyLimit,
-    };
-  },
-});
+/** Units of `feature` the user has spent since this week's Monday 00:00 UTC. */
+async function usedThisWeek(ctx: QueryCtx, userId: string, feature: string): Promise<number> {
+  const weekStart = getWeekStart();
+  const rows = await ctx.db
+    .query("cmd_ai_usage")
+    .withIndex("by_userId_feature", (q) => q.eq("userId", userId).eq("feature", feature))
+    .collect();
+  return rows.filter((u) => u.usedAt >= weekStart).length;
+}
 
 export const getRemaining = query({
   args: { feature: v.optional(v.string()) },
@@ -74,21 +48,43 @@ export const getRemaining = query({
 
     const feature = featureArg ?? "pid_analysis";
     const weeklyLimit = getWeeklyLimit();
-    const weekStart = getWeekStart();
-
-    const usageThisWeek = await ctx.db
-      .query("cmd_ai_usage")
-      .withIndex("by_userId_feature", (q) =>
-        q.eq("userId", userId).eq("feature", feature)
-      )
-      .collect();
-
-    const usedThisWeek = usageThisWeek.filter((u) => u.usedAt >= weekStart).length;
+    const used = await usedThisWeek(ctx, userId, feature);
 
     return {
-      remaining: Math.max(0, weeklyLimit - usedThisWeek),
+      remaining: Math.max(0, weeklyLimit - used),
       weeklyLimit,
-      usedThisWeek,
+      usedThisWeek: used,
+    };
+  },
+});
+
+/**
+ * Record one delivered use. The limit is re-checked in the write transaction,
+ * so two concurrent requests that both passed `getRemaining` with one unit
+ * left spend it once: the second returns `recorded: false`.
+ */
+export const record = mutation({
+  args: { feature: v.string() },
+  handler: async (ctx, { feature }) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    const weeklyLimit = getWeeklyLimit();
+    const used = await usedThisWeek(ctx, userId, feature);
+    if (used >= weeklyLimit) {
+      return { recorded: false, remaining: 0, weeklyLimit };
+    }
+
+    await ctx.db.insert("cmd_ai_usage", {
+      userId,
+      feature,
+      usedAt: Date.now(),
+    });
+
+    return {
+      recorded: true,
+      remaining: weeklyLimit - used - 1,
+      weeklyLimit,
     };
   },
 });

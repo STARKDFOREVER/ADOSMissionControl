@@ -9,6 +9,8 @@ import { api } from "../../convex/_generated/api";
 
 export const cmdDronesApi = {
   listMyDrones: api.cmdDrones.listMyDrones,
+  // Per-drone heartbeat time; re-emits on every heartbeat, unlike the list.
+  listMyDroneLiveness: api.cmdDroneLiveness.listMyDroneLiveness,
   getDrone: api.cmdDrones.getDrone,
   getAgentKey: api.cmdDrones.getAgentKey,
   renameDrone: api.cmdDrones.renameDrone,

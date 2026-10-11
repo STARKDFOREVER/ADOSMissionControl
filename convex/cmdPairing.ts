@@ -38,6 +38,7 @@ import { internal } from "./_generated/api";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { agentKeyMatches } from "./lib/credentials";
 import { RECORD_PURGE_BATCH, deleteDeviceRecords } from "./pluginRecords";
+import { deleteLiveness } from "./cmdDroneLiveness";
 import {
   CLAIM_GLOBAL_POLICY,
   CLAIM_POLICY,
@@ -980,6 +981,7 @@ export const wipeByDeviceIds = internalMutation({
         .take(WIPE_BATCH + 1);
       if (drones.length > WIPE_BATCH) truncated = true;
       for (const d of drones.slice(0, WIPE_BATCH)) {
+        await deleteLiveness(ctx, d._id);
         await ctx.db.delete(d._id);
         removedDrones++;
       }

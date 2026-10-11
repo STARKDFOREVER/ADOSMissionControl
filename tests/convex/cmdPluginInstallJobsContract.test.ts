@@ -21,7 +21,7 @@ import { describe, expect, it } from "vitest";
 import { cancelInstallJob, settleInstallJobFromAck } from "../../convex/cmdPluginInstallJobs";
 
 const MUTATION_PATH = path.join(process.cwd(), "convex/cmdPluginInstallJobs.ts");
-const SCHEMA_PATH = path.join(process.cwd(), "convex/schema.ts");
+const SCHEMA_PATH = path.join(process.cwd(), "convex/schemaTablesPlugins.ts");
 
 const EXPECTED_STAGES = [
   "queued",

@@ -15,6 +15,7 @@
 import { v } from "convex/values";
 import { internalMutation, internalQuery } from "./_generated/server";
 import { deliveryDeadline, relayCommandValidator } from "./commandVocabulary";
+import { readLastSeen } from "./cmdDroneLiveness";
 import {
   CREDENTIAL_GLOBAL_POLICY,
   CREDENTIAL_POLICY,
@@ -110,7 +111,7 @@ export const listNodesForUser = internalQuery({
             os: drone.os,
             mdnsHost: drone.mdnsHost,
             lastIp: drone.lastIp,
-            lastSeen: drone.lastSeen,
+            lastSeen: await readLastSeen(ctx, drone),
             fcConnected: drone.fcConnected,
           },
           status,

@@ -1,5 +1,5 @@
-import { query, mutation } from "./_generated/server";
-import { v } from "convex/values";
+import { query, mutation, type MutationCtx } from "./_generated/server";
+import { v, type Infer } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { internal } from "./_generated/api";
 import {
@@ -16,7 +16,7 @@ import {
  * was an anonymous write of arbitrary size with an amplification attached.
  * Generous against a real enquiry, finite against a script.
  */
-const MAX_SHORT_FIELD = 200;
+export const MAX_SHORT_FIELD = 200;
 const MAX_MESSAGE = 5000;
 
 function boundedField(value: string, name: string, max: number): string {
@@ -25,7 +25,7 @@ function boundedField(value: string, name: string, max: number): string {
   return trimmed;
 }
 
-function boundedOptional(
+export function boundedOptional(
   value: string | undefined,
   name: string,
   max: number,
@@ -34,38 +34,52 @@ function boundedOptional(
   return boundedField(value, name, max) || undefined;
 }
 
-export const submit = mutation({
-  args: {
-    name: v.string(),
-    email: v.string(),
-    subject: v.optional(v.string()),
-    message: v.string(),
-    source: v.optional(v.string()),
-    company: v.optional(v.string()),
-    linkedin: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    const name = boundedField(args.name, "name", MAX_SHORT_FIELD);
-    const email = boundedField(args.email, "email", MAX_SHORT_FIELD);
-    const message = boundedField(args.message, "message", MAX_MESSAGE);
-    if (!name || !email || !message) {
-      throw new Error("name, email and message required");
-    }
+/** The fields every contact-style submission carries. */
+export const contactArgs = {
+  name: v.string(),
+  email: v.string(),
+  subject: v.optional(v.string()),
+  message: v.string(),
+  source: v.optional(v.string()),
+  company: v.optional(v.string()),
+  linkedin: v.optional(v.string()),
+};
 
-    // Bucketed by the submitted address, hashed so the limiter table is not a
-    // second copy of the contact list, plus a global backstop for an address
-    // that changes every call. Consumed before the insert, so a burst is
-    // stopped before it reaches the webhook scheduler.
-    const perAddress = await chargeAttempt(
-      ctx,
-      `contact:${await sha256Hex(email.toLowerCase())}`,
-      CONTACT_POLICY,
-    );
-    if (!perAddress.ok) return rateLimitedResult(perAddress.retryAfterMs);
-    const global = await chargeAttempt(ctx, "contact:global", CONTACT_GLOBAL_POLICY);
-    if (!global.ok) return rateLimitedResult(global.retryAfterMs);
+const contactArgsValidator = v.object(contactArgs);
 
-    const bounded = {
+/**
+ * Bound the fields and charge the rate limiter for one anonymous submission.
+ * Returns the bounded fields to store, or the rate-limited result to return.
+ */
+export async function admitContact(
+  ctx: MutationCtx,
+  args: Infer<typeof contactArgsValidator>,
+) {
+  const name = boundedField(args.name, "name", MAX_SHORT_FIELD);
+  const email = boundedField(args.email, "email", MAX_SHORT_FIELD);
+  const message = boundedField(args.message, "message", MAX_MESSAGE);
+  if (!name || !email || !message) {
+    throw new Error("name, email and message required");
+  }
+
+  // Bucketed by the submitted address, hashed so the limiter table is not a
+  // second copy of the contact list, plus a global backstop for an address
+  // that changes every call. Consumed before the insert, so a burst is
+  // stopped before it reaches the webhook scheduler.
+  const perAddress = await chargeAttempt(
+    ctx,
+    `contact:${await sha256Hex(email.toLowerCase())}`,
+    CONTACT_POLICY,
+  );
+  if (!perAddress.ok) {
+    return { ok: false as const, result: rateLimitedResult(perAddress.retryAfterMs) };
+  }
+  const global = await chargeAttempt(ctx, "contact:global", CONTACT_GLOBAL_POLICY);
+  if (!global.ok) return { ok: false as const, result: rateLimitedResult(global.retryAfterMs) };
+
+  return {
+    ok: true as const,
+    bounded: {
       name,
       email,
       message,
@@ -73,13 +87,21 @@ export const submit = mutation({
       source: boundedOptional(args.source, "source", MAX_SHORT_FIELD),
       company: boundedOptional(args.company, "company", MAX_SHORT_FIELD),
       linkedin: boundedOptional(args.linkedin, "linkedin", MAX_SHORT_FIELD),
-    };
+    },
+  };
+}
 
-    await ctx.db.insert("contactSubmissions", bounded);
+export const submit = mutation({
+  args: contactArgs,
+  handler: async (ctx, args) => {
+    const admitted = await admitContact(ctx, args);
+    if (!admitted.ok) return admitted.result;
+
+    await ctx.db.insert("contactSubmissions", admitted.bounded);
     await ctx.scheduler.runAfter(
       0,
       internal.discordNotify.sendContactSubmission,
-      bounded,
+      admitted.bounded,
     );
     return { error: null };
   },

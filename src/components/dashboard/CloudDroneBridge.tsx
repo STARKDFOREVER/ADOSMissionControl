@@ -12,7 +12,7 @@
  * @license GPL-3.0-only
  */
 
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useAuthStore } from "@/stores/auth-store";
 import { cmdDronesApi } from "@/lib/community-api-drones";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
@@ -111,6 +111,20 @@ export function CloudDroneBridge() {
   const myDrones = useConvexSkipQuery(cmdDronesApi.listMyDrones, {
     enabled: isAuthenticated,
   });
+  // Heartbeat times come from their own query: the fleet list above only
+  // re-emits when a fleet-card value changes, this one on every heartbeat.
+  const liveness = useConvexSkipQuery(cmdDronesApi.listMyDroneLiveness, {
+    enabled: isAuthenticated,
+  });
+  const lastSeenByDevice = useMemo(() => {
+    const map = new Map<string, number>();
+    if (Array.isArray(liveness)) {
+      for (const row of liveness) {
+        if (row.lastSeen !== null) map.set(row.deviceId, row.lastSeen);
+      }
+    }
+    return map;
+  }, [liveness]);
   // A Convex query only re-emits on a write, so a node that stops reporting
   // would never be re-judged. Staleness is re-checked on the shared 1 Hz clock.
   const tick = useClockTick();
@@ -126,11 +140,11 @@ export function CloudDroneBridge() {
     const now = Date.now();
     for (const drone of myDrones) {
       if (!trackedDeviceIds.current.has(drone.deviceId)) continue;
-      if (livenessFromTimestamp(drone.lastSeen ?? null, now) === "live") continue;
+      if (livenessFromTimestamp(lastSeenByDevice.get(drone.deviceId) ?? null, now) === "live") continue;
       dropCloudNode(drone.deviceId);
       trackedDeviceIds.current.delete(drone.deviceId);
     }
-  }, [myDrones, tick]);
+  }, [myDrones, lastSeenByDevice, tick]);
 
   useEffect(() => {
     if (!Array.isArray(myDrones)) return;
@@ -143,7 +157,7 @@ export function CloudDroneBridge() {
 
     for (const drone of myDrones) {
       const deviceId = drone.deviceId;
-      const lastSeen = drone.lastSeen ?? 0;
+      const lastSeen = lastSeenByDevice.get(deviceId) ?? 0;
       const isOnline = livenessFromTimestamp(lastSeen, now) === "live";
       const nodeId = resolveNodeId(deviceId);
 
@@ -290,7 +304,7 @@ export function CloudDroneBridge() {
         trackedDeviceIds.current.delete(deviceId);
       }
     }
-  }, [myDrones]);
+  }, [myDrones, lastSeenByDevice]);
 
   useEffect(() => {
     const tracked = trackedDeviceIds.current;
