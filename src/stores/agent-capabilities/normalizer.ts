@@ -423,6 +423,8 @@ export function normalizeCapabilities(raw: unknown): AgentCapabilities {
   const hasAcceleratorRaw = (data as Record<string, unknown>).hasAccelerator;
   const hasAccelerator =
     typeof hasAcceleratorRaw === "boolean" ? hasAcceleratorRaw : undefined;
+  const simRaw = (data as Record<string, unknown>).sim;
+  const sim = typeof simRaw === "boolean" ? simRaw : undefined;
 
   const canBusesRaw = (data as Record<string, unknown>).canBuses;
   let canBuses: AgentCapabilities["canBuses"] | undefined;
@@ -485,5 +487,6 @@ export function normalizeCapabilities(raw: unknown): AgentCapabilities {
     perceptionOffloadTarget,
     npuTops: topLevelNpuTops,
     hasAccelerator,
+    sim,
   };
 }

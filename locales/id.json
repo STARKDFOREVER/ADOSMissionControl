@@ -1619,6 +1619,8 @@
     "nodeDetailTabs": "Tab detail node",
     "nodeNotFound": "Drone “{id}” tidak ditemukan",
     "retryConnect": "Coba lagi",
+    "simChip": "SIM",
+    "simChipTitle": "Node ini berjalan dengan simulator",
     "companionOffline": {
       "title": "Komputer pendamping tak terjangkau",
       "body": "This node has an onboard computer, but this browser cannot reach it right now. Its video, services and logs are unavailable until it answers.",

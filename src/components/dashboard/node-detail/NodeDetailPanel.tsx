@@ -58,7 +58,7 @@ import {
 } from "./node-tab-state";
 import { NodeTabStrip } from "./NodeTabStrip";
 import { NodeHeaderActions } from "./NodeHeaderActions";
-import { NodeAuthorityChip, NodeConnectChip } from "./NodeHeaderChips";
+import { NodeAuthorityChip, NodeConnectChip, NodeSimChip } from "./NodeHeaderChips";
 import { RelayedNodeNotices } from "./RelayedNodeNotices";
 import { AgentDiagnosticsStrip } from "./AgentDiagnosticsStrip";
 
@@ -225,6 +225,7 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
             {drone.profile === "drone" && <DroneStatusBadge status={drone.status} />}
             <NodeConnectChip focusDeviceId={focusDeviceId} />
             <NodeAuthorityChip droneId={droneId} />
+            <NodeSimChip focusDeviceId={focusDeviceId} />
             <Button
               variant="ghost"
               size="sm"

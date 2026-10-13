@@ -225,6 +225,9 @@ export interface AgentCapabilitiesState {
   /** True when the node has an inference accelerator (NPU or GPU). Undefined
    * on agents that predate the field. */
   hasAccelerator?: AgentCapabilities["hasAccelerator"];
+  /** True when the node runs against a simulator. Undefined on agents that
+   * predate the field. */
+  sim?: AgentCapabilities["sim"];
   /** True once we've received at least one capabilities payload. */
   loaded: boolean;
   /**

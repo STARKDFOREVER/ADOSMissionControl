@@ -1619,6 +1619,8 @@
     "nodeDetailTabs": "Registerkarten der Knotendetails",
     "nodeNotFound": "Drohne „{id}“ nicht gefunden",
     "retryConnect": "Erneut versuchen",
+    "simChip": "SIM",
+    "simChipTitle": "Dieser Knoten läuft gegen einen Simulator",
     "companionOffline": {
       "title": "Begleitrechner nicht erreichbar",
       "body": "This node has an onboard computer, but this browser cannot reach it right now. Its video, services and logs are unavailable until it answers.",

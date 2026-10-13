@@ -1619,6 +1619,8 @@
     "nodeDetailTabs": "Onglets de détail du nœud",
     "nodeNotFound": "Drone «*{id}*» introuvable",
     "retryConnect": "Réessayer",
+    "simChip": "SIM",
+    "simChipTitle": "Ce nœud fonctionne avec un simulateur",
     "companionOffline": {
       "title": "Ordinateur compagnon injoignable",
       "body": "This node has an onboard computer, but this browser cannot reach it right now. Its video, services and logs are unavailable until it answers.",

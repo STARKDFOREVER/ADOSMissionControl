@@ -1619,6 +1619,8 @@
     "nodeDetailTabs": "Node detail ਟੈਬਾਂ",
     "nodeNotFound": "Drone “{id}” ਨਹੀਂ ਮਿਲਿਆ",
     "retryConnect": "ਮੁੜ ਕੋਸ਼ਿਸ਼",
+    "simChip": "SIM",
+    "simChipTitle": "ਇਹ ਨੋਡ ਸਿਮੂਲੇਟਰ ਨਾਲ ਚੱਲ ਰਿਹਾ ਹੈ",
     "companionOffline": {
       "title": "ਕੰਪੈਨੀਅਨ ਤੱਕ ਪਹੁੰਚ ਨਹੀਂ",
       "body": "This node has an onboard computer, but this browser cannot reach it right now. Its video, services and logs are unavailable until it answers.",

@@ -6,6 +6,11 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **SIM chip** on the node header when the agent reports `sim: true` (its
+  simulation mode flag). Demo mode shows it on Delta-04.
+
 ## [0.60.0] - 2026-10-11
 
 This release covers everything since 0.59.0: seventy-four commits, most of

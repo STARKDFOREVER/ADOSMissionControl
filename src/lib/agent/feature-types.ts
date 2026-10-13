@@ -652,6 +652,9 @@ export interface AgentCapabilities {
    * run a detector on locally. Undefined on agents that predate the field;
    * a consumer falls back to `compute.npu_available || compute.gpu_available`. */
   hasAccelerator?: boolean;
+  /** True when the node runs against a simulator (`simulation.enabled` in the
+   * agent config). Undefined on agents that predate the field. */
+  sim?: boolean;
   /** The perception execution tier the agent resolved for this node:
    *   - "local"  — the model runs on the node's own NPU (on-edge).
    *   - "offload"— the node streams frames to a workstation that runs it.

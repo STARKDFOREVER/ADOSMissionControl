@@ -1619,6 +1619,8 @@
     "nodeDetailTabs": "节点详情选项卡",
     "nodeNotFound": "未找到无人机“{id}”",
     "retryConnect": "重试",
+    "simChip": "SIM",
+    "simChipTitle": "此节点正在模拟器上运行",
     "companionOffline": {
       "title": "无法连接机载计算机",
       "body": "This node has an onboard computer, but this browser cannot reach it right now. Its video, services and logs are unavailable until it answers.",

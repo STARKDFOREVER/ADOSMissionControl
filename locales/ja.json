@@ -1619,6 +1619,8 @@
     "nodeDetailTabs": "ノード詳細タブ",
     "nodeNotFound": "ドローン「{id}」が見つかりません",
     "retryConnect": "再試行",
+    "simChip": "SIM",
+    "simChipTitle": "このノードはシミュレーターで動作しています",
     "companionOffline": {
       "title": "コンパニオンに到達できません",
       "body": "This node has an onboard computer, but this browser cannot reach it right now. Its video, services and logs are unavailable until it answers.",

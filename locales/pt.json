@@ -1619,6 +1619,8 @@
     "nodeDetailTabs": "Separadores de detalhes do nó",
     "nodeNotFound": "Drone «{id}» não encontrado",
     "retryConnect": "Tentar novamente",
+    "simChip": "SIM",
+    "simChipTitle": "Este nó funciona com um simulador",
     "companionOffline": {
       "title": "Computador acompanhante inacessível",
       "body": "This node has an onboard computer, but this browser cannot reach it right now. Its video, services and logs are unavailable until it answers.",

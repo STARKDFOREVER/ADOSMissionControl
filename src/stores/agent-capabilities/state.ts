@@ -88,6 +88,7 @@ const INITIAL_STATE: AgentCapabilitiesState = {
   perceptionOffloadTarget: undefined,
   npuTops: undefined,
   hasAccelerator: undefined,
+  sim: undefined,
   loaded: false,
   receivedAt: null,
   focusedDeviceId: null,
@@ -409,6 +410,7 @@ export const useAgentCapabilitiesStore = create<AgentCapabilitiesStore>(
           normalized.hasAccelerator === undefined
             ? prior.hasAccelerator
             : normalized.hasAccelerator,
+        sim: normalized.sim === undefined ? prior.sim : normalized.sim,
         loaded: true,
         receivedAt: Date.now(),
         };

@@ -212,6 +212,8 @@ export interface MockPerceptionOverride {
   npuAvailable?: boolean;
   /** The drone's vision engine is not running (no model, no summary). */
   visionEngineOff?: boolean;
+  /** The node reports it runs against a simulator. */
+  sim?: boolean;
 }
 
 export function getMockCapabilities(
@@ -379,6 +381,7 @@ export function getMockCapabilities(
       caps.hasAccelerator = perception.hasAccelerator;
     if (perception.npuAvailable !== undefined)
       caps.compute.npu_available = perception.npuAvailable;
+    if (perception.sim !== undefined) caps.sim = perception.sim;
     // An engine that is not running loads no model and reports an idle
     // summary (no active model), so the store never keeps an older one.
     if (perception.visionEngineOff) {

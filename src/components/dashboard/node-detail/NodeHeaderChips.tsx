@@ -11,6 +11,7 @@
  *   rebuilt on every registry update (FC telemetry rate).
  * - `NodeAuthorityChip` shows whether this browser may command the node. Its
  *   notice ages on the shared 1 Hz clock.
+ * - `NodeSimChip` marks a node whose agent reports it runs against a simulator.
  * @license GPL-3.0-only
  */
 
@@ -19,6 +20,10 @@ import { PlugZap } from "lucide-react";
 import { StatusDot } from "@/components/ui/status-dot";
 import { useFleetNodes } from "@/hooks/use-fleet-nodes";
 import { useNodeControlAuthorityNotice } from "@/hooks/use-node-control-authority";
+import {
+  selectDeviceCapabilities,
+  useAgentCapabilitiesStore,
+} from "@/stores/agent-capabilities-store";
 import { useNodeConnect } from "./use-node-connect";
 
 /** Connects the node's agent while the panel shows it; visible from every
@@ -63,6 +68,27 @@ export function NodeAuthorityChip({ droneId }: { droneId: string }) {
       <StatusDot status={authority.level} size="xs" label={authority.detail} />
       {authority.label}
       <span className="sr-only">{authority.detail}</span>
+    </span>
+  );
+}
+
+/**
+ * Marks a node whose agent reports `sim: true`, so simulated telemetry is
+ * never mistaken for a real airframe. Hidden when the agent reports false or
+ * predates the field.
+ */
+export function NodeSimChip({ focusDeviceId }: { focusDeviceId: string | null }) {
+  const t = useTranslations("dronePanel");
+  const sim = useAgentCapabilitiesStore(
+    (s) => selectDeviceCapabilities(s, focusDeviceId)?.sim === true,
+  );
+  if (!sim) return null;
+  return (
+    <span
+      className="flex shrink-0 items-center whitespace-nowrap rounded border border-accent-primary/40 bg-accent-primary/10 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-accent-primary"
+      title={t("simChipTitle")}
+    >
+      {t("simChip")}
     </span>
   );
 }

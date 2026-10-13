@@ -482,6 +482,8 @@ export interface FullStatusResponse {
   npuTops?: number;
   /** The board's declaration that it carries NPU hardware. */
   hasAccelerator?: boolean;
+  /** True when the node runs against a simulator. Absent on older agents. */
+  sim?: boolean;
   /** Where perception runs: `"local"` | `"offload"` | `"hybrid"` | `"none"`. */
   perceptionTier?: string;
   /** The workstation perception is offloaded to, or null when it runs locally. */

@@ -1619,6 +1619,8 @@
     "nodeDetailTabs": "노드 상세 탭",
     "nodeNotFound": "드론 ‘{id}’을(를) 찾을 수 없습니다",
     "retryConnect": "다시 시도",
+    "simChip": "SIM",
+    "simChipTitle": "이 노드는 시뮬레이터에서 실행 중입니다",
     "companionOffline": {
       "title": "컴패니언에 연결할 수 없음",
       "body": "This node has an onboard computer, but this browser cannot reach it right now. Its video, services and logs are unavailable until it answers.",

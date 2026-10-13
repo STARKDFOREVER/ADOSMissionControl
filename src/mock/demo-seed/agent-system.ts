@@ -220,6 +220,10 @@ export function seedFocusedAgentSystem(now: number): void {
  */
 const OFFLOAD_DEMO_DRONE = "charlie-3";
 
+/** The demo drone whose agent reports it runs against a simulator, so the node
+ * header shows its SIM chip. */
+const SIM_DEMO_DRONE = "delta-4";
+
 function demoPerceptionFor(agent: PairedDrone): MockPerceptionOverride | null {
   // A companion drone has an onboard computer (board set); an FC-only drone or a
   // non-drone node has no perception surface to describe.
@@ -235,6 +239,9 @@ function demoPerceptionFor(agent: PairedDrone): MockPerceptionOverride | null {
   }
   if (agent.deviceId === VISION_OFF_DEMO_DRONE) {
     return { perceptionTier: "local", perceptionOffloadTarget: null, visionEngineOff: true };
+  }
+  if (agent.deviceId === SIM_DEMO_DRONE) {
+    return { perceptionTier: "local", perceptionOffloadTarget: null, sim: true };
   }
   return { perceptionTier: "local", perceptionOffloadTarget: null };
 }

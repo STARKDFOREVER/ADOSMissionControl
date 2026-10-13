@@ -1619,6 +1619,8 @@
     "nodeDetailTabs": "નોડ વિગત ટૅબ્સ",
     "nodeNotFound": "ડ્રોન “{id}” મળ્યું નથી",
     "retryConnect": "ફરી પ્રયાસ",
+    "simChip": "SIM",
+    "simChipTitle": "આ નોડ સિમ્યુલેટર સાથે ચાલે છે",
     "companionOffline": {
       "title": "કમ્પેનિયન અગમ્ય",
       "body": "This node has an onboard computer, but this browser cannot reach it right now. Its video, services and logs are unavailable until it answers.",

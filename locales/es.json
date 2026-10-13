@@ -1619,6 +1619,8 @@
     "nodeDetailTabs": "Pestañas de detalles del nodo",
     "nodeNotFound": "No se ha encontrado el drone «{id}»",
     "retryConnect": "Reintentar",
+    "simChip": "SIM",
+    "simChipTitle": "Este nodo funciona con un simulador",
     "companionOffline": {
       "title": "Ordenador acompañante inaccesible",
       "body": "This node has an onboard computer, but this browser cannot reach it right now. Its video, services and logs are unavailable until it answers.",

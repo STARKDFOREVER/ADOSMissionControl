@@ -1623,6 +1623,8 @@
     "nodeDetailTabs": "Node detail tabs",
     "nodeNotFound": "Drone “{id}” not found",
     "retryConnect": "Retry",
+    "simChip": "SIM",
+    "simChipTitle": "This node runs against a simulator",
     "companionOffline": {
       "title": "Companion unreachable",
       "body": "This node has an onboard computer, but this browser cannot reach it right now. Its video, services and logs are unavailable until it answers.",

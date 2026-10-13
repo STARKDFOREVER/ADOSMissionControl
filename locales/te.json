@@ -1619,6 +1619,8 @@
     "nodeDetailTabs": "నోడ్ వివరాల ట్యాబ్‌లు",
     "nodeNotFound": "డ్రోన్ “{id}” కనుగొనబడలేదు",
     "retryConnect": "మళ్లీ ప్రయత్నించు",
+    "simChip": "SIM",
+    "simChipTitle": "ఈ నోడ్ సిమ్యులేటర్‌తో నడుస్తోంది",
     "companionOffline": {
       "title": "కంపానియన్ చేరుకోలేకపోయింది",
       "body": "This node has an onboard computer, but this browser cannot reach it right now. Its video, services and logs are unavailable until it answers.",

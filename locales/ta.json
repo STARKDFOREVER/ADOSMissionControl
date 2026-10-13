@@ -1619,6 +1619,8 @@
     "nodeDetailTabs": "முனை விவரத் தாவல்கள்",
     "nodeNotFound": "“{id}” Drone கண்டறியப்படவில்லை",
     "retryConnect": "மீண்டும் முயல்",
+    "simChip": "SIM",
+    "simChipTitle": "இந்த நோட் சிமுலேட்டருடன் இயங்குகிறது",
     "companionOffline": {
       "title": "கம்பானியன் அணுக முடியவில்லை",
       "body": "This node has an onboard computer, but this browser cannot reach it right now. Its video, services and logs are unavailable until it answers.",

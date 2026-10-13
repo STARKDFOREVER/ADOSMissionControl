@@ -157,6 +157,9 @@ export function applyFullStatus(
   if (typeof full.hasAccelerator === "boolean") {
     statusExtras.hasAccelerator = full.hasAccelerator;
   }
+  if (typeof full.sim === "boolean") {
+    statusExtras.sim = full.sim;
+  }
   if (typeof full.perceptionTier === "string") {
     statusExtras.perceptionTier = full.perceptionTier;
     // The agent sends the target as null when perception runs locally; an
