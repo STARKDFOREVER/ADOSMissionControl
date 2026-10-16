@@ -1,6 +1,6 @@
 /**
  * @module DroneTrailEntity
- * @description Renders a fading lime trail behind the drone during simulation playback.
+ * @description Renders a fading blue trail behind the drone during simulation playback.
  * A 500 ms sampler appends positions to one array that the polyline's
  * CallbackProperty returns as-is, so a rendered frame never copies the trail.
  * @license GPL-3.0-only
