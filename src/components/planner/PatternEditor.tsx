@@ -219,7 +219,7 @@ export function PatternEditor({ onApply }: PatternEditorProps) {
         <button onClick={onApply}
           className={cn(
             "w-full flex items-center justify-center gap-1.5 py-2 text-xs font-mono font-semibold",
-            "bg-text-secondary/20 text-text-secondary border border-text-secondary/30 hover:bg-text-secondary/30 transition-colors cursor-pointer"
+            "bg-accent-primary/20 text-accent-primary border border-accent-primary/30 hover:bg-accent-primary/30 transition-colors cursor-pointer"
           )}>
           <Check size={12} />{t("applyToMission", { count: patternResult.waypoints.length })}
         </button>
