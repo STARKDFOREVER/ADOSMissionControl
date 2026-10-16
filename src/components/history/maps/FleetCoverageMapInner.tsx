@@ -54,7 +54,7 @@ function HeatLayer({ points, show }: { points: [number, number, number][]; show:
           0.2: "#0a0a3f",
           0.4: "#3a82ff",
           0.6: "#22c55e",
-          0.8: "#dff140",
+          0.8: "#eab308",
           1.0: "#ef4444",
         },
       });
@@ -136,7 +136,7 @@ function PolygonDrawTool({
       const marker = L.marker(pt, {
         icon: L.divIcon({
           className: "",
-          html: `<div style="width:8px;height:8px;background:#dff140;border-radius:50%;border:1px solid #0a0a0f"></div>`,
+          html: `<div style="width:8px;height:8px;background:#3a82ff;border-radius:50%;border:1px solid #000000"></div>`,
           iconSize: [8, 8],
           iconAnchor: [4, 4],
         }),
@@ -147,7 +147,7 @@ function PolygonDrawTool({
       if (polylineRef.current) map.removeLayer(polylineRef.current);
       if (verts.length >= 2) {
         polylineRef.current = L.polyline(verts, {
-          color: "#dff140",
+          color: "#3a82ff",
           weight: 2,
           dashArray: "4 4",
           opacity: 0.7,
@@ -199,9 +199,9 @@ function SearchPolygonOverlay({
     }
     if (vertices.length >= 3) {
       polygonRef.current = L.polygon(vertices, {
-        color: "#dff140",
+        color: "#3a82ff",
         weight: 2,
-        fillColor: "#dff140",
+        fillColor: "#3a82ff",
         fillOpacity: 0.1,
       }).addTo(map);
     }
@@ -248,8 +248,8 @@ function FitToBounds({ bounds }: { bounds: L.LatLngBoundsExpression | null }) {
 // ── Color palette for N flights ──────────────────────────────
 
 const FLIGHT_COLORS = [
-  "#3a82ff", "#dff140", "#22c55e", "#ef4444", "#a855f7",
-  "#f59e0b", "#06b6d4", "#ec4899", "#84cc16", "#f97316",
+  "#3a82ff", "#eab308", "#22c55e", "#ef4444", "#a855f7",
+  "#f59e0b", "#06b6d4", "#ec4899", "#14b8a6", "#f97316",
 ];
 
 function flightColor(idx: number): string {
@@ -338,7 +338,7 @@ export default function FleetCoverageMapInner({
     () =>
       L.divIcon({
         className: "",
-        html: `<div style="width:6px;height:6px;background:#22c55e;border-radius:50%;border:1px solid #0a0a0f"></div>`,
+        html: `<div style="width:6px;height:6px;background:#22c55e;border-radius:50%;border:1px solid #000000"></div>`,
         iconSize: [6, 6],
         iconAnchor: [3, 3],
       }),

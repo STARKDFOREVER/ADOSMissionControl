@@ -182,7 +182,7 @@ export default function CesiumScene({
       // Globe base color shown while imagery streams in. Sky, atmosphere, sun,
       // moon, and fog are owned by the mode-aware sky effect (Effect 6) so they
       // can differ between satellite (day) and dark (night) map modes.
-      viewer.scene.globe.baseColor = Color.fromCssColorString("#0a0a0f");
+      viewer.scene.globe.baseColor = Color.fromCssColorString("#000000");
       viewer.scene.fog.enabled = true;
 
       // Imagery layers are owned by Effect 3 (imagery switching). Don't add one here.
@@ -398,7 +398,7 @@ export default function CesiumScene({
     const scene = viewer.scene;
 
     if (imageryMode === "satellite") {
-      scene.backgroundColor = Color.fromCssColorString("#05060a");
+      scene.backgroundColor = Color.fromCssColorString("#000000");
       if (scene.skyBox) scene.skyBox.show = true;
       if (scene.skyAtmosphere) {
         scene.skyAtmosphere.show = true;
@@ -410,7 +410,7 @@ export default function CesiumScene({
       scene.globe.showGroundAtmosphere = true;
       scene.fog.density = 1.8e-4;
     } else {
-      scene.backgroundColor = Color.fromCssColorString("#0a0a0f");
+      scene.backgroundColor = Color.fromCssColorString("#000000");
       if (scene.skyBox) scene.skyBox.show = true;
       if (scene.skyAtmosphere) {
         scene.skyAtmosphere.show = true;

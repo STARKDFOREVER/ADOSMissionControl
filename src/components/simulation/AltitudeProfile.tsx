@@ -140,7 +140,7 @@ export function AltitudeProfile({ waypoints, flightPlan }: AltitudeProfileProps)
         y1={PAD_TOP}
         x2={posX}
         y2={PAD_TOP + innerH}
-        stroke="#dff140"
+        stroke="#5b9aff"
         strokeWidth={1}
         strokeDasharray="3 2"
       />

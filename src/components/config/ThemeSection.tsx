@@ -33,7 +33,6 @@ export function ThemeSection(): React.ReactNode {
       options: [
         { value: "dark", label: t("dark") },
         { value: "light", label: t("light") },
-        { value: "mono", label: t("mono") },
       ],
     },
     {

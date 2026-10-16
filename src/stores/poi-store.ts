@@ -45,7 +45,7 @@ export const usePoiStore = create<PoiStoreState>()((set) => ({
         lat,
         lon,
         label: label || `POI ${s.markers.length + 1}`,
-        color: "#DFF140",
+        color: "#a855f7",
         createdAt: Date.now(),
       };
       const next = [...s.markers, marker];

@@ -300,11 +300,11 @@ export function altitudeColor(alt: number, minAlt: number, maxAlt: number): stri
     const b = Math.round(0xff * (1 - s) + 0x5e * s);
     return `rgb(${r},${g},${b})`;
   }
-  // Green to lime
+  // Green to yellow
   const s = (t - 0.5) * 2;
-  const r = Math.round(0x22 * (1 - s) + 0xdf * s);
-  const g = Math.round(0xc5 * (1 - s) + 0xf1 * s);
-  const b = Math.round(0x5e * (1 - s) + 0x40 * s);
+  const r = Math.round(0x22 * (1 - s) + 0xea * s);
+  const g = Math.round(0xc5 * (1 - s) + 0xb3 * s);
+  const b = Math.round(0x5e * (1 - s) + 0x08 * s);
   return `rgb(${r},${g},${b})`;
 }
 

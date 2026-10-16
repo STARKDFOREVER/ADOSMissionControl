@@ -182,7 +182,7 @@ export function ChannelHistoryChart({ hopping, currentChannel }: Props) {
                     cy={cy}
                     r={3.5}
                     fill={c}
-                    stroke="#0B1320"
+                    stroke="#0A0A0A"
                     strokeWidth={1}
                   />
                 );
@@ -191,8 +191,8 @@ export function ChannelHistoryChart({ hopping, currentChannel }: Props) {
             />
             <Tooltip
               contentStyle={{
-                backgroundColor: "#0B1320",
-                border: "1px solid #374151",
+                backgroundColor: "#0A0A0A",
+                border: "1px solid #3D3D3D",
                 fontSize: 11,
                 fontFamily: "monospace",
               }}

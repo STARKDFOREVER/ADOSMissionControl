@@ -346,7 +346,7 @@ export function DirectMavlinkPanel({ onClose }: { onClose: () => void }) {
       {/* Presets + Recent */}
       <div className="border border-border-default p-3 space-y-2">
         <div className="flex items-center gap-2">
-          <Star size={14} className="text-accent-secondary" />
+          <Star size={14} className="text-accent-primary" />
           <h3 className="text-xs font-semibold text-text-primary">
             {t("savedPresets")}
           </h3>

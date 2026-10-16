@@ -22,7 +22,7 @@ describe("LocaleProvider accent override", () => {
   });
   afterEach(() => {
     cleanup();
-    for (const name of ["--alt-accent-primary", "--alt-accent-primary-hover", "--alt-accent-secondary"]) {
+    for (const name of ["--alt-accent-primary", "--alt-accent-primary-hover"]) {
       rootStyle().removeProperty(name);
     }
     useSettingsStore.setState({ themeMode: "dark", accentColor: "blue" });
@@ -41,7 +41,6 @@ describe("LocaleProvider accent override", () => {
     expect(document.documentElement.getAttribute("data-theme")).toBe("nvg");
     expect(rootStyle().getPropertyValue("--alt-accent-primary")).toBe("");
     expect(rootStyle().getPropertyValue("--alt-accent-primary-hover")).toBe("");
-    expect(rootStyle().getPropertyValue("--alt-accent-secondary")).toBe("");
 
     // An accent change while nvg is active must not re-apply the override.
     await act(async () => {
@@ -53,6 +52,5 @@ describe("LocaleProvider accent override", () => {
       useSettingsStore.setState({ themeMode: "dark" });
     });
     expect(rootStyle().getPropertyValue("--alt-accent-primary")).toBe("#ec4899");
-    expect(rootStyle().getPropertyValue("--alt-accent-secondary")).toBe("#f9a8d4");
   });
 });

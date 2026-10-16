@@ -27,7 +27,7 @@ export const MOTOR_COLORS = [
   "var(--color-status-success)",
   "var(--color-status-warning)",
   "var(--color-status-error)",
-  "var(--color-accent-secondary)",
+  "#eab308",
   "var(--color-status-serious)",
   "var(--color-gcs-hud-green)",
   "var(--color-text-secondary)",

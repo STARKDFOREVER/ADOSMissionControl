@@ -32,7 +32,7 @@ function makePoiIcon(index: number, selected: boolean): L.DivIcon {
   const cached = poiIconCache.get(key);
   if (cached) return cached;
   // Map-layer colours (inline SVG on the Leaflet canvas), not app-chrome tokens.
-  const fill = selected ? MAP_COLORS.accentSelected : MAP_COLORS.poi;
+  const fill = selected ? MAP_COLORS.selected : MAP_COLORS.poi;
   const textFill = selected ? MAP_COLORS.background : MAP_COLORS.foreground;
   const icon = L.divIcon({
     className: "",
@@ -60,7 +60,7 @@ function makePoiLabelIcon(text: string): L.DivIcon {
     iconSize: [120, 16],
     // Push the chip below the 22px diamond (anchor above the label).
     iconAnchor: [60, -12],
-    html: `<div style="font-size:9px;font-family:JetBrains Mono,monospace;color:${MAP_COLORS.foreground};white-space:nowrap;text-align:center;background:rgba(10,10,15,0.7);padding:1px 4px;border:1px solid rgba(168,85,247,0.5)">${escapeHtml(text)}</div>`,
+    html: `<div style="font-size:9px;font-family:JetBrains Mono,monospace;color:${MAP_COLORS.foreground};white-space:nowrap;text-align:center;background:rgba(0,0,0,0.7);padding:1px 4px;border:1px solid rgba(168,85,247,0.5)">${escapeHtml(text)}</div>`,
   });
   if (poiLabelCache.size >= POI_LABEL_CACHE_MAX) {
     const first = poiLabelCache.keys().next().value;

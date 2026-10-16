@@ -15,13 +15,13 @@ import "leaflet/dist/leaflet.css";
 import type { FlightRecord } from "@/lib/types";
 
 const COLORS = [
-  "#3a82ff", "#dff140", "#22c55e", "#ef4444", "#a855f7",
+  "#3a82ff", "#eab308", "#22c55e", "#ef4444", "#a855f7",
 ];
 
 function makeIcon(color: string, round: boolean): L.DivIcon {
   return L.divIcon({
     className: "",
-    html: `<div style="background:${color};width:10px;height:10px;${round ? "border-radius:50%;" : ""}border:2px solid #0a0a0f"></div>`,
+    html: `<div style="background:${color};width:10px;height:10px;${round ? "border-radius:50%;" : ""}border:2px solid #000000"></div>`,
     iconSize: [10, 10],
     iconAnchor: [5, 5],
   });

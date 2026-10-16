@@ -18,25 +18,25 @@ import type { FlightRecord } from "@/lib/types";
 const ICONS = {
   takeoffA: L.divIcon({
     className: "ados-history-marker",
-    html: `<div style="background:#3a82ff;width:12px;height:12px;border-radius:50%;border:2px solid #0a0a0f"></div>`,
+    html: `<div style="background:#3a82ff;width:12px;height:12px;border-radius:50%;border:2px solid #000000"></div>`,
     iconSize: [12, 12],
     iconAnchor: [6, 6],
   }),
   landingA: L.divIcon({
     className: "ados-history-marker",
-    html: `<div style="background:#3a82ff;width:12px;height:12px;border:2px solid #0a0a0f"></div>`,
+    html: `<div style="background:#3a82ff;width:12px;height:12px;border:2px solid #000000"></div>`,
     iconSize: [12, 12],
     iconAnchor: [6, 6],
   }),
   takeoffB: L.divIcon({
     className: "ados-history-marker",
-    html: `<div style="background:#dff140;width:12px;height:12px;border-radius:50%;border:2px solid #0a0a0f"></div>`,
+    html: `<div style="background:#eab308;width:12px;height:12px;border-radius:50%;border:2px solid #000000"></div>`,
     iconSize: [12, 12],
     iconAnchor: [6, 6],
   }),
   landingB: L.divIcon({
     className: "ados-history-marker",
-    html: `<div style="background:#dff140;width:12px;height:12px;border:2px solid #0a0a0f"></div>`,
+    html: `<div style="background:#eab308;width:12px;height:12px;border:2px solid #000000"></div>`,
     iconSize: [12, 12],
     iconAnchor: [6, 6],
   }),
@@ -85,7 +85,7 @@ export default function CompareMapInner({ recordA, recordB }: CompareMapInnerPro
           <Polyline positions={pathA} pathOptions={{ color: "#3a82ff", weight: 3, opacity: 0.9 }} />
         )}
         {pathB.length >= 2 && (
-          <Polyline positions={pathB} pathOptions={{ color: "#dff140", weight: 3, opacity: 0.9 }} />
+          <Polyline positions={pathB} pathOptions={{ color: "#eab308", weight: 3, opacity: 0.9 }} />
         )}
         {recordA.takeoffLat !== undefined && recordA.takeoffLon !== undefined && (
           <Marker position={[recordA.takeoffLat, recordA.takeoffLon]} icon={ICONS.takeoffA} />

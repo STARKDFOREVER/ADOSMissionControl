@@ -17,7 +17,7 @@ export function makeWaypointIcon(index: number, selected: boolean): L.DivIcon {
   const key = `${index}-${selected}`;
   const cached = waypointIconCache.get(key);
   if (cached) return cached;
-  const fill = selected ? MAP_COLORS.accentSelected : MAP_COLORS.accentPrimary;
+  const fill = selected ? MAP_COLORS.selected : MAP_COLORS.accentPrimary;
   const stroke = selected ? MAP_COLORS.accentPrimary : MAP_COLORS.foreground;
   const textFill = selected ? MAP_COLORS.background : MAP_COLORS.foreground;
   const icon = L.divIcon({
@@ -39,7 +39,7 @@ export function makeSplineWaypointIcon(index: number, selected: boolean): L.DivI
   const key = `spline-${index}-${selected}`;
   const cached = splineIconCache.get(key);
   if (cached) return cached;
-  const fill = selected ? MAP_COLORS.accentSelected : MAP_COLORS.background;
+  const fill = selected ? MAP_COLORS.selected : MAP_COLORS.background;
   const stroke = MAP_COLORS.spline;
   const textFill = selected ? MAP_COLORS.background : MAP_COLORS.spline;
   const icon = L.divIcon({
@@ -65,7 +65,7 @@ export function makeSegmentLabel(text: string): L.DivIcon {
     className: "",
     iconSize: [80, 16],
     iconAnchor: [40, 8],
-    html: `<div style="font-size:9px;font-family:JetBrains Mono,monospace;color:${MAP_COLORS.muted};white-space:nowrap;text-align:center;background:rgba(10,10,15,0.7);padding:1px 4px;border:1px solid rgba(255,255,255,0.1)">${text}</div>`,
+    html: `<div style="font-size:9px;font-family:JetBrains Mono,monospace;color:${MAP_COLORS.muted};white-space:nowrap;text-align:center;background:rgba(0,0,0,0.7);padding:1px 4px;border:1px solid rgba(255,255,255,0.1)">${text}</div>`,
   });
   if (segmentLabelCache.size >= SEGMENT_CACHE_MAX) {
     const first = segmentLabelCache.keys().next().value;
@@ -103,7 +103,7 @@ export function makeMeasureLabel(text: string): L.DivIcon {
     className: "",
     iconSize: [120, 20],
     iconAnchor: [60, -4],
-    html: `<div style="font-size:10px;font-family:JetBrains Mono,monospace;color:${MAP_COLORS.foreground};white-space:nowrap;text-align:center;background:rgba(10,10,15,0.85);padding:2px 6px;border:1px solid ${MAP_COLORS.muted}">${text}</div>`,
+    html: `<div style="font-size:10px;font-family:JetBrains Mono,monospace;color:${MAP_COLORS.foreground};white-space:nowrap;text-align:center;background:rgba(0,0,0,0.85);padding:2px 6px;border:1px solid ${MAP_COLORS.muted}">${text}</div>`,
   });
   if (measureLabelCache.size >= MEASURE_CACHE_MAX) {
     const first = measureLabelCache.keys().next().value;

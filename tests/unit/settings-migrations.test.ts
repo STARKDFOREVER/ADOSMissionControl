@@ -259,4 +259,12 @@ describe("migrateSettings", () => {
     ) as unknown as Record<string, unknown>;
     expect(result.customTileUrl).toBe("http://tiles.lan/{z}/{x}/{y}.png");
   });
+
+  it("v53 moves the retired mono theme to dark", () => {
+    const result = migrateSettings(
+      { themeMode: "mono" } as unknown as Record<string, unknown>,
+      52,
+    ) as unknown as Record<string, unknown>;
+    expect(result.themeMode).toBe("dark");
+  });
 });

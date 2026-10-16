@@ -35,9 +35,9 @@ const LeafletCircle = dynamic(
 const FENCE_COLOR = MAP_COLORS.fence;
 const PATTERN_COLOR = MAP_COLORS.accentPrimary;
 const TRANSECT_COLOR = withAlpha(MAP_COLORS.accentPrimary, 0.4);
-const CAPTURE_DOT_COLOR = MAP_COLORS.accentSelected;
+const CAPTURE_DOT_COLOR = MAP_COLORS.selected;
 const DATUM_COLOR = MAP_COLORS.rally;
-const LANDING_COLOR = MAP_COLORS.accentSelected;
+const LANDING_COLOR = MAP_COLORS.selected;
 
 // Faint coverage-extent preview shown while a SAR pattern is being configured.
 const SAR_PREVIEW_OPTS = {

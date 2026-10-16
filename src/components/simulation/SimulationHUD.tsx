@@ -104,7 +104,7 @@ export function SimulationHUD() {
       <div className="mt-2 flex justify-center">
         <div className="w-8 h-8 rounded-full border border-border-default bg-bg-primary/50 flex items-center justify-center relative">
           <svg width="20" height="20" viewBox="0 0 20 20" style={{ transform: `rotate(${pos.heading}deg)` }}>
-            <polygon points="10,2 13,10 10,8 7,10" fill="#dff140" opacity="0.9" />
+            <polygon points="10,2 13,10 10,8 7,10" fill="#5b9aff" opacity="0.9" />
             <polygon points="10,18 13,10 10,12 7,10" fill="#666" opacity="0.5" />
           </svg>
           <span className="absolute -top-0.5 left-1/2 -translate-x-1/2 text-[7px] font-mono text-text-tertiary">N</span>

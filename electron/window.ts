@@ -33,7 +33,7 @@ export function createMainWindow(port: number): BrowserWindow {
     height: 900,
     minWidth: 1024,
     minHeight: 700,
-    backgroundColor: "#0A0A0F",
+    backgroundColor: "#000000",
     show: false,
     // macOS and Linux use the native title bar so the OS window controls sit in
     // their own bar and never overlap app content. Windows keeps a hidden title
@@ -41,7 +41,7 @@ export function createMainWindow(port: number): BrowserWindow {
     titleBarStyle: process.platform === "win32" ? "hidden" : "default",
     ...(process.platform === "win32" ? {
       titleBarOverlay: {
-        color: "#0A0A0F",
+        color: "#000000",
         symbolColor: "#fafafa",
         height: 48,
       },

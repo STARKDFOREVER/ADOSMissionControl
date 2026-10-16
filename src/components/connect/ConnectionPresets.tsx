@@ -47,7 +47,7 @@ export function ConnectionPresets({
             onClick={() => onApply(preset)}
             className="flex items-center gap-2 min-w-0 text-left cursor-pointer hover:text-text-primary transition-colors"
           >
-            <Star size={12} className="text-accent-secondary shrink-0" />
+            <Star size={12} className="text-accent-primary shrink-0" />
             {preset.type === "serial" ? (
               <Usb size={12} className="text-text-tertiary shrink-0" />
             ) : preset.type === "udp-proxy" || preset.type === "tcp" ? (

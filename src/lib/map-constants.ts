@@ -24,14 +24,14 @@ export const DEFAULT_ZOOM_UNLOCATED = 2;
 export const MAP_COLORS = {
   /** Primary accent — waypoint fill, path stroke, chart stroke. */
   accentPrimary: "#3a82ff",
-  /** Secondary accent — selected waypoint fill. */
-  accentSelected: "#dff140",
+  /** Selected waypoint / selected map item fill. */
+  selected: "#ffffff",
   /** Light foreground — unselected waypoint stroke, dot fill. */
   foreground: "#fafafa",
   /** Dark background — selected waypoint text. */
-  background: "#0a0a0f",
+  background: "#000000",
   /** Muted text — segment labels. */
-  muted: "#9ca3af",
+  muted: "#b4b4b4",
   /** Geofence / danger boundary — red. */
   fence: "#ef4444",
   /** Rally point — orange. */

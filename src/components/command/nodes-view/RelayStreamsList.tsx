@@ -183,7 +183,7 @@ function NodeChip({ label, sink }: { label: string; sink?: boolean }) {
       className={cn(
         "rounded px-1 py-0.5 font-mono text-[10px]",
         sink
-          ? "bg-accent-primary/10 text-accent-secondary"
+          ? "bg-accent-primary/10 text-accent-primary"
           : "bg-bg-tertiary text-text-secondary",
       )}
     >

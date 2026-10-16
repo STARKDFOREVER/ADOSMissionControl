@@ -30,7 +30,7 @@ export const HORIZON_LINE = "rgba(255, 255, 255, 0.3)";
  * distinct from every live colour so "no data" cannot be mistaken for a value.
  */
 export const NO_DATA_INK = "rgba(255, 255, 255, 0.45)";
-export const NO_DATA_FIELD = "#12161c";
+export const NO_DATA_FIELD = "#0A0A0A";
 export const NO_DATA_GLYPH = "\u2014";
 
 // ── Utility ─────────────────────────────────────────────────────

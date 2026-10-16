@@ -155,7 +155,7 @@ export function GroundStationOverview({ name }: { name?: string }) {
           <div className="space-y-3">
             {resources && <SystemResourceGauges resources={resources} />}
             <Sparkline series="cpuHistory" tokenColor="--color-accent-primary" />
-            <Sparkline series="memoryHistory" tokenColor="--color-accent-secondary" />
+            <Sparkline series="memoryHistory" tokenColor="--color-text-secondary" />
           </div>
         </OverviewTile>
         <OverviewTile span="half">

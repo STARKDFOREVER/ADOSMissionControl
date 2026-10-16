@@ -36,7 +36,6 @@ export const PLUGIN_THEME_TOKENS = [
   "text-tertiary",
   "accent-primary",
   "accent-primary-hover",
-  "accent-secondary",
   "accent-foreground",
   "border-default",
   "border-strong",

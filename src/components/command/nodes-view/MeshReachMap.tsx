@@ -66,7 +66,7 @@ function edgeStroke(edge: MeshEdge): string {
 
 /** A vertex ring reads the node's liveness, so a dark node never rings green. */
 function vertexRing(vertex: MeshVertex): string {
-  if (vertex.kind === "gcs") return "var(--color-accent-secondary)";
+  if (vertex.kind === "gcs") return "var(--color-accent-primary)";
   if (vertex.liveness === "live") return "var(--color-status-success)";
   if (vertex.liveness === "stale") return "var(--color-status-warning)";
   return "var(--color-text-tertiary)";

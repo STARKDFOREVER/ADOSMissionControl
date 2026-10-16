@@ -229,16 +229,16 @@ function ScatterPlot({
       },
       axes: [
         {
-          stroke: "#6b6b7f",
-          grid: { stroke: "#1f1f2e", dash: [3, 3] },
+          stroke: "#909090",
+          grid: { stroke: "#262626", dash: [3, 3] },
           font: "9px JetBrains Mono, monospace",
           label: xLabel,
           labelFont: "9px JetBrains Mono, monospace",
           labelSize: 14,
         },
         {
-          stroke: "#6b6b7f",
-          grid: { stroke: "#1f1f2e", dash: [3, 3] },
+          stroke: "#909090",
+          grid: { stroke: "#262626", dash: [3, 3] },
           font: "9px JetBrains Mono, monospace",
           label: yLabel,
           labelFont: "9px JetBrains Mono, monospace",

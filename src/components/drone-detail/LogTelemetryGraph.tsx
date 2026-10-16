@@ -27,7 +27,7 @@ import type { BatteryData, RcData, VfrData } from "@/lib/types/telemetry";
 
 const GRAPH_CHANNELS = [
   { key: "altitude" as const, label: "Alt", color: "var(--color-accent-primary)" },
-  { key: "speed" as const, label: "Spd", color: "var(--color-accent-secondary)" },
+  { key: "speed" as const, label: "Spd", color: "#eab308" },
   { key: "battery" as const, label: "Bat", color: "var(--color-status-success)" },
   { key: "rssi" as const, label: "RSSI", color: "var(--color-status-warning)" },
 ] as const;

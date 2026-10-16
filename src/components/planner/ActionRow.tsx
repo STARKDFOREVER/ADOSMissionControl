@@ -152,7 +152,7 @@ function RawActionRow({
       {...actionDragHandlers({ onDragStart, onDragOver, onDragEnd, onDrop })}
       className={cn(
         "border border-border-default/60 rounded bg-bg-secondary/60",
-        dragOver && "border-t-2 border-t-accent-secondary",
+        dragOver && "border-t-2 border-t-accent-primary",
       )}
     >
       <div className="flex items-center gap-1.5 px-1.5 py-1">
@@ -217,12 +217,12 @@ function CommandActionRow({
       {...actionDragHandlers({ onDragStart, onDragOver, onDragEnd, onDrop })}
       className={cn(
         "border border-border-default/60 rounded bg-bg-secondary/60",
-        dragOver && "border-t-2 border-t-accent-secondary",
+        dragOver && "border-t-2 border-t-accent-primary",
       )}
     >
       <div className="flex items-center gap-1.5 px-1.5 py-1">
         <GripVertical size={11} className="text-text-tertiary shrink-0 cursor-grab" />
-        <Icon size={12} className="text-accent-secondary shrink-0" />
+        <Icon size={12} className="text-accent-primary shrink-0" />
         <button
           onClick={onToggleExpand}
           className="flex-1 min-w-0 flex items-center gap-1.5 text-left cursor-pointer"

@@ -235,7 +235,7 @@ function CompanionBand({ droneId }: { droneId: string }) {
           <Sparkline series="cpuHistory" tokenColor="--color-accent-primary" />
         </OverviewTile>
         <OverviewTile span="quarter">
-          <Sparkline series="memoryHistory" tokenColor="--color-accent-secondary" />
+          <Sparkline series="memoryHistory" tokenColor="--color-text-secondary" />
         </OverviewTile>
         <OverviewTile span="half">
           <ServiceTable

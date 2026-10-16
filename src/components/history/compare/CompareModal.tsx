@@ -39,7 +39,7 @@ const CompareMapInner = dynamic(() => import("./CompareMapInner"), {
 });
 
 const COLOR_A = "#3a82ff";
-const COLOR_B = "#dff140";
+const COLOR_B = "#eab308";
 
 interface CompareModalProps {
   open: boolean;
@@ -308,17 +308,17 @@ function DualPanel({
       <div className="h-[140px] w-full">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={merged} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
-            <CartesianGrid stroke="#1f1f2e" strokeDasharray="3 3" />
+            <CartesianGrid stroke="#262626" strokeDasharray="3 3" />
             <XAxis
               dataKey="t"
               type="number"
               domain={["dataMin", "dataMax"]}
-              tick={{ fill: "#6b6b7f", fontSize: 9 }}
+              tick={{ fill: "#909090", fontSize: 9 }}
               tickFormatter={(s) => `${Math.round(s)}s`}
             />
-            <YAxis tick={{ fill: "#6b6b7f", fontSize: 9 }} width={32} />
+            <YAxis tick={{ fill: "#909090", fontSize: 9 }} width={32} />
             <Tooltip
-              contentStyle={{ background: "#0a0a0f", border: "1px solid #2a2a3a", fontSize: 10 }}
+              contentStyle={{ background: "#000000", border: "1px solid #262626", fontSize: 10 }}
               labelFormatter={(s) => `t=${(s as number).toFixed(1)}s`}
             />
             <Legend wrapperStyle={{ fontSize: 9 }} />

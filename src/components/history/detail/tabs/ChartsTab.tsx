@@ -114,7 +114,7 @@ function ChartsTabLoaded({ recordingId, record }: { recordingId: string; record:
         data={series.speed}
         lines={[
           { key: "gs", color: "#22c55e", label: "Ground" },
-          { key: "as", color: "#dff140", label: "Air" },
+          { key: "as", color: "#eab308", label: "Air" },
         ]}
         events={record.events}
       />
@@ -122,7 +122,7 @@ function ChartsTabLoaded({ recordingId, record }: { recordingId: string; record:
         title="Battery"
         data={series.battery}
         lines={[
-          { key: "v", color: "#dff140", label: "Voltage (V)" },
+          { key: "v", color: "#eab308", label: "Voltage (V)" },
           { key: "pct", color: "#3a82ff", label: "Remaining (%)" },
         ]}
         events={record.events}
@@ -133,7 +133,7 @@ function ChartsTabLoaded({ recordingId, record }: { recordingId: string; record:
         lines={[
           { key: "roll", color: "#3a82ff", label: "Roll" },
           { key: "pitch", color: "#22c55e", label: "Pitch" },
-          { key: "yaw", color: "#dff140", label: "Yaw" },
+          { key: "yaw", color: "#eab308", label: "Yaw" },
         ]}
         events={record.events}
       />
@@ -212,20 +212,20 @@ function ChartPanel({ title, data, lines, events }: ChartPanelProps) {
             }}
             onMouseLeave={() => setCursor(null)}
           >
-            <CartesianGrid stroke="#1f1f2e" strokeDasharray="3 3" />
+            <CartesianGrid stroke="#262626" strokeDasharray="3 3" />
             <XAxis
               dataKey="t"
               type="number"
               domain={["dataMin", "dataMax"]}
               height={X_AXIS_HEIGHT}
-              tick={{ fill: "#6b6b7f", fontSize: 9 }}
+              tick={{ fill: "#909090", fontSize: 9 }}
               tickFormatter={(s) => `${Math.round(s)}s`}
             />
-            <YAxis tick={{ fill: "#6b6b7f", fontSize: 9 }} width={Y_AXIS_WIDTH} />
+            <YAxis tick={{ fill: "#909090", fontSize: 9 }} width={Y_AXIS_WIDTH} />
             <Tooltip
               contentStyle={{
-                background: "#0a0a0f",
-                border: "1px solid #2a2a3a",
+                background: "#000000",
+                border: "1px solid #262626",
                 fontSize: 10,
               }}
               labelFormatter={(s) => `t=${formatDecimal(s as number, 1, locale)}s`}

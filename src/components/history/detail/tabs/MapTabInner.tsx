@@ -18,14 +18,14 @@ import type { FlightRecord } from "@/lib/types";
 
 const TAKEOFF_ICON = L.divIcon({
   className: "ados-history-marker",
-  html: `<div style="background:#22c55e;width:14px;height:14px;border-radius:50%;border:2px solid #0a0a0f;box-shadow:0 0 0 1px #22c55e"></div>`,
+  html: `<div style="background:#22c55e;width:14px;height:14px;border-radius:50%;border:2px solid #000000;box-shadow:0 0 0 1px #22c55e"></div>`,
   iconSize: [14, 14],
   iconAnchor: [7, 7],
 });
 
 const LANDING_ICON = L.divIcon({
   className: "ados-history-marker",
-  html: `<div style="background:#ef4444;width:14px;height:14px;border-radius:50%;border:2px solid #0a0a0f;box-shadow:0 0 0 1px #ef4444"></div>`,
+  html: `<div style="background:#ef4444;width:14px;height:14px;border-radius:50%;border:2px solid #000000;box-shadow:0 0 0 1px #ef4444"></div>`,
   iconSize: [14, 14],
   iconAnchor: [7, 7],
 });

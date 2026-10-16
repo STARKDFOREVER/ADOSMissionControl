@@ -362,7 +362,7 @@ export interface DemoFleetSlotContribution {
 function demoBundle(label: string, accent = "#38bdf8"): string {
   const html = `<!doctype html><html><head><meta charset="utf-8"><style>
 html,body{margin:0;height:100%;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
-body{display:flex;align-items:center;justify-content:center;background:#0b0f14;color:#e5e7eb}
+body{display:flex;align-items:center;justify-content:center;background:#0A0A0A;color:#EDEDED}
 .card{border:1px solid ${accent}40;background:${accent}14;color:${accent};padding:8px 12px;font-size:12px;letter-spacing:.04em}
 </style></head><body><div class="card">${label}</div></body></html>`;
   if (

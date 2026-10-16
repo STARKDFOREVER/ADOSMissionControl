@@ -63,16 +63,16 @@ export function UPlotChart({ frames, traces }: UPlotChartProps) {
       },
       axes: [
         {
-          stroke: "#6b6b7f",
-          grid: { stroke: "#1f1f2e", dash: [3, 3] },
-          ticks: { stroke: "#1f1f2e" },
+          stroke: "#909090",
+          grid: { stroke: "#262626", dash: [3, 3] },
+          ticks: { stroke: "#262626" },
           font: "9px JetBrains Mono, monospace",
           values: (_: uPlot, vals: number[]) => vals.map((v) => `${Math.round(v)}s`),
         },
         {
-          stroke: "#6b6b7f",
-          grid: { stroke: "#1f1f2e", dash: [3, 3] },
-          ticks: { stroke: "#1f1f2e" },
+          stroke: "#909090",
+          grid: { stroke: "#262626", dash: [3, 3] },
+          ticks: { stroke: "#262626" },
           font: "9px JetBrains Mono, monospace",
           size: 48,
         },

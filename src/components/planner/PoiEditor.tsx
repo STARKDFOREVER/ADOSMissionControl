@@ -141,7 +141,7 @@ function PoiRow({ point, index, selected, onSelect, onUpdate, onRemove }: PoiRow
     >
       {/* Index badge */}
       <div className="flex items-center justify-center w-5 h-5 shrink-0 mt-0.5">
-        <MapPinned size={12} className="text-accent-secondary" />
+        <MapPinned size={12} className="text-accent-primary" />
       </div>
       <div className="flex-1 min-w-0">
         <span className="text-[10px] font-mono font-semibold text-text-secondary">P{index + 1}</span>

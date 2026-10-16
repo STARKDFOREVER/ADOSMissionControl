@@ -31,7 +31,7 @@ interface DroneEntityProps {
 }
 
 const ARROW_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24">
-  <polygon points="12,2 20,20 12,16 4,20" fill="#dff140" stroke="#fff" stroke-width="1" opacity="0.95"/>
+  <polygon points="12,2 20,20 12,16 4,20" fill="#5b9aff" stroke="#fff" stroke-width="1" opacity="0.95"/>
 </svg>`;
 const ARROW_DATA_URL = `data:image/svg+xml;base64,${typeof window !== "undefined" ? btoa(ARROW_SVG) : ""}`;
 

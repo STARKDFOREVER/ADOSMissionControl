@@ -326,5 +326,9 @@ export function migrateSettings(
     // v52: parameter filter presets never had a UI; the stored list goes.
     delete state.paramFilterPresets;
   }
+  if (version < 53) {
+    // v53: the separate mono theme is retired; dark is now the neutral black ramp.
+    if ((state.themeMode as string | undefined) === "mono") state.themeMode = "dark";
+  }
   return state as Partial<SettingsStoreState>;
 }

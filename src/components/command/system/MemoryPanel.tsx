@@ -196,7 +196,7 @@ function PerServiceBreakdown({
               <div
                 className={cn(
                   "h-full rounded-full transition-all",
-                  stale ? "bg-text-tertiary/60" : "bg-accent-secondary",
+                  stale ? "bg-text-tertiary/60" : "bg-text-secondary",
                 )}
                 style={{ width: `${Math.max(0, Math.min(barWidth, 100))}%` }}
               />
@@ -230,7 +230,7 @@ export function MemoryPanel() {
         </div>
 
         <div>
-          <Sparkline series="memoryHistory" tokenColor="--color-accent-secondary" />
+          <Sparkline series="memoryHistory" tokenColor="--color-text-secondary" />
         </div>
 
         <div>

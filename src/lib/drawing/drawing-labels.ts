@@ -14,7 +14,7 @@ export const DRAW_COLORS = {
   preview: "rgba(58, 130, 255, 0.5)",
   measure: "#ffffff",
   measureDash: "6 4",
-  label: "rgba(10, 10, 15, 0.85)",
+  label: "rgba(0, 0, 0, 0.85)",
   labelText: "#ffffff",
   labelBorder: "rgba(58, 130, 255, 0.4)",
 } as const;

@@ -22,8 +22,8 @@ const PHASE_LABELS: Record<FlightPhase["type"], string> = {
 };
 
 const PHASE_COLORS: Record<FlightPhase["type"], string> = {
-  pre_arm: "#6b6b7f",
-  takeoff: "#dff140",
+  pre_arm: "#909090",
+  takeoff: "#eab308",
   climb: "#3a82ff",
   cruise: "#22c55e",
   hover: "#a855f7",

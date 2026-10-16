@@ -25,7 +25,7 @@ const OverlayMapInner = dynamic(() => import("./OverlayMapInner"), {
 });
 
 const COLORS = [
-  "#3a82ff", "#dff140", "#22c55e", "#ef4444", "#a855f7",
+  "#3a82ff", "#eab308", "#22c55e", "#ef4444", "#a855f7",
 ];
 
 interface OverlayModalProps {

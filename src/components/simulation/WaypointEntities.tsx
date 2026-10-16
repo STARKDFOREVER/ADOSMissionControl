@@ -120,7 +120,7 @@ export function WaypointEntities({ viewer, waypoints, resolvedPositions }: Waypo
     const entityMap = entityMapRef.current;
     if (!viewer || viewer.isDestroyed() || entityMap.size === 0) return;
 
-    const selectedColor = Color.fromCssColorString(MAP_COLORS.accentSelected);
+    const selectedColor = Color.fromCssColorString(MAP_COLORS.selected);
     const defaultColor = Color.fromCssColorString(MAP_COLORS.accentPrimary);
     const selectedTextColor = Color.fromCssColorString(MAP_COLORS.background);
 

@@ -13,7 +13,7 @@ export interface ConfigLogEntry {
 
 const LOG_TYPE_COLORS: Record<ConfigLogEntry["type"], string> = {
   read: "text-accent-primary",
-  write: "text-accent-secondary",
+  write: "text-text-secondary",
   flash: "text-status-success",
   error: "text-status-error",
   info: "text-text-tertiary",

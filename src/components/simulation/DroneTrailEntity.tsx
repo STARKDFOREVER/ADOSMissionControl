@@ -26,7 +26,7 @@ interface DroneTrailEntityProps {
   positionProperty: SampledPositionProperty | null;
 }
 
-const TRAIL_COLOR = Color.fromCssColorString("#dff140").withAlpha(0.5);
+const TRAIL_COLOR = Color.fromCssColorString("#5b9aff").withAlpha(0.5);
 const UPDATE_INTERVAL = 500; // ms between position samples
 const MAX_TRAIL_POSITIONS = 7200; // 60 min at 500ms intervals
 const NO_POSITIONS: Cartesian3[] = [];

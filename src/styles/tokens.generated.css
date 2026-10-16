@@ -3,18 +3,17 @@
  * plus the cockpit HUD roles (--hud-*). Other themes stay hand-written. */
 
 :root {
-  --alt-bg-primary: #0A0A0F;
-  --alt-bg-secondary: #0C1120;
-  --alt-bg-tertiary: #121A2E;
-  --alt-text-primary: #F8FAFC;
-  --alt-text-secondary: #94A3B8;
-  --alt-text-tertiary: #7D8CA3;
+  --alt-bg-primary: #000000;
+  --alt-bg-secondary: #0A0A0A;
+  --alt-bg-tertiary: #141414;
+  --alt-text-primary: #EDEDED;
+  --alt-text-secondary: #B4B4B4;
+  --alt-text-tertiary: #909090;
   --alt-accent-primary: #3A82FF;
   --alt-accent-primary-hover: #5B9AFF;
-  --alt-accent-secondary: #DFF140;
-  --alt-accent-foreground: #0A0A0F;
-  --alt-border-default: #1E293B;
-  --alt-border-strong: #334155;
+  --alt-accent-foreground: #000000;
+  --alt-border-default: #262626;
+  --alt-border-strong: #3D3D3D;
   --alt-status-success: #22C55E;
   --alt-status-warning: #F59E0B;
   --alt-status-error: #EF4444;
@@ -25,33 +24,32 @@
   --gcs-disarmed: #22C55E;
   --hud-primary: #5B9AFF;
   --hud-dim: #4B7FB5;
-  --hud-ink: #F8FAFC;
-  --hud-ink-2: #94A3B8;
-  --hud-muted: #7D8CA3;
+  --hud-ink: #EDEDED;
+  --hud-ink-2: #B4B4B4;
+  --hud-muted: #909090;
   --hud-good: #22C55E;
   --hud-warn: #F59E0B;
   --hud-crit: #EF4444;
   --hud-lock: #22C55E;
-  --hud-glass: rgba(9, 15, 28, 0.58);
-  --hud-glass-strong: rgba(9, 15, 28, 0.78);
-  --hud-hair: rgba(120, 160, 210, 0.22);
-  --hud-hair-2: rgba(120, 160, 210, 0.12);
+  --hud-glass: rgba(0, 0, 0, 0.58);
+  --hud-glass-strong: rgba(0, 0, 0, 0.78);
+  --hud-hair: rgba(255, 255, 255, 0.16);
+  --hud-hair-2: rgba(255, 255, 255, 0.08);
   --hud-blur: 9px;
 }
 
 html[data-theme="light"] {
   --alt-bg-primary: #FFFFFF;
-  --alt-bg-secondary: #F8FAFC;
-  --alt-bg-tertiary: #F1F5F9;
-  --alt-text-primary: #0F172A;
-  --alt-text-secondary: #475569;
-  --alt-text-tertiary: #5B6B80;
+  --alt-bg-secondary: #FAFAFA;
+  --alt-bg-tertiary: #F5F5F5;
+  --alt-text-primary: #171717;
+  --alt-text-secondary: #525252;
+  --alt-text-tertiary: #666666;
   --alt-accent-primary: #2563EB;
   --alt-accent-primary-hover: #1D4ED8;
-  --alt-accent-secondary: #84CC16;
   --alt-accent-foreground: #FFFFFF;
-  --alt-border-default: #E2E8F0;
-  --alt-border-strong: #CBD5E1;
+  --alt-border-default: #E5E5E5;
+  --alt-border-strong: #D4D4D4;
   --alt-status-success: #15803D;
   --alt-status-warning: #B45309;
   --alt-status-error: #B91C1C;
@@ -62,17 +60,17 @@ html[data-theme="light"] {
   --gcs-disarmed: #15803D;
   --hud-primary: #5B9AFF;
   --hud-dim: #4B7FB5;
-  --hud-ink: #F8FAFC;
-  --hud-ink-2: #94A3B8;
-  --hud-muted: #7D8CA3;
+  --hud-ink: #EDEDED;
+  --hud-ink-2: #B4B4B4;
+  --hud-muted: #909090;
   --hud-good: #22C55E;
   --hud-warn: #F59E0B;
   --hud-crit: #EF4444;
   --hud-lock: #22C55E;
-  --hud-glass: rgba(9, 15, 28, 0.58);
-  --hud-glass-strong: rgba(9, 15, 28, 0.78);
-  --hud-hair: rgba(120, 160, 210, 0.22);
-  --hud-hair-2: rgba(120, 160, 210, 0.12);
+  --hud-glass: rgba(0, 0, 0, 0.58);
+  --hud-glass-strong: rgba(0, 0, 0, 0.78);
+  --hud-hair: rgba(255, 255, 255, 0.16);
+  --hud-hair-2: rgba(255, 255, 255, 0.08);
 }
 
 html[data-theme="nvg"] {
@@ -84,7 +82,6 @@ html[data-theme="nvg"] {
   --alt-text-tertiary: #009900;
   --alt-accent-primary: #00FF00;
   --alt-accent-primary-hover: #00CC00;
-  --alt-accent-secondary: #008800;
   --alt-accent-foreground: #000000;
   --alt-border-default: #002200;
   --alt-border-strong: #003300;

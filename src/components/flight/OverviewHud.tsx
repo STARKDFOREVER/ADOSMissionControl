@@ -61,7 +61,7 @@ export function OverviewHud() {
     popup.document.title = "HUD";
     popup.document.body.innerHTML = "";
     popup.document.body.style.margin = "0";
-    popup.document.body.style.background = "#0a1428";
+    popup.document.body.style.background = "#000000";
     popup.document.body.style.overflow = "hidden";
 
     // Mirror stylesheets so utility classes render in the detached window.

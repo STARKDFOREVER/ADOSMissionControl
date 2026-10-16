@@ -33,7 +33,6 @@
   --color-text-tertiary: var(--alt-text-tertiary);
   --color-accent-primary: var(--alt-accent-primary);
   --color-accent-primary-hover: var(--alt-accent-primary-hover);
-  --color-accent-secondary: var(--alt-accent-secondary);
   /* Legible foreground for anything painted on `--alt-accent-primary`
      (primary buttons, selected pills). Hardcoded `text-white` failed WCAG AA
      against 18 of the 22 accents in this file — worst is `nvg` at 1.37:1,
@@ -103,35 +102,6 @@
   --node-swatch-purple: #a855f7;
 }
 
-/* Mono: the neutral black ramp that was the app default before brand-dark. */
-html[data-theme="mono"] {
-  --alt-bg-primary: #000000;
-  --alt-bg-secondary: #0a0a0a;
-  --alt-bg-tertiary: #141414;
-
-  --alt-text-primary: #fafafa;
-  --alt-text-secondary: #a0a0a0;
-  --alt-text-tertiary: #666666;
-
-  --alt-accent-primary: #3a82ff;
-  --alt-accent-primary-hover: #5b9aff;
-  --alt-accent-secondary: #dff140;
-  --alt-accent-foreground: #000000;
-
-  --alt-border-default: #1a1a1a;
-  --alt-border-strong: #2a2a2a;
-
-  --alt-status-success: #22c55e;
-  --alt-status-warning: #f59e0b;
-  --alt-status-error: #ef4444;
-  --alt-on-status: #000000;
-
-  --gcs-hud-green: #00ff41;
-  --gcs-hud-bg: rgba(0, 0, 0, 0.6);
-  --gcs-armed: #ef4444;
-  --gcs-disarmed: #22c55e;
-}
-
 html[data-theme="solarized-dark"] {
   /* Solarized dark: base03 background, base0 text */
   --alt-bg-primary: #002b36;
@@ -144,7 +114,6 @@ html[data-theme="solarized-dark"] {
 
   --alt-accent-primary: #268bd2;
   --alt-accent-primary-hover: #2aa1de;
-  --alt-accent-secondary: #b58900;
   --alt-accent-foreground: #000000;
 
   --alt-border-default: #073642;
@@ -168,7 +137,6 @@ html[data-theme="solarized-light"] {
 
   --alt-accent-primary: #268bd2;
   --alt-accent-primary-hover: #2aa1de;
-  --alt-accent-secondary: #b58900;
   --alt-accent-foreground: #000000;
 
   --alt-border-default: #eee8d5;
@@ -191,7 +159,6 @@ html[data-theme="dracula"] {
   --alt-text-tertiary: #4e5a84;
   --alt-accent-primary: #bd93f9;
   --alt-accent-primary-hover: #ff79c6;
-  --alt-accent-secondary: #8be9fd;
   --alt-accent-foreground: #000000;
   --alt-border-default: #383a4a;
   --alt-border-strong: #44475a;
@@ -213,7 +180,6 @@ html[data-theme="catppuccin-mocha"] {
   --alt-text-tertiary: #a6adc8;
   --alt-accent-primary: #cba6f7;
   --alt-accent-primary-hover: #b4befe;
-  --alt-accent-secondary: #94e2d5;
   --alt-accent-foreground: #000000;
   --alt-border-default: #313244;
   --alt-border-strong: #6c7086;
@@ -235,7 +201,6 @@ html[data-theme="catppuccin-frappe"] {
   --alt-text-tertiary: #a5adce;
   --alt-accent-primary: #ca9ee6;
   --alt-accent-primary-hover: #babbf1;
-  --alt-accent-secondary: #81c8be;
   --alt-accent-foreground: #000000;
   --alt-border-default: #414559;
   --alt-border-strong: #737994;
@@ -257,7 +222,6 @@ html[data-theme="nord"] {
   --alt-text-tertiary: #4c566a;
   --alt-accent-primary: #88c0d0;
   --alt-accent-primary-hover: #8fbcbb;
-  --alt-accent-secondary: #81a1c1;
   --alt-accent-foreground: #000000;
   --alt-border-default: #3b4252;
   --alt-border-strong: #4c566a;
@@ -279,7 +243,6 @@ html[data-theme="gruvbox-dark"] {
   --alt-text-tertiary: #a89984;
   --alt-accent-primary: #83a598;
   --alt-accent-primary-hover: #8ec07c;
-  --alt-accent-secondary: #d3869b;
   --alt-accent-foreground: #000000;
   --alt-border-default: #3c3836;
   --alt-border-strong: #504945;
@@ -301,7 +264,6 @@ html[data-theme="one-dark"] {
   --alt-text-tertiary: #5c6370;
   --alt-accent-primary: #61afef;
   --alt-accent-primary-hover: #528bff;
-  --alt-accent-secondary: #c678dd;
   --alt-accent-foreground: #000000;
   --alt-border-default: #21252b;
   --alt-border-strong: #3a3f4b;
@@ -323,7 +285,6 @@ html[data-theme="tokyo-night"] {
   --alt-text-tertiary: #565f89;
   --alt-accent-primary: #7aa2f7;
   --alt-accent-primary-hover: #7dcfff;
-  --alt-accent-secondary: #bb9af7;
   --alt-accent-foreground: #000000;
   --alt-border-default: #292e42;
   --alt-border-strong: #3b4261;
@@ -345,7 +306,6 @@ html[data-theme="rose-pine"] {
   --alt-text-tertiary: #6e6a86;
   --alt-accent-primary: #c4a7e7;
   --alt-accent-primary-hover: #ebbcba;
-  --alt-accent-secondary: #9ccfd8;
   --alt-accent-foreground: #000000;
   --alt-border-default: #403d52;
   --alt-border-strong: #524f67;
@@ -367,7 +327,6 @@ html[data-theme="monokai"] {
   --alt-text-tertiary: #75715e;
   --alt-accent-primary: #a6e22e;
   --alt-accent-primary-hover: #66d9ef;
-  --alt-accent-secondary: #ae81ff;
   --alt-accent-foreground: #000000;
   --alt-border-default: #3e3d32;
   --alt-border-strong: #75715e;
@@ -389,7 +348,6 @@ html[data-theme="kanagawa"] {
   --alt-text-tertiary: #727169;
   --alt-accent-primary: #7e9cd8;
   --alt-accent-primary-hover: #7fb4ca;
-  --alt-accent-secondary: #957fb8;
   --alt-accent-foreground: #000000;
   --alt-border-default: #363646;
   --alt-border-strong: #54546d;
@@ -411,7 +369,6 @@ html[data-theme="synthwave"] {
   --alt-text-tertiary: #848bbd;
   --alt-accent-primary: #ff7edb;
   --alt-accent-primary-hover: #f97e72;
-  --alt-accent-secondary: #36f9f6;
   --alt-accent-foreground: #000000;
   --alt-border-default: #2a2139;
   --alt-border-strong: #495495;
@@ -433,7 +390,6 @@ html[data-theme="github-dark"] {
   --alt-text-tertiary: #656c76;
   --alt-accent-primary: #1f6feb;
   --alt-accent-primary-hover: #388bfd;
-  --alt-accent-secondary: #58a6ff;
   --alt-accent-foreground: #ffffff;
   --alt-border-default: #2f3742;
   --alt-border-strong: #656c76;
@@ -457,7 +413,6 @@ html[data-theme="catppuccin-latte"] {
   --alt-text-tertiary: #6c6f85;
   --alt-accent-primary: #8839ef;
   --alt-accent-primary-hover: #7287fd;
-  --alt-accent-secondary: #179299;
   --alt-accent-foreground: #ffffff;
   --alt-border-default: #ccd0da;
   --alt-border-strong: #9ca0b0;
@@ -480,7 +435,6 @@ html[data-theme="gruvbox-light"] {
   --alt-text-tertiary: #7c6f64;
   --alt-accent-primary: #076678;
   --alt-accent-primary-hover: #458588;
-  --alt-accent-secondary: #8f3f71;
   --alt-accent-foreground: #ffffff;
   --alt-border-default: #ebdbb2;
   --alt-border-strong: #d5c4a1;
@@ -504,7 +458,6 @@ html[data-theme="ayu-dark"] {
   --alt-text-tertiary: #565b66;
   --alt-accent-primary: #e6b450;
   --alt-accent-primary-hover: #ffb454;
-  --alt-accent-secondary: #39bae6;
   --alt-accent-foreground: #000000;
   --alt-border-default: #1c2028;
   --alt-border-strong: #2a3040;
@@ -526,7 +479,6 @@ html[data-theme="ayu-mirage"] {
   --alt-text-tertiary: #5c6370;
   --alt-accent-primary: #ffcc66;
   --alt-accent-primary-hover: #ffd173;
-  --alt-accent-secondary: #5ccfe6;
   --alt-accent-foreground: #000000;
   --alt-border-default: #2a3040;
   --alt-border-strong: #3d4455;
@@ -548,7 +500,6 @@ html[data-theme="everforest-dark"] {
   --alt-text-tertiary: #859289;
   --alt-accent-primary: #a7c080;
   --alt-accent-primary-hover: #83c092;
-  --alt-accent-secondary: #7fbbb3;
   --alt-accent-foreground: #000000;
   --alt-border-default: #475258;
   --alt-border-strong: #4f585e;

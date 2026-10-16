@@ -17,10 +17,10 @@ export const ICONS: Record<string, string> = {
   home: '<path d="M2,7 L7,2 L12,7 L12,12 L2,12 Z" fill="none" stroke="#f59e0b" stroke-width="1.2"/><rect x="5" y="8" width="4" height="4" fill="none" stroke="#f59e0b" stroke-width="1"/>',
   ekf: '<circle cx="7" cy="7" r="5" fill="none" stroke="#f59e0b" stroke-width="1.2"/><line x1="7" y1="4" x2="7" y2="10" stroke="#f59e0b" stroke-width="1"/><line x1="4" y1="7" x2="10" y2="7" stroke="#f59e0b" stroke-width="1"/>',
   rally: '<polygon points="7,2 9,6 13,6 10,9 11,13 7,10.5 3,13 4,9 1,6 5,6" fill="none" stroke="#22c55e" stroke-width="1"/>',
-  poi: '<circle cx="7" cy="5" r="3" fill="none" stroke="#DFF140" stroke-width="1.2"/><path d="M7,8 L7,13" stroke="#DFF140" stroke-width="1.2"/>',
+  poi: '<circle cx="7" cy="5" r="3" fill="none" stroke="#a855f7" stroke-width="1.2"/><path d="M7,8 L7,13" stroke="#a855f7" stroke-width="1.2"/>',
   heading: '<path d="M7,2 L7,12 M4,5 L7,2 L10,5" fill="none" stroke="#3A82FF" stroke-width="1.2"/>',
-  copy: '<rect x="4" y="4" width="7" height="8" rx="1" fill="none" stroke="#888" stroke-width="1"/><rect x="3" y="2" width="7" height="8" rx="1" fill="none" stroke="#888" stroke-width="1"/>',
-  measure: '<line x1="2" y1="12" x2="12" y2="2" stroke="#888" stroke-width="1.2"/><line x1="2" y1="12" x2="2" y2="9" stroke="#888" stroke-width="1"/><line x1="2" y1="12" x2="5" y2="12" stroke="#888" stroke-width="1"/>',
+  copy: '<rect x="4" y="4" width="7" height="8" rx="1" fill="none" stroke="#B4B4B4" stroke-width="1"/><rect x="3" y="2" width="7" height="8" rx="1" fill="none" stroke="#B4B4B4" stroke-width="1"/>',
+  measure: '<line x1="2" y1="12" x2="12" y2="2" stroke="#B4B4B4" stroke-width="1.2"/><line x1="2" y1="12" x2="2" y2="9" stroke="#B4B4B4" stroke-width="1"/><line x1="2" y1="12" x2="5" y2="12" stroke="#B4B4B4" stroke-width="1"/>',
 };
 
 export const GUIDED_MODES = new Set(["GUIDED", "AUTO", "GUIDED_NOGPS", "LOITER"]);

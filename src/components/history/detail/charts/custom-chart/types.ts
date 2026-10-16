@@ -28,6 +28,6 @@ export interface TraceConfig {
 }
 
 export const PALETTE = [
-  "#3a82ff", "#dff140", "#22c55e", "#ef4444", "#a855f7",
-  "#f59e0b", "#06b6d4", "#ec4899", "#84cc16", "#f97316",
+  "#3a82ff", "#eab308", "#22c55e", "#ef4444", "#a855f7",
+  "#f59e0b", "#06b6d4", "#ec4899", "#14b8a6", "#f97316",
 ];

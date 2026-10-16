@@ -12,7 +12,7 @@ import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
 // ── Brand colors ──────────────────────────────────────────────
 
 export const COLOR_CW = "#3A82FF";
-export const COLOR_CCW = "#DFF140";
+export const COLOR_CCW = "#EAB308";
 const COLOR_UNKNOWN = "#444444";
 export const COLOR_ARM = "#333333";
 export const COLOR_BODY = "#2a2a2a";

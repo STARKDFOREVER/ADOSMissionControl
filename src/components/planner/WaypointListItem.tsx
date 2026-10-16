@@ -140,7 +140,7 @@ export const WaypointListItem = memo(function WaypointListItem({
       onDragEnd={onDragEnd} onDrop={(e) => onDrop(index, e)}
       className={cn(
         "border-b border-border-default transition-colors",
-        selected && "bg-accent-primary/5", multiSelected && "bg-accent-secondary/5",
+        selected && "bg-accent-primary/5", multiSelected && "bg-text-secondary/5",
         dragOver && "border-t-2 border-t-accent-primary"
       )}>
       {/* Compact row */}
@@ -168,7 +168,7 @@ export const WaypointListItem = memo(function WaypointListItem({
           {(waypoint.actions?.length ?? 0) > 0 && (
             <span
               title={t("actions.chipTitle", { count: waypoint.actions!.length })}
-              className="text-[9px] font-mono text-accent-secondary bg-accent-secondary/10 px-1 py-px flex items-center gap-0.5 shrink-0"
+              className="text-[9px] font-mono text-accent-primary bg-accent-primary/10 px-1 py-px flex items-center gap-0.5 shrink-0"
             >
               <Zap size={8} />{waypoint.actions!.length}
             </span>

@@ -55,7 +55,7 @@ function statusBadge(status: string, stale: boolean) {
 const categoryColors: Record<string, string> = {
   core: "text-accent-primary",
   hardware: "text-status-warning",
-  suite: "text-accent-secondary",
+  suite: "text-text-secondary",
   ondemand: "text-text-tertiary",
 };
 

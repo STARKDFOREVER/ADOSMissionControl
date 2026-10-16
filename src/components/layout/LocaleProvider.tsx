@@ -13,16 +13,16 @@ import { NextIntlClientProvider } from "next-intl";
 import { useSettingsStore } from "@/stores/settings-store";
 import enMessages from "../../../locales/en.json";
 
-const ACCENT_PRESETS: Record<string, { primary: string; hover: string; secondary: string }> = {
-  blue: { primary: "#3a82ff", hover: "#5b9aff", secondary: "#dff140" },
-  green: { primary: "#22c55e", hover: "#34d06d", secondary: "#9bcc2f" },
-  amber: { primary: "#f59e0b", hover: "#f7b13a", secondary: "#7a9900" },
-  red: { primary: "#ef4444", hover: "#f16363", secondary: "#c4cf3a" },
-  lime: { primary: "#84cc16", hover: "#9bdf2a", secondary: "#2f6feb" },
-  purple: { primary: "#a855f7", hover: "#b975f9", secondary: "#e879f9" },
-  pink: { primary: "#ec4899", hover: "#f06dae", secondary: "#f9a8d4" },
-  cyan: { primary: "#06b6d4", hover: "#22d3ee", secondary: "#67e8f9" },
-  orange: { primary: "#f97316", hover: "#fb923c", secondary: "#fdba74" },
+const ACCENT_PRESETS: Record<string, { primary: string; hover: string }> = {
+  blue: { primary: "#3a82ff", hover: "#5b9aff" },
+  green: { primary: "#22c55e", hover: "#34d06d" },
+  amber: { primary: "#f59e0b", hover: "#f7b13a" },
+  red: { primary: "#ef4444", hover: "#f16363" },
+  lime: { primary: "#84cc16", hover: "#9bdf2a" },
+  purple: { primary: "#a855f7", hover: "#b975f9" },
+  pink: { primary: "#ec4899", hover: "#f06dae" },
+  cyan: { primary: "#06b6d4", hover: "#22d3ee" },
+  orange: { primary: "#f97316", hover: "#fb923c" },
 };
 
 interface LocaleProviderProps {
@@ -56,7 +56,6 @@ function mergeMessages(
 const ACCENT_VARS = [
   "--alt-accent-primary",
   "--alt-accent-primary-hover",
-  "--alt-accent-secondary",
 ] as const;
 
 type Messages = Record<string, unknown>;
@@ -129,7 +128,6 @@ export function LocaleProvider({ children }: LocaleProviderProps) {
     const preset = ACCENT_PRESETS[accentColor] || ACCENT_PRESETS.blue;
     root.setProperty("--alt-accent-primary", preset.primary);
     root.setProperty("--alt-accent-primary-hover", preset.hover);
-    root.setProperty("--alt-accent-secondary", preset.secondary);
   }, [accentColor, themeMode]);
 
   /* UTC is deterministic across server + client render boundaries, which

@@ -158,7 +158,7 @@ function VisionNavDemoPanel({ host }: { host: InlineHostApi }) {
   return (
     <div
       data-testid="vn-navigation-tab"
-      style={{ display: "flex", flexDirection: "column", gap: "0.75rem", padding: "0.875rem", background: "var(--vn-bg, #0b1220)", color: "var(--vn-text, #e5e7eb)", minHeight: "100%", boxSizing: "border-box", ...(themeVars as CSSProperties) }}
+      style={{ display: "flex", flexDirection: "column", gap: "0.75rem", padding: "0.875rem", background: "var(--vn-bg, #0A0A0A)", color: "var(--vn-text, #EDEDED)", minHeight: "100%", boxSizing: "border-box", ...(themeVars as CSSProperties) }}
     >
       <header style={spread}>
         <h2 style={{ margin: 0, fontSize: "1rem", fontWeight: 600 }}>{tr("navigation.tabTitle", "Vision Nav")}</h2>
@@ -244,7 +244,7 @@ function VisionNavDemoPanel({ host }: { host: InlineHostApi }) {
           {(report?.checks ?? []).map((check) => (
             <li key={check.id} data-check-id={check.id} data-state={check.severity} style={{ display: "flex", flexDirection: "column", gap: "0.125rem", fontSize: "0.8125rem" }}>
               <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                <span aria-hidden style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 14, height: 14, borderRadius: 9999, background: SEVERITY[check.severity].color, color: "#0b1220", fontSize: "0.625rem", fontWeight: 700 }}>
+                <span aria-hidden style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 14, height: 14, borderRadius: 9999, background: SEVERITY[check.severity].color, color: "#0A0A0A", fontSize: "0.625rem", fontWeight: 700 }}>
                   {SEVERITY[check.severity].icon}
                 </span>
                 {CHECK_TITLES[check.id] ?? check.id}
