@@ -66,7 +66,9 @@ describe("CommandSpecificEditors truthful fields", () => {
 
   it("shows a fence action with no param1 (a downloaded fence-disable) as Disable", () => {
     renderWithIntl(<CommandSpecificEditors cmd="DO_FENCE_ENABLE" params={{}} onUpdate={noop} />);
-    expect(screen.getByRole("combobox", { name: /Fence/i }).textContent).toBe("Disable");
+    const group = screen.getByRole("radiogroup", { name: /Fence/i });
+    const checked = Array.from(group.querySelectorAll('[role="radio"][aria-checked="true"]'));
+    expect(checked.map((el) => el.textContent)).toEqual(["Disable"]);
   });
 });
 

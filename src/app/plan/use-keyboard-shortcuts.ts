@@ -11,15 +11,19 @@
  *
  * Precedence is deliberate and fixed:
  *   1. Typing-target guard — never hijack a key while the user types in a field.
+ *      A key another handler already consumed (`defaultPrevented`, e.g. an open
+ *      popover's capture-phase Escape) and any key while a modal
+ *      (`aria-modal="true"`) is open are ignored too.
  *   2. Tool / panel letter shortcuts (no modifier), the side-panel keys `[`, `]`
- *      and `\`, plus arrow-key nudge of the selected waypoint.
+ *      and `\`, plus arrow-key nudge of the selected waypoint(s). The panel and
+ *      dock keys only act while a plan is open.
  *   3. Undo / redo (Cmd/Ctrl+Z), then copy / paste (Cmd/Ctrl+C / V) of the
  *      selected waypoint(s) — copy defers to a live page text selection.
- *   4. Escape — cancel the active draw first, else clear the waypoint
- *      selection, else return the inspector to the mission, else clear any
- *      non-select tool back to select.
+ *   4. Escape — close the plans sheet first, else cancel the active draw, else
+ *      clear the waypoint selection, else return the inspector to the
+ *      mission, else clear any non-select tool back to select.
  *   5. Backspace / Delete — pop a draw vertex while drawing, else delete the
- *      selected waypoint.
+ *      selected waypoint(s).
  *   6. Save / Save-As (Cmd/Ctrl+S).
  *   7. Cmd/Ctrl+O toggles the plans sheet. Cmd/Ctrl+N (new plan) is desktop
  *      (Electron) only, so the browser keeps its native new-window chord.
@@ -40,15 +44,22 @@ interface UseKeyboardShortcutsParams {
   redo: () => void;
   selectedWaypointId: string | null;
   removeWaypoint: (id: string) => void;
+  /** Remove several waypoints in one undo step. */
+  removeWaypoints: (ids: string[]) => void;
   setSelectedWaypoint: (id: string | null) => void;
   /** Waypoints in the multi-selection (Ctrl/Shift+click). */
-  selectedCount: number;
+  selectedIds: string[];
   /** Clear both the single and the multi selection. */
   clearSelection: () => void;
   /** Whether the inspector already shows the mission (its resting target). */
   inspectorIsMission: boolean;
   /** Point the inspector back at the mission. */
   resetInspector: () => void;
+  /** Whether a plan is open; panel and dock keys are inert on Plans home. */
+  hasActivePlan: boolean;
+  /** Whether the plans sheet is open (Escape closes it first). */
+  librarySheetOpen: boolean;
+  onCloseLibrarySheet: () => void;
   handleSave: () => void;
   handleSaveAs?: () => void;
   handleNewPlan?: () => void;
@@ -62,7 +73,7 @@ interface UseKeyboardShortcutsParams {
   onToggleOverlays?: () => void;
   onFocusPlaceSearch?: () => void;
   /**
-   * Nudge the selected waypoint by a small offset. An arrow key moves a fine
+   * Nudge the selected waypoint(s) by a small offset. An arrow key moves a fine
    * step; Shift+arrow a coarser one. dLat is positive north, dLon positive east.
    */
   onNudgeSelected?: (dLat: number, dLon: number) => void;
@@ -98,11 +109,15 @@ export function useKeyboardShortcuts({
   redo,
   selectedWaypointId,
   removeWaypoint,
+  removeWaypoints,
   setSelectedWaypoint,
-  selectedCount,
+  selectedIds,
   clearSelection,
   inspectorIsMission,
   resetInspector,
+  hasActivePlan,
+  librarySheetOpen,
+  onCloseLibrarySheet,
   handleSave,
   handleSaveAs,
   handleNewPlan,
@@ -124,6 +139,10 @@ export function useKeyboardShortcuts({
       // 1. Typing-target guard — a key pressed inside an input/textarea/select or
       // a contenteditable surface is never a planner shortcut.
       if (isTypingTarget(e.target)) return;
+      // A key another handler already consumed, or any key while a modal
+      // dialog is open (the modal owns its own keys), is not a planner shortcut.
+      if (e.defaultPrevented) return;
+      if (document.querySelector('[aria-modal="true"]')) return;
 
       const isMeta = e.metaKey || e.ctrlKey;
       // Chord letter independent of Shift and CapsLock: `e.key` is uppercase
@@ -147,22 +166,27 @@ export function useKeyboardShortcuts({
           return;
         }
 
-        if (e.key.toLowerCase() === "t") {
+        const k = e.key.toLowerCase();
+        // Panel and dock keys need an open plan; on Plans home they stay inert.
+        const panelKey = k === "t" || k === "g" || k === "i" || k === "l" || e.key === "[" || e.key === "]" || e.key === "\\";
+        if (panelKey && !hasActivePlan) return;
+
+        if (k === "t") {
           e.preventDefault();
           onToggleTerrain?.();
           return;
         }
-        if (e.key.toLowerCase() === "g") {
+        if (k === "g") {
           e.preventDefault();
           onTogglePatternEditor?.();
           return;
         }
-        if (e.key.toLowerCase() === "i") {
+        if (k === "i") {
           e.preventDefault();
           onToggleValidation?.();
           return;
         }
-        if (e.key.toLowerCase() === "l") {
+        if (k === "l") {
           e.preventDefault();
           onToggleOverlays?.();
           return;
@@ -178,10 +202,11 @@ export function useKeyboardShortcuts({
           return;
         }
 
-        // Arrow keys nudge the selected waypoint by a small step (coarser with
-        // Shift). Only handled when a waypoint is selected and the page supplied
-        // a nudge handler, so an arrow with no selection keeps native scrolling.
-        if (onNudgeSelected && selectedWaypointId) {
+        // Arrow keys nudge the selected waypoint(s) by a small step (coarser
+        // with Shift). Only handled when something is selected and the page
+        // supplied a nudge handler, so an arrow with no selection keeps native
+        // scrolling.
+        if (onNudgeSelected && (selectedWaypointId || selectedIds.length > 0)) {
           const step = e.shiftKey ? NUDGE_STEP_COARSE : NUDGE_STEP_FINE;
           if (e.key === "ArrowUp") {
             e.preventDefault();
@@ -236,9 +261,14 @@ export function useKeyboardShortcuts({
         return;
       }
 
-      // 4. Escape — drawing-cancel takes precedence over the generic clear.
+      // 4. Escape — the plans sheet closes first, then drawing-cancel takes
+      // precedence over the generic clear.
       if (e.key === "Escape") {
         e.preventDefault();
+        if (librarySheetOpen) {
+          onCloseLibrarySheet();
+          return;
+        }
         if (drawing) {
           // Cancel the active draw via the manager, then return the tool to
           // select. The manager's onCancel callback clears the drawing store.
@@ -246,7 +276,7 @@ export function useKeyboardShortcuts({
           setActiveTool("select");
           return;
         }
-        if (selectedWaypointId || selectedCount > 0) {
+        if (selectedWaypointId || selectedIds.length > 0) {
           clearSelection();
         } else if (!inspectorIsMission) {
           resetInspector();
@@ -265,6 +295,12 @@ export function useKeyboardShortcuts({
             e.preventDefault();
             draw?.popVertex();
           }
+          return;
+        }
+        if (selectedIds.length >= 2) {
+          e.preventDefault();
+          removeWaypoints(selectedIds);
+          clearSelection();
           return;
         }
         if (selectedWaypointId) {
@@ -312,8 +348,12 @@ export function useKeyboardShortcuts({
     redo,
     selectedWaypointId,
     removeWaypoint,
+    removeWaypoints,
     setSelectedWaypoint,
-    selectedCount,
+    selectedIds,
+    hasActivePlan,
+    librarySheetOpen,
+    onCloseLibrarySheet,
     clearSelection,
     inspectorIsMission,
     resetInspector,

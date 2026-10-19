@@ -270,10 +270,6 @@ export function usePlannerIO(deps: IODeps) {
     toast(t("newPlanCreated"), "info");
   }, [setSelectedWaypoint, toast, t, setMissionName, setSelectedDroneId]);
 
-  const handleFocusSearch = useCallback(() => {
-    document.dispatchEvent(new CustomEvent("plan-library:focus-search"));
-  }, []);
-
   // ── Download from drone ───────────────────────────────────
   const executeDownloadFromDrone = useCallback(async () => {
     const downloaded = await downloadMission();
@@ -330,7 +326,7 @@ export function usePlannerIO(deps: IODeps) {
     handleSave, handleSaveAs,
     handleExportWaypoints, handleExportPlan, handleExportKML, handleExportCSV,
     handleExportKMZ, handleExportNative,
-    handlePlanLoaded, handlePlanRenamed, handleNewPlan, handleFocusSearch,
+    handlePlanLoaded, handlePlanRenamed, handleNewPlan,
     handleDownloadFromDrone, handleSaveAndDownload, handleDiscardAndDownload, handleCancelDownload,
   };
 }

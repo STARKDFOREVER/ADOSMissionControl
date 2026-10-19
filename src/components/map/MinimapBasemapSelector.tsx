@@ -17,8 +17,10 @@ import { BASEMAP_ORDER, basemapLabel, validateTileUrlTemplate } from "@/lib/tile
 import { useFieldTilePacks } from "@/hooks/use-field-tile-packs";
 import { activeFieldPack, useFieldPackStore } from "@/stores/field-pack-store";
 import { BasemapSwitcher } from "./BasemapSwitcher";
+import { useTranslations } from "next-intl";
 
 export function MinimapBasemapSelector({ className }: { className?: string }) {
+  const t = useTranslations("basemap");
   const source = useSettingsStore((s) => s.mapTileSource);
   const setSource = useSettingsStore((s) => s.setMapTileSource);
   // This surface carries no editor, so an unconfigured custom source would be
@@ -32,7 +34,7 @@ export function MinimapBasemapSelector({ className }: { className?: string }) {
     .map((s) => ({
       value: s,
       label: basemapLabel(s),
-      title: s === "field-pack" && fieldPack ? `Field pack: ${fieldPack.name}` : undefined,
+      title: s === "field-pack" && fieldPack ? t("fieldPackActive", { name: fieldPack.name }) : undefined,
     }));
   return (
     <BasemapSwitcher

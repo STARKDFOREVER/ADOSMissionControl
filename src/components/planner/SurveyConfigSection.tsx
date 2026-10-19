@@ -38,13 +38,14 @@ const ENTRY_ICONS = {
   bottomRight: <ArrowDownRight size={12} />,
 } as const;
 
-/** Entry corners as icon segments; the full label rides on the tooltip. */
-const ENTRY_OPTIONS = ENTRY_LOCATION_OPTIONS.map((o) => ({ value: o.value, label: o.label, title: o.label, icon: ENTRY_ICONS[o.value], iconOnly: true }));
-
 export function SurveyConfig() {
   const t = useTranslations("planner");
   const te = useTranslations("planner.inspector.editor");
   const { toast } = useToast();
+  const entryOptions = ENTRY_LOCATION_OPTIONS.map((o) => {
+    const label = t(`inspector.pattern.entry.${o.value}`);
+    return { value: o.value, label, title: label, icon: ENTRY_ICONS[o.value], iconOnly: true };
+  });
   const surveyConfig = usePatternStore((s) => s.surveyConfig);
   const updateSurveyConfig = usePatternStore((s) => s.updateSurveyConfig);
   const drawnPolygons = useDrawingStore((s) => s.polygons);
@@ -309,7 +310,7 @@ export function SurveyConfig() {
       <PatternNumberRow label={t("speed")} unit="m/s" step={0.5} min={0.1}
         value={surveyConfig.speed ?? 5} onCommit={(speed) => updateSurveyConfig({ speed })} />
 
-      <PropertySection title={te("advanced")} collapsible defaultOpen={false} persistKey="pattern.survey.advanced">
+      <PropertySection title={te("advanced")} collapsible defaultOpen={false} persistKey="pattern.survey.advanced" flush>
         <PatternNumberRow label={t("gridAngle")} unit="deg" step={1} min={-360} max={360}
           value={surveyConfig.gridAngle ?? 0} onCommit={(gridAngle) => updateSurveyConfig({ gridAngle })} />
 
@@ -341,7 +342,7 @@ export function SurveyConfig() {
           value={surveyConfig.turnAroundDistance ?? 10}
           onCommit={(turnAroundDistance) => updateSurveyConfig({ turnAroundDistance })} />
         <PropertyRow label={t("entryPoint")}>
-          <SegmentedControl size="sm" stretch ariaLabel={t("entryPoint")} options={ENTRY_OPTIONS}
+          <SegmentedControl size="sm" stretch ariaLabel={t("entryPoint")} options={entryOptions}
             value={surveyConfig.entryLocation ?? "topLeft"}
             onChange={(entryLocation) => updateSurveyConfig({ entryLocation })} />
         </PropertyRow>

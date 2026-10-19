@@ -101,7 +101,8 @@ export function VectorBasemapLayer({
       layer = gl;
       // Leaflet bounds the map's zoom only by tile layers, so with a vector
       // basemap alone the map would zoom without limit. Register this layer's
-      // maxZoom the way a tile layer does; removeLayer drops it again.
+      // maxZoom the way a tile layer does; removeLayer does not drop it, so
+      // cleanup removes it explicitly.
       if ("_addZoomLimit" in map && typeof map._addZoomLimit === "function") map._addZoomLimit(gl);
       const glMap = gl.getMaplibreMap();
       glMap.on("data", (e) => {
@@ -119,6 +120,8 @@ export function VectorBasemapLayer({
       cancelled = true;
       if (!layer) return;
       try {
+        if ("_removeZoomLimit" in map && typeof map._removeZoomLimit === "function") map._removeZoomLimit(layer);
+        map.attributionControl?.removeAttribution(attribution);
         map.removeLayer(layer);
       } catch {
         /* map may already be destroyed during dev reconnect */

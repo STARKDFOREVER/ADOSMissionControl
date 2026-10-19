@@ -13,7 +13,7 @@
  * @license GPL-3.0-only
  */
 
-import { useCallback, useState, useEffect } from "react";
+import { useCallback, useMemo, useRef, useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -34,6 +34,9 @@ import { SidePanel } from "@/components/ui/side-panel";
 import { useDroneManager } from "@/stores/drone-manager";
 import { usePlannerStore, type DockTab } from "@/stores/planner-store";
 import { useMissionStore } from "@/stores/mission-store";
+import { usePlanLibraryStore } from "@/stores/plan-library-store";
+import { usePreflightChecklistStore } from "@/stores/preflight-checklist-store";
+import { usePatternStore } from "@/stores/pattern-store";
 import { readPlanFromHash } from "@/lib/plan-share";
 import { restoreSharedPlanExtras } from "@/lib/plan-workspace";
 import { useSettingsStore } from "@/stores/settings-store";
@@ -46,7 +49,7 @@ import { startGroundElevationSync } from "@/lib/mission/sample-ground-elevations
 import { usePlanner } from "./use-planner";
 import { useKeyboardShortcuts } from "./use-keyboard-shortcuts";
 import { buildPlannerCommands, type PlannerCommandHandlers } from "./planner-commands";
-import { PlannerBar } from "./PlannerBar";
+import { PlannerBar, useSendable } from "./PlannerBar";
 import { usePlannerShareImport } from "./use-planner-share-import";
 
 const PlannerMap = dynamic(() => import("@/components/planner/PlannerMap").then((m) => m.PlannerMap), { ssr: false });
@@ -74,7 +77,7 @@ export default function MissionPlannerPage() {
   const dockOpen = usePlannerStore((s) => s.dockOpen);
   const librarySheetOpen = usePlannerStore((s) => s.librarySheetOpen);
   const inspectorIsMission = usePlannerStore((s) => s.inspectorTarget.kind === "mission");
-  const selectedCount = usePlannerStore((s) => s.selectedWaypointIds.length);
+  const selectedIds = usePlannerStore((s) => s.selectedWaypointIds);
   const mapBounds = usePlannerStore((s) => s.mapBounds);
   const mapZoom = usePlannerStore((s) => s.mapZoom);
   const mapTileSource = useSettingsStore((s) => s.mapTileSource);
@@ -122,25 +125,23 @@ export default function MissionPlannerPage() {
 
   // Opening, creating or closing a plan always dismisses the library sheet and
   // returns the inspector to that plan's mission settings.
+  const planIdRef = useRef(p.activePlanId);
   useEffect(() => {
     const s = usePlannerStore.getState();
     s.setLibrarySheetOpen(false);
     s.setInspectorTarget({ kind: "mission" });
     s.clearSelection();
+    // Returning to the page keeps the plan's working state; only a switch to
+    // another plan drops what belonged to the previous one.
+    if (planIdRef.current === p.activePlanId) return;
+    planIdRef.current = p.activePlanId;
+    // Checklist ticks belong to the plan being prepared, never the next one.
+    usePreflightChecklistStore.getState().clear();
+    // A pattern drawn for the previous plan must not be applied to this one.
+    const patterns = usePatternStore.getState();
+    patterns.clear();
+    patterns.clearAppliedBoundary();
   }, [p.activePlanId]);
-
-  // Esc closes the sheet before any planner Escape handling sees the key.
-  useEffect(() => {
-    if (!librarySheetOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      usePlannerStore.getState().setLibrarySheetOpen(false);
-    };
-    window.addEventListener("keydown", onKey, true);
-    return () => window.removeEventListener("keydown", onKey, true);
-  }, [librarySheetOpen]);
 
   const togglePattern = useCallback(() => {
     const s = usePlannerStore.getState();
@@ -154,6 +155,11 @@ export default function MissionPlannerPage() {
     const s = usePlannerStore.getState();
     const opening = !hasActivePlan || !s.librarySheetOpen;
     if (hasActivePlan) s.setLibrarySheetOpen(opening);
+    else {
+      // A collapsed library has no search box to focus; expand it first.
+      const lib = usePlanLibraryStore.getState();
+      if (lib.libraryCollapsed) lib.toggleLibrary();
+    }
     if (opening) requestAnimationFrame(() => document.dispatchEvent(new CustomEvent(FOCUS_LIBRARY_SEARCH_EVENT)));
   }, [hasActivePlan]);
   const transformMission = useCallback(() => {
@@ -169,42 +175,61 @@ export default function MissionPlannerPage() {
     requestAnimationFrame(() => requestAnimationFrame(() => setPanelAnimate(true)));
   }, []);
   const { toggleOutline, toggleInspector, togglePanels, clearSelection } = usePlannerStore.getState();
+  const keyToggles = useMemo(() => ({
+    outline: keyboardToggle(toggleOutline),
+    inspector: keyboardToggle(toggleInspector),
+    panels: keyboardToggle(togglePanels),
+  }), [keyboardToggle, toggleOutline, toggleInspector, togglePanels]);
+  const resetInspector = useCallback(() => usePlannerStore.getState().setInspectorTarget({ kind: "mission" }), []);
+  const closeLibrarySheet = useCallback(() => usePlannerStore.getState().setLibrarySheetOpen(false), []);
+  const focusPlaceSearch = useCallback(() => document.dispatchEvent(new CustomEvent(FOCUS_PLACE_SEARCH_EVENT)), []);
+  // One setWaypoints call is one undo step, as in the batch editor's delete.
+  const removeWaypoints = useCallback((ids: string[]) => {
+    const ms = useMissionStore.getState();
+    ms.setWaypoints(ms.waypoints.filter((w) => !ids.includes(w.id)));
+  }, []);
+  // Arrow nudge and copy act on the whole multi-selection, else the single one.
+  const selectedWaypointId = p.selectedWaypointId;
+  const onNudgeSelected = useCallback((dLat: number, dLon: number) => {
+    const ids = selectedIds.length >= 2 ? selectedIds : selectedWaypointId ? [selectedWaypointId] : [];
+    if (ids.length === 0) return;
+    const ms = useMissionStore.getState();
+    ms.setWaypoints(ms.waypoints.map((w) => (ids.includes(w.id) ? { ...w, lat: w.lat + dLat, lon: w.lon + dLon } : w)));
+  }, [selectedIds, selectedWaypointId]);
+  const onCopy = useCallback(() => {
+    const waypoints = useMissionStore.getState().waypoints;
+    const picked = selectedIds.length >= 2
+      ? waypoints.filter((w) => selectedIds.includes(w.id))
+      : waypoints.filter((w) => w.id === selectedWaypointId);
+    if (picked.length > 0) setClipboard(picked);
+  }, [selectedIds, selectedWaypointId]);
+  const onPaste = useCallback(() => {
+    const clip = getClipboard();
+    if (clip.length === 0) return;
+    // Paste copies slightly offset so they are visible and selectable. The
+    // copy sits over different ground, so the original's terrain sample is
+    // dropped and resampled.
+    const pasted = clip.map(({ groundElevation: _moved, ...wp }) => ({
+      ...wp, id: randomId(), lat: wp.lat + 0.0002, lon: wp.lon + 0.0002,
+    }));
+    const ms = useMissionStore.getState();
+    ms.setWaypoints([...ms.waypoints, ...pasted]);
+  }, []);
 
   useKeyboardShortcuts({
     activeTool: p.activeTool, setActiveTool: p.setActiveTool, undo: p.undo, redo: p.redo,
-    selectedWaypointId: p.selectedWaypointId, removeWaypoint: p.removeWaypoint, setSelectedWaypoint: p.setSelectedWaypoint,
-    selectedCount, clearSelection, inspectorIsMission,
-    resetInspector: () => usePlannerStore.getState().setInspectorTarget({ kind: "mission" }),
+    selectedWaypointId, removeWaypoint: p.removeWaypoint, removeWaypoints, setSelectedWaypoint: p.setSelectedWaypoint,
+    selectedIds, clearSelection, inspectorIsMission, resetInspector,
+    hasActivePlan, librarySheetOpen, onCloseLibrarySheet: closeLibrarySheet,
     handleSave: p.handleSave, handleSaveAs: p.handleSaveAs, handleNewPlan: p.handleNewPlan,
     onTogglePlans: togglePlans,
-    onToggleOutline: keyboardToggle(toggleOutline),
-    onToggleInspector: keyboardToggle(toggleInspector),
-    onTogglePanels: keyboardToggle(togglePanels),
+    onToggleOutline: keyToggles.outline,
+    onToggleInspector: keyToggles.inspector,
+    onTogglePanels: keyToggles.panels,
     onToggleTerrain: toggleAltitude, onTogglePatternEditor: togglePattern, onToggleValidation: toggleIssues,
     onToggleOverlays: toggleOverlayPanel,
-    onFocusPlaceSearch: () => document.dispatchEvent(new CustomEvent(FOCUS_PLACE_SEARCH_EVENT)),
-    onNudgeSelected: (dLat, dLon) => {
-      if (!p.selectedWaypointId) return;
-      const wp = p.waypoints.find((w) => w.id === p.selectedWaypointId);
-      if (wp) p.updateWaypoint(p.selectedWaypointId, { lat: wp.lat + dLat, lon: wp.lon + dLon });
-    },
-    onCopy: () => {
-      if (!p.selectedWaypointId) return;
-      const wp = p.waypoints.find((w) => w.id === p.selectedWaypointId);
-      if (wp) setClipboard([wp]);
-    },
-    onPaste: () => {
-      const clip = getClipboard();
-      if (clip.length === 0) return;
-      // Paste copies slightly offset so they are visible and selectable. The
-      // copy sits over different ground, so the original's terrain sample is
-      // dropped and resampled.
-      const pasted = clip.map(({ groundElevation: _moved, ...wp }) => ({
-        ...wp, id: randomId(), lat: wp.lat + 0.0002, lon: wp.lon + 0.0002,
-      }));
-      const ms = useMissionStore.getState();
-      ms.setWaypoints([...ms.waypoints, ...pasted]);
-    },
+    onFocusPlaceSearch: focusPlaceSearch,
+    onNudgeSelected, onCopy, onPaste,
   });
 
   // Contribute planner verbs to the ⌘K command palette while this page is
@@ -217,6 +242,8 @@ export default function MissionPlannerPage() {
     handleExportKML, handleExportKMZ, handleExportCSV, handleReverseWaypoints, handleClearAll,
   } = p;
   const { handleImportBoundary, handleExportBrief, handleCopyShareLink } = shareIo;
+  const hasWaypoints = p.waypoints.length > 0;
+  const { canSendSomething } = useSendable(p, showGeofence, showRally);
   useEffect(() => {
     const handlers: PlannerCommandHandlers = {
       setActiveTool: pSetActiveTool, undo: pUndo, redo: pRedo,
@@ -229,10 +256,14 @@ export default function MissionPlannerPage() {
       exportKML: handleExportKML, exportKMZ: handleExportKMZ, exportCSV: handleExportCSV,
       exportBrief: handleExportBrief, copyShareLink: () => { void handleCopyShareLink(); },
       reverseWaypoints: handleReverseWaypoints, transformMission, simulate, discardPlan: handleClearAll,
+      hasWaypoints, hasDrone, canSend: canSendSomething,
     };
     const category = t("paletteCategory");
+    // Planner verbs act on an open plan; Plans home contributes none.
     return registerCommandProvider((ctx) =>
-      ctx.pathname.startsWith("/plan") ? buildPlannerCommands(handlers, (k) => t(k), category, ctx.query) : [],
+      ctx.pathname.startsWith("/plan") && hasActivePlan
+        ? buildPlannerCommands(handlers, (k) => t(k), category, ctx.query)
+        : [],
     );
   }, [
     pSetActiveTool, pUndo, pRedo, pHandleSave, pHandleSaveAs, pHandleNewPlan, toggleAltitude, togglePattern,
@@ -240,6 +271,7 @@ export default function MissionPlannerPage() {
     handleDownloadFromDrone, handleImportBoundary, handleExportNative, handleExportWaypoints, handleExportPlan,
     handleExportKML, handleExportKMZ, handleExportCSV, handleExportBrief, handleCopyShareLink,
     handleReverseWaypoints, transformMission, simulate, handleClearAll, t,
+    hasActivePlan, hasDrone, hasWaypoints, canSendSomething,
   ]);
 
   const library = (presentation: "panel" | "sheet") => (
@@ -254,7 +286,10 @@ export default function MissionPlannerPage() {
   return (
     <>
       <div className="flex-1 flex flex-col h-full overflow-hidden">
-        {hasActivePlan && <PlannerBar p={p} hasDrone={hasDrone} shareIo={shareIo} onOpenSend={openSend} />}
+        {hasActivePlan && (
+          <PlannerBar p={p} hasDrone={hasDrone} showGeofence={showGeofence} showRally={showRally}
+            shareIo={shareIo} onOpenSend={openSend} />
+        )}
         <div className="flex-1 flex overflow-hidden">
           {hasActivePlan ? (
             <SidePanel side="left" open={outlineOpen} width={264} animate={panelAnimate} ariaLabel={t("outline.label")}>

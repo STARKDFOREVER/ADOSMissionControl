@@ -150,7 +150,7 @@ function RawActionRow({
       draggable
       {...actionDragHandlers({ onDragStart, onDragOver, onDragEnd, onDrop })}
       className={cn(
-        "border border-border-default/60 rounded bg-bg-secondary/60",
+        "border-t border-border-default",
         dragOver && "border-t-2 border-t-accent-primary",
       )}
     >
@@ -164,7 +164,10 @@ function RawActionRow({
           <span className="text-[11px] font-mono text-text-primary truncate">{label}</span>
           <span className="text-[11px] text-text-tertiary truncate">{t("actions.readOnly")}</span>
         </button>
-        <button onClick={onToggleExpand} className="text-text-tertiary hover:text-text-primary shrink-0 cursor-pointer">
+        <button onClick={onToggleExpand}
+          aria-label={t(expanded ? "inspector.waypoint.collapseAction" : "inspector.waypoint.expandAction")}
+          aria-expanded={expanded}
+          className="text-text-tertiary hover:text-text-primary shrink-0 cursor-pointer">
           {expanded ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
         </button>
         <button
@@ -197,13 +200,13 @@ function CommandActionRow({
       draggable
       {...actionDragHandlers({ onDragStart, onDragOver, onDragEnd, onDrop })}
       className={cn(
-        "border border-border-default/60 rounded bg-bg-secondary/60",
+        "border-t border-border-default",
         dragOver && "border-t-2 border-t-accent-primary",
       )}
     >
       <div className="flex items-center gap-1.5 px-1.5 py-1">
         <GripVertical size={11} className="text-text-tertiary shrink-0 cursor-grab" />
-        <Icon size={12} className="text-accent-primary shrink-0" />
+        <Icon size={12} className="text-text-secondary shrink-0" />
         <button
           onClick={onToggleExpand}
           className="flex-1 min-w-0 flex items-center gap-1.5 text-left cursor-pointer"
@@ -211,7 +214,10 @@ function CommandActionRow({
           <span className="text-[11px] text-text-primary truncate">{label}</span>
           {summary && <span className="text-[11px] font-mono text-text-tertiary truncate">{summary}</span>}
         </button>
-        <button onClick={onToggleExpand} className="text-text-tertiary hover:text-text-primary shrink-0 cursor-pointer">
+        <button onClick={onToggleExpand}
+          aria-label={t(expanded ? "inspector.waypoint.collapseAction" : "inspector.waypoint.expandAction")}
+          aria-expanded={expanded}
+          className="text-text-tertiary hover:text-text-primary shrink-0 cursor-pointer">
           {expanded ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
         </button>
         <button

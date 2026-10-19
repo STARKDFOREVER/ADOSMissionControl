@@ -560,7 +560,9 @@
     },
     "confirmTypePhrase": "输入 <phrase></phrase> 以确认",
     "delete": "Delete",
-    "mixed": "混合"
+    "mixed": "混合",
+    "dragToAdjust": "Drag to adjust",
+    "search": "Search…"
   },
   "status": {
     "connected": "已连接",
@@ -2778,11 +2780,6 @@
     "availableModules": "可用 Module ({count})"
   },
   "planner": {
-    "bands": {
-      "setup": "设置",
-      "build": "构建",
-      "review": "审查"
-    },
     "shortcuts": {
       "select": "选择工具",
       "waypoint": "航点工具",
@@ -2837,13 +2834,9 @@
     "applyConfirmTitle": "替换任务？",
     "applyConfirmBody": "应用此模式将替换当前任务中的所有航点。是否继续？",
     "applyConfirmButton": "替换",
-    "downloadTiles": "下载离线地图",
     "paletteCategory": "任务规划",
-    "onAircraft": "已在机上",
     "olderMissionOnAircraft": "机上任务较旧",
     "uploadFailed": "上传失败",
-    "missionSetup": "任务设置",
-    "missionName": "任务名称",
     "untitledMission": "未命名任务",
     "defaultAltitude": "默认高度",
     "defaultSpeed": "默认速度",
@@ -2939,9 +2932,7 @@
     "turns": "圈数",
     "spacing": "间距",
     "corridorWidth": "走廊宽度",
-    "saveMission": "保存任务",
     "loadMission": "加载任务",
-    "uploadToFc": "上传至飞控",
     "downloadFromFc": "从飞控下载",
     "exportMission": "导出任务",
     "importMission": "导入任务",
@@ -2954,14 +2945,10 @@
     "fileName": "文件名",
     "defaults": "Defaults",
     "flightPatterns": "Flight Patterns",
-    "batchEdit": "Batch Edit",
     "on": "on",
     "off": "off",
-    "missionPlanner": "Mission Planner",
     "unsavedChanges": "Unsaved changes",
     "selectDrone": "选择无人机",
-    "missionNamePlaceholder": "输入任务名称",
-    "assignDrone": "分配无人机",
     "suite": "Suite",
     "altitudeProfile": "高度剖面",
     "drawPolygonOnMap": "在地图上绘制多边形",
@@ -3048,15 +3035,11 @@
     "high": "高",
     "max": "最大",
     "loading": "加载中...",
-    "downloadFromDrone": "从无人机下载",
     "exportWaypoints": "导出 .waypoints",
     "exportPlanQgc": "导出 .plan (QGC)",
     "exportKml": "导出 KML",
     "exportCsv": "导出 CSV",
-    "saveAsNewPlan": "另存为新计划",
-    "reverseWaypoints": "反转航点",
     "discardChanges": "放弃更改",
-    "simulateIn3d": "3D 模拟",
     "relativeHome": "相对 (Home)",
     "absoluteMsl": "绝对 (MSL)",
     "terrainFollowing": "地形跟随",
@@ -3100,7 +3083,6 @@
     "keyboardShortcuts": "键盘快捷键",
     "discardChangesBody": "This will remove all waypoints and mission data. This action cannot be undone.",
     "discard": "Discard",
-    "uploadErrors": "{count} error(s)",
     "uploadBlockedErrors": "Fix {count} validation error(s) before uploading",
     "checklist": {
       "title": "飞行前检查清单",
@@ -3288,7 +3270,23 @@
     "perimeterOffset": "Inset offset",
     "perimeterAreaSet": "Boundary polygon set",
     "offline": {
-      "waitingForMap": "Waiting for the map to load"
+      "waitingForMap": "Waiting for the map to load",
+      "title": "Download current view",
+      "close": "Close",
+      "scope": "Caches offline tiles covering the current map view.",
+      "provider": "Tile provider",
+      "zoomRange": "Zoom range: {min} – {max}",
+      "tiles": "Tiles: {count}",
+      "large": "Large download ({count} tiles). This may take a while.",
+      "tooMany": "Too many tiles ({count}). The limit is {limit}: zoom the map in or lower the maximum zoom.",
+      "exceedStorage": "May exceed the free browser storage ({free}). The download stops when storage is full.",
+      "alreadyCached": "{count} already cached",
+      "downloaded": "Downloaded {count} tiles ({size})",
+      "downloadedSkipped": ", {count} already cached",
+      "downloadedFailed": ", {count} failed",
+      "customUnusable": "Set a usable custom tile URL before downloading.",
+      "cancel": "Cancel",
+      "download": "Download"
     },
     "commands": {
       "sendToVehicle": "Send to vehicle",
@@ -3418,7 +3416,9 @@
         "insertBefore": "Insert before",
         "insertAfter": "Insert after",
         "copy": "Copy",
-        "delete": "Delete"
+        "delete": "Delete",
+        "collapseAction": "Hide action settings",
+        "expandAction": "Show action settings"
       },
       "batch": {
         "hint": "Ctrl-click or Shift-click waypoints to edit several at once.",
@@ -3455,7 +3455,17 @@
         "waypoints": "Waypoints",
         "photos": "Photos",
         "area": "Area",
-        "transects": "Transects"
+        "transects": "Transects",
+        "entry": {
+          "topLeft": "Top left",
+          "topRight": "Top right",
+          "bottomLeft": "Bottom left",
+          "bottomRight": "Bottom right"
+        },
+        "scanDirection": {
+          "bottomUp": "Bottom up",
+          "topDown": "Top down"
+        }
       },
       "editor": {
         "center": "Center",
@@ -3571,7 +3581,10 @@
       "close": "Close",
       "statusRunning": "Sending",
       "statusOk": "Sent",
-      "statusFailed": "Failed"
+      "statusFailed": "Failed",
+      "target": "Sends to {name}",
+      "targetMismatch": "This plan is assigned to {plan}. Sending goes to {target}.",
+      "switchTarget": "Switch to {plan}"
     },
     "dock": {
       "ariaLabel": "Mission review",
@@ -8753,5 +8766,10 @@
       },
       "noFix": "no fix"
     }
+  },
+  "basemap": {
+    "fieldPackActive": "Field pack: {name}",
+    "fieldPackUnreachable": "No field pack reachable. Showing STREETS until the ground station serves one.",
+    "fieldPackSelect": "Field pack"
   }
 }

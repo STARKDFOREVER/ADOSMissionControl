@@ -287,7 +287,7 @@ export function MapToolbar({
           <CloudDownload size={16} />
         </RailButton>
       )}
-      <PopoverTool icon={<HelpCircle size={16} />} tooltip={`${t("rail.help.title")} (?)`} ariaLabel={t("rail.help.title")}>
+      <PopoverTool icon={<HelpCircle size={16} />} tooltip={t("rail.help.title")} ariaLabel={t("rail.help.title")}>
         {() => <PlannerShortcutsHelp />}
       </PopoverTool>
     </div>

@@ -46,9 +46,11 @@ export function resolveInspectorView(
   target: InspectorTarget,
   caps: { showGeofence: boolean; showRally: boolean },
 ): InspectorView {
-  if (selectedIds.length >= 2) return { kind: "batch", ids: selectedIds };
-  const index = selectedId ? waypointIds.indexOf(selectedId) : -1;
-  if (selectedId && index !== -1) return { kind: "waypoint", id: selectedId, index };
+  const live = selectedIds.filter((id) => waypointIds.includes(id));
+  if (live.length >= 2) return { kind: "batch", ids: live };
+  let id = selectedId && waypointIds.includes(selectedId) ? selectedId : null;
+  if (!id && live.length === 1) id = live[0];
+  if (id) return { kind: "waypoint", id, index: waypointIds.indexOf(id) };
   if (target.kind === "geofence" && !caps.showGeofence) return { kind: "mission" };
   if (target.kind === "rally" && !caps.showRally) return { kind: "mission" };
   return target;

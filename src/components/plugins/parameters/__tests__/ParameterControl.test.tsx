@@ -14,6 +14,8 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { ParameterControl } from "../ParameterControl";
 import type { ParsedParameterContribution } from "@/lib/plugins/parameters/parse";
 
+vi.mock("next-intl", () => ({ useTranslations: () => (k: string) => k }));
+
 function numberParam(): ParsedParameterContribution {
   return {
     key: "speed",

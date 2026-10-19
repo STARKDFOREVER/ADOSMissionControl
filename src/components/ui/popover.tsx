@@ -104,15 +104,16 @@ export function Popover({
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
       e.preventDefault();
-      // Keep a page-level Escape handler (the planner's) from also acting.
+      // Capture phase plus stopPropagation keeps the planner's document-level
+      // (bubble) Escape handler from also acting.
       e.stopPropagation();
       onOpenChange(false);
     };
     document.addEventListener("pointerdown", onPointerDown, true);
-    document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("keydown", onKeyDown, true);
     return () => {
       document.removeEventListener("pointerdown", onPointerDown, true);
-      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("keydown", onKeyDown, true);
     };
   }, [open, onOpenChange, anchorRef]);
 

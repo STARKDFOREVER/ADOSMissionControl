@@ -119,6 +119,10 @@ function ConvexUserMenu() {
               // identity, so this is the only moment the server-side row can be
               // closed rather than left to lapse on its own hour-long expiry.
               // The local credential is dropped either way.
+              // A cached signed-in document embeds the session; drop it first.
+              if (typeof navigator !== "undefined") {
+                navigator.serviceWorker?.controller?.postMessage({ type: "clear-documents" });
+              }
               if (signOut) void releaseGrant().finally(() => signOut());
             }}
             className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary hover:bg-bg-primary transition-colors"

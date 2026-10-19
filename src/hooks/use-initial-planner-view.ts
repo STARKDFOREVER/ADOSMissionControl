@@ -7,7 +7,7 @@
  * @license GPL-3.0-only
  */
 
-import { useSyncExternalStore } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import { usePlannerStore } from "@/stores/planner-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useGcsLocationStore } from "@/stores/gcs-location-store";
@@ -42,13 +42,18 @@ function usePlannerHydrated(): boolean {
 
 export function useInitialPlannerView(): InitialPlannerView {
   const hydrated = usePlannerHydrated();
-  const mapCenter = usePlannerStore((s) => s.mapCenter);
-  const mapZoom = usePlannerStore((s) => s.mapZoom);
+  // Snapshot the persisted view once hydration completes; subscribing to the
+  // live centre would re-render on every pan and mask the first GPS recentre.
+  const persisted = useMemo(() => {
+    if (!hydrated) return null;
+    const s = usePlannerStore.getState();
+    return isRealCenter(s.mapCenter) ? { center: s.mapCenter, zoom: s.mapZoom } : null;
+  }, [hydrated]);
   const locationEnabled = useSettingsStore((s) => s.locationEnabled);
   const position = useGcsLocationStore((s) => s.position);
 
-  if (hydrated && isRealCenter(mapCenter)) {
-    return { center: mapCenter, zoom: mapZoom, source: "persisted", hydrated };
+  if (persisted) {
+    return { center: persisted.center, zoom: persisted.zoom, source: "persisted", hydrated };
   }
   if (locationEnabled && position) {
     return { center: [position.lat, position.lon], zoom: GPS_VIEW_ZOOM, source: "gps", hydrated };

@@ -20,21 +20,56 @@ import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useValidationOptions } from "@/hooks/use-validation-options";
 import { useMissionUploadStatus } from "@/hooks/use-upload-status";
+import { buildFenceElements } from "@/lib/geofence-elements";
 import { validateMission } from "@/lib/validation/mission-validator";
+import { useGeofenceStore } from "@/stores/geofence-store";
+import { useRallyStore } from "@/stores/rally-store";
 import { useMissionStore } from "@/stores/mission-store";
 import { usePlannerStore } from "@/stores/planner-store";
 import { useVehicleOptions } from "./use-vehicle-options";
 import type { PlannerShareImport } from "./use-planner-share-import";
 import type { Planner } from "./use-planner";
 
+/** What the Send to vehicle dialog would offer for the current plan. */
+export interface Sendable {
+  hasWaypoints: boolean;
+  fenceSendable: boolean;
+  rallySendable: boolean;
+  canSendSomething: boolean;
+}
+
+/**
+ * Whether the plan has anything to send: the mission, a fence (when the
+ * vehicle supports one) or rally points. Mirrors the Send dialog's row
+ * availability so the bar, the palette and the dialog agree.
+ */
+export function useSendable(p: Planner, showGeofence: boolean, showRally: boolean): Sendable {
+  const fenceType = useGeofenceStore((s) => s.fenceType);
+  const polygonPoints = useGeofenceStore((s) => s.polygonPoints);
+  const circleCenter = useGeofenceStore((s) => s.circleCenter);
+  const circleRadius = useGeofenceStore((s) => s.circleRadius);
+  const zones = useGeofenceStore((s) => s.zones);
+  const fenceHasGeometry = useMemo(
+    () => buildFenceElements(fenceType, polygonPoints, circleCenter, circleRadius, zones).length > 0,
+    [fenceType, polygonPoints, circleCenter, circleRadius, zones],
+  );
+  const rallyCount = useRallyStore((s) => s.points.length);
+  const hasWaypoints = p.waypoints.length > 0;
+  const fenceSendable = showGeofence && fenceHasGeometry;
+  const rallySendable = showRally && rallyCount > 0;
+  return { hasWaypoints, fenceSendable, rallySendable, canSendSomething: hasWaypoints || fenceSendable || rallySendable };
+}
+
 interface PlannerBarProps {
   p: Planner;
   hasDrone: boolean;
+  showGeofence: boolean;
+  showRally: boolean;
   shareIo: PlannerShareImport;
   onOpenSend: () => void;
 }
 
-export function PlannerBar({ p, hasDrone, shareIo, onOpenSend }: PlannerBarProps) {
+export function PlannerBar({ p, hasDrone, showGeofence, showRally, shareIo, onOpenSend }: PlannerBarProps) {
   const t = useTranslations("planner");
   const router = useRouter();
   const librarySheetOpen = usePlannerStore((s) => s.librarySheetOpen);
@@ -50,7 +85,7 @@ export function PlannerBar({ p, hasDrone, shareIo, onOpenSend }: PlannerBarProps
     [p.waypoints, validationOptions],
   );
 
-  const hasWaypoints = p.waypoints.length > 0;
+  const { hasWaypoints, fenceSendable, rallySendable, canSendSomething } = useSendable(p, showGeofence, showRally);
   const isDownloading = p.downloadState === "downloading";
 
   // Honest upload-state cue, from the upload receipt: "sent" only when the
@@ -70,9 +105,15 @@ export function PlannerBar({ p, hasDrone, shareIo, onOpenSend }: PlannerBarProps
     ? t("uploadBlockedErrors", { count: errorCount })
     : !hasDrone
       ? t("bar.noVehicle")
-      : !hasWaypoints
+      : !canSendSomething
         ? t("bar.emptyMission")
         : undefined;
+  // With mission errors and nothing else to send, the button leads to the
+  // issues; otherwise the dialog opens and blocks only the mission row.
+  const handleSendClick = () => {
+    if (errorCount > 0 && !fenceSendable && !rallySendable) setDock("issues", true);
+    else onOpenSend();
+  };
   const statusChip =
     p.uploadState === "error"
       ? {
@@ -178,10 +219,10 @@ export function PlannerBar({ p, hasDrone, shareIo, onOpenSend }: PlannerBarProps
         variant="primary"
         size="sm"
         icon={<Upload size={14} />}
-        disabled={!hasWaypoints || !hasDrone || errorCount > 0}
+        disabled={!hasDrone || !canSendSomething}
         loading={sending}
         title={sendTitle}
-        onClick={onOpenSend}
+        onClick={handleSendClick}
       >
         {sendLabel}
       </Button>
@@ -231,7 +272,14 @@ function PlanNameField({ name, onCommit }: { name: string; onCommit: (name: stri
           revertRef.current = false;
           return;
         }
-        if (draft !== name) onCommit(draft);
+        if (draft === name) return;
+        // Save skips an empty name, so an empty draft would leave the plan
+        // permanently dirty; revert it instead.
+        if (!draft.trim()) {
+          setDraft(name);
+          return;
+        }
+        onCommit(draft);
       }}
       className="h-7 min-w-0 w-56 px-1.5 bg-transparent border border-transparent text-sm font-medium text-text-primary placeholder:text-text-tertiary hover:border-border-default focus:border-accent-primary focus:outline-none focus-ring transition-colors"
     />

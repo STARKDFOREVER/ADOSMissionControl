@@ -5,7 +5,10 @@
  * source and the paired ground station serving field tile packs. The list is
  * re-sent whenever one of those changes.
  * Registration runs in production builds, or in dev with
- * `NEXT_PUBLIC_ENABLE_SW=true`.
+ * `NEXT_PUBLIC_ENABLE_SW=true` (registered as `/sw.js?dev=1`, which skips
+ * the static-asset cache). With the worker disabled, a previously registered
+ * `/sw.js` is unregistered. Every load also deletes the legacy `tile-cache`
+ * IndexedDB store.
  * @license GPL-3.0-only
  */
 
@@ -19,6 +22,10 @@ import { tileHostPattern } from "@/lib/tile-cache-key";
 
 const SW_ENABLED =
   process.env.NODE_ENV === "production" || process.env.NEXT_PUBLIC_ENABLE_SW === "true";
+
+const SW_URL = process.env.NODE_ENV !== "production" ? "/sw.js?dev=1" : "/sw.js";
+
+let legacyStoreDeleted = false;
 
 /** Host patterns the service worker treats as tile servers. */
 export function tileHostList(customTileUrl: string, fieldPackBaseUrl?: string | null): string[] {
@@ -44,7 +51,23 @@ export function ServiceWorkerRegistrar() {
   const fieldPackBaseUrl = useFieldPackStore((s) => s.source?.baseUrl ?? null);
 
   useEffect(() => {
-    if (!SW_ENABLED || typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
+    if (!legacyStoreDeleted && typeof indexedDB !== "undefined") {
+      legacyStoreDeleted = true;
+      indexedDB.deleteDatabase("tile-cache");
+    }
+    if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
+    if (!SW_ENABLED) {
+      navigator.serviceWorker
+        .getRegistrations()
+        .then((rs) =>
+          rs.forEach((r) => {
+            const u = r.active?.scriptURL;
+            if (u && new URL(u).pathname === "/sw.js") void r.unregister();
+          }),
+        )
+        .catch(() => {});
+      return;
+    }
     const tileHosts = tileHostList(customTileUrl, fieldPackBaseUrl);
     let cancelled = false;
     const container = navigator.serviceWorker;
@@ -53,7 +76,7 @@ export function ServiceWorkerRegistrar() {
     };
 
     container
-      .register("/sw.js", { scope: "/" })
+      .register(SW_URL, { scope: "/" })
       .then(() => container.ready)
       .then((reg) => {
         if (!cancelled) postConfig(reg, tileHosts);

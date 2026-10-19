@@ -80,7 +80,7 @@ export function PreflightChecklist() {
                   className="flex items-center gap-2 px-1.5 py-1 text-left rounded hover:bg-bg-tertiary transition-colors cursor-pointer"
                 >
                   {isChecked ? (
-                    <CheckSquare size={13} className="shrink-0 text-accent-primary" />
+                    <CheckSquare size={13} className="shrink-0 text-status-success" />
                   ) : (
                     <Square size={13} className="shrink-0 text-text-tertiary" />
                   )}

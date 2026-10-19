@@ -34,9 +34,13 @@ the project follows [Semantic Versioning](https://semver.org/).
   works with no internet. Settings > Data lists the station's packs.
 - **Send to vehicle.** One dialog sends the mission, the geofence and the
   rally points (each when present), shows any blocking issues and the
-  pre-flight checklist progress, and reports each item's result.
+  pre-flight checklist progress, and reports each item's result. A fence or
+  rally points can be sent without a mission. The dialog names the vehicle
+  that receives the upload and, when the plan is assigned to another one,
+  offers to switch to it.
 - Inspector number fields commit on blur or Enter and can be scrubbed by
-  dragging their label (Shift ×10, Alt ×0.1) or stepped with the arrow keys.
+  dragging their label, unit or (on a bare field) the drag handle (Shift ×10,
+  Alt ×0.1) or stepped with the arrow keys.
 
 ### Changed
 
@@ -62,6 +66,12 @@ the project follows [Semantic Versioning](https://semver.org/).
   toggle the side panels and Ctrl/Cmd+O opens the plan library. Every menu
   action, panel and dock tab is in the command palette. Pattern number fields
   no longer snap back to their default while you type.
+  Escape closes an open menu or popover first, then the plans sheet, then
+  cancels drawing, clears the selection and returns the inspector to the
+  mission; no planner key acts while a dialog is open, and the panel keys do
+  nothing with no plan open. Delete, the arrow keys and Ctrl/Cmd+C act on
+  every selected waypoint. Opening another plan clears the previous plan's
+  checklist ticks and any pattern not yet applied.
 - The planner map opens where you last left it, else at your GPS fix, else
   showing the whole world. It used to open on open ocean at street zoom, which
   rendered as a solid dark square. The locate button shows even with no plan
@@ -75,6 +85,18 @@ the project follows [Semantic Versioning](https://semver.org/).
   cache that is never trimmed. Settings > Data shows both caches and the
   browser storage they use, with a clear button for each. The download panel
   warns when an area may not fit the free browser storage.
+- Areas downloaded before this release lived in the old browser-database tile
+  store, which is now deleted. Download those areas again.
+- Cached app pages are stored once per path (query strings ignored) and are
+  cleared on sign-out. The app's static files are capped at 600 cached
+  entries, and a dev build's service worker never serves them from cache.
+- Leaving the STREETS vector basemap drops its zoom limit and OpenStreetMap
+  credit, so raster basemaps stop at their own maximum zoom again.
+- A single failed read of the ground station's field tile packs keeps the
+  field map; three failures in a row (about three minutes) fall back.
+- A plan opened from the plan library fits the planner's own map area, the
+  first GPS fix recentres the map even after it was moved programmatically,
+  and the saved map view is no longer overwritten before it has loaded.
 
 ### Removed
 

@@ -39,7 +39,7 @@ type GalleryTab = "patterns" | "templates";
 
 /** Activate a pattern type and open the inspector on the pattern editor. */
 export function pickPattern(type: PatternType): void {
-  selectPatternType(type);
+  if (usePatternStore.getState().activePatternType !== type) selectPatternType(type);
   const planner = usePlannerStore.getState();
   planner.setInspectorTarget({ kind: "pattern" });
   if (!planner.inspectorOpen) planner.toggleInspector();

@@ -61,8 +61,20 @@ export function PlanContextMenu({ planId, x, y, onClose, onPlanRenamed }: PlanCo
         onClose();
       }
     };
+    // Escape closes the menu (or cancels its rename) and nothing else: the
+    // capture-phase stop keeps the planner from also closing the plans sheet.
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      e.stopPropagation();
+      onClose();
+    };
     document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    document.addEventListener("keydown", onKeyDown, true);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      document.removeEventListener("keydown", onKeyDown, true);
+    };
   }, [onClose, confirmingDelete]);
 
   useEffect(() => {
@@ -180,8 +192,8 @@ export function PlanContextMenu({ planId, x, y, onClose, onPlanRenamed }: PlanCo
             value={renameValue}
             onChange={(e) => setRenameValue(e.target.value)}
             onKeyDown={(e) => {
+              // Escape is handled by the menu's capture-phase listener.
               if (e.key === "Enter") handleRenameConfirm();
-              if (e.key === "Escape") onClose();
             }}
             onBlur={handleRenameConfirm}
             placeholder={t("planName")}

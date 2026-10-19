@@ -25,6 +25,8 @@ vi.mock("@/hooks/use-upload-status", () => ({ useMissionUploadStatus: () => mock
 import { PlannerBar } from "@/app/plan/PlannerBar";
 import { useVehicleOptions } from "@/app/plan/use-vehicle-options";
 import { usePlannerStore } from "@/stores/planner-store";
+import { useRallyStore } from "@/stores/rally-store";
+import { useGeofenceStore } from "@/stores/geofence-store";
 
 type BarProps = ComponentProps<typeof PlannerBar>;
 
@@ -67,6 +69,8 @@ function renderBar(props: Partial<BarProps> = {}) {
   const all: BarProps = {
     p: makePlanner(),
     hasDrone: true,
+    showGeofence: true,
+    showRally: true,
     shareIo: makeShareIo(),
     onOpenSend: vi.fn(),
     ...props,
@@ -83,6 +87,8 @@ beforeEach(() => {
     dockOpen: false, dockTab: "altitude", inspectorOpen: false,
     inspectorTarget: { kind: "mission" }, librarySheetOpen: false,
   });
+  useRallyStore.setState({ points: [] });
+  useGeofenceStore.setState({ circleCenter: null, polygonPoints: [], zones: [] });
 });
 afterEach(cleanup);
 
@@ -105,10 +111,33 @@ describe("PlannerBar send button", () => {
     expect(screen.getByRole("button", { name: "Sent ✓" })).toBeInTheDocument();
   });
 
-  it("reads 'Fix n issues' and is disabled while errors exist", () => {
+  it("reads 'Fix n issues' and leads to the issues when only the mission could be sent", () => {
     mocks.errors = [{}, {}];
-    renderBar();
-    expect(screen.getByRole("button", { name: "Fix 2 issues" })).toBeDisabled();
+    const { onOpenSend } = renderBar();
+    fireEvent.click(screen.getByRole("button", { name: "Fix 2 issues" }));
+    expect(onOpenSend).not.toHaveBeenCalled();
+    expect(usePlannerStore.getState().dockOpen).toBe(true);
+    expect(usePlannerStore.getState().dockTab).toBe("issues");
+  });
+
+  it("opens the dialog despite mission errors when rally points can still be sent", () => {
+    mocks.errors = [{}];
+    useRallyStore.setState({ points: [{ id: "r1", lat: 1, lon: 1, alt: 30 }] });
+    const { onOpenSend } = renderBar();
+    fireEvent.click(screen.getByRole("button", { name: "Fix 1 issue" }));
+    expect(onOpenSend).toHaveBeenCalledTimes(1);
+  });
+
+  it("is enabled with no waypoints when a rally point can be sent", () => {
+    useRallyStore.setState({ points: [{ id: "r1", lat: 1, lon: 1, alt: 30 }] });
+    const { onOpenSend } = renderBar({ p: makePlanner({ waypoints: [] }) });
+    const btn = screen.getByRole("button", { name: "Send to vehicle" });
+    expect(btn).toBeEnabled();
+    fireEvent.click(btn);
+    expect(onOpenSend).toHaveBeenCalledTimes(1);
+    cleanup();
+    renderBar({ p: makePlanner({ waypoints: [] }), showRally: false });
+    expect(screen.getByRole("button", { name: "Send to vehicle" })).toBeDisabled();
   });
 
   it("is disabled without a vehicle or without waypoints", () => {
@@ -208,6 +237,15 @@ describe("PlannerBar plan name", () => {
     input.focus();
     fireEvent.change(input, { target: { value: "Typo" } });
     fireEvent.keyDown(input, { key: "Escape" });
+    fireEvent.blur(input);
+    expect(p.setMissionName).not.toHaveBeenCalled();
+    expect(input.value).toBe("Survey north");
+  });
+
+  it("reverts an empty name instead of committing it", () => {
+    const { p } = renderBar();
+    const input = screen.getByRole("textbox", { name: "Plan name" }) as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "   " } });
     fireEvent.blur(input);
     expect(p.setMissionName).not.toHaveBeenCalled();
     expect(input.value).toBe("Survey north");

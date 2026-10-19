@@ -8,6 +8,7 @@ vi.mock('lucide-react', () => ({
   Check: (props: any) => <span data-testid="icon-check" {...props} />,
   Search: (props: any) => <span data-testid="icon-search" {...props} />,
 }));
+vi.mock('next-intl', () => ({ useTranslations: () => (k: string) => k }));
 
 const options = [
   { value: 'stabilize', label: 'Stabilize' },

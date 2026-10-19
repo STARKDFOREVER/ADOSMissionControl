@@ -17,7 +17,7 @@ import { useGeofenceStore } from "@/stores/geofence-store";
 import { usePlanPoiStore } from "@/stores/plan-poi-store";
 import { DefaultsSection } from "../DefaultsSection";
 import { TemplatesPanel } from "../TemplatesPanel";
-import { PATTERN_TYPE_OPTIONS } from "../pattern-editor-constants";
+import { VALID_PATTERN_TYPES } from "../pattern-editor-constants";
 import type { Planner } from "@/app/plan/use-planner";
 
 interface MissionInspectorProps {
@@ -32,7 +32,10 @@ export function MissionInspector({ p, showGeofence, showRally }: MissionInspecto
   const activePattern = usePatternStore((s) => s.activePatternType);
   const geofenceEnabled = useGeofenceStore((s) => s.enabled);
   const poiCount = usePlanPoiStore((s) => s.points.length);
-  const patternLabel = PATTERN_TYPE_OPTIONS.find((o) => o.value === activePattern)?.label;
+  const tTypes = useTranslations("planner.rail.patternTypes");
+  const patternLabel = activePattern && VALID_PATTERN_TYPES.has(activePattern)
+    ? tTypes(activePattern as Parameters<typeof tTypes>[0])
+    : undefined;
   const open = (target: InspectorTarget) => () => setInspectorTarget(target);
 
   return (

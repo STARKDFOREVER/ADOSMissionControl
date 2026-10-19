@@ -36,6 +36,7 @@ import { COMMON_REGIONS, normalizeRegionCode } from "@/lib/operating-region";
 import { Select } from "@/components/ui/select";
 import { BasemapSwitcher } from "./BasemapSwitcher";
 import { MapControl } from "./MapControl";
+import { useTranslations } from "next-intl";
 
 interface ManagedTileLayerProps {
   url: string;
@@ -94,6 +95,7 @@ interface TileLayerSwitcherProps {
 }
 
 export function TileLayerSwitcher({ showControls = true }: TileLayerSwitcherProps) {
+  const t = useTranslations("basemap");
   const source = useSettingsStore((s) => s.mapTileSource);
   const setSource = useSettingsStore((s) => s.setMapTileSource);
   const showNfz = useSettingsStore((s) => s.showNoFlyZones);
@@ -185,20 +187,21 @@ export function TileLayerSwitcher({ showControls = true }: TileLayerSwitcherProp
                 {source === "field-pack" && fieldPack && (
                   <div className="flex flex-col gap-1 px-1 pb-1">
                     <span className="px-1 text-[11px] font-mono text-text-secondary">
-                      Field pack: {fieldPack.name}
+                      {t("fieldPackActive", { name: fieldPack.name })}
                     </span>
                     {usablePacks.length > 1 && (
                       <Select
                         value={fieldPack.name}
                         onChange={(v) => setSelectedPack(v)}
                         options={usablePacks.map((p) => ({ value: p.name, label: p.name }))}
+                        ariaLabel={t("fieldPackSelect")}
                       />
                     )}
                   </div>
                 )}
                 {source === "field-pack" && !fieldPack && (
                   <span className="px-1 text-[11px] font-mono text-status-warning">
-                    No field pack reachable. Showing STREETS until the ground station serves one.
+                    {t("fieldPackUnreachable")}
                   </span>
                 )}
                 {/* Operator-supplied tile server. Editing it here keeps the

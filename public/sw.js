@@ -22,6 +22,14 @@ const CONFIG_KEY = "/__ados_sw_config";
 const RUNTIME_MAX_ENTRIES = 20000;
 const TRIM_INTERVAL_MS = 30000;
 const TILE_PATH = /\/\d+\/\d+\/\d+(@2x)?(\.\w+)?$/;
+const STATIC_MAX_ENTRIES = 600;
+// Registered as `/sw.js?dev=1` by a dev build: dev chunks change constantly,
+// so static assets are never served from cache there.
+const DEV = new URL(self.location.href).searchParams.has("dev");
+
+function isStaticPath(pathname) {
+  return pathname.startsWith("/_next/static/") || pathname.startsWith("/basemap-assets/");
+}
 
 // Kept identical to `tileCacheKey` in src/lib/tile-cache-key.ts; a unit test
 // runs both over the same URLs.
@@ -136,31 +144,63 @@ async function handleTile(event) {
 
 // ── App shell ───────────────────────────────────────────────
 
+let lastStaticTrimAt = 0;
+
+async function trimStatic() {
+  const cache = await caches.open(SHELL_CACHE);
+  const keys = (await cache.keys()).filter((k) => isStaticPath(new URL(k.url).pathname));
+  const excess = keys.length - STATIC_MAX_ENTRIES;
+  for (let i = 0; i < excess; i++) await cache.delete(keys[i]);
+}
+
+function maybeTrimStatic() {
+  const now = Date.now();
+  if (now - lastStaticTrimAt < TRIM_INTERVAL_MS) return Promise.resolve();
+  lastStaticTrimAt = now;
+  return trimStatic().catch(() => {});
+}
+
 async function cacheFirst(event) {
   const cache = await caches.open(SHELL_CACHE);
   const hit = await cache.match(event.request);
   if (hit) return hit;
   const response = await fetch(event.request);
   if (response.ok && response.type === "basic") {
-    event.waitUntil(cache.put(event.request, response.clone()).catch(() => {}));
+    event.waitUntil(
+      cache
+        .put(event.request, response.clone())
+        .then(maybeTrimStatic)
+        .catch(() => {}),
+    );
   }
   return response;
 }
 
-async function networkFirstDocument(event) {
+async function networkFirstDocument(event, url) {
   const cache = await caches.open(SHELL_CACHE);
+  // Keyed by path only, so query variants share one entry.
+  const docKey = new Request(url.origin + url.pathname);
   try {
     const response = await fetch(event.request);
     if (response.ok && response.type === "basic") {
-      event.waitUntil(cache.put(event.request, response.clone()).catch(() => {}));
+      event.waitUntil(cache.put(docKey, response.clone()).catch(() => {}));
     }
     return response;
   } catch (err) {
-    const hit =
-      (await cache.match(event.request)) ||
-      (await cache.match(event.request, { ignoreSearch: true }));
+    const hit = await cache.match(docKey);
     if (hit) return hit;
     throw err;
+  }
+}
+
+/** Drops cached documents (they embed the signed-in session); keeps static assets and config. */
+async function clearDocuments() {
+  const cache = await caches.open(SHELL_CACHE);
+  const keys = await cache.keys();
+  for (const key of keys) {
+    const pathname = new URL(key.url).pathname;
+    if (isStaticPath(pathname) || pathname === CONFIG_KEY) continue;
+    await cache.delete(key);
   }
 }
 
@@ -187,7 +227,12 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("message", (event) => {
   const data = event.data;
-  if (!data || data.type !== "config") return;
+  if (!data) return;
+  if (data.type === "clear-documents") {
+    event.waitUntil(clearDocuments().catch(() => {}));
+    return;
+  }
+  if (data.type !== "config") return;
   const tileHosts = Array.isArray(data.tileHosts) ? data.tileHosts : [];
   hostMatchers = compileHosts(tileHosts);
   event.waitUntil(
@@ -211,12 +256,12 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
 
   if (url.origin === self.location.origin) {
-    if (url.pathname.startsWith("/_next/static/") || url.pathname.startsWith("/basemap-assets/")) {
-      event.respondWith(cacheFirst(event));
+    if (isStaticPath(url.pathname)) {
+      if (!DEV) event.respondWith(cacheFirst(event));
       return;
     }
     if (request.mode === "navigate") {
-      event.respondWith(networkFirstDocument(event));
+      event.respondWith(networkFirstDocument(event, url));
       return;
     }
   }

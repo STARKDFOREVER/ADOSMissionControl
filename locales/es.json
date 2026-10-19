@@ -560,7 +560,9 @@
     },
     "confirmTypePhrase": "Escribe <phrase></phrase> para confirmar",
     "delete": "Delete",
-    "mixed": "Mixto"
+    "mixed": "Mixto",
+    "dragToAdjust": "Drag to adjust",
+    "search": "Search…"
   },
   "status": {
     "connected": "Conectado",
@@ -2778,11 +2780,6 @@
     "availableModules": "Módulos disponibles ({count})"
   },
   "planner": {
-    "bands": {
-      "setup": "Preparación",
-      "build": "Construcción",
-      "review": "Revisión"
-    },
     "shortcuts": {
       "select": "Herramienta de selección",
       "waypoint": "Herramienta de waypoint",
@@ -2837,13 +2834,9 @@
     "applyConfirmTitle": "¿Reemplazar misión?",
     "applyConfirmBody": "Aplicar este patrón reemplazará todos los puntos de ruta de la misión actual. ¿Continuar?",
     "applyConfirmButton": "Reemplazar",
-    "downloadTiles": "Descargar teselas sin conexión",
     "paletteCategory": "Planificador",
-    "onAircraft": "En la aeronave",
     "olderMissionOnAircraft": "Misión anterior en la aeronave",
     "uploadFailed": "Error al subir",
-    "missionSetup": "Configuración de misión",
-    "missionName": "Nombre de la misión",
     "untitledMission": "Misión sin título",
     "defaultAltitude": "Altitud por defecto",
     "defaultSpeed": "Velocidad por defecto",
@@ -2939,9 +2932,7 @@
     "turns": "Vueltas",
     "spacing": "Espaciado",
     "corridorWidth": "Ancho del corredor",
-    "saveMission": "Guardar misión",
     "loadMission": "Cargar misión",
-    "uploadToFc": "Subir al FC",
     "downloadFromFc": "Descargar del FC",
     "exportMission": "Exportar misión",
     "importMission": "Importar misión",
@@ -2954,14 +2945,10 @@
     "fileName": "Nombre de archivo",
     "defaults": "Defaults",
     "flightPatterns": "Flight Patterns",
-    "batchEdit": "Batch Edit",
     "on": "on",
     "off": "off",
-    "missionPlanner": "Mission Planner",
     "unsavedChanges": "Unsaved changes",
     "selectDrone": "Seleccionar drone",
-    "missionNamePlaceholder": "Ingrese nombre de misión",
-    "assignDrone": "Asignar drone",
     "suite": "Suite",
     "altitudeProfile": "Perfil de altitud",
     "drawPolygonOnMap": "Dibujar polígono en el mapa",
@@ -3048,15 +3035,11 @@
     "high": "Alto",
     "max": "Máx.",
     "loading": "Cargando...",
-    "downloadFromDrone": "Descargar del drone",
     "exportWaypoints": "Exportar .waypoints",
     "exportPlanQgc": "Exportar .plan (QGC)",
     "exportKml": "Exportar KML",
     "exportCsv": "Exportar CSV",
-    "saveAsNewPlan": "Guardar como nuevo plan",
-    "reverseWaypoints": "Invertir waypoints",
     "discardChanges": "Descartar cambios",
-    "simulateIn3d": "Simular en 3D",
     "relativeHome": "Relativo (Home)",
     "absoluteMsl": "Absoluto (MSL)",
     "terrainFollowing": "Seguimiento de terreno",
@@ -3100,7 +3083,6 @@
     "keyboardShortcuts": "Atajos de teclado",
     "discardChangesBody": "This will remove all waypoints and mission data. This action cannot be undone.",
     "discard": "Discard",
-    "uploadErrors": "{count} error(s)",
     "uploadBlockedErrors": "Fix {count} validation error(s) before uploading",
     "checklist": {
       "title": "Lista de comprobación previa al vuelo",
@@ -3288,7 +3270,23 @@
     "perimeterOffset": "Inset offset",
     "perimeterAreaSet": "Boundary polygon set",
     "offline": {
-      "waitingForMap": "Waiting for the map to load"
+      "waitingForMap": "Waiting for the map to load",
+      "title": "Download current view",
+      "close": "Close",
+      "scope": "Caches offline tiles covering the current map view.",
+      "provider": "Tile provider",
+      "zoomRange": "Zoom range: {min} – {max}",
+      "tiles": "Tiles: {count}",
+      "large": "Large download ({count} tiles). This may take a while.",
+      "tooMany": "Too many tiles ({count}). The limit is {limit}: zoom the map in or lower the maximum zoom.",
+      "exceedStorage": "May exceed the free browser storage ({free}). The download stops when storage is full.",
+      "alreadyCached": "{count} already cached",
+      "downloaded": "Downloaded {count} tiles ({size})",
+      "downloadedSkipped": ", {count} already cached",
+      "downloadedFailed": ", {count} failed",
+      "customUnusable": "Set a usable custom tile URL before downloading.",
+      "cancel": "Cancel",
+      "download": "Download"
     },
     "commands": {
       "sendToVehicle": "Send to vehicle",
@@ -3418,7 +3416,9 @@
         "insertBefore": "Insert before",
         "insertAfter": "Insert after",
         "copy": "Copy",
-        "delete": "Delete"
+        "delete": "Delete",
+        "collapseAction": "Hide action settings",
+        "expandAction": "Show action settings"
       },
       "batch": {
         "hint": "Ctrl-click or Shift-click waypoints to edit several at once.",
@@ -3455,7 +3455,17 @@
         "waypoints": "Waypoints",
         "photos": "Photos",
         "area": "Area",
-        "transects": "Transects"
+        "transects": "Transects",
+        "entry": {
+          "topLeft": "Top left",
+          "topRight": "Top right",
+          "bottomLeft": "Bottom left",
+          "bottomRight": "Bottom right"
+        },
+        "scanDirection": {
+          "bottomUp": "Bottom up",
+          "topDown": "Top down"
+        }
       },
       "editor": {
         "center": "Center",
@@ -3571,7 +3581,10 @@
       "close": "Close",
       "statusRunning": "Sending",
       "statusOk": "Sent",
-      "statusFailed": "Failed"
+      "statusFailed": "Failed",
+      "target": "Sends to {name}",
+      "targetMismatch": "This plan is assigned to {plan}. Sending goes to {target}.",
+      "switchTarget": "Switch to {plan}"
     },
     "dock": {
       "ariaLabel": "Mission review",
@@ -8753,5 +8766,10 @@
       },
       "noFix": "no fix"
     }
+  },
+  "basemap": {
+    "fieldPackActive": "Field pack: {name}",
+    "fieldPackUnreachable": "No field pack reachable. Showing STREETS until the ground station serves one.",
+    "fieldPackSelect": "Field pack"
   }
 }

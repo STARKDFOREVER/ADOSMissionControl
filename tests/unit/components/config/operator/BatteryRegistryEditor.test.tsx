@@ -10,6 +10,8 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { BatteryRegistryEditor } from "@/components/config/operator/BatteryRegistryEditor";
 import { useBatteryRegistryStore } from "@/stores/battery-registry-store";
 
+vi.mock("next-intl", () => ({ useTranslations: () => (k: string) => k }));
+
 describe("BatteryRegistryEditor", () => {
   beforeEach(() => {
     useBatteryRegistryStore.setState({ packs: {}, persistToIDB: vi.fn(async () => {}) });

@@ -10,6 +10,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, within } from "@testing-library/react";
 import type { PlannerTool } from "@/lib/types";
+import type { PatternResult } from "@/lib/patterns/types";
 
 vi.mock("next-intl", () => ({ useTranslations: () => (k: string) => k }));
 
@@ -103,9 +104,22 @@ describe("MapToolbar rail", () => {
     expect(screen.queryByRole("dialog", { name: "rail.gallery.ariaLabel" })).toBeNull();
   });
 
+  it("re-picking the active pattern keeps the generated result", () => {
+    const result = { waypoints: [] } as unknown as PatternResult;
+    usePatternStore.setState({ activePatternType: "orbit", patternResult: result });
+    renderRail();
+    fireEvent.click(screen.getByRole("button", { name: "rail.patterns (G)" }));
+    const gallery = screen.getByRole("dialog", { name: "rail.gallery.ariaLabel" });
+    fireEvent.click(gallery.querySelector('button[data-pattern="orbit"]')!);
+
+    expect(usePatternStore.getState().activePatternType).toBe("orbit");
+    expect(usePatternStore.getState().patternResult).toBe(result);
+    expect(usePlannerStore.getState().inspectorTarget).toEqual({ kind: "pattern" });
+  });
+
   it("help popover renders every shortcut from the shared table", () => {
     renderRail();
-    fireEvent.click(screen.getByRole("button", { name: "rail.help.title (?)" }));
+    fireEvent.click(screen.getByRole("button", { name: "rail.help.title" }));
     const help = screen.getByRole("dialog", { name: "rail.help.title" });
     for (const s of PLANNER_SHORTCUTS.filter((x) => !x.desktopOnly)) {
       expect(within(help).getAllByText(s.labelKey).length).toBeGreaterThan(0);

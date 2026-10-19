@@ -17,6 +17,7 @@
 
 import { useId, useRef, type KeyboardEvent, type PointerEvent } from "react";
 import { useTranslations } from "next-intl";
+import { ChevronsLeftRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSyncedDraft } from "@/hooks/use-synced-draft";
 
@@ -101,7 +102,7 @@ export function ScrubNumberField({
     return out;
   };
   const settle = (n: number, mult: number) =>
-    clamp(roundTo(n, precision ?? decimalsOf(step * mult)));
+    clamp(roundTo(n, precision ?? Math.max(decimalsOf(step), decimalsOf(step * mult))));
 
   const commitValue = (n: number) => {
     setDraft(format(n));
@@ -248,6 +249,17 @@ export function ScrubNumberField({
           className={cn("shrink-0 pr-2 font-mono text-[11px] text-text-tertiary", !label && handleClass)}
         >
           {unit}
+        </span>
+      )}
+      {!label && !unit && (
+        <span
+          {...handleProps}
+          data-scrub-handle=""
+          aria-hidden
+          title={t("dragToAdjust")}
+          className={cn("flex shrink-0 items-center pr-2 text-text-tertiary", handleClass)}
+        >
+          <ChevronsLeftRight size={12} />
         </span>
       )}
     </div>

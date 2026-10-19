@@ -42,7 +42,11 @@ export function StructureScanConfig() {
       <PatternNumberRow label={t("pointsPerLayer")} step={1} min={3} precision={0}
         value={config.pointsPerLayer ?? 16} onCommit={(pointsPerLayer) => update({ pointsPerLayer })} />
       <PropertyRow label={t("direction")}>
-        <SegmentedControl size="sm" stretch ariaLabel={t("direction")} options={SCAN_DIRECTION_OPTIONS}
+        <SegmentedControl size="sm" stretch ariaLabel={t("direction")}
+          options={SCAN_DIRECTION_OPTIONS.map((o) => ({
+            value: o.value,
+            label: t(o.value === "bottom-up" ? "inspector.pattern.scanDirection.bottomUp" : "inspector.pattern.scanDirection.topDown"),
+          }))}
           value={config.direction ?? "bottom-up"} onChange={(direction) => update({ direction })} />
       </PropertyRow>
       <PatternNumberRow label={t("speed")} unit="m/s" step={0.5} min={0.1}

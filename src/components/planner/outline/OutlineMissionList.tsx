@@ -86,6 +86,15 @@ export function OutlineMissionList({
   // Reveal the row the inspector is editing, wherever it was selected from.
   useEffect(() => {
     if (!selectedId) return;
+    const store = usePlannerStore.getState();
+    if (store.sectionOpen?.["outline.mission"] === false) {
+      // The row stays hidden until the group re-renders open.
+      store.setSectionOpen("outline.mission", true);
+      const raf = requestAnimationFrame(() => {
+        rowRefs.current.get(selectedId)?.scrollIntoView?.({ block: "nearest" });
+      });
+      return () => cancelAnimationFrame(raf);
+    }
     rowRefs.current.get(selectedId)?.scrollIntoView?.({ block: "nearest" });
   }, [selectedId]);
 

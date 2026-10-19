@@ -143,10 +143,10 @@ export function CustomTileSourceEditor({ className }: { className?: string }) {
           {lastErrorUrl ? ` — last failure: ${lastErrorUrl}` : ""}
         </span>
       )}
-      <p className="text-[9px] text-text-tertiary leading-snug">
+      <p className="text-[11px] text-text-tertiary leading-snug">
         Placeholders: {"{z}"}/{"{x}"}/{"{y}"}, optional {"{s}"} (a/b/c) and {"{r}"} (@2x).
-        Tile caching and offline download additionally need the server to send
-        Access-Control-Allow-Origin.
+        Tiles from a custom server are not kept from browsing. To use one offline, download an
+        area; the server must send Access-Control-Allow-Origin.
       </p>
     </div>
   );

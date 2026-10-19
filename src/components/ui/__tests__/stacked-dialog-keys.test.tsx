@@ -58,7 +58,7 @@ describe("stacked dialog keys", () => {
     const onChange = vi.fn();
     renderWithIntl(<Select options={OPTIONS} value="a" onChange={onChange} searchable />);
     fireEvent.click(screen.getByRole("combobox"));
-    const search = screen.getByPlaceholderText("Search...");
+    const search = screen.getByPlaceholderText("Search…");
     fireEvent.keyDown(search, { key: "ArrowDown" });
     fireEvent.keyDown(search, { key: "ArrowDown" });
     fireEvent.keyDown(search, { key: "Enter" });

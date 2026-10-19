@@ -560,7 +560,9 @@
     },
     "confirmTypePhrase": "पुष्टि के लिए <phrase></phrase> टाइप करें",
     "delete": "Delete",
-    "mixed": "मिश्रित"
+    "mixed": "मिश्रित",
+    "dragToAdjust": "Drag to adjust",
+    "search": "Search…"
   },
   "status": {
     "connected": "कनेक्टेड",
@@ -2778,11 +2780,6 @@
     "availableModules": "उपलब्ध Module ({count})"
   },
   "planner": {
-    "bands": {
-      "setup": "सेटअप",
-      "build": "निर्माण",
-      "review": "समीक्षा"
-    },
     "shortcuts": {
       "select": "चयन उपकरण",
       "waypoint": "वेपॉइंट उपकरण",
@@ -2837,13 +2834,9 @@
     "applyConfirmTitle": "मिशन बदलें?",
     "applyConfirmBody": "यह पैटर्न लागू करने पर मौजूदा मिशन के सभी वेपॉइंट बदल जाएँगे। जारी रखें?",
     "applyConfirmButton": "बदलें",
-    "downloadTiles": "ऑफ़लाइन के लिए टाइलें डाउनलोड करें",
     "paletteCategory": "प्लानर",
-    "onAircraft": "एयरक्राफ्ट पर",
     "olderMissionOnAircraft": "एयरक्राफ्ट पर पुराना मिशन",
     "uploadFailed": "अपलोड विफल",
-    "missionSetup": "मिशन सेटअप",
-    "missionName": "मिशन का नाम",
     "untitledMission": "बिना नाम का मिशन",
     "defaultAltitude": "डिफ़ॉल्ट ऊँचाई",
     "defaultSpeed": "डिफ़ॉल्ट गति",
@@ -2939,9 +2932,7 @@
     "turns": "चक्कर",
     "spacing": "स्पेसिंग",
     "corridorWidth": "कॉरिडोर चौड़ाई",
-    "saveMission": "मिशन सेव करें",
     "loadMission": "मिशन लोड करें",
-    "uploadToFc": "FC पर अपलोड",
     "downloadFromFc": "FC से डाउनलोड",
     "exportMission": "मिशन एक्सपोर्ट",
     "importMission": "मिशन इम्पोर्ट",
@@ -2954,14 +2945,10 @@
     "fileName": "फ़ाइल का नाम",
     "defaults": "Defaults",
     "flightPatterns": "Flight Patterns",
-    "batchEdit": "Batch Edit",
     "on": "on",
     "off": "off",
-    "missionPlanner": "Mission Planner",
     "unsavedChanges": "Unsaved changes",
     "selectDrone": "Drone चुनें",
-    "missionNamePlaceholder": "Mission का नाम दर्ज करें",
-    "assignDrone": "Drone असाइन करें",
     "suite": "Suite",
     "altitudeProfile": "Altitude Profile",
     "drawPolygonOnMap": "Map पर polygon बनाएं",
@@ -3048,15 +3035,11 @@
     "high": "उच्च",
     "max": "Max",
     "loading": "लोड हो रहा है...",
-    "downloadFromDrone": "Drone से download करें",
     "exportWaypoints": ".waypoints export करें",
     "exportPlanQgc": ".plan (QGC) export करें",
     "exportKml": "KML export करें",
     "exportCsv": "CSV export करें",
-    "saveAsNewPlan": "नए Plan के रूप में save करें",
-    "reverseWaypoints": "Waypoints उलटें",
     "discardChanges": "बदलाव हटाएं",
-    "simulateIn3d": "3D में simulate करें",
     "relativeHome": "Relative (Home)",
     "absoluteMsl": "Absolute (MSL)",
     "terrainFollowing": "Terrain Following",
@@ -3100,7 +3083,6 @@
     "keyboardShortcuts": "Keyboard Shortcuts",
     "discardChangesBody": "This will remove all waypoints and mission data. This action cannot be undone.",
     "discard": "Discard",
-    "uploadErrors": "{count} error(s)",
     "uploadBlockedErrors": "Fix {count} validation error(s) before uploading",
     "checklist": {
       "title": "उड़ान-पूर्व चेकलिस्ट",
@@ -3288,7 +3270,23 @@
     "perimeterOffset": "Inset offset",
     "perimeterAreaSet": "Boundary polygon set",
     "offline": {
-      "waitingForMap": "Waiting for the map to load"
+      "waitingForMap": "Waiting for the map to load",
+      "title": "Download current view",
+      "close": "Close",
+      "scope": "Caches offline tiles covering the current map view.",
+      "provider": "Tile provider",
+      "zoomRange": "Zoom range: {min} – {max}",
+      "tiles": "Tiles: {count}",
+      "large": "Large download ({count} tiles). This may take a while.",
+      "tooMany": "Too many tiles ({count}). The limit is {limit}: zoom the map in or lower the maximum zoom.",
+      "exceedStorage": "May exceed the free browser storage ({free}). The download stops when storage is full.",
+      "alreadyCached": "{count} already cached",
+      "downloaded": "Downloaded {count} tiles ({size})",
+      "downloadedSkipped": ", {count} already cached",
+      "downloadedFailed": ", {count} failed",
+      "customUnusable": "Set a usable custom tile URL before downloading.",
+      "cancel": "Cancel",
+      "download": "Download"
     },
     "commands": {
       "sendToVehicle": "Send to vehicle",
@@ -3418,7 +3416,9 @@
         "insertBefore": "Insert before",
         "insertAfter": "Insert after",
         "copy": "Copy",
-        "delete": "Delete"
+        "delete": "Delete",
+        "collapseAction": "Hide action settings",
+        "expandAction": "Show action settings"
       },
       "batch": {
         "hint": "Ctrl-click or Shift-click waypoints to edit several at once.",
@@ -3455,7 +3455,17 @@
         "waypoints": "Waypoints",
         "photos": "Photos",
         "area": "Area",
-        "transects": "Transects"
+        "transects": "Transects",
+        "entry": {
+          "topLeft": "Top left",
+          "topRight": "Top right",
+          "bottomLeft": "Bottom left",
+          "bottomRight": "Bottom right"
+        },
+        "scanDirection": {
+          "bottomUp": "Bottom up",
+          "topDown": "Top down"
+        }
       },
       "editor": {
         "center": "Center",
@@ -3571,7 +3581,10 @@
       "close": "Close",
       "statusRunning": "Sending",
       "statusOk": "Sent",
-      "statusFailed": "Failed"
+      "statusFailed": "Failed",
+      "target": "Sends to {name}",
+      "targetMismatch": "This plan is assigned to {plan}. Sending goes to {target}.",
+      "switchTarget": "Switch to {plan}"
     },
     "dock": {
       "ariaLabel": "Mission review",
@@ -8753,5 +8766,10 @@
       },
       "noFix": "no fix"
     }
+  },
+  "basemap": {
+    "fieldPackActive": "Field pack: {name}",
+    "fieldPackUnreachable": "No field pack reachable. Showing STREETS until the ground station serves one.",
+    "fieldPackSelect": "Field pack"
   }
 }

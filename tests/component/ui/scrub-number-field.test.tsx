@@ -39,6 +39,26 @@ describe("ScrubNumberField", () => {
     expect(onCommit).toHaveBeenCalledExactlyOnceWith(55);
   });
 
+  it("Shift+ArrowUp keeps the step's fraction", () => {
+    const { input, onCommit } = field({ value: 25.3, step: 0.1 });
+    fireEvent.keyDown(input, { key: "ArrowUp", shiftKey: true });
+    expect(onCommit).toHaveBeenCalledExactlyOnceWith(26.3);
+  });
+
+  it("a field with no label or unit renders a drag handle that scrubs", () => {
+    const onCommit = vi.fn();
+    const { container } = render(
+      <ScrubNumberField ariaLabel="Count" value={5} step={1} min={0} max={100} onCommit={onCommit} />,
+    );
+    const handle = container.querySelector<HTMLElement>("[data-scrub-handle]");
+    expect(handle).not.toBeNull();
+    expect(handle!.getAttribute("title")).toBe("dragToAdjust");
+    fireEvent.pointerDown(handle!, { pointerId: 1, button: 0, clientX: 100 });
+    fireEvent.pointerMove(handle!, { pointerId: 1, clientX: 140 });
+    fireEvent.pointerUp(handle!, { pointerId: 1, clientX: 140 });
+    expect(onCommit).toHaveBeenCalledExactlyOnceWith(15);
+  });
+
   it("ArrowDown steps down and clamps to min", () => {
     const { input, onCommit } = field({ value: 0.4, step: 1 });
     fireEvent.keyDown(input, { key: "ArrowDown" });

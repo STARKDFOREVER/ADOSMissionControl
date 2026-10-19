@@ -45,11 +45,11 @@ export function BatchEditor({ selectedIds, onClearSelection }: BatchEditorProps)
   const [batchCommand, setBatchCommand] = useState<string>("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  const count = selectedIds.length;
   const selected = useMemo(
     () => waypoints.filter((wp) => selectedIds.includes(wp.id)),
     [waypoints, selectedIds],
   );
+  const count = selected.length;
   const first = selected[0];
   const altMixed = !allSame(selected, "alt");
   const speedMixed = !allSame(selected, "speed");

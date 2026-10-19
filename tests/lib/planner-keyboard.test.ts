@@ -36,11 +36,15 @@ function makeParams(overrides: Partial<Params> = {}): Params {
     redo: vi.fn(),
     selectedWaypointId: null,
     removeWaypoint: vi.fn(),
+    removeWaypoints: vi.fn(),
     setSelectedWaypoint: vi.fn(),
-    selectedCount: 0,
+    selectedIds: [],
     clearSelection: vi.fn(),
     inspectorIsMission: true,
     resetInspector: vi.fn(),
+    hasActivePlan: true,
+    librarySheetOpen: false,
+    onCloseLibrarySheet: vi.fn(),
     handleSave: vi.fn(),
     handleSaveAs: vi.fn(),
     handleNewPlan: vi.fn(),
@@ -129,10 +133,79 @@ describe("planner keyboard dispatcher", () => {
     expect(single.setActiveTool).not.toHaveBeenCalled();
     unmount();
 
-    const multi = makeParams({ selectedCount: 3 });
+    const multi = makeParams({ selectedIds: ["a", "b", "c"] });
     renderHook(() => useKeyboardShortcuts(multi));
     press("Escape");
     expect(multi.clearSelection).toHaveBeenCalledTimes(1);
+  });
+
+  it("Escape closes the plans sheet before anything else", () => {
+    const api = drawApi(true);
+    getActiveDrawApi.mockReturnValue(api);
+    const params = makeParams({
+      librarySheetOpen: true, activeTool: "polygon", selectedWaypointId: "wp-1", inspectorIsMission: false,
+    });
+    renderHook(() => useKeyboardShortcuts(params));
+    press("Escape");
+    expect(params.onCloseLibrarySheet).toHaveBeenCalledTimes(1);
+    expect(api.cancel).not.toHaveBeenCalled();
+    expect(params.setActiveTool).not.toHaveBeenCalled();
+    expect(params.clearSelection).not.toHaveBeenCalled();
+    expect(params.resetInspector).not.toHaveBeenCalled();
+  });
+
+  it("ignores a key another handler already consumed", () => {
+    const params = makeParams({ selectedWaypointId: "wp-1" });
+    renderHook(() => useKeyboardShortcuts(params));
+    const consume = (e: Event) => e.preventDefault();
+    document.addEventListener("keydown", consume, true);
+    try {
+      const event = new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true });
+      document.body.dispatchEvent(event);
+      expect(event.defaultPrevented).toBe(true);
+    } finally {
+      document.removeEventListener("keydown", consume, true);
+    }
+    expect(params.clearSelection).not.toHaveBeenCalled();
+  });
+
+  it("ignores shortcuts while a modal is open", () => {
+    const params = makeParams();
+    renderHook(() => useKeyboardShortcuts(params));
+    const modal = document.createElement("div");
+    modal.setAttribute("aria-modal", "true");
+    document.body.appendChild(modal);
+    press("w");
+    expect(params.setActiveTool).not.toHaveBeenCalled();
+  });
+
+  it("keeps panel keys inert on Plans home but tool letters working", () => {
+    const params = makeParams({ hasActivePlan: false });
+    renderHook(() => useKeyboardShortcuts(params));
+    const bracket = press("[");
+    expect(params.onToggleOutline).not.toHaveBeenCalled();
+    expect(bracket.defaultPrevented).toBe(false);
+    press("t");
+    expect(params.onToggleTerrain).not.toHaveBeenCalled();
+    press("w");
+    expect(params.setActiveTool).toHaveBeenCalledWith("waypoint");
+  });
+
+  it("Backspace deletes every selected waypoint in one batch", () => {
+    const params = makeParams({ selectedWaypointId: "a", selectedIds: ["a", "b"] });
+    renderHook(() => useKeyboardShortcuts(params));
+    press("Backspace");
+    expect(params.removeWaypoints).toHaveBeenCalledWith(["a", "b"]);
+    expect(params.clearSelection).toHaveBeenCalledTimes(1);
+    expect(params.removeWaypoint).not.toHaveBeenCalled();
+  });
+
+  it("arrow keys nudge a multi-selection without a single selected id", () => {
+    const onNudgeSelected = vi.fn();
+    const params = makeParams({ selectedIds: ["a", "b"], onNudgeSelected });
+    renderHook(() => useKeyboardShortcuts(params));
+    press("ArrowUp");
+    expect(onNudgeSelected).toHaveBeenCalledTimes(1);
   });
 
   it("Escape returns the inspector to the mission before clearing the tool", () => {

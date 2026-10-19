@@ -19,7 +19,7 @@ import { DEFAULT_MIN_TERRAIN_CLEARANCE } from "@/lib/terrain/terrain-clearance";
 import { INAV_ACTION_LABEL, NAV_COMMAND_OPTIONS } from "../waypoint-constants";
 
 /** Altitude datum chip: relative altitudes are above home, not above ground. */
-const FRAME_LABELS: Record<string, string> = { relative: "REL", absolute: "MSL", terrain: "Terrain" };
+const FRAME_LABELS: Record<string, string> = { relative: "REL", absolute: "MSL" };
 
 const NAV_COMMAND_LABEL: Record<string, string> = Object.fromEntries(
   NAV_COMMAND_OPTIONS.map((o) => [o.value, o.label]),
@@ -55,7 +55,8 @@ export const OutlineWaypointRow = memo(function OutlineWaypointRow({
   const cmd = waypoint.command ?? "WAYPOINT";
   const label = isInav ? (INAV_ACTION_LABEL[cmd] ?? cmd) : (NAV_COMMAND_LABEL[cmd] ?? cmd);
   // Chip the waypoint's own altitude reference; imported waypoints carry one.
-  const frameLabel = FRAME_LABELS[waypoint.frame ?? defaultFrame] ?? "REL";
+  const frame = waypoint.frame ?? defaultFrame;
+  const frameLabel = frame === "terrain" ? t("inspector.defaults.frameTerrain") : (FRAME_LABELS[frame] ?? "REL");
   const clearance = waypointAltitudeAgl(waypoint, { homeGroundElevation, defaultFrame });
   const actionCount = waypoint.actions?.length ?? 0;
   const highlighted = selected || multiSelected;

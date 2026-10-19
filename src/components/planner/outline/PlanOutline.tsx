@@ -12,7 +12,7 @@
 import { useTranslations } from "next-intl";
 import { Circle, Flag, Hexagon, MapPin, Shield } from "lucide-react";
 import type { Planner } from "@/app/plan/use-planner";
-import { usePlannerStore } from "@/stores/planner-store";
+import { usePlannerStore, type InspectorTarget } from "@/stores/planner-store";
 import { useDrawingStore } from "@/stores/drawing-store";
 import { useGeofenceStore } from "@/stores/geofence-store";
 import { useRallyStore } from "@/stores/rally-store";
@@ -20,6 +20,14 @@ import { usePlanPoiStore } from "@/stores/plan-poi-store";
 import { OutlineGroup } from "./OutlineGroup";
 import { OutlineEmpty, OutlineItemRow } from "./OutlineItemRow";
 import { OutlineMissionList } from "./OutlineMissionList";
+
+/** Show `target` in the inspector, opening the inspector if it is closed. */
+function openTarget(target: InspectorTarget) {
+  const s = usePlannerStore.getState();
+  if (target.kind === "mission") s.clearSelection();
+  s.setInspectorTarget(target);
+  if (!s.inspectorOpen) s.toggleInspector();
+}
 
 interface PlanOutlineProps {
   p: Planner;
@@ -30,7 +38,6 @@ interface PlanOutlineProps {
 export function PlanOutline({ p, showGeofence, showRally }: PlanOutlineProps) {
   const t = useTranslations("planner");
   const target = usePlannerStore((s) => s.inspectorTarget);
-  const setInspectorTarget = usePlannerStore((s) => s.setInspectorTarget);
   const multiCount = usePlannerStore((s) => s.selectedWaypointIds.length);
   const hasWaypointSelection = p.selectedWaypointId !== null || multiCount > 0;
 
@@ -41,7 +48,7 @@ export function PlanOutline({ p, showGeofence, showRally }: PlanOutlineProps) {
         title={t("outline.mission")}
         meta={p.waypoints.length}
         active={!hasWaypointSelection && target.kind === "mission"}
-        onSelect={() => setInspectorTarget({ kind: "mission" })}
+        onSelect={() => openTarget({ kind: "mission" })}
         onAdd={p.handleAddManualWaypoint}
         addLabel={t("addWaypoint")}
       >
@@ -66,8 +73,7 @@ function ShapesGroup({ active }: { active: boolean }) {
   const t = useTranslations("planner.outline");
   const polygons = useDrawingStore((s) => s.polygons);
   const circles = useDrawingStore((s) => s.circles);
-  const setInspectorTarget = usePlannerStore((s) => s.setInspectorTarget);
-  const openPattern = () => setInspectorTarget({ kind: "pattern" });
+  const openPattern = () => openTarget({ kind: "pattern" });
 
   return (
     <OutlineGroup
@@ -116,8 +122,7 @@ function GeofenceGroup({ active }: { active: boolean }) {
   const circleCenter = useGeofenceStore((s) => s.circleCenter);
   const circleRadius = useGeofenceStore((s) => s.circleRadius);
   const zones = useGeofenceStore((s) => s.zones);
-  const setInspectorTarget = usePlannerStore((s) => s.setInspectorTarget);
-  const openFence = () => setInspectorTarget({ kind: "geofence" });
+  const openFence = () => openTarget({ kind: "geofence" });
   const armDraw = () => {
     usePlannerStore.getState().setMode({ kind: "draw", shape: "polygon", drawingFor: "geofence" });
     openFence();
@@ -174,7 +179,6 @@ function GeofenceGroup({ active }: { active: boolean }) {
 function RallyGroup({ activeId }: { activeId: string | null | undefined }) {
   const t = useTranslations("planner.outline");
   const points = useRallyStore((s) => s.points);
-  const setInspectorTarget = usePlannerStore((s) => s.setInspectorTarget);
   const setActiveTool = usePlannerStore((s) => s.setActiveTool);
 
   return (
@@ -183,7 +187,7 @@ function RallyGroup({ activeId }: { activeId: string | null | undefined }) {
       title={t("rally")}
       meta={points.length}
       active={activeId === null}
-      onSelect={() => setInspectorTarget({ kind: "rally", id: null })}
+      onSelect={() => openTarget({ kind: "rally", id: null })}
       onAdd={() => setActiveTool("rally")}
       addLabel={t("addRally")}
     >
@@ -197,7 +201,7 @@ function RallyGroup({ activeId }: { activeId: string | null | undefined }) {
             label={name}
             detail={t("altitude", { value: pt.alt })}
             active={activeId === pt.id}
-            onSelect={() => setInspectorTarget({ kind: "rally", id: pt.id })}
+            onSelect={() => openTarget({ kind: "rally", id: pt.id })}
             onRemove={() => useRallyStore.getState().removePoint(pt.id)}
             removeLabel={t("deleteItem", { name })}
           />
@@ -210,10 +214,9 @@ function RallyGroup({ activeId }: { activeId: string | null | undefined }) {
 function PoiGroup({ activeId }: { activeId: string | null | undefined }) {
   const t = useTranslations("planner.outline");
   const points = usePlanPoiStore((s) => s.points);
-  const setInspectorTarget = usePlannerStore((s) => s.setInspectorTarget);
   const setActiveTool = usePlannerStore((s) => s.setActiveTool);
   const openPoi = (id: string | null) => {
-    setInspectorTarget({ kind: "poi", id });
+    openTarget({ kind: "poi", id });
     if (id) usePlanPoiStore.getState().select(id);
   };
 

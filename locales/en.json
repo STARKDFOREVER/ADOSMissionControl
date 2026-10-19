@@ -560,7 +560,9 @@
     },
     "confirmTypePhrase": "Type <phrase></phrase> to confirm",
     "delete": "Delete",
-    "mixed": "Mixed"
+    "mixed": "Mixed",
+    "dragToAdjust": "Drag to adjust",
+    "search": "Search…"
   },
   "status": {
     "connected": "Connected",
@@ -2817,6 +2819,8 @@
         "terrainHint": "Altitude adjusts to the terrain elevation."
       },
       "waypoint": {
+        "collapseAction": "Hide action settings",
+        "expandAction": "Show action settings",
         "position": "Position",
         "lat": "Latitude",
         "lon": "Longitude",
@@ -2904,6 +2908,16 @@
       },
       "pattern": {
         "type": "Pattern",
+        "entry": {
+          "topLeft": "Top left",
+          "topRight": "Top right",
+          "bottomLeft": "Bottom left",
+          "bottomRight": "Bottom right"
+        },
+        "scanDirection": {
+          "bottomUp": "Bottom up",
+          "topDown": "Top down"
+        },
         "selectType": "Select a pattern",
         "hint": "Pick a pattern, then draw its area on the map.",
         "drawArea": "Draw area",
@@ -2993,11 +3007,6 @@
       "noPoi": "No points of interest",
       "poiItem": "POI {n}"
     },
-    "bands": {
-      "setup": "Setup",
-      "build": "Build",
-      "review": "Review"
-    },
     "bar": {
       "plans": "Plans",
       "plansTitle": "Plan library (Ctrl/Cmd+O)",
@@ -3030,6 +3039,9 @@
       "rally": "Rally points ({count})",
       "blocked": "{count, plural, one {# issue blocks} other {# issues block}} the mission",
       "reviewIssues": "Review issues",
+      "target": "Sends to {name}",
+      "targetMismatch": "This plan is assigned to {plan}. Sending goes to {target}.",
+      "switchTarget": "Switch to {plan}",
       "checklist": "Pre-flight checklist {done}/{total}",
       "openChecklist": "Open checklist",
       "nothing": "Nothing to send. Add waypoints, a geofence or rally points first.",
@@ -3095,13 +3107,9 @@
     "applyConfirmTitle": "Replace mission?",
     "applyConfirmBody": "Applying this pattern replaces every waypoint in the current mission. Continue?",
     "applyConfirmButton": "Replace",
-    "downloadTiles": "Download tiles for offline",
     "paletteCategory": "Planner",
-    "onAircraft": "On aircraft",
     "olderMissionOnAircraft": "Older mission on aircraft",
     "uploadFailed": "Upload failed",
-    "missionSetup": "Mission Setup",
-    "missionName": "Mission Name",
     "untitledMission": "Untitled Mission",
     "defaultAltitude": "Default Altitude",
     "defaultSpeed": "Default Speed",
@@ -3197,9 +3205,7 @@
     "turns": "Turns",
     "spacing": "Spacing",
     "corridorWidth": "Corridor width",
-    "saveMission": "Save Mission",
     "loadMission": "Load Mission",
-    "uploadToFc": "Upload to FC",
     "downloadFromFc": "Download from FC",
     "exportMission": "Export Mission",
     "importMission": "Import Mission",
@@ -3212,14 +3218,10 @@
     "fileName": "File Name",
     "defaults": "Defaults",
     "flightPatterns": "Flight Patterns",
-    "batchEdit": "Batch Edit",
     "on": "on",
     "off": "off",
-    "missionPlanner": "Mission Planner",
     "unsavedChanges": "Unsaved changes",
     "selectDrone": "Select drone",
-    "missionNamePlaceholder": "Enter mission name",
-    "assignDrone": "Assign Drone",
     "suite": "Suite",
     "altitudeProfile": "Altitude Profile",
     "drawPolygonOnMap": "Draw polygon on map",
@@ -3306,15 +3308,11 @@
     "high": "High",
     "max": "Max",
     "loading": "Loading...",
-    "downloadFromDrone": "Download from Drone",
     "exportWaypoints": "Export .waypoints",
     "exportPlanQgc": "Export .plan (QGC)",
     "exportKml": "Export KML",
     "exportCsv": "Export CSV",
-    "saveAsNewPlan": "Save as New Plan",
-    "reverseWaypoints": "Reverse Waypoints",
     "discardChanges": "Discard Changes",
-    "simulateIn3d": "Simulate in 3D",
     "relativeHome": "Relative (Home)",
     "absoluteMsl": "Absolute (MSL)",
     "terrainFollowing": "Terrain Following",
@@ -3358,7 +3356,6 @@
     "keyboardShortcuts": "Keyboard Shortcuts",
     "discardChangesBody": "This will remove all waypoints and mission data. This action cannot be undone.",
     "discard": "Discard",
-    "uploadErrors": "{count} error(s)",
     "uploadBlockedErrors": "Fix {count} validation error(s) before uploading",
     "dock": {
       "ariaLabel": "Mission review",
@@ -3627,7 +3624,23 @@
       }
     },
     "offline": {
-      "waitingForMap": "Waiting for the map to load"
+      "waitingForMap": "Waiting for the map to load",
+      "title": "Download current view",
+      "close": "Close",
+      "scope": "Caches offline tiles covering the current map view.",
+      "provider": "Tile provider",
+      "zoomRange": "Zoom range: {min} – {max}",
+      "tiles": "Tiles: {count}",
+      "large": "Large download ({count} tiles). This may take a while.",
+      "tooMany": "Too many tiles ({count}). The limit is {limit}: zoom the map in or lower the maximum zoom.",
+      "exceedStorage": "May exceed the free browser storage ({free}). The download stops when storage is full.",
+      "alreadyCached": "{count} already cached",
+      "downloaded": "Downloaded {count} tiles ({size})",
+      "downloadedSkipped": ", {count} already cached",
+      "downloadedFailed": ", {count} failed",
+      "customUnusable": "Set a usable custom tile URL before downloading.",
+      "cancel": "Cancel",
+      "download": "Download"
     },
     "commands": {
       "sendToVehicle": "Send to vehicle",
@@ -3654,6 +3667,11 @@
         "checklist": "Show pre-flight checklist"
       }
     }
+  },
+  "basemap": {
+    "fieldPackActive": "Field pack: {name}",
+    "fieldPackUnreachable": "No field pack reachable. Showing STREETS until the ground station serves one.",
+    "fieldPackSelect": "Field pack"
   },
   "geofence": {
     "autoFence": "Auto-fence",

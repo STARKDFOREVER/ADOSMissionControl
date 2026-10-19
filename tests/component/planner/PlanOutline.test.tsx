@@ -197,4 +197,31 @@ describe("PlanOutline groups", () => {
     const row = document.querySelector('[data-waypoint-id="a"]') as HTMLElement;
     expect(row.closest("[hidden]")).not.toBeNull();
   });
+
+  it("Mission header clears a waypoint selection and shows the mission", () => {
+    usePlannerStore.setState({ selectedWaypointId: "b", selectedWaypointIds: ["b"], inspectorTarget: { kind: "pattern" } });
+    renderOutline(makePlanner({ selectedWaypointId: "b" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Mission/ }));
+    const s = usePlannerStore.getState();
+    expect(s.selectedWaypointId).toBeNull();
+    expect(s.selectedWaypointIds).toEqual([]);
+    expect(s.inspectorTarget).toEqual({ kind: "mission" });
+  });
+
+  it("a header click opens a closed inspector", () => {
+    usePlannerStore.setState({ inspectorOpen: false });
+    renderOutline();
+    fireEvent.click(screen.getByRole("button", { name: /^Geofence/ }));
+    expect(usePlannerStore.getState().inspectorOpen).toBe(true);
+    expect(usePlannerStore.getState().inspectorTarget).toEqual({ kind: "geofence" });
+  });
+
+  it("selecting a waypoint expands a collapsed Mission group", () => {
+    Element.prototype.scrollIntoView = vi.fn();
+    usePlannerStore.setState({ sectionOpen: { "outline.mission": false } });
+    const p = makePlanner();
+    const { rerender } = renderWithIntl(<PlanOutline p={p as unknown as OutlineProps["p"]} showGeofence showRally />);
+    rerender(<PlanOutline p={{ ...p, selectedWaypointId: "c" } as unknown as OutlineProps["p"]} showGeofence showRally />);
+    expect(usePlannerStore.getState().sectionOpen["outline.mission"]).toBe(true);
+  });
 });

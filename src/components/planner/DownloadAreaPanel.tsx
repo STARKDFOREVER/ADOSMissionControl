@@ -10,6 +10,7 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { X, CloudDownload, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
@@ -31,10 +32,12 @@ function resultTone(r: { completed: number; skipped: number; failed: number }): 
 }
 
 const RESULT_TONE = {
-  success: { box: "bg-status-success/10 border-status-success/30", text: "text-status-success" },
-  warning: { box: "bg-status-warning/10 border-status-warning/30", text: "text-status-warning" },
-  error: { box: "bg-status-error/10 border-status-error/30", text: "text-status-error" },
+  success: "text-status-success",
+  warning: "text-status-warning",
+  error: "text-status-error",
 } as const;
+
+const SECTION_LABEL = "text-[11px] font-body font-semibold text-text-tertiary";
 
 interface DownloadAreaPanelProps {
   bounds: LatLngBounds;
@@ -44,6 +47,7 @@ interface DownloadAreaPanelProps {
 }
 
 export function DownloadAreaPanel({ bounds, currentZoom, currentProvider, onClose }: DownloadAreaPanelProps) {
+  const t = useTranslations("planner.offline");
   const customTileUrl = useSettingsStore((s) => s.customTileUrl);
   const customTileMaxZoom = useSettingsStore((s) => s.customTileMaxZoom);
   const customTileAttribution = useSettingsStore((s) => s.customTileAttribution);
@@ -56,14 +60,22 @@ export function DownloadAreaPanel({ bounds, currentZoom, currentProvider, onClos
   // URLs — a 100% miss for the on-screen custom layer, and internet traffic for
   // an operator who chose a self-hosted server precisely to avoid it.
   const [provider, setProvider] = useState<MapTileSource>(
-    currentProvider === "custom" && !customUsable ? "dark" : currentProvider,
+    currentProvider === "field-pack"
+      ? "streets-dark"
+      : currentProvider === "custom" && !customUsable
+        ? "dark"
+        : currentProvider,
   );
   const providerConfig = resolveBasemap(provider, custom);
   const maxZoomForProvider = providerConfig.maxZoom;
   const customSelectedButUnusable = provider === "custom" && !customUsable;
 
+  // Vector tiles are 512 px, so the view at zoom z shows tiles of z - 1.
+  const isVector = providerConfig.kind === "vector";
+  const viewZoom = isVector ? currentZoom - 1 : currentZoom;
+  const floorZoom = isVector ? 0 : 1;
   // Sensible default: current zoom to +4, capped at provider max
-  const defaultMinZoom = Math.max(1, Math.round(currentZoom));
+  const defaultMinZoom = Math.min(maxZoomForProvider, Math.max(floorZoom, Math.round(viewZoom)));
   const defaultMaxZoom = Math.min(defaultMinZoom + 4, maxZoomForProvider);
 
   const [zoomMin, setZoomMin] = useState(defaultMinZoom);
@@ -122,11 +134,15 @@ export function DownloadAreaPanel({ bounds, currentZoom, currentProvider, onClos
       <div className="flex items-center justify-between px-3 py-2 border-b border-border-default">
         <div className="flex items-center gap-2">
           <CloudDownload size={12} className="text-accent-primary" />
-          <span className="text-[11px] font-mono font-semibold text-text-primary">
-            Download Current View
+          <span className="text-[11px] font-body font-semibold text-text-primary">
+            {t("title")}
           </span>
         </div>
-        <button onClick={handleClose} className="text-text-tertiary hover:text-text-primary cursor-pointer">
+        <button
+          onClick={handleClose}
+          aria-label={t("close")}
+          className="text-text-tertiary hover:text-text-primary cursor-pointer"
+        >
           <X size={12} />
         </button>
       </div>
@@ -134,12 +150,12 @@ export function DownloadAreaPanel({ bounds, currentZoom, currentProvider, onClos
       <div className="px-3 py-2 flex flex-col gap-2.5">
         {/* Honest scope: this caches the tiles for the current map viewport,
             not a separately-drawn rectangle. */}
-        <p className="text-[9px] text-text-tertiary leading-snug">
-          Caches offline tiles covering the current map view.
+        <p className="text-[11px] text-text-tertiary leading-snug">
+          {t("scope")}
         </p>
         {/* Provider */}
         <div>
-          <label className="text-[9px] text-text-tertiary uppercase font-mono">Tile Provider</label>
+          <label className={SECTION_LABEL}>{t("provider")}</label>
           <Select
             value={provider}
             onChange={(v) => {
@@ -147,7 +163,7 @@ export function DownloadAreaPanel({ bounds, currentZoom, currentProvider, onClos
               setProvider(next);
               const newMax = resolveBasemap(next, custom).maxZoom;
               if (zoomMax > newMax) setZoomMax(newMax);
-              if (zoomMin > newMax) setZoomMin(Math.max(1, newMax - 4));
+              if (zoomMin > newMax) setZoomMin(newMax);
             }}
             options={BASEMAP_ORDER
               .filter((s) => s !== "custom" || customUsable)
@@ -158,13 +174,13 @@ export function DownloadAreaPanel({ bounds, currentZoom, currentProvider, onClos
 
         {/* Zoom range */}
         <div>
-          <label className="text-[9px] text-text-tertiary uppercase font-mono">
-            Zoom Range: {zoomMin} – {zoomMax}
+          <label className={SECTION_LABEL}>
+            {t("zoomRange", { min: zoomMin, max: zoomMax })}
           </label>
           <div className="flex items-center gap-2 mt-1">
             <input
               type="range"
-              min={1}
+              min={floorZoom}
               max={maxZoomForProvider}
               value={zoomMin}
               onChange={(e) => {
@@ -177,7 +193,7 @@ export function DownloadAreaPanel({ bounds, currentZoom, currentProvider, onClos
             />
             <input
               type="range"
-              min={1}
+              min={floorZoom}
               max={maxZoomForProvider}
               value={zoomMax}
               onChange={(e) => {
@@ -192,36 +208,29 @@ export function DownloadAreaPanel({ bounds, currentZoom, currentProvider, onClos
         </div>
 
         {/* Estimates */}
-        <div className="flex justify-between text-[10px] font-mono">
-          <span className="text-text-secondary">Tiles: {tileCount.toLocaleString()}</span>
+        <div className="flex justify-between text-[11px] font-mono">
+          <span className="text-text-secondary">{t("tiles", { count: tileCount.toLocaleString() })}</span>
           <span className="text-text-secondary">~{formatBytes(estSize)}</span>
         </div>
 
         {/* Warnings */}
         {isLarge && !isDownloading && (
-          <div className="flex items-start gap-1.5 px-2 py-1.5 bg-status-warning/10 border border-status-warning/30 rounded">
-            <AlertTriangle size={12} className="text-status-warning shrink-0 mt-0.5" />
-            <span className="text-[9px] text-status-warning">
-              Large download ({tileCount.toLocaleString()} tiles). This may take a while.
-            </span>
-          </div>
+          <p className="flex items-start gap-1.5 text-[11px] text-status-warning">
+            <AlertTriangle size={12} className="shrink-0 mt-0.5" />
+            {t("large", { count: tileCount.toLocaleString() })}
+          </p>
         )}
         {tooMany && !isDownloading && (
-          <div className="flex items-start gap-1.5 px-2 py-1.5 bg-status-error/10 border border-status-error/30 rounded">
-            <AlertTriangle size={12} className="text-status-error shrink-0 mt-0.5" />
-            <span className="text-[9px] text-status-error">
-              Too many tiles ({tileCount.toLocaleString()}). The limit is {MAX_DOWNLOAD_TILES.toLocaleString()}:
-              zoom the map in or lower the maximum zoom.
-            </span>
-          </div>
+          <p className="flex items-start gap-1.5 text-[11px] text-status-error">
+            <AlertTriangle size={12} className="shrink-0 mt-0.5" />
+            {t("tooMany", { count: tileCount.toLocaleString(), limit: MAX_DOWNLOAD_TILES.toLocaleString() })}
+          </p>
         )}
         {wouldExceedStorage && !tooMany && !isDownloading && (
-          <div className="flex items-start gap-1.5 px-2 py-1.5 bg-status-warning/10 border border-status-warning/30 rounded">
-            <AlertTriangle size={12} className="text-status-warning shrink-0 mt-0.5" />
-            <span className="text-[9px] text-status-warning">
-              May exceed the free browser storage ({formatBytes(freeBytes ?? 0)}). The download stops when storage is full.
-            </span>
-          </div>
+          <p className="flex items-start gap-1.5 text-[11px] text-status-warning">
+            <AlertTriangle size={12} className="shrink-0 mt-0.5" />
+            {t("exceedStorage", { free: formatBytes(freeBytes ?? 0) })}
+          </p>
         )}
 
         {/* Download progress */}
@@ -233,13 +242,13 @@ export function DownloadAreaPanel({ bounds, currentZoom, currentProvider, onClos
                 style={{ width: `${progressPct}%` }}
               />
             </div>
-            <div className="flex justify-between text-[9px] font-mono text-text-tertiary">
+            <div className="flex justify-between text-[11px] font-mono text-text-tertiary">
               <span>{progress.completed.toLocaleString()} / {progress.total.toLocaleString()}</span>
               <span>{formatBytes(progress.bytes)}</span>
             </div>
             {progress.skipped > 0 && (
-              <span className="text-[9px] font-mono text-text-tertiary">
-                {progress.skipped} already cached
+              <span className="text-[11px] text-text-tertiary">
+                {t("alreadyCached", { count: progress.skipped.toLocaleString() })}
               </span>
             )}
           </div>
@@ -247,30 +256,22 @@ export function DownloadAreaPanel({ bounds, currentZoom, currentProvider, onClos
 
         {/* Result */}
         {result && !isDownloading && (
-          <div className={cn("px-2 py-1.5 border rounded", RESULT_TONE[resultTone(result)].box)}>
-            <span className={cn("text-[9px]", RESULT_TONE[resultTone(result)].text)}>
-              Downloaded {result.completed.toLocaleString()} tiles ({formatBytes(result.totalBytes)})
-              {result.skipped > 0 && `, ${result.skipped} already cached`}
-              {result.failed > 0 && `, ${result.failed} failed`}
-            </span>
-          </div>
+          <p className={cn("text-[11px]", RESULT_TONE[resultTone(result)])}>
+            {t("downloaded", { count: result.completed.toLocaleString(), size: formatBytes(result.totalBytes) })}
+            {result.skipped > 0 && t("downloadedSkipped", { count: result.skipped.toLocaleString() })}
+            {result.failed > 0 && t("downloadedFailed", { count: result.failed.toLocaleString() })}
+          </p>
         )}
 
         {/* Error */}
         {error && !isDownloading && (
-          <div className="px-2 py-1.5 bg-status-error/10 border border-status-error/30 rounded">
-            <span className="text-[9px] text-status-error">{error}</span>
-          </div>
+          <p className="text-[11px] text-status-error">{error}</p>
         )}
 
         {/* Belt-and-braces: the select filters this option out, but a stale
             `currentProvider` can still seed it. */}
         {customSelectedButUnusable && !isDownloading && (
-          <div className="px-2 py-1.5 bg-status-error/10 border border-status-error/30 rounded">
-            <span className="text-[9px] text-status-error">
-              Set a usable custom tile URL before downloading.
-            </span>
-          </div>
+          <p className="text-[11px] text-status-error">{t("customUnusable")}</p>
         )}
       </div>
 
@@ -278,17 +279,17 @@ export function DownloadAreaPanel({ bounds, currentZoom, currentProvider, onClos
       <div className="px-3 py-2 border-t border-border-default flex gap-2">
         {isDownloading ? (
           <Button variant="secondary" size="sm" onClick={cancelDownload} className="w-full">
-            Cancel
+            {t("cancel")}
           </Button>
         ) : (
           <>
             <Button variant="secondary" size="sm" onClick={handleClose} className="flex-1">
-              Close
+              {t("close")}
             </Button>
             <Button variant="primary" size="sm" onClick={handleDownload} className="flex-1"
-              disabled={customSelectedButUnusable || tooMany}
+              disabled={customSelectedButUnusable || tooMany || zoomMin > zoomMax || tileCount === 0}
               icon={<CloudDownload size={12} />}>
-              Download
+              {t("download")}
             </Button>
           </>
         )}

@@ -76,8 +76,20 @@ export function PlanTree({
         closeFolderMenu();
       }
     };
+    // Escape closes the menu (or cancels its rename) and nothing else: the
+    // capture-phase stop keeps the planner from also closing the plans sheet.
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      e.stopPropagation();
+      closeFolderMenu();
+    };
     document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    document.addEventListener("keydown", onKeyDown, true);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      document.removeEventListener("keydown", onKeyDown, true);
+    };
   }, [folderMenu, closeFolderMenu]);
 
   useEffect(() => {
@@ -197,7 +209,7 @@ export function PlanTree({
                 onChange={(e) => setFolderRenameValue(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") confirmFolderRename();
-                  if (e.key === "Escape") closeFolderMenu();
+                  // Escape is handled by the menu's capture-phase listener.
                 }}
                 onBlur={confirmFolderRename}
                 placeholder={t("folderName")}

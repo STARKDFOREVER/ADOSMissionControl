@@ -88,6 +88,11 @@ describe("resolveInspectorView", () => {
     expect(resolveInspectorView([], "gone", ids, { kind: "transform" }, caps).kind).toBe("transform");
   });
 
+  it("drops deleted ids from a batch and falls back to the one that is left", () => {
+    expect(resolveInspectorView(["a", "gone"], "gone", ids, { kind: "mission" }, caps)).toEqual({ kind: "waypoint", id: "a", index: 0 });
+    expect(resolveInspectorView(["a", "b", "gone"], "a", ids, { kind: "mission" }, caps)).toEqual({ kind: "batch", ids: ["a", "b"] });
+  });
+
   it("falls back to mission for a target the vehicle cannot use", () => {
     const none = { showGeofence: false, showRally: false };
     expect(resolveInspectorView([], null, ids, { kind: "geofence" }, none).kind).toBe("mission");

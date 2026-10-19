@@ -146,9 +146,14 @@ export function PatternEditor({ onApply }: PatternEditorProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeType, configKey, polygons.length, circles.length, generate]);
 
+  const patternTypeOptions = PATTERN_TYPE_OPTIONS.map((o) => ({
+    ...o,
+    label: t(`rail.patternTypes.${o.value}` as Parameters<typeof t>[0]),
+  }));
+
   const typeRow = (
     <PropertyRow label={tIns("type")}>
-      <Select options={PATTERN_TYPE_OPTIONS} value={activeType ?? ""} onChange={handleTypeChange}
+      <Select options={patternTypeOptions} value={activeType ?? ""} onChange={handleTypeChange}
         ariaLabel={tIns("type")} compact placeholder={activeType ? undefined : tIns("selectType")} />
     </PropertyRow>
   );
@@ -239,7 +244,7 @@ export function PatternEditor({ onApply }: PatternEditorProps) {
 
       {patternResult && onApply && (
         <button type="button" onClick={onApply}
-          className="flex h-8 w-full items-center justify-center gap-1.5 rounded-sm bg-accent-primary text-xs font-semibold text-bg-primary transition-colors hover:bg-accent-primary/90 cursor-pointer focus-ring">
+          className={cn(secondaryButton, "h-8 w-full font-semibold text-text-primary")}>
           <Check size={12} />{tIns("apply", { count: patternResult.waypoints.length })}
         </button>
       )}

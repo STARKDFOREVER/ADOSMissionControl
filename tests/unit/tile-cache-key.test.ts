@@ -13,12 +13,15 @@ import { isCacheableTileContentType, tileCacheKey, tileHostPattern } from "@/lib
 interface SwGlobal {
   __adosTileCacheKey?: (url: string) => string;
   addEventListener: () => void;
-  location: { origin: string };
+  location: { origin: string; href: string };
 }
 
-function loadWorkerKey(): (url: string) => string {
+function loadWorkerKey(href = "http://localhost:4000/sw.js"): (url: string) => string {
   const source = readFileSync(join(process.cwd(), "public/sw.js"), "utf8");
-  const self: SwGlobal = { addEventListener: () => {}, location: { origin: "http://localhost:4000" } };
+  const self: SwGlobal = {
+    addEventListener: () => {},
+    location: { origin: new URL(href).origin, href },
+  };
   vm.runInNewContext(source, { self, URL, Request, Response });
   if (!self.__adosTileCacheKey) throw new Error("sw.js did not define __adosTileCacheKey");
   return self.__adosTileCacheKey;
@@ -68,5 +71,10 @@ describe("tile cache key", () => {
     expect(isCacheableTileContentType("application/x-protobuf; charset=binary")).toBe(true);
     expect(isCacheableTileContentType("text/html")).toBe(false);
     expect(isCacheableTileContentType(null)).toBe(false);
+  });
+
+  it("loads when registered with the dev flag", () => {
+    const devKey = loadWorkerKey("http://localhost:4000/sw.js?dev=1");
+    expect(devKey(FIXTURES[0][0])).toBe(FIXTURES[0][1]);
   });
 });

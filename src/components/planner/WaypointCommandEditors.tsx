@@ -12,6 +12,7 @@ import { useTranslations } from "next-intl";
 import { PropertyRow } from "@/components/ui/property-row";
 import { ScrubNumberField } from "@/components/ui/scrub-number-field";
 import { Select } from "@/components/ui/select";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { SPEED_TYPE_AIRSPEED, SPEED_TYPE_GROUND } from "./waypoint-constants";
 
 /** The subset of parameter fields the command editors read directly. Both a
@@ -67,7 +68,11 @@ interface ChoiceRowProps {
 function ParamChoiceRow({ label, value, options, onChange }: ChoiceRowProps) {
   return (
     <PropertyRow label={label}>
-      <Select ariaLabel={label} compact options={options} value={value} onChange={onChange} />
+      {options.length <= 4 ? (
+        <SegmentedControl size="sm" stretch ariaLabel={label} options={options} value={value} onChange={onChange} />
+      ) : (
+        <Select ariaLabel={label} compact options={options} value={value} onChange={onChange} />
+      )}
     </PropertyRow>
   );
 }

@@ -19,19 +19,34 @@ import { useRallyStore } from "@/stores/rally-store";
 import { usePlannerStore } from "@/stores/planner-store";
 import { usePreflightChecklistStore } from "@/stores/preflight-checklist-store";
 import { PREFLIGHT_ITEM_IDS } from "@/components/planner/preflight-items";
+import { useDroneManager, type DroneManagerState } from "@/stores/drone-manager";
+
+const initialDroneManager = useDroneManager.getState();
 
 type DialogProps = ComponentProps<typeof SendToVehicleDialog>;
 
 const calls: string[] = [];
 
-function makePlanner(handleUpload: () => Promise<{ success: boolean; message: string }>) {
+function makePlanner(
+  handleUpload: () => Promise<{ success: boolean; message: string }>,
+  extra: Record<string, unknown> = {},
+) {
   return {
     waypoints: [
       { id: "w1", lat: 1, lon: 1, alt: 30, command: "WAYPOINT" },
       { id: "w2", lat: 1.001, lon: 1, alt: 30, command: "WAYPOINT" },
     ],
     handleUpload,
+    drones: [],
+    selectedDroneId: "",
+    ...extra,
   } as unknown as DialogProps["p"];
+}
+
+/** Seed connected drones by id; the dialog only checks membership. */
+function seedDrones(ids: string[], selected: string | null) {
+  const drones = new Map(ids.map((id) => [id, { id }])) as unknown as DroneManagerState["drones"];
+  useDroneManager.setState({ drones, selectedDroneId: selected });
 }
 
 function renderDialog(props: Partial<DialogProps> = {}) {
@@ -63,6 +78,7 @@ beforeEach(() => {
   });
   usePlannerStore.setState({ dockOpen: false, dockTab: "altitude" });
   usePreflightChecklistStore.setState({ checked: {} });
+  useDroneManager.setState(initialDroneManager, true);
 });
 afterEach(cleanup);
 
@@ -128,5 +144,27 @@ describe("SendToVehicleDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: "Open checklist" }));
     expect(usePlannerStore.getState().dockTab).toBe("checklist");
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it("names the vehicle that receives the upload", () => {
+    seedDrones(["d1"], "d1");
+    renderDialog({ p: makePlanner(async () => ({ success: true, message: "" }), {
+      drones: [{ id: "d1", name: "Alpha" }], selectedDroneId: "d1",
+    }) });
+    expect(screen.getByText("Sends to Alpha")).toBeInTheDocument();
+    expect(screen.queryByTestId("send-target-mismatch")).toBeNull();
+  });
+
+  it("warns when the plan is assigned to another connected vehicle and offers a switch", () => {
+    seedDrones(["d1", "d2"], "d2");
+    const selectDrone = vi.fn();
+    useDroneManager.setState({ selectDrone });
+    renderDialog({ p: makePlanner(async () => ({ success: true, message: "" }), {
+      drones: [{ id: "d1", name: "Alpha" }, { id: "d2", name: "Bravo" }], selectedDroneId: "d1",
+    }) });
+    expect(screen.getByText("Sends to Bravo")).toBeInTheDocument();
+    expect(screen.getByText("This plan is assigned to Alpha. Sending goes to Bravo.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Switch to Alpha" }));
+    expect(selectDrone).toHaveBeenCalledWith("d1");
   });
 });

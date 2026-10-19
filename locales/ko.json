@@ -560,7 +560,9 @@
     },
     "confirmTypePhrase": "확인하려면 <phrase></phrase>을(를) 입력하세요",
     "delete": "Delete",
-    "mixed": "혼합"
+    "mixed": "혼합",
+    "dragToAdjust": "Drag to adjust",
+    "search": "Search…"
   },
   "status": {
     "connected": "연결됨",
@@ -2778,11 +2780,6 @@
     "availableModules": "사용 가능한 모듈 ({count})"
   },
   "planner": {
-    "bands": {
-      "setup": "설정",
-      "build": "작성",
-      "review": "검토"
-    },
     "shortcuts": {
       "select": "선택 도구",
       "waypoint": "웨이포인트 도구",
@@ -2837,13 +2834,9 @@
     "applyConfirmTitle": "미션을 교체할까요?",
     "applyConfirmBody": "이 패턴을 적용하면 현재 미션의 모든 경유지가 교체됩니다. 계속할까요?",
     "applyConfirmButton": "교체",
-    "downloadTiles": "오프라인용 타일 다운로드",
     "paletteCategory": "플래너",
-    "onAircraft": "기체에 업로드됨",
     "olderMissionOnAircraft": "기체에 이전 미션",
     "uploadFailed": "업로드 실패",
-    "missionSetup": "미션 설정",
-    "missionName": "미션 이름",
     "untitledMission": "제목 없는 미션",
     "defaultAltitude": "기본 고도",
     "defaultSpeed": "기본 속도",
@@ -2939,9 +2932,7 @@
     "turns": "회전수",
     "spacing": "간격",
     "corridorWidth": "회랑 폭",
-    "saveMission": "미션 저장",
     "loadMission": "미션 불러오기",
-    "uploadToFc": "FC에 업로드",
     "downloadFromFc": "FC에서 다운로드",
     "exportMission": "미션 내보내기",
     "importMission": "미션 가져오기",
@@ -2954,14 +2945,10 @@
     "fileName": "파일 이름",
     "defaults": "기본값",
     "flightPatterns": "비행 패턴",
-    "batchEdit": "일괄 편집",
     "on": "켜기",
     "off": "끄기",
-    "missionPlanner": "미션 플래너",
     "unsavedChanges": "저장되지 않은 변경사항",
     "selectDrone": "드론 선택",
-    "missionNamePlaceholder": "미션 이름을 입력하세요",
-    "assignDrone": "드론 지정",
     "suite": "스위트",
     "altitudeProfile": "고도 프로파일",
     "drawPolygonOnMap": "지도에 다각형 그리기",
@@ -3048,15 +3035,11 @@
     "high": "높음",
     "max": "최대",
     "loading": "로딩 중...",
-    "downloadFromDrone": "드론에서 다운로드",
     "exportWaypoints": ".waypoints 내보내기",
     "exportPlanQgc": ".plan 내보내기 (QGC)",
     "exportKml": "KML 내보내기",
     "exportCsv": "CSV 내보내기",
-    "saveAsNewPlan": "새 계획으로 저장",
-    "reverseWaypoints": "웨이포인트 역순",
     "discardChanges": "변경사항 버리기",
-    "simulateIn3d": "3D 시뮬레이션",
     "relativeHome": "상대 (Home)",
     "absoluteMsl": "절대 (MSL)",
     "terrainFollowing": "지형 추종",
@@ -3100,7 +3083,6 @@
     "keyboardShortcuts": "키보드 단축키",
     "discardChangesBody": "This will remove all waypoints and mission data. This action cannot be undone.",
     "discard": "Discard",
-    "uploadErrors": "{count} error(s)",
     "uploadBlockedErrors": "Fix {count} validation error(s) before uploading",
     "checklist": {
       "title": "비행 전 체크리스트",
@@ -3288,7 +3270,23 @@
     "perimeterOffset": "Inset offset",
     "perimeterAreaSet": "Boundary polygon set",
     "offline": {
-      "waitingForMap": "Waiting for the map to load"
+      "waitingForMap": "Waiting for the map to load",
+      "title": "Download current view",
+      "close": "Close",
+      "scope": "Caches offline tiles covering the current map view.",
+      "provider": "Tile provider",
+      "zoomRange": "Zoom range: {min} – {max}",
+      "tiles": "Tiles: {count}",
+      "large": "Large download ({count} tiles). This may take a while.",
+      "tooMany": "Too many tiles ({count}). The limit is {limit}: zoom the map in or lower the maximum zoom.",
+      "exceedStorage": "May exceed the free browser storage ({free}). The download stops when storage is full.",
+      "alreadyCached": "{count} already cached",
+      "downloaded": "Downloaded {count} tiles ({size})",
+      "downloadedSkipped": ", {count} already cached",
+      "downloadedFailed": ", {count} failed",
+      "customUnusable": "Set a usable custom tile URL before downloading.",
+      "cancel": "Cancel",
+      "download": "Download"
     },
     "commands": {
       "sendToVehicle": "Send to vehicle",
@@ -3418,7 +3416,9 @@
         "insertBefore": "Insert before",
         "insertAfter": "Insert after",
         "copy": "Copy",
-        "delete": "Delete"
+        "delete": "Delete",
+        "collapseAction": "Hide action settings",
+        "expandAction": "Show action settings"
       },
       "batch": {
         "hint": "Ctrl-click or Shift-click waypoints to edit several at once.",
@@ -3455,7 +3455,17 @@
         "waypoints": "Waypoints",
         "photos": "Photos",
         "area": "Area",
-        "transects": "Transects"
+        "transects": "Transects",
+        "entry": {
+          "topLeft": "Top left",
+          "topRight": "Top right",
+          "bottomLeft": "Bottom left",
+          "bottomRight": "Bottom right"
+        },
+        "scanDirection": {
+          "bottomUp": "Bottom up",
+          "topDown": "Top down"
+        }
       },
       "editor": {
         "center": "Center",
@@ -3571,7 +3581,10 @@
       "close": "Close",
       "statusRunning": "Sending",
       "statusOk": "Sent",
-      "statusFailed": "Failed"
+      "statusFailed": "Failed",
+      "target": "Sends to {name}",
+      "targetMismatch": "This plan is assigned to {plan}. Sending goes to {target}.",
+      "switchTarget": "Switch to {plan}"
     },
     "dock": {
       "ariaLabel": "Mission review",
@@ -8753,5 +8766,10 @@
       },
       "noFix": "no fix"
     }
+  },
+  "basemap": {
+    "fieldPackActive": "Field pack: {name}",
+    "fieldPackUnreachable": "No field pack reachable. Showing STREETS until the ground station serves one.",
+    "fieldPackSelect": "Field pack"
   }
 }

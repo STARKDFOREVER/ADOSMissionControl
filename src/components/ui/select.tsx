@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo, useId } from "react";
 import { createPortal } from "react-dom";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { ChevronDown, Check, Search } from "lucide-react";
 import { isGrouped, flattenOptions } from "./select-types";
@@ -12,8 +13,10 @@ export type { SelectOption, SelectOptionGroup, SelectProps };
 
 export function Select({
   label, options, value, onChange, className, placeholder,
-  disabled = false, searchable = false, searchPlaceholder = "Search...", maxHeight = 280, ariaLabel, compact = false,
+  disabled = false, searchable = false, searchPlaceholder, maxHeight = 280, ariaLabel, compact = false,
 }: SelectProps) {
+  const tc = useTranslations("common");
+  const searchText = searchPlaceholder ?? tc("search");
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [focusedIndex, setFocusedIndex] = useState(-1);
@@ -145,7 +148,7 @@ export function Select({
         )}>
         <div className="flex-1 min-w-0">
           <div className="text-sm text-text-primary truncate">{opt.label}</div>
-          {opt.description && <div className="text-[10px] text-text-tertiary mt-0.5 leading-tight">{opt.description}</div>}
+          {opt.description && <div className="text-[11px] text-text-tertiary mt-0.5 leading-tight">{opt.description}</div>}
         </div>
         {isSelected && <Check size={14} className="text-accent-primary shrink-0 mt-0.5" />}
       </div>
@@ -159,7 +162,7 @@ export function Select({
       if (groups.length === 0) return <div className="px-3 py-4 text-xs text-text-tertiary text-center">No matches found</div>;
       return groups.map((group) => (
         <div key={group.label}>
-          <div className="px-2 py-1.5 text-[10px] uppercase tracking-wider text-text-tertiary font-medium sticky top-0 bg-bg-secondary">{group.label}</div>
+          <div className="px-2 py-1.5 text-[11px] font-semibold text-text-tertiary sticky top-0 bg-bg-secondary">{group.label}</div>
           {group.options.map((opt) => { const el = renderOption(opt, flatIdx); flatIdx++; return el; })}
         </div>
       ));
@@ -200,7 +203,7 @@ export function Select({
                     once, so arrows move one option and Enter selects once. */}
                 <input ref={searchRef} type="text" value={search}
                   onChange={(e) => { setSearch(e.target.value); setFocusedIndex(0); }}
-                  placeholder={searchPlaceholder}
+                  placeholder={searchText}
                   className="w-full h-7 pl-7 pr-2 bg-bg-tertiary border border-border-default text-xs text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent-primary focus-ring" />
               </div>
             </div>

@@ -560,7 +560,9 @@
     },
     "confirmTypePhrase": "Ketik <phrase></phrase> untuk mengonfirmasi",
     "delete": "Delete",
-    "mixed": "Campuran"
+    "mixed": "Campuran",
+    "dragToAdjust": "Drag to adjust",
+    "search": "Search…"
   },
   "status": {
     "connected": "Terhubung",
@@ -2778,11 +2780,6 @@
     "availableModules": "Modul Tersedia ({count})"
   },
   "planner": {
-    "bands": {
-      "setup": "Persiapan",
-      "build": "Bangun",
-      "review": "Tinjau"
-    },
     "shortcuts": {
       "select": "Alat pilih",
       "waypoint": "Alat waypoint",
@@ -2837,13 +2834,9 @@
     "applyConfirmTitle": "Ganti misi?",
     "applyConfirmBody": "Menerapkan pola ini akan mengganti semua waypoint di misi saat ini. Lanjutkan?",
     "applyConfirmButton": "Ganti",
-    "downloadTiles": "Unduh ubin untuk offline",
     "paletteCategory": "Perencana",
-    "onAircraft": "Di pesawat",
     "olderMissionOnAircraft": "Misi lama di pesawat",
     "uploadFailed": "Pengunggahan gagal",
-    "missionSetup": "Pengaturan Misi",
-    "missionName": "Nama Misi",
     "untitledMission": "Misi Tanpa Judul",
     "defaultAltitude": "Ketinggian Default",
     "defaultSpeed": "Kecepatan Default",
@@ -2939,9 +2932,7 @@
     "turns": "Putaran",
     "spacing": "Jarak",
     "corridorWidth": "Lebar Koridor",
-    "saveMission": "Simpan Misi",
     "loadMission": "Muat Misi",
-    "uploadToFc": "Unggah ke FC",
     "downloadFromFc": "Unduh dari FC",
     "exportMission": "Ekspor Misi",
     "importMission": "Impor Misi",
@@ -2954,14 +2945,10 @@
     "fileName": "Nama File",
     "defaults": "Default",
     "flightPatterns": "Pola Penerbangan",
-    "batchEdit": "Edit Massal",
     "on": "aktif",
     "off": "nonaktif",
-    "missionPlanner": "Perencana Misi",
     "unsavedChanges": "Perubahan belum disimpan",
     "selectDrone": "Pilih drone",
-    "missionNamePlaceholder": "Masukkan nama misi",
-    "assignDrone": "Tetapkan Drone",
     "suite": "Suite",
     "altitudeProfile": "Profil Ketinggian",
     "drawPolygonOnMap": "Gambar poligon di peta",
@@ -3048,15 +3035,11 @@
     "high": "Tinggi",
     "max": "Maks",
     "loading": "Memuat...",
-    "downloadFromDrone": "Unduh dari Drone",
     "exportWaypoints": "Ekspor .waypoints",
     "exportPlanQgc": "Ekspor .plan (QGC)",
     "exportKml": "Ekspor KML",
     "exportCsv": "Ekspor CSV",
-    "saveAsNewPlan": "Simpan sebagai Rencana Baru",
-    "reverseWaypoints": "Balik Waypoint",
     "discardChanges": "Buang Perubahan",
-    "simulateIn3d": "Simulasi dalam 3D",
     "relativeHome": "Relatif (Home)",
     "absoluteMsl": "Absolut (MSL)",
     "terrainFollowing": "Mengikuti Medan",
@@ -3100,7 +3083,6 @@
     "keyboardShortcuts": "Pintasan Keyboard",
     "discardChangesBody": "This will remove all waypoints and mission data. This action cannot be undone.",
     "discard": "Discard",
-    "uploadErrors": "{count} error(s)",
     "uploadBlockedErrors": "Fix {count} validation error(s) before uploading",
     "checklist": {
       "title": "Daftar periksa pra-terbang",
@@ -3288,7 +3270,23 @@
     "perimeterOffset": "Inset offset",
     "perimeterAreaSet": "Boundary polygon set",
     "offline": {
-      "waitingForMap": "Waiting for the map to load"
+      "waitingForMap": "Waiting for the map to load",
+      "title": "Download current view",
+      "close": "Close",
+      "scope": "Caches offline tiles covering the current map view.",
+      "provider": "Tile provider",
+      "zoomRange": "Zoom range: {min} – {max}",
+      "tiles": "Tiles: {count}",
+      "large": "Large download ({count} tiles). This may take a while.",
+      "tooMany": "Too many tiles ({count}). The limit is {limit}: zoom the map in or lower the maximum zoom.",
+      "exceedStorage": "May exceed the free browser storage ({free}). The download stops when storage is full.",
+      "alreadyCached": "{count} already cached",
+      "downloaded": "Downloaded {count} tiles ({size})",
+      "downloadedSkipped": ", {count} already cached",
+      "downloadedFailed": ", {count} failed",
+      "customUnusable": "Set a usable custom tile URL before downloading.",
+      "cancel": "Cancel",
+      "download": "Download"
     },
     "commands": {
       "sendToVehicle": "Send to vehicle",
@@ -3418,7 +3416,9 @@
         "insertBefore": "Insert before",
         "insertAfter": "Insert after",
         "copy": "Copy",
-        "delete": "Delete"
+        "delete": "Delete",
+        "collapseAction": "Hide action settings",
+        "expandAction": "Show action settings"
       },
       "batch": {
         "hint": "Ctrl-click or Shift-click waypoints to edit several at once.",
@@ -3455,7 +3455,17 @@
         "waypoints": "Waypoints",
         "photos": "Photos",
         "area": "Area",
-        "transects": "Transects"
+        "transects": "Transects",
+        "entry": {
+          "topLeft": "Top left",
+          "topRight": "Top right",
+          "bottomLeft": "Bottom left",
+          "bottomRight": "Bottom right"
+        },
+        "scanDirection": {
+          "bottomUp": "Bottom up",
+          "topDown": "Top down"
+        }
       },
       "editor": {
         "center": "Center",
@@ -3571,7 +3581,10 @@
       "close": "Close",
       "statusRunning": "Sending",
       "statusOk": "Sent",
-      "statusFailed": "Failed"
+      "statusFailed": "Failed",
+      "target": "Sends to {name}",
+      "targetMismatch": "This plan is assigned to {plan}. Sending goes to {target}.",
+      "switchTarget": "Switch to {plan}"
     },
     "dock": {
       "ariaLabel": "Mission review",
@@ -8753,5 +8766,10 @@
       },
       "noFix": "no fix"
     }
+  },
+  "basemap": {
+    "fieldPackActive": "Field pack: {name}",
+    "fieldPackUnreachable": "No field pack reachable. Showing STREETS until the ground station serves one.",
+    "fieldPackSelect": "Field pack"
   }
 }

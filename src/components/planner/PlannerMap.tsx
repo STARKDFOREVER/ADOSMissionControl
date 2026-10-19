@@ -142,9 +142,11 @@ export function PlannerMap({
   useEffect(() => {
     if (!mapInstance || !viewHydrated || hydratedViewAppliedRef.current) return;
     hydratedViewAppliedRef.current = true;
-    if (viewSource !== "persisted" || userMovedRef.current) return;
+    // No persisted view to apply: report the current view once so mapBounds
+    // is known even if the operator never moves the map.
+    if (viewSource !== "persisted" || userMovedRef.current) { mapInstance.fire("moveend"); return; }
     const c = mapInstance.getCenter();
-    if (c.lat === viewCenter[0] && c.lng === viewCenter[1] && mapInstance.getZoom() === viewZoom) return;
+    if (c.lat === viewCenter[0] && c.lng === viewCenter[1] && mapInstance.getZoom() === viewZoom) { mapInstance.fire("moveend"); return; }
     mapInstance.setView(viewCenter, viewZoom, { animate: false });
     // viewCenter/viewZoom intentionally omitted: this applies the hydrated view once.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -291,7 +293,10 @@ export function PlannerMap({
       const rect = mapInstance.getContainer().getBoundingClientRect();
       onMapRightClick(e.latlng.lat, e.latlng.lng, rect.left + point.x, rect.top + point.y);
     };
+    // Writing before the persisted store hydrates would be stored over the
+    // operator's saved view before the async read lands.
     const reportView = () => {
+      if (!usePlannerStore.persist.hasHydrated()) return;
       const b = mapInstance.getBounds();
       usePlannerStore.getState().setMapView(
         { north: b.getNorth(), south: b.getSouth(), east: b.getEast(), west: b.getWest() },
@@ -300,6 +305,7 @@ export function PlannerMap({
     };
     const zoomHandler = () => { setZoom(mapInstance.getZoom()); reportView(); };
     const moveHandler = () => {
+      if (!usePlannerStore.persist.hasHydrated()) return;
       const c = mapInstance.getCenter();
       usePlannerStore.getState().setMapCenter([c.lat, c.lng]);
       reportView();
@@ -314,6 +320,7 @@ export function PlannerMap({
   useEffect(() => {
     if (!mapInstance || fitRequestTs === 0 || waypoints.length === 0) return;
     const bounds = L.latLngBounds(waypoints.map((wp) => [wp.lat, wp.lon] as [number, number]));
+    mapInstance.invalidateSize({ animate: false, pan: false });
     mapInstance.fitBounds(bounds, { padding: [40, 40], maxZoom: 16 }); clearFitRequest();
   }, [mapInstance, fitRequestTs, waypoints, clearFitRequest]);
 
@@ -449,9 +456,11 @@ export function PlannerMap({
       {/* One mode-driven hint banner for every interaction mode. The select
           mode keeps a subdued always-on hint that a plain click adds a
           waypoint; every placement / datum / rally / draw mode shows the louder
-          accent style. Both are derived from the authoritative `mode` value. */}
+          accent style. Both are derived from the authoritative `mode` value.
+          It sits below the place search and the legend so a narrow map never
+          stacks it under either. */}
       {hasActivePlan && banner && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] pointer-events-none">
+        <div className="absolute top-14 left-1/2 -translate-x-1/2 z-[1000] pointer-events-none">
           <div className={banner.tone === "subdued"
             ? "bg-bg-secondary/90 border border-border-default px-3 py-1.5"
             : "bg-bg-secondary/90 border border-accent-primary/30 px-3 py-1.5"}>

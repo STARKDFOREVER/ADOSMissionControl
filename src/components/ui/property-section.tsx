@@ -12,6 +12,7 @@
 import { useId, useState, type ReactNode } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { usePlannerStore } from "@/stores/planner-store";
+import { cn } from "@/lib/utils";
 
 interface PropertySectionProps {
   title: string;
@@ -23,6 +24,8 @@ interface PropertySectionProps {
   defaultOpen?: boolean;
   /** Key in the planner store's persisted `sectionOpen` map. */
   persistKey?: string;
+  /** Drop the horizontal padding when nested inside an already padded section. */
+  flush?: boolean;
 }
 
 export function PropertySection({
@@ -32,6 +35,7 @@ export function PropertySection({
   collapsible = false,
   defaultOpen = true,
   persistKey,
+  flush = false,
 }: PropertySectionProps) {
   const contentId = useId();
   const [localOpen, setLocalOpen] = useState(defaultOpen);
@@ -49,7 +53,7 @@ export function PropertySection({
   );
 
   return (
-    <section className="border-t border-border-default px-3 py-3 first:border-t-0">
+    <section className={cn("border-t border-border-default py-3 first:border-t-0", flush ? "px-0" : "px-3")}>
       <div className="flex min-h-6 items-center gap-2">
         {collapsible ? (
           <button

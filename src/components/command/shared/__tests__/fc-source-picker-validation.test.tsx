@@ -14,6 +14,8 @@ import { useAgentSystemStore } from "@/stores/agent-system-store";
 import type { AgentClient } from "@/lib/agent/client";
 import type { AgentStatus } from "@/lib/agent/types";
 
+vi.mock("next-intl", () => ({ useTranslations: () => (k: string) => k }));
+
 const DEVICE = "dev-1";
 
 function status(over: Partial<AgentStatus> = {}): AgentStatus {

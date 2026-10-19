@@ -19,6 +19,7 @@ import { buildFenceElements } from "@/lib/geofence-elements";
 import { useGeofenceStore } from "@/stores/geofence-store";
 import { useRallyStore } from "@/stores/rally-store";
 import { usePlannerStore } from "@/stores/planner-store";
+import { useDroneManager } from "@/stores/drone-manager";
 import { usePreflightChecklistStore } from "@/stores/preflight-checklist-store";
 import { PREFLIGHT_ITEM_IDS, countCheckedPreflightItems } from "@/components/planner/preflight-items";
 import type { Planner } from "@/app/plan/use-planner";
@@ -46,6 +47,15 @@ interface SendToVehicleDialogProps {
 export function SendToVehicleDialog({ open, onClose, p, showGeofence, showRally }: SendToVehicleDialogProps) {
   const t = useTranslations("planner.send");
   const setDock = usePlannerStore((s) => s.setDock);
+
+  // The upload goes to the drone selected in the drone manager, which can
+  // differ from the vehicle the plan is assigned to; name it and offer a switch.
+  const targetId = useDroneManager((s) => s.selectedDroneId);
+  const planDroneId = p.selectedDroneId;
+  const planDroneConnected = useDroneManager((s) => !!planDroneId && s.drones.has(planDroneId));
+  const nameOf = (id: string) => p.drones.find((d) => d.id === id)?.name ?? id;
+  const targetName = targetId ? nameOf(targetId) : null;
+  const mismatch = !!targetId && !!planDroneId && planDroneId !== targetId && planDroneConnected;
 
   const validationOptions = useValidationOptions();
   const errorCount = useMemo(
@@ -154,6 +164,20 @@ export function SendToVehicleDialog({ open, onClose, p, showGeofence, showRally 
         ) : (
           <>
             <p className="text-xs text-text-secondary">{t("intro")}</p>
+            {targetName && <p className="text-xs text-text-primary">{t("target", { name: targetName })}</p>}
+            {mismatch && targetName && (
+              <div className="flex items-center gap-2 text-[11px] text-status-warning" data-testid="send-target-mismatch">
+                <span className="flex-1">{t("targetMismatch", { plan: nameOf(planDroneId), target: targetName })}</span>
+                <button
+                  type="button"
+                  disabled={running}
+                  onClick={() => useDroneManager.getState().selectDrone(planDroneId)}
+                  className="underline cursor-pointer hover:text-text-primary focus-ring shrink-0"
+                >
+                  {t("switchTarget", { plan: nameOf(planDroneId) })}
+                </button>
+              </div>
+            )}
             <ul className="flex flex-col">
               {items.map((item) => {
                 const row = rows[item];

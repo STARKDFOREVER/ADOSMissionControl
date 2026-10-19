@@ -45,6 +45,12 @@ export interface PlannerCommandHandlers {
   transformMission: () => void;
   simulate: () => void;
   discardPlan: () => void;
+  /** The plan has at least one waypoint (export brief, share link, simulate). */
+  hasWaypoints: boolean;
+  /** At least one vehicle is connected (download from drone, send). */
+  hasDrone: boolean;
+  /** Something in the plan can be sent (mission, fence or rally points). */
+  canSend: boolean;
 }
 
 /**
@@ -74,10 +80,15 @@ function actionFor(labelKey: string, h: PlannerCommandHandlers): (() => void) | 
   }
 }
 
-/** Planner-bar menu verbs with no shortcut, keyed by their `planner` label key. */
-const MENU_COMMANDS: readonly { labelKey: string; run: (h: PlannerCommandHandlers) => void }[] = [
-  { labelKey: "commands.sendToVehicle", run: (h) => h.sendToVehicle() },
-  { labelKey: "commands.downloadFromDrone", run: (h) => h.downloadFromDrone() },
+/** Planner-bar menu verbs with no shortcut, keyed by their `planner` label key.
+ * `when` hides a verb that cannot act in the current plan state. */
+const MENU_COMMANDS: readonly {
+  labelKey: string;
+  run: (h: PlannerCommandHandlers) => void;
+  when?: (h: PlannerCommandHandlers) => boolean;
+}[] = [
+  { labelKey: "commands.sendToVehicle", run: (h) => h.sendToVehicle(), when: (h) => h.hasDrone && h.canSend },
+  { labelKey: "commands.downloadFromDrone", run: (h) => h.downloadFromDrone(), when: (h) => h.hasDrone },
   { labelKey: "commands.importBoundary", run: (h) => h.importBoundary() },
   { labelKey: "commands.exportNative", run: (h) => h.exportNative() },
   { labelKey: "commands.exportWaypoints", run: (h) => h.exportWaypoints() },
@@ -85,11 +96,11 @@ const MENU_COMMANDS: readonly { labelKey: string; run: (h: PlannerCommandHandler
   { labelKey: "commands.exportKml", run: (h) => h.exportKML() },
   { labelKey: "commands.exportKmz", run: (h) => h.exportKMZ() },
   { labelKey: "commands.exportCsv", run: (h) => h.exportCSV() },
-  { labelKey: "commands.exportBrief", run: (h) => h.exportBrief() },
-  { labelKey: "commands.copyShareLink", run: (h) => h.copyShareLink() },
+  { labelKey: "commands.exportBrief", run: (h) => h.exportBrief(), when: (h) => h.hasWaypoints },
+  { labelKey: "commands.copyShareLink", run: (h) => h.copyShareLink(), when: (h) => h.hasWaypoints },
   { labelKey: "commands.reverseWaypoints", run: (h) => h.reverseWaypoints() },
   { labelKey: "commands.transformMission", run: (h) => h.transformMission() },
-  { labelKey: "commands.simulate", run: (h) => h.simulate() },
+  { labelKey: "commands.simulate", run: (h) => h.simulate(), when: (h) => h.hasWaypoints },
   { labelKey: "commands.discardPlan", run: (h) => h.discardPlan() },
   ...DOCK_TABS.map((tab) => ({ labelKey: `commands.dock.${tab}`, run: (h: PlannerCommandHandlers) => h.openDock(tab) })),
 ];
@@ -116,6 +127,9 @@ export function buildPlannerCommands(
     const action = actionFor(s.labelKey, h);
     if (action) push(s.labelKey, action);
   }
-  for (const c of MENU_COMMANDS) push(c.labelKey, () => c.run(h));
+  for (const c of MENU_COMMANDS) {
+    if (c.when && !c.when(h)) continue;
+    push(c.labelKey, () => c.run(h));
+  }
   return cmds;
 }

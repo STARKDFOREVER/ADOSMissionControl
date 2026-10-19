@@ -23,6 +23,8 @@ import { useMissionStore } from "@/stores/mission-store";
 import { useFenceUploadStatus } from "@/hooks/use-upload-status";
 import { Upload, Download, Pentagon, Circle, Trash2, ShieldPlus } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { usePlannerStore } from "@/stores/planner-store";
+import { cn } from "@/lib/utils";
 
 const SECONDARY_BUTTON =
   "flex h-7 items-center justify-center gap-1.5 rounded border border-border-default px-2 text-[11px] " +
@@ -60,6 +62,7 @@ export function GeofenceEditor({ onDrawOnMap }: GeofenceEditorProps) {
   const tCommon = useTranslations("common");
   const tEditor = useTranslations("planner.inspector.editor");
   const { toast } = useToast();
+  const drawingFence = usePlannerStore((s) => s.mode.kind === "draw" && s.mode.drawingFor === "geofence");
 
   const [autoFenceBuffer, setAutoFenceBuffer] = useState(50);
 
@@ -184,8 +187,13 @@ export function GeofenceEditor({ onDrawOnMap }: GeofenceEditorProps) {
             <button
               type="button"
               onClick={() => onDrawOnMap(fenceType === "polygon" ? "polygon" : "circle")}
-              className="mt-1 flex h-7 items-center justify-center gap-1.5 rounded border border-accent-primary/40
-                text-[11px] text-accent-primary hover:bg-accent-primary/10 transition-colors cursor-pointer"
+              aria-pressed={drawingFence}
+              className={cn(
+                "mt-1 flex h-7 items-center justify-center gap-1.5 rounded-sm border text-[11px] transition-colors cursor-pointer",
+                drawingFence
+                  ? "border-accent-primary/40 text-accent-primary bg-accent-primary/10"
+                  : "border-border-default text-text-secondary hover:bg-bg-tertiary hover:text-text-primary",
+              )}
             >
               {fenceType === "polygon" ? <Pentagon size={12} /> : <Circle size={12} />}
               {t("drawOnMap")}

@@ -15,6 +15,7 @@ function noopHandlers(): PlannerCommandHandlers {
     exportNative: vi.fn(), exportWaypoints: vi.fn(), exportPlan: vi.fn(), exportKML: vi.fn(),
     exportKMZ: vi.fn(), exportCSV: vi.fn(), exportBrief: vi.fn(), copyShareLink: vi.fn(),
     reverseWaypoints: vi.fn(), transformMission: vi.fn(), simulate: vi.fn(), discardPlan: vi.fn(),
+    hasWaypoints: true, hasDrone: true, canSend: true,
   };
 }
 
@@ -100,5 +101,25 @@ describe("buildPlannerCommands", () => {
     const cmds = buildPlannerCommands(noopHandlers(), label, "Planner", "");
     expect(cmds.every((c) => c.category === "Planner")).toBe(true);
     expect(cmds.length).toBeGreaterThan(0);
+  });
+
+  it("hides verbs that need waypoints when the plan has none", () => {
+    const cmds = buildPlannerCommands({ ...noopHandlers(), hasWaypoints: false }, label, "Planner", "");
+    expect(cmds.some((c) => c.label === "commands.simulate")).toBe(false);
+    expect(cmds.some((c) => c.label === "commands.exportBrief")).toBe(false);
+    expect(cmds.some((c) => c.label === "commands.copyShareLink")).toBe(false);
+    expect(cmds.some((c) => c.label === "commands.exportKmz")).toBe(true);
+  });
+
+  it("hides vehicle verbs when no drone is connected", () => {
+    const cmds = buildPlannerCommands({ ...noopHandlers(), hasDrone: false }, label, "Planner", "");
+    expect(cmds.some((c) => c.label === "commands.downloadFromDrone")).toBe(false);
+    expect(cmds.some((c) => c.label === "commands.sendToVehicle")).toBe(false);
+  });
+
+  it("hides send when nothing in the plan can be sent", () => {
+    const cmds = buildPlannerCommands({ ...noopHandlers(), canSend: false }, label, "Planner", "");
+    expect(cmds.some((c) => c.label === "commands.sendToVehicle")).toBe(false);
+    expect(cmds.some((c) => c.label === "commands.downloadFromDrone")).toBe(true);
   });
 });
