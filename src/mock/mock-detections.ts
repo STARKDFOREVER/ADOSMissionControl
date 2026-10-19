@@ -199,7 +199,8 @@ class MockDetectionStream {
       modelId: "demo-yolov8n",
       cameraId,
       frameId: this.frameId++,
-      tsMs: Date.now(),
+      // Like the agent (contract v3): a monotonic frame time, not wall time.
+      tsMs: Math.round(performance.now()),
       frameWidth: FRAME_WIDTH,
       frameHeight: FRAME_HEIGHT,
       detections,

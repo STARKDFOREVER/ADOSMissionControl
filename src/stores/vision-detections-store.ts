@@ -45,10 +45,17 @@ const RATE_WINDOW_CAP = 128;
  */
 const MAX_STREAMS_PER_DRONE = 32;
 
-/** Recent (receipt − tsMs) samples kept per stream. The smallest is the
- * stream's clock offset plus its best-case latency; a bounded window lets the
- * offset follow an agent clock step instead of pinning a stream stale. */
+/** Recent (receipt − tsMs) samples kept per stream. `tsMs` is the agent's
+ * host-monotonic frame time (ms since its boot), never wall time, so the
+ * smallest sample is the offset between the two clocks plus the stream's
+ * best-case latency; a bounded window lets the offset follow drift instead of
+ * pinning a stream stale. */
 const OFFSET_WINDOW_CAP = 32;
+
+/** A frame whose `tsMs` is this far behind the stream's last frame comes from
+ * a restarted agent (its monotonic clock began again near zero), not from a
+ * backlog: the stream's clock offset is learned afresh. */
+const CLOCK_RESTART_MS = 60_000;
 
 /** Whether `next` was taken before `current` on the same stream. */
 function isOlderFrame(
@@ -161,6 +168,8 @@ export interface VisionDetectionBatch {
   modelId: string;
   cameraId: string;
   frameId: number;
+  /** The agent's host-monotonic frame time (ms since its boot). Orders frames
+   * within a stream; never compared with wall time. */
   tsMs: number;
   /** Resolution the detection coordinates are expressed in. The overlay
    * scales by (renderedWidth / frameWidth). */
@@ -256,10 +265,12 @@ export const useVisionDetectionsStore = create<VisionDetectionsState>(
         const now = Date.now();
         const key = streamKey(batch.modelId, batch.cameraId);
         const current = state.streams[droneId]?.[key];
+        const restarted = current !== undefined && current.tsMs - batch.tsMs > CLOCK_RESTART_MS;
         // Out-of-order delivery: never let an older frame replace a newer one
-        // that is still on screen.
+        // that is still on screen. A restarted agent's frames are new, not old.
         if (
           current &&
+          !restarted &&
           now - current.receivedAt <= DETECTION_STALE_MS &&
           isOlderFrame(batch, current)
         ) {
@@ -269,7 +280,7 @@ export const useVisionDetectionsStore = create<VisionDetectionsState>(
         let offsetWindows = state.offsetWindows;
         let droneOffsets = offsetWindows[droneId];
         let offsets = droneOffsets?.[key];
-        if (!offsets) {
+        if (!offsets || restarted) {
           offsets = new RingBuffer<number>(OFFSET_WINDOW_CAP);
           droneOffsets = { ...droneOffsets, [key]: offsets };
           offsetWindows = { ...offsetWindows, [droneId]: droneOffsets };

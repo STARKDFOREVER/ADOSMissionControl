@@ -56,9 +56,12 @@ interface SerializedPerceptionBatch {
   modelId: string;
   cameraId: string;
   frameId: number;
+  /** The agent's host-monotonic frame time (ms since its boot): orders frames
+   * within a stream, never comparable with wall time. */
   tsMs: number;
   frameWidth: number;
   frameHeight: number;
+  /** GCS-clock (epoch ms) time of the frame; use this for age. */
   receivedAt: number;
   detections: SerializedPerceptionDetection[];
 }

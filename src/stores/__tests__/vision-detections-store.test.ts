@@ -114,6 +114,28 @@ describe("vision-detections-store ordering and age", () => {
     s.setBatch(DRONE, batch({ frameId: 2, tsMs: 10_090 }));
     expect(useVisionDetectionsStore.getState().batches[DRONE].receivedAt).toBe(10_100);
   });
+
+  it("ages by arrival on the GCS clock when tsMs is the agent's monotonic time", () => {
+    vi.setSystemTime(1_760_000_000_000);
+    const s = useVisionDetectionsStore.getState();
+    // tsMs is ms since the agent booted: nowhere near wall time.
+    s.setBatch(DRONE, batch({ frameId: 1, tsMs: 120_000 }));
+    vi.setSystemTime(1_760_000_000_050);
+    s.setBatch(DRONE, batch({ frameId: 2, tsMs: 120_050 }));
+    expect(useVisionDetectionsStore.getState().batches[DRONE].receivedAt).toBe(1_760_000_000_050);
+  });
+
+  it("follows an agent restart instead of dropping its frames as old or stale", () => {
+    vi.setSystemTime(1_760_000_000_000);
+    const s = useVisionDetectionsStore.getState();
+    s.setBatch(DRONE, batch({ frameId: 900, tsMs: 3_600_000 }));
+    // The agent restarts: its monotonic clock begins again near zero.
+    vi.setSystemTime(1_760_000_000_100);
+    s.setBatch(DRONE, batch({ frameId: 1, tsMs: 2_000 }));
+    const st = useVisionDetectionsStore.getState().batches[DRONE];
+    expect(st.frameId).toBe(1);
+    expect(st.receivedAt).toBe(1_760_000_000_100);
+  });
 });
 
 describe("vision-detections-store engine availability", () => {

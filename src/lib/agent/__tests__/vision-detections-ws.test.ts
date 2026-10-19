@@ -28,7 +28,8 @@ describe("mapWireBatch", () => {
         model_id: "com.example.weeds",
         camera_id: "uvc-0",
         frame_id: 7,
-        ts_ms: 1_700_000_000_000,
+        // v3: the agent's host-monotonic frame time (ms since its boot).
+        ts_ms: 3_725_412,
         detections: [
           {
             bbox: { x: 12, y: 20, width: 64, height: 32 },
@@ -44,7 +45,7 @@ describe("mapWireBatch", () => {
     expect(batch.modelId).toBe("com.example.weeds");
     expect(batch.cameraId).toBe("uvc-0");
     expect(batch.frameId).toBe(7);
-    expect(batch.tsMs).toBe(1_700_000_000_000);
+    expect(batch.tsMs).toBe(3_725_412);
     // No frame dims on the wire → engine normalized default.
     expect(batch.frameWidth).toBe(640);
     expect(batch.frameHeight).toBe(480);
@@ -167,7 +168,7 @@ describe("mapWireBatch", () => {
 describe("mapWireBatch wire-version gate (A7)", () => {
   it("maps a batch stamped with the current wire version", () => {
     const batch = mapWireBatch({
-      v: 2,
+      v: 3,
       model_id: "m",
       camera_id: "c",
       frame_id: 4,
@@ -213,7 +214,7 @@ describe("mapWireBatch wire-version gate (A7)", () => {
 describe("mapWireBatch typed percept fields", () => {
   it("maps mask, keypoints, depth, and world position off the wire", () => {
     const batch = mapWireBatch({
-      v: 2,
+      v: 3,
       model_id: "m",
       camera_id: "c",
       frame_id: 1,
@@ -250,7 +251,7 @@ describe("mapWireBatch typed percept fields", () => {
 
   it("maps a box-less percept to an absent bbox", () => {
     const batch = mapWireBatch({
-      v: 2,
+      v: 3,
       model_id: "m",
       camera_id: "c",
       frame_id: 1,

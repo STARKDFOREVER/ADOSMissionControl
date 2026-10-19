@@ -69,7 +69,9 @@ export interface VideoOverlayHostProps {
   streamHeight: number;
   /** Letterbox-corrected rendered rect (CSS px, relative to wrapper). */
   renderedRect: RenderedRect;
-  /** Timestamp (ms) of the frame the detections/attitude are coalesced to. */
+  /** GCS-clock (epoch ms) time of the frame the detections/attitude are
+   * coalesced to: the detection batch's `receivedAt`, never the agent's
+   * host-monotonic `tsMs`. 0 when no batch is shown. */
   frameTimestampMs: number;
   /**
    * Measured age of the frame on screen, in ms, or `null` when no estimator

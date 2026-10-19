@@ -305,7 +305,7 @@ export function VideoOverlayHost({
       streamWidth: geometry.streamWidth,
       streamHeight: geometry.streamHeight,
       renderedRect: geometry.rect,
-      frameTimestampMs: batch?.tsMs ?? 0,
+      frameTimestampMs: batch?.receivedAt ?? 0,
       frameAgeMs,
       attitude: att
         ? { rollDeg: att.roll, pitchDeg: att.pitch, yawDeg: att.yaw }
