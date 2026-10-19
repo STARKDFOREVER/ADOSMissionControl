@@ -47,6 +47,16 @@ describe("LoraOverviewChip", () => {
     expect(screen.getByRole("status").textContent).toBe("LoRa paused 07:40");
   });
 
+  it("reads paused, never green, when a waiting rule holds even with tx_allowed true", () => {
+    chip({
+      ...DEMO_LORA,
+      tx_allowed: true,
+      blocked_reason: "duty_exhausted",
+      governor: { ...DEMO_LORA.governor!, next_tx_allowed_ms: 60_000 },
+    });
+    expect(screen.getByRole("status").textContent).toBe("LoRa paused 01:00");
+  });
+
   it("names the block when waiting cannot clear it", () => {
     chip({ ...DEMO_LORA, region: null, tx_allowed: false, blocked_reason: "region_unset" });
     expect(screen.getByRole("status").textContent).toBe("LoRa blocked: region");

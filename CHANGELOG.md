@@ -44,6 +44,14 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Detection batches are read at wire version 3 only (frame time comes from
+  the agent's monotonic clock). A batch at any other version is dropped and
+  the node's perception chip and pipelines panel say the agent (or Mission
+  Control) needs an update, instead of the overlay going silently empty.
+- LoRa transmit state follows `blocked_reason` as well as `tx_allowed`: green
+  only when transmit is allowed now, "paused" with a countdown for a waiting
+  rule, "blocked" with the fix otherwise. A region whose module support is
+  unknown reads "module band unknown", never "cannot".
 - Cameras come from the agent's single top-level `cameras[]` list; the
   retired `video.cameras` list is no longer read. The camera editor edits each
   camera's capture keys (captured by the vision engine, pixel format, manual

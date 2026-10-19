@@ -15,10 +15,7 @@ import { useTranslations } from "next-intl";
 import { Ban, PauseCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { LoraStatus } from "@/lib/api/ground-station-api";
-import { formatCountdown } from "./lora-format";
-
-/** Reasons that clear on their own once the rule's window moves on. */
-const WAITING: Record<string, true> = { duty_exhausted: true, dwell_time: true, lbt_busy: true };
+import { WAITING_REASONS as WAITING, formatCountdown, loraTxState } from "./lora-format";
 
 const KNOWN_REASONS: Record<string, true> = {
   region_unset: true,
@@ -46,7 +43,7 @@ export function LoraBlockedBanner({
   onOpenPowerSettings,
 }: LoraBlockedBannerProps) {
   const t = useTranslations("groundStationLanes.lora.blocked");
-  if (status.tx_allowed) return null;
+  if (loraTxState(status) === "allowed") return null;
   const reason = status.blocked_reason ?? "region_unset";
   const waiting = Object.hasOwn(WAITING, reason);
   const Icon = waiting ? PauseCircle : Ban;

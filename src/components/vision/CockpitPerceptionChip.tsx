@@ -34,13 +34,14 @@ import {
   staleReason,
   tierLabel,
 } from "@/lib/vision/perception-health";
-import { VISION_NOT_RUNNING_COPY } from "@/lib/agent/vision-detections-ws";
+import { VISION_NOT_RUNNING_COPY, detectionVersionNotice } from "@/lib/agent/vision-detections-ws";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { useVisionDetectionsStore } from "@/stores/vision-detections-store";
 
 export function CockpitPerceptionChip({ droneId }: { droneId: string }) {
   const batch = useVisionDetectionsStore((s) => s.batches[droneId]);
   const notRunning = useVisionDetectionsStore((s) => droneId in s.visionUnavailable);
+  const outdated = useVisionDetectionsStore((s) => s.outdatedDetectionVersion[droneId]);
   const tier = useAgentCapabilitiesStore((s) => s.perceptionTier);
   const target = useAgentCapabilitiesStore((s) => s.perceptionOffloadTarget);
 
@@ -53,7 +54,7 @@ export function CockpitPerceptionChip({ droneId }: { droneId: string }) {
 
   const feed = perceptionFeedState(batch, now);
   // A not-running engine is perception context worth showing even with no tier.
-  const label = tierLabel(tier, feed !== "idle" || notRunning);
+  const label = tierLabel(tier, feed !== "idle" || notRunning || outdated !== undefined);
 
   // Nothing to show: no feed ever AND no running tier → this drone is not doing
   // perception, so stay out of the way (never a fabricated placeholder).
@@ -64,8 +65,15 @@ export function CockpitPerceptionChip({ droneId }: { droneId: string }) {
   const stale = feed === "stale";
   const crit = stale && tier === "offload";
   const stateClass =
-    feed === "fresh" ? "fresh" : crit ? "crit" : stale || notRunning ? "warn" : "";
-  const reason = stale ? staleReason(tier) : notRunning ? VISION_NOT_RUNNING_COPY : null;
+    feed === "fresh" ? "fresh" : crit ? "crit" : stale || notRunning || outdated !== undefined ? "warn" : "";
+  const reason =
+    outdated !== undefined
+      ? detectionVersionNotice(outdated)
+      : stale
+        ? staleReason(tier)
+        : notRunning
+          ? VISION_NOT_RUNNING_COPY
+          : null;
 
   return (
     <div

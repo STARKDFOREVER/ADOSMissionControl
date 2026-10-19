@@ -57,8 +57,10 @@ const EMPTY: NodeSensorsReadings = {
   sessions: undefined,
 };
 
-function settled<T>(r: PromiseSettledResult<T>): T | null {
-  return r.status === "fulfilled" ? r.value : null;
+/** The route's fresh answer, or — when that one read failed — the last good
+ * reading of the same node, so one failing route never blanks a card. */
+function settled<T>(r: PromiseSettledResult<T>, previous: T): T {
+  return r.status === "fulfilled" ? r.value : previous;
 }
 
 /** Bumped by every load and every wholesale write; a load whose token is no
@@ -66,7 +68,7 @@ function settled<T>(r: PromiseSettledResult<T>): T | null {
  * replaced) and drops its answer. */
 let loadSeq = 0;
 
-export const useNodeSensorsStore = create<NodeSensorsState>()((set) => ({
+export const useNodeSensorsStore = create<NodeSensorsState>()((set, get) => ({
   ...EMPTY,
   nodeId: null,
   fetchedAt: null,
@@ -84,13 +86,15 @@ export const useNodeSensorsStore = create<NodeSensorsState>()((set) => ({
     const [sensors, clock, storage, battery, sessions] = results;
     if (token !== loadSeq) return;
     const failed = results.find((r) => r.status === "rejected");
+    const prev = get();
+    const same = prev.nodeId === nodeId;
     set({
       nodeId,
-      sensors: settled(sensors),
-      clock: settled(clock),
-      storage: settled(storage),
-      battery: settled(battery),
-      sessions: sessions.status === "fulfilled" ? sessions.value : undefined,
+      sensors: settled(sensors, same ? prev.sensors : null),
+      clock: settled(clock, same ? prev.clock : null),
+      storage: settled(storage, same ? prev.storage : null),
+      battery: settled(battery, same ? prev.battery : null),
+      sessions: settled(sessions, same ? prev.sessions : undefined),
       fetchedAt: Date.now(),
       error:
         failed?.status !== "rejected"

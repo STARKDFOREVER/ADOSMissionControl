@@ -58,8 +58,9 @@ export function SystemTab({
   const blocked = agentGateFallback(gate);
   if (blocked) return blocked;
 
-  // Workstation / compute / Visor: only host-relevant panels.
-  if (profile === "workstation" || profile === "compute" || profile === "visor") {
+  // Workstation / compute / Visor, and a node whose profile is not known:
+  // only host-relevant panels (no radio, region or mesh claims).
+  if (profile === "workstation" || profile === "compute" || profile === "visor" || profile === "unknown") {
     return (
       <div className="p-4 space-y-4 max-w-5xl overflow-y-auto">
         <ConfigErrorPanel />

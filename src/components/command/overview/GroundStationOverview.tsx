@@ -34,7 +34,7 @@ import { OverviewGrid, OverviewTile } from "./OverviewGrid";
 import { NodeReachBlock } from "../shared/NodeReachBlock";
 import { usePairingStore } from "@/stores/pairing-store";
 import { deviceIdFromNodeId } from "@/lib/agent/node-id";
-import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
+import { selectDeviceCapabilities, useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { useLoraStore } from "@/stores/ground-station/lora-store";
 import { GroundStationLoraChip } from "../nodes/ground-station/lora/LoraOverviewChip";
 
@@ -76,7 +76,11 @@ export function GroundStationOverview({ name }: { name?: string }) {
   const loadMesh = useGroundStationStore((s) => s.loadMesh);
   const loadNetwork = useGroundStationStore((s) => s.loadNetwork);
   const loadLora = useLoraStore((s) => s.load);
-  const loraAdvertised = useAgentCapabilitiesStore((s) => s.lora === true);
+  // This node's own remembered capability slice, never the shared
+  // last-writer field, so another node's LoRa flag cannot gate this one.
+  const loraAdvertised = useAgentCapabilitiesStore(
+    (s) => selectDeviceCapabilities(s, deviceIdFromNodeId(selectedNodeId))?.lora === true,
+  );
   useGroundStationPoll(agentUrl, apiKey, GS_SUMMARY_POLL_MS, async (api) => {
     try {
       const gs = await api.getStatus();

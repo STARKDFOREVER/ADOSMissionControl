@@ -24,6 +24,7 @@ import {
 } from "@/hooks/use-vision-pipelines";
 import { useVisionEngineStatus } from "@/hooks/use-vision-engine-models";
 import type { EngineModel } from "@/lib/agent/vision-client";
+import { detectionVersionNotice } from "@/lib/agent/vision-detections-ws";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { useVisionDetectionsStore } from "@/stores/vision-detections-store";
 import {
@@ -222,6 +223,7 @@ export function VisionPipelinesPanel({
   const engineModels = engineStatus.known ? engineStatus.models : NO_ENGINE_MODELS;
   const runningCount = pipelines.filter((p) => p.active).length;
   const notRunning = useVisionDetectionsStore((s) => droneId in s.visionUnavailable);
+  const outdated = useVisionDetectionsStore((s) => s.outdatedDetectionVersion[droneId]);
 
   // Where detection runs for this node (tier-derived), stamped onto every row.
   const tier = useAgentCapabilitiesStore((s) => s.perceptionTier);
@@ -260,6 +262,11 @@ export function VisionPipelinesPanel({
           {t("pipelinesRunning", { count: runningCount })}
         </span>
       </div>
+      {outdated !== undefined ? (
+        <p role="alert" className="pb-2 text-center text-[11px] text-status-warning">
+          {detectionVersionNotice(outdated)}
+        </p>
+      ) : null}
       {notRunning ? (
         <p className="py-4 text-center text-[11px] text-status-warning">
           {t("visionNotRunning")}

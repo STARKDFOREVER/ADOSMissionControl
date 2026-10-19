@@ -8601,6 +8601,7 @@
         "label": "TX",
         "allowed": "Allowed",
         "blocked": "Blocked",
+        "paused": "Paused",
         "nextNow": "next TX now",
         "nextIn": "next TX in {time}"
       },
@@ -8701,6 +8702,7 @@
         "moduleOk": "Module can tune this plan",
         "moduleNo": "Module cannot meet this plan",
         "moduleNoShort": "module",
+        "moduleUnknown": "Module band unknown",
         "responsibility": "You are responsible for using the region where the station operates.",
         "apply": "Apply region",
         "armed": "Region changes are locked while armed.",

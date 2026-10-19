@@ -16,6 +16,7 @@ import type { LoraStatus, LoraUpdate } from "@/lib/api/ground-station-api";
 import { Chip, LaneCard, fmtNum } from "../lane-ui";
 import {
   AIRBORNE_RESTRICTED,
+  loraTxState,
   formatCountdown,
   parseBand,
   type LoraMismatch,
@@ -54,6 +55,7 @@ export function LoraRegionCard({
   const t = useTranslations("groundStationLanes.lora");
   const region = status.region;
   const channel = status.channel;
+  const txState = loraTxState(status);
   const band = region?.band_mhz ?? null;
   const bandText = band ? t("region.band", { lo: band[0].toFixed(1), hi: band[1].toFixed(1) }) : null;
   const moduleBand = parseBand(status.module_band);
@@ -136,10 +138,10 @@ export function LoraRegionCard({
 
       <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
         <span className="text-text-secondary">{t("tx.label")}</span>
-        <Chip tone={status.tx_allowed ? "success" : "error"}>
-          {status.tx_allowed ? t("tx.allowed") : t("tx.blocked")}
+        <Chip tone={txState === "allowed" ? "success" : txState === "paused" ? "warning" : "error"}>
+          {t(`tx.${txState}`)}
         </Chip>
-        {status.tx_allowed ? (
+        {txState !== "blocked" ? (
           <span className="font-mono tabular-nums text-text-tertiary">
             {remainingMs > 0 ? t("tx.nextIn", { time: formatCountdown(remainingMs) }) : t("tx.nextNow")}
           </span>

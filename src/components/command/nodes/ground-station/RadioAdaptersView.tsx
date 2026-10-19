@@ -117,18 +117,21 @@ export function RadioAdaptersView({ adapters, summary, historyKey }: RadioAdapte
   }, [record, historyKey, adapters]);
   return (
     <div className="flex flex-col gap-3">
-      <LaneCard title={t("diversity.title")} icon={Layers}>
-        <dl className="grid gap-x-6 sm:grid-cols-3">
-          <StatRow label={t("diversity.rxAdapters")} value={fmtNum(summary.rxAdapters)} />
-          <StatRow label={t("diversity.combined")} value={pct(summary.combinedLossPct)} />
-          <StatRow label={t("diversity.best")} value={pct(summary.bestSingleLossPct)} />
-        </dl>
-        <p className="mt-2 text-xs text-text-secondary">
-          {summary.gainRatio !== null
-            ? t("diversity.gain", { ratio: summary.gainRatio.toFixed(1) })
-            : t("diversity.gainNone")}
-        </p>
-      </LaneCard>
+      {/* Diversity needs two receive adapters; a TX or mesh second card is not diversity. */}
+      {summary.rxAdapters >= 2 ? (
+        <LaneCard title={t("diversity.title")} icon={Layers}>
+          <dl className="grid gap-x-6 sm:grid-cols-3">
+            <StatRow label={t("diversity.rxAdapters")} value={fmtNum(summary.rxAdapters)} />
+            <StatRow label={t("diversity.combined")} value={pct(summary.combinedLossPct)} />
+            <StatRow label={t("diversity.best")} value={pct(summary.bestSingleLossPct)} />
+          </dl>
+          <p className="mt-2 text-xs text-text-secondary">
+            {summary.gainRatio !== null
+              ? t("diversity.gain", { ratio: summary.gainRatio.toFixed(1) })
+              : t("diversity.gainNone")}
+          </p>
+        </LaneCard>
+      ) : null}
       <LaneCard title={t("title")} icon={Antenna}>
         <p className="mb-3 text-xs text-text-tertiary">{t("description")}</p>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">

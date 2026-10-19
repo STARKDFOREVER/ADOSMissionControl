@@ -106,8 +106,9 @@ export const AGENT_NAV_ITEMS: AgentNavItem[] = [
     id: "cameras",
     labelKey: "dronePanel.cameras",
     icon: <Camera size={14} />,
-    // The node's camera roster — a companion-computer concept on a drone.
-    when: (ctx) => isDrone(ctx) && companionPresent(ctx),
+    // The node's camera roster — a companion-computer concept on a drone,
+    // and the capture rig (roles, capture keys) on a Visor.
+    when: (ctx) => (isDrone(ctx) || ctx.drone.profile === "visor") && companionPresent(ctx),
     render: (ctx) => <CameraManagerTab droneId={ctx.droneId} />,
   },
   {

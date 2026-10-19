@@ -124,7 +124,8 @@ export interface LoraRegionPlan {
   plan_id: string;
   band_mhz: [number, number];
   rules: string[];
-  supported_by_module: boolean;
+  /** Null when the fitted module's band is unknown ("module unknown"). */
+  supported_by_module: boolean | null;
   /** The ELRS domain this region expects per band (`2g4`: `ISM2G4` |
    * `CE_LBT`; `900`: `FCC915` | `AU915` | `EU868` | `IN866` | `AU433` |
    * `EU433`). Null for a band (or the whole field, on an older agent) when

@@ -213,6 +213,16 @@ function withoutDrone(state: FeedMaps, droneId: string): FeedMaps {
   return out;
 }
 
+/** `map` limited to the keys `keep` has; the same reference when nothing
+ * is dropped, so an unchanged map costs no render. */
+function keepKeys<T>(
+  map: Record<string, T> | undefined,
+  keep: Record<string, unknown>,
+): Record<string, T> | undefined {
+  if (!map || Object.keys(map).every((k) => k in keep)) return map;
+  return Object.fromEntries(Object.entries(map).filter(([k]) => k in keep));
+}
+
 /** Whether a drone has any feed state left. Reads the feed maps by name: the
  * store state passed in also carries non-feed records keyed by drone. */
 function hasFeed(state: FeedMaps, droneId: string): boolean {
@@ -272,6 +282,12 @@ interface VisionDetectionsState {
    * empty feed as "nothing detected". Absent = not reported. The next batch
    * clears it. */
   visionUnavailable: Record<string, true>;
+  /** Drones whose agent sent a detection batch at a wire version this GCS
+   * does not speak (the batch is dropped), keyed to that version, so a
+   * surface can tell the operator to update. A batch clears it. */
+  outdatedDetectionVersion: Record<string, number>;
+  /** Record that `droneId` sent an unsupported detection wire version. */
+  setOutdatedDetectionVersion: (droneId: string, version: number) => void;
   /** Replace the latest batch for a drone (and its stream). `receivedAt` is
    * stamped here so callers do not have to. A batch taken before the one its
    * stream already shows is dropped while that one is still fresh. */
@@ -306,6 +322,7 @@ export const useVisionDetectionsStore = create<VisionDetectionsState>(
     streamClocks: {},
     connectionEpochs: {},
     visionUnavailable: {},
+    outdatedDetectionVersion: {},
     setBatch: (droneId, batch) =>
       set((state) => {
         const now = Date.now();
@@ -364,21 +381,34 @@ export const useVisionDetectionsStore = create<VisionDetectionsState>(
           visionUnavailable = { ...visionUnavailable };
           delete visionUnavailable[droneId];
         }
+        let outdatedDetectionVersion = state.outdatedDetectionVersion;
+        if (droneId in outdatedDetectionVersion) {
+          outdatedDetectionVersion = { ...outdatedDetectionVersion };
+          delete outdatedDetectionVersion[droneId];
+        }
+        // Bounded per drone: the (model, camera) key space is agent-supplied
+        // and therefore open-ended, so the per-stream clock maps follow the
+        // streams `withStream` keeps.
+        const droneStreams = withStream(state.streams[droneId] ?? {}, key, stamped);
+        const keptOffsets = keepKeys(offsetWindows[droneId], droneStreams);
+        if (keptOffsets && keptOffsets !== offsetWindows[droneId]) {
+          offsetWindows = { ...offsetWindows, [droneId]: keptOffsets };
+        }
+        const keptClocks = keepKeys(streamClocks[droneId], droneStreams);
+        if (keptClocks && keptClocks !== streamClocks[droneId]) {
+          streamClocks = { ...streamClocks, [droneId]: keptClocks };
+        }
         return {
           // Latest-across-streams (the cockpit's simple view).
           batches: { ...state.batches, [droneId]: stamped },
           // Per-stream (the hub's per-pipeline view) — this batch replaces only
           // its own stream, so a second model no longer overwrites the first.
-          // Bounded per drone: the (model, camera) key space is agent-supplied
-          // and therefore open-ended.
-          streams: {
-            ...state.streams,
-            [droneId]: withStream(state.streams[droneId] ?? {}, key, stamped),
-          },
+          streams: { ...state.streams, [droneId]: droneStreams },
           rateWindows,
           offsetWindows,
           streamClocks,
           visionUnavailable,
+          outdatedDetectionVersion,
         };
       }),
     setVisionAvailable: (droneId, available) =>
@@ -400,6 +430,12 @@ export const useVisionDetectionsStore = create<VisionDetectionsState>(
           : { ...state.visionUnavailable, [droneId]: true as const };
         return { ...withoutDrone(state, droneId), visionUnavailable };
       }),
+    setOutdatedDetectionVersion: (droneId, version) =>
+      set((state) =>
+        state.outdatedDetectionVersion[droneId] === version
+          ? state
+          : { outdatedDetectionVersion: { ...state.outdatedDetectionVersion, [droneId]: version } },
+      ),
     markReconnect: (droneId) =>
       set((state) => ({
         connectionEpochs: {
@@ -415,12 +451,18 @@ export const useVisionDetectionsStore = create<VisionDetectionsState>(
     },
     clearBatch: (droneId) =>
       set((state) => {
-        if (!hasFeed(state, droneId) && !(droneId in state.visionUnavailable)) {
+        if (
+          !hasFeed(state, droneId) &&
+          !(droneId in state.visionUnavailable) &&
+          !(droneId in state.outdatedDetectionVersion)
+        ) {
           return state;
         }
         const visionUnavailable = { ...state.visionUnavailable };
         delete visionUnavailable[droneId];
-        return { ...withoutDrone(state, droneId), visionUnavailable };
+        const outdatedDetectionVersion = { ...state.outdatedDetectionVersion };
+        delete outdatedDetectionVersion[droneId];
+        return { ...withoutDrone(state, droneId), visionUnavailable, outdatedDetectionVersion };
       }),
     clear: () =>
       set({
@@ -431,6 +473,7 @@ export const useVisionDetectionsStore = create<VisionDetectionsState>(
         streamClocks: {},
         connectionEpochs: {},
         visionUnavailable: {},
+        outdatedDetectionVersion: {},
       }),
   }),
 );

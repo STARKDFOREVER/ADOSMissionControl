@@ -26,6 +26,7 @@ import { AgentDisconnectedPage } from "../AgentDisconnectedPage";
 import { NodeBrandHeader } from "./NodeBrandHeader";
 import { OverviewGrid, OverviewTile } from "./OverviewGrid";
 import { useNodeSensors } from "../nodes/visor/use-node-sensors";
+import { CloudModeLimitedNotice } from "../shared/CloudModeLimitedNotice";
 import {
   BatteryCard,
   ClockCard,
@@ -52,7 +53,7 @@ export function VisorOverview({ name, nodeDeviceId }: VisorOverviewProps) {
   const restartService = useAgentSystemStore((s) => s.restartService);
   const restartAll = useAgentSystemStore((s) => s.restartAll);
   const selectedNodeId = usePairingStore((s) => s.selectedPairedId);
-  const { readings } = useNodeSensors(nodeDeviceId);
+  const { reachable, readings } = useNodeSensors(nodeDeviceId);
 
   useEffect(() => {
     if (connected) {
@@ -86,6 +87,9 @@ export function VisorOverview({ name, nodeDeviceId }: VisorOverviewProps) {
     <div className="space-y-4 p-4">
       <NodeBrandHeader profile="visor" title={title} />
       <StaleBanner />
+      {/* Cloud-only reach: the sensor routes are LAN-only, so say so instead
+          of leaving every reading card at "Not read yet". */}
+      {!reachable && readings === null ? <CloudModeLimitedNotice feature="sensors" /> : null}
       <OverviewGrid>
         <OverviewTile span="half" rowSpan={2}>
           <AgentStatusCard status={status} profile="visor" />

@@ -169,6 +169,31 @@ function mapDetection(raw: WireDetection): VisionDetection {
 /** Operator copy for a node whose detection engine is unreachable. */
 export const VISION_NOT_RUNNING_COPY = "Vision not running";
 
+/** Operator copy for a node sending detection batches at a wire version this
+ * GCS does not speak: an older agent must be updated, a newer one needs a
+ * newer Mission Control. */
+export function detectionVersionNotice(version: number): string {
+  return version < SUPPORTED_DETECTION_VERSION
+    ? `Agent too old for detections v${SUPPORTED_DETECTION_VERSION} — update the agent`
+    : `Agent sends detections v${version} — update Mission Control`;
+}
+
+/** Map one wire batch into the store for `droneId`. A batch at a wire
+ * version this GCS does not speak is dropped and the node flagged, so the
+ * operator sees "update" rather than an empty overlay. Returns whether a
+ * batch was stored. */
+export function ingestWireBatch(droneId: string, raw: WireDetectionBatch): boolean {
+  const store = useVisionDetectionsStore.getState();
+  if (typeof raw.v === "number" && raw.v !== SUPPORTED_DETECTION_VERSION) {
+    store.setOutdatedDetectionVersion(droneId, raw.v);
+    return false;
+  }
+  const batch = mapWireBatch(raw);
+  if (!batch) return false;
+  store.setBatch(droneId, batch);
+  return true;
+}
+
 /** Whether the agent's detection poll says the engine is reachable. The
  * agent answers `available:false` when its engine socket cannot be read, so
  * "vision is off" never reads as "nothing detected"; `null` when an older
@@ -217,8 +242,14 @@ export function mapWireBatch(
  * and perception surface reads with. A malformed payload is dropped.
  */
 export function ingestCloudDetections(deviceId: string, raw: string): void {
-  const batch = parseWireDetectionJson(raw);
-  if (batch) useVisionDetectionsStore.getState().setBatch(nodeIdForDevice(deviceId), batch);
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return;
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return;
+  ingestWireBatch(nodeIdForDevice(deviceId), parsed as WireDetectionBatch);
 }
 
 /**
@@ -273,7 +304,7 @@ export function connectVisionDetections(
     return { close: () => {} };
   }
 
-  const { setBatch, clearBatch, setVisionAvailable, markReconnect } =
+  const { clearBatch, setVisionAvailable, markReconnect } =
     useVisionDetectionsStore.getState();
 
   const unsubscribe = subscribeWebSocket<WireDetectionBatch>({
@@ -281,11 +312,10 @@ export function connectVisionDetections(
     path: "/api/vision/detections/ws",
     scope: "vision.detections",
     onEvent: (raw) => {
-      const mapped = mapWireBatch(raw);
-      // A version this GCS does not speak maps to null — skip it, never feed
-      // the store a mis-mapped batch. A stored batch also clears any
-      // "vision not running" flag, so a resumed engine reads live at once.
-      if (mapped) setBatch(droneId, mapped);
+      // A version this GCS does not speak is dropped and flagged; a stored
+      // batch also clears any "vision not running" flag, so a resumed
+      // engine reads live at once.
+      ingestWireBatch(droneId, raw);
     },
     // An agent whose engine socket cannot be reached closes the stream with
     // `{"available":false,...}` as the close reason, so "vision is off" never

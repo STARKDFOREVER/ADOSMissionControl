@@ -53,7 +53,7 @@ import {
 import {
   connectVisionDetections,
   detectionsAvailability,
-  mapWireBatch,
+  ingestWireBatch,
   type WireDetectionBatch,
 } from "@/lib/agent/vision-detections-ws";
 import {
@@ -106,7 +106,7 @@ function connectRelayVisionDetections(opts: {
   reach: RelayReach;
 }): { close: () => void } {
   const { droneId, reach } = opts;
-  const { setBatch, clearBatch, setVisionAvailable } = useVisionDetectionsStore.getState();
+  const { clearBatch, setVisionAvailable } = useVisionDetectionsStore.getState();
 
   let closed = false;
   let inFlight: AbortController | null = null;
@@ -133,11 +133,9 @@ function connectRelayVisionDetections(opts: {
         if (detectionsAvailability(raw) === false) {
           setVisionAvailable(droneId, false);
         } else {
-          const batch = mapWireBatch(raw as WireDetectionBatch);
-          if (batch) {
-            setBatch(droneId, batch);
-            outcome = "fresh";
-          }
+          // Stored on success; an unsupported wire version is flagged on the
+          // node so the operator is told to update instead of seeing nothing.
+          if (ingestWireBatch(droneId, raw as WireDetectionBatch)) outcome = "fresh";
         }
       }
     } catch {

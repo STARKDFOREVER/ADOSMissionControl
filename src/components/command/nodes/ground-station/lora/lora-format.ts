@@ -46,6 +46,19 @@ export function meterTone(fraction: number): MeterTone {
 /** Country codes whose plan carries rows not cleared for airborne use. */
 export const AIRBORNE_RESTRICTED: Record<string, true> = { RU: true, GB: true, NO: true };
 
+/** Reasons that clear on their own once the rule's window moves on. */
+export const WAITING_REASONS: Record<string, true> = { duty_exhausted: true, dwell_time: true, lbt_busy: true };
+
+export type LoraTxState = "allowed" | "paused" | "blocked";
+
+/** Transmit verdict per the lane contract: allowed only when `tx_allowed`
+ * and no `blocked_reason`; a transient reason is a pause, any other a block. */
+export function loraTxState(status: Pick<LoraStatus, "tx_allowed" | "blocked_reason">): LoraTxState {
+  if (status.tx_allowed && status.blocked_reason == null) return "allowed";
+  const reason = status.blocked_reason ?? "region_unset";
+  return Object.hasOwn(WAITING_REASONS, reason) ? "paused" : "blocked";
+}
+
 /** ELRS domains that live in the 2.4 GHz band; every other domain is a
  * sub-GHz (`900` key) domain. */
 const ELRS_2G4_DOMAINS: Record<string, true> = { ISM2G4: true, CE_LBT: true };

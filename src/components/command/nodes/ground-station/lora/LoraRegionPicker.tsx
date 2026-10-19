@@ -12,7 +12,7 @@
 
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Check, Lock, X } from "lucide-react";
+import { Check, CircleHelp, Lock, X } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -121,7 +121,11 @@ export function LoraRegionPicker({ open, onClose, regions, current, writeLock, a
                   <span className="hidden truncate text-text-tertiary sm:inline">
                     {r.rules.length > 0 ? r.rules.join(", ") : t("rulesNotVerified")}
                   </span>
-                  {r.supported_by_module ? (
+                  {r.supported_by_module === null ? (
+                    <span title={t("moduleUnknown")} className="text-text-tertiary">
+                      <CircleHelp size={14} aria-label={t("moduleUnknown")} />
+                    </span>
+                  ) : r.supported_by_module ? (
                     <span title={t("moduleOk")} className="text-status-success">
                       <Check size={14} aria-label={t("moduleOk")} />
                     </span>

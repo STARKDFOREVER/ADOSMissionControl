@@ -97,11 +97,11 @@ export function PhysicalUiTab({ nodeDeviceId, profile }: PhysicalUiTabProps) {
   // Load this node's UI config and seed the OLED controls from THIS load's
   // result (never from whatever the shared store held for another node).
   useEffect(() => {
+    // Demo seeds from the demo config whether or not a client resolves.
+    if (demo && demoConfig) setBrightness(demoConfig.oled.brightness);
     if (!client) return;
     let cancelled = false;
-    if (demo) {
-      if (demoConfig) setBrightness(demoConfig.oled.brightness);
-    } else {
+    if (!demo) {
       void loadUi(client).then((loaded) => {
         if (cancelled || !loaded) return;
         setBrightness(loaded.oled.brightness);

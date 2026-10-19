@@ -24,6 +24,7 @@ import {
   DEMO_INLINE_FIXTURE_PANEL_ID,
   DEMO_INLINE_FIXTURE_PLUGIN_ID,
 } from "./inline-fixture-plugin";
+import { DEMO_CAPTURE_INSTALL_ROW } from "./mock-visor-surfaces";
 import type { DroneSkillContribution } from "@/lib/skills/plugin-skills";
 import type { DroneTargetActionContribution } from "@/lib/skills/target-actions";
 import type {
@@ -464,9 +465,9 @@ export function getDemoFleetPluginContributions(): DemoFleetSlotContribution[] {
 
 /**
  * Demo install rows carrying node pages: the inline fixture module's one
- * Agent-sidebar page in the Software section, offered on every demo drone.
- * Read by `useNodePluginPages` in demo mode; the demo contribution producer
- * mounts the fixture module behind it.
+ * Agent-sidebar page in the Software section, offered on every demo drone,
+ * and the capture extension's Visor surfaces. Read by `useNodePluginPages`
+ * in demo mode; the demo contribution producer mounts the bodies behind them.
  */
 export function getDemoNodePageInstallRows(): InstallDetailRow[] {
   return [
@@ -485,5 +486,6 @@ export function getDemoNodePageInstallRows(): InstallDetailRow[] {
         },
       ],
     },
+    DEMO_CAPTURE_INSTALL_ROW,
   ];
 }

@@ -77,6 +77,7 @@ import {
   DEMO_INLINE_FIXTURE_PLUGIN_ID,
 } from "@/mock/inline-fixture-plugin";
 import { getDemoVisionNavContribution } from "@/mock/mock-vision-nav";
+import { DEMO_CAPTURE_SURFACES } from "@/mock/mock-visor-surfaces";
 
 /** Slot fallback sort hint, matching the slot-13 contract default. */
 const DEFAULT_ORDER = 60;
@@ -147,6 +148,11 @@ function demoInlineContributions(
   const visionNav = getDemoVisionNavContribution(deviceId);
   if (visionNav && entryMounts(visionNav.entry, slot, nodeProfile)) {
     out.push(visionNav.contribution);
+  }
+  if (nodeProfile === "visor") {
+    for (const surface of DEMO_CAPTURE_SURFACES) {
+      if (entryMounts(surface.entry, slot, nodeProfile)) out.push(surface.contribution);
+    }
   }
   const entry: GcsContributeRow = {
     slot: "node.agent.page",

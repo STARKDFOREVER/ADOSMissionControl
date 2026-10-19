@@ -449,7 +449,11 @@ export function getMockVisorCapabilities(): AgentCapabilities & { profile: strin
   const gs = getMockGroundStationCapabilities();
   return {
     tier: 4,
-    cameras: [],
+    // The capture pair the sensors seed lists (`cam_fl` / `cam_fr`).
+    cameras: [
+      { name: "cam_fl", type: "csi", device: "/dev/video0", resolution: "1920x1200", fps: 20, streaming: false },
+      { name: "cam_fr", type: "csi", device: "/dev/video2", resolution: "1920x1200", fps: 20, streaming: false },
+    ],
     videoStreams: [],
     compute: { ...gs.compute, npu_available: true, npu_runtime: "rknn", npu_tops: 6 },
     vision: gs.vision,

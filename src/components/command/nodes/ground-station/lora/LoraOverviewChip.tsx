@@ -21,9 +21,7 @@ import { useClockTick } from "@/lib/agent/freshness";
 import { useClockStore } from "@/stores/clock-store";
 import { useLoraStore } from "@/stores/ground-station/lora-store";
 import { Chip } from "../lane-ui";
-import { formatCountdown, remainingMs } from "./lora-format";
-
-const WAITING: Record<string, true> = { duty_exhausted: true, dwell_time: true, lbt_busy: true };
+import { formatCountdown, loraTxState, remainingMs } from "./lora-format";
 
 /** Highest duty use across the plan's duty-cycle sub-bands, or null. */
 function dutyUsedPct(status: LoraStatus): number | null {
@@ -48,13 +46,14 @@ export function LoraOverviewChip({ status, fetchedAt, now }: LoraOverviewChipPro
   const code = status.region?.code ?? null;
   let tone: "success" | "warning" | "error";
   let text: string;
-  if (status.tx_allowed) {
+  const state = loraTxState(status);
+  if (state === "allowed") {
     const used = dutyUsedPct(status);
     tone = "success";
     text = used === null ? t("ok", { code: code ?? "" }) : t("duty", { code: code ?? "", used: used.toFixed(1) });
   } else {
     const reason = status.blocked_reason ?? "region_unset";
-    if (Object.hasOwn(WAITING, reason)) {
+    if (state === "paused") {
       tone = "warning";
       text = t("paused", {
         time: formatCountdown(remainingMs(status.governor?.next_tx_allowed_ms ?? 0, fetchedAt, now)),

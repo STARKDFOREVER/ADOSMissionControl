@@ -12,6 +12,7 @@ import { requireOwnedDroneByDeviceId } from "./cmdDroneAccess";
 import type { Doc } from "./_generated/dataModel";
 import type { WithoutSystemFields } from "convex/server";
 import { readLastSeen, recordLiveness } from "./cmdDroneLiveness";
+import { attachedDisplayType, manualMavlinkWsUrl } from "./lib/fleetCardFields";
 
 /**
  * Every top-level key the cloud heartbeat may carry.
@@ -541,37 +542,6 @@ export const pushStatus = internalMutation({
       await ctx.db.insert("cmd_droneStatus", row);
     }
 
-    // Derive attached display type from peripherals[] for the
-    // fleet card pill. The agent reports the SPI LCD as a peripheral
-    // entry with category="display"; we cherry-pick the type so the
-    // drone card can render an "LCD" badge without re-querying the
-    // full status row.
-    // `peripherals` is a `v.any()` passthrough, so narrow each entry rather
-    // than asserting a shape onto it: a manifest that renames either key must
-    // read as "no display", never as a fabricated one.
-    let attachedDisplayType: string | undefined;
-    if (Array.isArray(args.peripherals)) {
-      for (const entry of args.peripherals as unknown[]) {
-        if (!entry || typeof entry !== "object") continue;
-        if (!("category" in entry) || entry.category !== "display") continue;
-        if ("type" in entry && typeof entry.type === "string") {
-          attachedDisplayType = entry.type;
-        }
-        break;
-      }
-    }
-
-    // Direct LAN MAVLink URL denormalized onto cmd_drones so the
-    // fleet card can render a "Direct" pill without joining
-    // cmd_droneStatus on every render.
-    let manualMavlinkWsUrl: string | undefined;
-    if (args.manualConnectionUrls && typeof args.manualConnectionUrls === "object") {
-      const ws = (args.manualConnectionUrls as { mavlinkWs?: unknown }).mavlinkWs;
-      if (typeof ws === "string" && ws.length > 0) {
-        manualMavlinkWsUrl = ws;
-      }
-    }
-
     // Liveness goes to its own row every tick; the `cmd_drones` row is only
     // patched when a denormalised fleet-card value actually changes, so the
     // fleet list does not re-run for every subscriber on every heartbeat.
@@ -593,11 +563,11 @@ export const pushStatus = internalMutation({
         lastIp: args.lastIp,
         mdnsHost: args.mdnsHost,
         runtimeMode: args.runtimeMode,
-        attachedDisplayType,
+        attachedDisplayType: attachedDisplayType(args.peripherals),
         profileSource: args.profileSource,
         profile: args.profile,
         role: args.role,
-        manualMavlinkWsUrl,
+        manualMavlinkWsUrl: manualMavlinkWsUrl(args.manualConnectionUrls),
         peerDeviceId: args.peerDeviceId,
         peerRssiDbm: args.peerRssiDbm,
         cameraState: args.cameraState,
