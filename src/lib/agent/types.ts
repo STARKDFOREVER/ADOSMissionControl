@@ -443,7 +443,7 @@ export interface CameraUsbRecovery {
 }
 
 /** Response from `/api/status/full` (agent v0.3.19+). */
-export interface FullStatusResponse extends Pick<NodeFlags, "sim"> {
+export interface FullStatusResponse extends NodeFlags {
   version: string;
   /** Agent uptime in seconds. Absent when the agent did not report it. */
   uptime_seconds?: number;

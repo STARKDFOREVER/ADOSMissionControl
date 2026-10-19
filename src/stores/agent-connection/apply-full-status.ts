@@ -157,8 +157,11 @@ export function applyFullStatus(
   if (typeof full.hasAccelerator === "boolean") {
     statusExtras.hasAccelerator = full.hasAccelerator;
   }
-  if (typeof full.sim === "boolean") {
-    statusExtras.sim = full.sim;
+  // Node flags: simulator mode and the fitted GNSS / LoRa lanes, which gate
+  // the ground station's GNSS and LoRa tabs. A non-boolean is not forwarded,
+  // so a reading from an older agent keeps whatever the store had.
+  for (const key of ["sim", "gnss", "lora"] as const) {
+    if (typeof full[key] === "boolean") statusExtras[key] = full[key];
   }
   if (typeof full.perceptionTier === "string") {
     statusExtras.perceptionTier = full.perceptionTier;
