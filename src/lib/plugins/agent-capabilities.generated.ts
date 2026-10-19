@@ -226,6 +226,13 @@ export const AGENT_CAPABILITY_CATALOG: Record<string, CapabilityMeta> = {
     risk: "medium",
     risk_reason: "A wrong but valid calibration skews every fused sensor sample and capture until it is corrected.",
   },
+  "camera.control.write": {
+    label: "Set camera exposure and gain",
+    description: "Lets the plugin set the exposure time, gain and auto-exposure mode of a camera the vision engine captures, and read back the values the camera actually took. Only local V4L2 cameras the engine already streams from are adjustable; simulated and network cameras answer that nothing was applied.",
+    category: "hardware",
+    risk: "medium",
+    risk_reason: "Changes the image every consumer of that camera sees (the operator's video, detection, tracking and capture); a wrong exposure can wash out or black out the picture until it is set back.",
+  },
   "mission.read": {
     label: "Read mission plans loaded on the agent",
     description: "Lets the plugin read the active mission, waypoints, fences, and rally points stored on the agent.",
