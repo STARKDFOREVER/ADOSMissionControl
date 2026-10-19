@@ -7,12 +7,14 @@
 "use client";
 
 import { useRef, useCallback, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useOverlayStore, type KmlOverlay } from "@/stores/overlay-store";
 import { RasterImportControl } from "@/components/planner/RasterImportControl";
 import { parseKML } from "@/lib/formats/kml-parser";
 import { parseKMZ } from "@/lib/formats/kmz-handler";
 import { X, Eye, EyeOff, Trash2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { FloatingPanel } from "@/components/ui/floating-panel";
 import { randomId } from "@/lib/utils";
 
 interface OverlayPanelProps {
@@ -26,8 +28,9 @@ export function OverlayPanel({ onClose }: OverlayPanelProps) {
   const toggleVisibility = useOverlayStore((s) => s.toggleVisibility);
   const setOpacity = useOverlayStore((s) => s.setOpacity);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const t = useTranslations("planner.overlays");
 
-  const [parseError, setParseError] = useState<string | null>(null);
+  const [parseError, setParseError] = useState<"noGeometry" | "parseFailed" | null>(null);
 
   const handleFileSelect = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -41,7 +44,7 @@ export function OverlayPanel({ onClose }: OverlayPanelProps) {
           : parseKML(await file.text());
 
         if (result.polygons.length === 0 && result.paths.length === 0 && result.points.length === 0) {
-          setParseError("No geometry found in file.");
+          setParseError("noGeometry");
           return;
         }
 
@@ -63,7 +66,7 @@ export function OverlayPanel({ onClose }: OverlayPanelProps) {
         addOverlay(overlay);
       } catch (err) {
         console.error("Failed to parse KML/KMZ:", err);
-        setParseError("Failed to parse file. Check format.");
+        setParseError("parseFailed");
       }
 
       // Reset input so the same file can be re-selected
@@ -73,16 +76,16 @@ export function OverlayPanel({ onClose }: OverlayPanelProps) {
   );
 
   return (
-    <div className="absolute top-24 left-14 z-[1001] w-64 bg-bg-secondary/95 backdrop-blur-sm border border-border-default rounded-lg overflow-hidden">
+    <FloatingPanel layer="popover" padded={false} className="top-24 left-14 w-64 overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-border-default">
-        <span className="text-[11px] font-mono font-semibold text-text-primary">
-          KML Overlays
+        <span className="text-[11px] font-body font-semibold text-text-primary">
+          {t("title")}
         </span>
         <button
           onClick={onClose}
           className="text-text-tertiary hover:text-text-primary transition-colors cursor-pointer"
-          aria-label="Close overlay panel"
+          aria-label={t("close")}
         >
           <X size={12} />
         </button>
@@ -92,8 +95,8 @@ export function OverlayPanel({ onClose }: OverlayPanelProps) {
       <div className="max-h-[280px] overflow-y-auto">
         {overlays.length === 0 ? (
           <div className="px-3 py-4 text-center">
-            <p className="text-[10px] text-text-tertiary">
-              No overlays loaded. Add a KML or KMZ file to display on the map.
+            <p className="text-[11px] text-text-tertiary">
+              {t("empty")}
             </p>
           </div>
         ) : (
@@ -114,7 +117,7 @@ export function OverlayPanel({ onClose }: OverlayPanelProps) {
       {/* Error */}
       {parseError && (
         <div className="px-3 py-1.5 bg-status-error/10 border-t border-status-error/30">
-          <span className="text-[10px] text-status-error">{parseError}</span>
+          <span className="text-[11px] text-status-error">{t(parseError)}</span>
         </div>
       )}
 
@@ -134,12 +137,12 @@ export function OverlayPanel({ onClose }: OverlayPanelProps) {
           onClick={() => fileInputRef.current?.click()}
           className="w-full"
         >
-          Add Overlay
+          {t("add")}
         </Button>
       </div>
 
       <RasterImportControl />
-    </div>
+    </FloatingPanel>
   );
 }
 
@@ -154,6 +157,7 @@ function OverlayItem({
   onRemove: () => void;
   onOpacityChange: (v: number) => void;
 }) {
+  const t = useTranslations("planner.overlays");
   const featureCount =
     overlay.polygons.length + overlay.paths.length + overlay.points.length;
   // The slider moves a local draft; the store (and its persisted copy) is
@@ -184,7 +188,7 @@ function OverlayItem({
         <button
           onClick={onToggle}
           className="text-text-tertiary hover:text-text-primary transition-colors cursor-pointer"
-          aria-label={overlay.visible ? "Hide overlay" : "Show overlay"}
+          aria-label={overlay.visible ? t("hide") : t("show")}
         >
           {overlay.visible ? <Eye size={12} /> : <EyeOff size={12} />}
         </button>
@@ -193,7 +197,7 @@ function OverlayItem({
         <button
           onClick={onRemove}
           className="text-text-tertiary hover:text-status-error transition-colors cursor-pointer"
-          aria-label="Remove overlay"
+          aria-label={t("remove")}
         >
           <Trash2 size={12} />
         </button>
@@ -201,21 +205,22 @@ function OverlayItem({
 
       {/* Feature count + opacity slider */}
       <div className="flex items-center gap-2 mt-1">
-        <span className="text-[9px] text-text-tertiary font-mono shrink-0">
-          {featureCount} features
+        <span className="text-[11px] text-text-tertiary font-mono shrink-0">
+          {t("features", { count: featureCount })}
         </span>
         <input
           type="range"
           min={0}
           max={100}
           value={percent}
+          aria-label={t("opacity")}
           onChange={(e) => setDraft(Number(e.target.value))}
           onPointerUp={commit}
           onKeyUp={commit}
           onBlur={commit}
           className="flex-1 h-1 accent-accent-primary"
         />
-        <span className="text-[9px] text-text-tertiary font-mono w-6 text-right">
+        <span className="text-[11px] text-text-tertiary font-mono w-8 text-right">
           {percent}%
         </span>
       </div>

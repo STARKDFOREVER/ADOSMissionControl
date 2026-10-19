@@ -14,15 +14,18 @@ import {
   lonToTileX,
   latToTileY,
   tileCountAtZoom,
+  totalTileCount,
   clampTileZoom,
   customTileProvider,
   resolveBasemap,
+  fieldPackProvider,
   validateTileUrlTemplate,
   type TileProvider,
   type LatLngBounds,
 } from "@/lib/tile-math";
+import { activeFieldPack } from "@/stores/field-pack-store";
 
-/** How the reader (CachedTileLayer) builds a request URL from a template. */
+/** How the on-screen layer builds a request URL from a template. */
 function readerUrl(provider: TileProvider, x: number, y: number, z: number, retina: boolean): string {
   return resolveTileUrl(provider.url, subdomainsForUrl(provider.url), x, y, z, retina);
 }
@@ -198,5 +201,57 @@ describe("custom tile URL templates", () => {
     expect(clampTileZoom(0)).toBe(1);
     expect(clampTileZoom(99)).toBe(24);
     expect(clampTileZoom(Number.NaN)).toBe(19);
+  });
+
+  it("field-pack falls back to the hosted vector basemap when no pack is reachable", () => {
+    expect(resolveBasemap("field-pack", { url: "", maxZoom: 19, attribution: "" })).toBe(
+      TILE_PROVIDERS["streets-dark"],
+    );
+  });
+
+  it("field-pack resolves to the ground station's pack when one is offered", () => {
+    const pack = fieldPackProvider("http://ground.local:8080", { name: "field area", maxzoom: 14 });
+    const resolved = resolveBasemap("field-pack", { url: "", maxZoom: 19, attribution: "" }, pack);
+    expect(resolved.kind).toBe("vector");
+    expect(resolved.maxZoom).toBe(14);
+    expect(resolved.url).toBe("http://ground.local:8080/api/v1/ground-station/tiles/field%20area/{z}/{x}/{y}.mvt");
+    // Another source never picks up the pack.
+    expect(resolveBasemap("satellite", { url: "", maxZoom: 19, attribution: "" }, pack)).toBe(TILE_PROVIDERS.satellite);
+  });
+});
+
+describe("activeFieldPack", () => {
+  const pack = (name: string, usable = true) => ({
+    name, usable, bounds: [0, 0, 1, 1] as [number, number, number, number], minzoom: 0, maxzoom: 14,
+    tile_type: usable ? ("mvt" as const) : ("png" as const), size_bytes: 1, etag: "e",
+  });
+  const source = { baseUrl: "http://g:8080", apiKey: "k", packs: [pack("raster", false), pack("a"), pack("b")] };
+
+  it("keeps the chosen pack while it is usable", () => {
+    expect(activeFieldPack(source, "b")?.name).toBe("b");
+  });
+
+  it("falls back to the first usable pack, never a raster one", () => {
+    expect(activeFieldPack(source, "raster")?.name).toBe("a");
+    expect(activeFieldPack(source, "gone")?.name).toBe("a");
+    expect(activeFieldPack(null, "a")).toBeNull();
+  });
+});
+
+describe("vector basemap providers", () => {
+  it("download URLs are MVT tiles on the hosted vector server", () => {
+    const streets = TILE_PROVIDERS["streets-dark"];
+    expect(streets.kind).toBe("vector");
+    expect(streets.maxZoom).toBe(15);
+    const bounds: LatLngBounds = { north: 12.98, south: 12.96, east: 77.62, west: 77.60 };
+    const urls = [...generateTileUrls(bounds, 14, 15, streets, true)];
+    expect(urls.length).toBe(totalTileCount(bounds, 14, 15));
+    for (const u of urls) expect(u).toMatch(/^https:\/\/tiles\.altnautica\.com\/planet\/1[45]\/\d+\/\d+\.mvt$/);
+  });
+
+  it("raster providers are marked raster", () => {
+    for (const id of ["dark", "osm", "satellite", "terrain"] as const) {
+      expect(TILE_PROVIDERS[id].kind).toBe("raster");
+    }
   });
 });

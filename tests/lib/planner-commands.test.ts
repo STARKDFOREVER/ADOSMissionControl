@@ -10,6 +10,11 @@ function noopHandlers(): PlannerCommandHandlers {
     setActiveTool: vi.fn(), undo: vi.fn(), redo: vi.fn(),
     handleSave: vi.fn(), handleSaveAs: vi.fn(), handleNewPlan: vi.fn(),
     toggleTerrain: vi.fn(), togglePattern: vi.fn(), toggleValidation: vi.fn(), toggleOverlays: vi.fn(),
+    togglePlans: vi.fn(), toggleOutline: vi.fn(), toggleInspector: vi.fn(), togglePanels: vi.fn(),
+    openDock: vi.fn(), sendToVehicle: vi.fn(), downloadFromDrone: vi.fn(), importBoundary: vi.fn(),
+    exportNative: vi.fn(), exportWaypoints: vi.fn(), exportPlan: vi.fn(), exportKML: vi.fn(),
+    exportKMZ: vi.fn(), exportCSV: vi.fn(), exportBrief: vi.fn(), copyShareLink: vi.fn(),
+    reverseWaypoints: vi.fn(), transformMission: vi.fn(), simulate: vi.fn(), discardPlan: vi.fn(),
   };
 }
 
@@ -56,6 +61,29 @@ describe("buildPlannerCommands", () => {
     expect(h.undo).toHaveBeenCalledTimes(1);
   });
 
+  it("reaches every planner-bar menu verb, panel toggle and dock tab", () => {
+    const h = noopHandlers();
+    const cmds = buildPlannerCommands(h, label, "Planner", "");
+    const run = (k: string) => {
+      const cmd = cmds.find((c) => c.label === k);
+      expect(cmd, k).toBeDefined();
+      cmd!.action();
+    };
+
+    run("commands.sendToVehicle");
+    run("commands.exportKmz");
+    run("commands.discardPlan");
+    run("commands.dock.checklist");
+    run("shortcuts.openPlans");
+    run("shortcuts.focusMap");
+    expect(h.sendToVehicle).toHaveBeenCalledTimes(1);
+    expect(h.exportKMZ).toHaveBeenCalledTimes(1);
+    expect(h.discardPlan).toHaveBeenCalledTimes(1);
+    expect(h.openDock).toHaveBeenCalledWith("checklist");
+    expect(h.togglePlans).toHaveBeenCalledTimes(1);
+    expect(h.togglePanels).toHaveBeenCalledTimes(1);
+  });
+
   it("omits context-scoped shortcuts (delete / cancel) that have no standalone verb", () => {
     const cmds = buildPlannerCommands(noopHandlers(), label, "Planner", "");
     expect(cmds.some((c) => c.label === "shortcuts.delete")).toBe(false);
@@ -63,9 +91,9 @@ describe("buildPlannerCommands", () => {
   });
 
   it("filters by the query (case-insensitive label match)", () => {
-    const cmds = buildPlannerCommands(noopHandlers(), label, "Planner", "waypoint");
+    const cmds = buildPlannerCommands(noopHandlers(), label, "Planner", "loiter");
     expect(cmds.length).toBe(1);
-    expect(cmds[0].label).toBe("shortcuts.waypoint");
+    expect(cmds[0].label).toBe("shortcuts.loiter");
   });
 
   it("tags every command with the given category", () => {

@@ -12,6 +12,9 @@ const eslintConfig = [
       // time. They are not our source and trip rules-of-hooks on their own
       // minified identifiers, so linting them is noise.
       "public/cesium/**",
+      // Vector basemap fonts, sprites and the copied MapLibre worker
+      // (scripts/fetch-basemap-assets.mjs).
+      "public/basemap-assets/**",
     ],
   },
   {

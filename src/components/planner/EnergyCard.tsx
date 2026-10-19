@@ -88,15 +88,7 @@ export function EnergyCard({ waypoints, cruiseSpeedMps }: EnergyCardProps) {
   ];
 
   return (
-    <div className="bg-bg-secondary border border-border-default rounded-md p-3 text-xs">
-      <div className="flex items-center gap-2 mb-2">
-        <Zap className="w-3.5 h-3.5 text-accent-primary" />
-        <span className="font-medium text-text-primary">{t("title")}</span>
-        <span className="ml-auto text-[10px] uppercase tracking-wide text-text-tertiary">
-          {t("estimate")}
-        </span>
-      </div>
-
+    <div className="text-xs">
       <div className="grid grid-cols-1 gap-1.5">
         {rows.map((r) => {
           const Icon = r.icon;
@@ -112,7 +104,7 @@ export function EnergyCard({ waypoints, cruiseSpeedMps }: EnergyCardProps) {
         })}
       </div>
 
-      <p className="mt-2 text-[10px] leading-snug text-text-tertiary">{t("note")}</p>
+      <p className="mt-2 text-[11px] leading-snug text-text-tertiary">{t("note")}</p>
     </div>
   );
 }

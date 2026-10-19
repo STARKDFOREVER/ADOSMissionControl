@@ -358,11 +358,15 @@ export interface DemoFleetSlotContribution {
  * iframe would be blocked (leaving visible demo slots blank + a console
  * violation). Falls back to `data:` only where the Blob URL API is absent
  * (SSR); the iframes render client-side anyway. Production contributions load a
- * real signed bundle instead. */
-function demoBundle(label: string, accent = "#38bdf8"): string {
-  const html = `<!doctype html><html><head><meta charset="utf-8"><style>
+ * real signed bundle instead. A `transparent` bundle (the map overlay) leaves
+ * the page clear so the map shows through, as a real overlay plugin must; it
+ * declares the same colour scheme as the plugin frame shell so the browser
+ * does not paint the frame opaque. */
+function demoBundle(label: string, accent = "#38bdf8", transparent = false): string {
+  const background = transparent ? "transparent" : "#0A0A0A";
+  const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="color-scheme" content="dark light"><style>
 html,body{margin:0;height:100%;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
-body{display:flex;align-items:center;justify-content:center;background:#0A0A0A;color:#EDEDED}
+body{display:flex;align-items:center;justify-content:center;background:${background};color:#EDEDED}
 .card{border:1px solid ${accent}40;background:${accent}14;color:${accent};padding:8px 12px;font-size:12px;letter-spacing:.04em}
 </style></head><body><div class="card">${label}</div></body></html>`;
   if (
@@ -428,7 +432,7 @@ const DEMO_FLEET_CONTRIBUTIONS: DemoFleetSlotContribution[] = [
     title: "Demo Map Overlay",
     order: 60,
     grantedCapabilities: [slotToCapability("map.overlay")],
-    bundleUrl: demoBundle("Demo · Map overlay", "#f472b6"),
+    bundleUrl: demoBundle("Demo · Map overlay", "#f472b6", true),
   },
   {
     installId: "demo-fleet-notification-channel",

@@ -11,17 +11,18 @@
  *
  * Precedence is deliberate and fixed:
  *   1. Typing-target guard — never hijack a key while the user types in a field.
- *   2. Tool / panel letter shortcuts (no modifier), plus arrow-key nudge of the
- *      selected waypoint.
+ *   2. Tool / panel letter shortcuts (no modifier), the side-panel keys `[`, `]`
+ *      and `\`, plus arrow-key nudge of the selected waypoint.
  *   3. Undo / redo (Cmd/Ctrl+Z), then copy / paste (Cmd/Ctrl+C / V) of the
  *      selected waypoint(s) — copy defers to a live page text selection.
- *   4. Escape — cancel the active draw first, else collapse an expanded waypoint,
- *      else clear any non-select tool back to select.
+ *   4. Escape — cancel the active draw first, else clear the waypoint
+ *      selection, else return the inspector to the mission, else clear any
+ *      non-select tool back to select.
  *   5. Backspace / Delete — pop a draw vertex while drawing, else delete the
  *      selected waypoint.
  *   6. Save / Save-As (Cmd/Ctrl+S).
- *   7. New / Open accelerator chords — desktop (Electron) only, so the browser
- *      keeps its native Cmd/Ctrl+N / Cmd/Ctrl+O behaviour.
+ *   7. Cmd/Ctrl+O toggles the plans sheet. Cmd/Ctrl+N (new plan) is desktop
+ *      (Electron) only, so the browser keeps its native new-window chord.
  *
  * @license GPL-3.0-only
  */
@@ -40,12 +41,21 @@ interface UseKeyboardShortcutsParams {
   selectedWaypointId: string | null;
   removeWaypoint: (id: string) => void;
   setSelectedWaypoint: (id: string | null) => void;
-  expandedWaypointId: string | null;
-  setExpandedWaypoint: (id: string | null) => void;
+  /** Waypoints in the multi-selection (Ctrl/Shift+click). */
+  selectedCount: number;
+  /** Clear both the single and the multi selection. */
+  clearSelection: () => void;
+  /** Whether the inspector already shows the mission (its resting target). */
+  inspectorIsMission: boolean;
+  /** Point the inspector back at the mission. */
+  resetInspector: () => void;
   handleSave: () => void;
   handleSaveAs?: () => void;
   handleNewPlan?: () => void;
-  handleFocusSearch?: () => void;
+  onTogglePlans?: () => void;
+  onToggleOutline?: () => void;
+  onToggleInspector?: () => void;
+  onTogglePanels?: () => void;
   onTogglePatternEditor?: () => void;
   onToggleValidation?: () => void;
   onToggleTerrain?: () => void;
@@ -89,12 +99,17 @@ export function useKeyboardShortcuts({
   selectedWaypointId,
   removeWaypoint,
   setSelectedWaypoint,
-  expandedWaypointId,
-  setExpandedWaypoint,
+  selectedCount,
+  clearSelection,
+  inspectorIsMission,
+  resetInspector,
   handleSave,
   handleSaveAs,
   handleNewPlan,
-  handleFocusSearch,
+  onTogglePlans,
+  onToggleOutline,
+  onToggleInspector,
+  onTogglePanels,
   onTogglePatternEditor,
   onToggleValidation,
   onToggleTerrain,
@@ -150,6 +165,11 @@ export function useKeyboardShortcuts({
         if (e.key.toLowerCase() === "l") {
           e.preventDefault();
           onToggleOverlays?.();
+          return;
+        }
+        if (e.key === "[" || e.key === "]" || e.key === "\\") {
+          e.preventDefault();
+          (e.key === "[" ? onToggleOutline : e.key === "]" ? onToggleInspector : onTogglePanels)?.();
           return;
         }
         if (e.key === "/") {
@@ -226,8 +246,10 @@ export function useKeyboardShortcuts({
           setActiveTool("select");
           return;
         }
-        if (expandedWaypointId) {
-          setExpandedWaypoint(null);
+        if (selectedWaypointId || selectedCount > 0) {
+          clearSelection();
+        } else if (!inspectorIsMission) {
+          resetInspector();
         } else if (activeTool !== "select") {
           setActiveTool("select");
         }
@@ -249,7 +271,6 @@ export function useKeyboardShortcuts({
           e.preventDefault();
           removeWaypoint(selectedWaypointId);
           setSelectedWaypoint(null);
-          setExpandedWaypoint(null);
           return;
         }
       }
@@ -266,18 +287,18 @@ export function useKeyboardShortcuts({
         return;
       }
 
-      // 7. New / Open accelerator chords — desktop only. In the browser these
-      // are native chords (new window / open file) and must not be hijacked.
+      // 7. Cmd/Ctrl+O opens the plans sheet in the browser and the desktop app
+      // alike; New stays desktop-only (the browser's new-window chord).
+      if (isMeta && chord === "o") {
+        if (!onTogglePlans) return;
+        e.preventDefault();
+        onTogglePlans();
+        return;
+      }
       if (isMeta && chord === "n") {
         if (!isElectron()) return;
         e.preventDefault();
         handleNewPlan?.();
-        return;
-      }
-      if (isMeta && chord === "o") {
-        if (!isElectron()) return;
-        e.preventDefault();
-        handleFocusSearch?.();
         return;
       }
     };
@@ -292,12 +313,17 @@ export function useKeyboardShortcuts({
     selectedWaypointId,
     removeWaypoint,
     setSelectedWaypoint,
-    expandedWaypointId,
-    setExpandedWaypoint,
+    selectedCount,
+    clearSelection,
+    inspectorIsMission,
+    resetInspector,
     handleSave,
     handleSaveAs,
     handleNewPlan,
-    handleFocusSearch,
+    onTogglePlans,
+    onToggleOutline,
+    onToggleInspector,
+    onTogglePanels,
     onTogglePatternEditor,
     onToggleValidation,
     onToggleTerrain,

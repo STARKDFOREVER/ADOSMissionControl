@@ -228,10 +228,10 @@ export function MissionAdvisories({
 
   return (
     <div className="flex flex-col gap-0.5 border-t border-border-default pt-1.5 mt-0.5">
-      <span className="px-1.5 text-[9px] font-mono uppercase tracking-wide text-text-tertiary">
+      <span className="px-1.5 font-body text-[11px] font-semibold text-text-tertiary">
         {t("validation.advisories")}
       </span>
-      <div className="flex flex-col gap-0.5 max-h-[120px] overflow-y-auto">
+      <div className="flex flex-col gap-0.5">
         {rows.map((row) => (
           <AdvisoryRow
             key={row.key}
@@ -279,7 +279,7 @@ function AdvisoryRow({
       ) : (
         <Info size={10} className="text-text-tertiary shrink-0 mt-0.5" />
       )}
-      <span className={`text-[10px] font-mono ${textColor}`}>{row.message}</span>
+      <span className={`text-[11px] ${textColor}`}>{row.message}</span>
     </button>
   );
 }

@@ -1,6 +1,6 @@
 /**
  * @module SurveyConfigSection
- * @description Survey pattern configuration UI — camera profiles, GSD, overlap, advanced settings.
+ * @description Survey pattern configuration UI: camera profiles, GSD, overlap, advanced settings.
  * Extracted from PatternConfigSections.tsx.
  * @license GPL-3.0-only
  */
@@ -9,17 +9,19 @@
 import { useMemo, useCallback, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Select } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { MIN_LINE_SPACING_M, parseSpacing } from "@/lib/patterns/types";
+import { MIN_LINE_SPACING_M } from "@/lib/patterns/types";
 import { Toggle } from "@/components/ui/toggle";
+import { PropertyRow } from "@/components/ui/property-row";
+import { PropertySection } from "@/components/ui/property-section";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { usePatternStore } from "@/stores/pattern-store";
 import { useDrawingStore } from "@/stores/drawing-store";
 import { CAMERA_PROFILES, computeGSD, computeLineSpacing, computeTriggerDistance } from "@/lib/patterns/gsd-calculator";
 import { gridAngleLineBearing, optimalLineBearing, windPenalty } from "@/lib/patterns/wind-optimized";
-import { Grid3X3, Camera, ChevronDown, SquareDashed, Wind } from "lucide-react";
-import { Tooltip } from "@/components/ui/tooltip";
+import { ArrowDownLeft, ArrowDownRight, ArrowUpLeft, ArrowUpRight, SquareDashed, Wind } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import { cn, randomId } from "@/lib/utils";
+import { PatternNumberRow } from "./PatternNumberRow";
 import { usePlannerStore } from "@/stores/planner-store";
 import {
   ENTRY_LOCATION_OPTIONS, CAMERA_OPTIONS,
@@ -29,8 +31,19 @@ import { GsdSpeedControls } from "./GsdSpeedControls";
 import { CoverageStats } from "./CoverageStats";
 import { useCoverageCaptures } from "@/hooks/use-coverage-captures";
 
+const ENTRY_ICONS = {
+  topLeft: <ArrowUpLeft size={12} />,
+  topRight: <ArrowUpRight size={12} />,
+  bottomLeft: <ArrowDownLeft size={12} />,
+  bottomRight: <ArrowDownRight size={12} />,
+} as const;
+
+/** Entry corners as icon segments; the full label rides on the tooltip. */
+const ENTRY_OPTIONS = ENTRY_LOCATION_OPTIONS.map((o) => ({ value: o.value, label: o.label, title: o.label, icon: ENTRY_ICONS[o.value], iconOnly: true }));
+
 export function SurveyConfig() {
   const t = useTranslations("planner");
+  const te = useTranslations("planner.inspector.editor");
   const { toast } = useToast();
   const surveyConfig = usePatternStore((s) => s.surveyConfig);
   const updateSurveyConfig = usePatternStore((s) => s.updateSurveyConfig);
@@ -43,12 +56,10 @@ export function SurveyConfig() {
   const setShowCoverageOverlay = usePatternStore((s) => s.setShowCoverageOverlay);
   const coverage = useCoverageCaptures();
 
-  const [showAdvanced, setShowAdvanced] = useState(false);
-
   // Wind alignment is operator-entered (no live weather source yet). Both fields
-  // start empty and stay strings so a blank input never fabricates a 0-degree wind.
-  const [windBearing, setWindBearing] = useState("");
-  const [windSpeed, setWindSpeed] = useState("");
+  // start empty so a blank input never fabricates a 0-degree wind.
+  const [windBearing, setWindBearing] = useState<number | undefined>(undefined);
+  const [windSpeed, setWindSpeed] = useState<number | undefined>(undefined);
 
   const mapCenter = usePlannerStore((s) => s.mapCenter);
   const handleQuickRect = useCallback(() => {
@@ -164,108 +175,100 @@ export function SurveyConfig() {
     [selectedCamera, surveyConfig.altitude, updateSurveyConfig]
   );
 
-  // Parse the operator-entered wind. A bearing is required to align; speed is
+  const handleAltitudeCommit = useCallback(
+    (alt: number) => {
+      if (!selectedCamera) {
+        updateSurveyConfig({ altitude: alt });
+        return;
+      }
+      const ls = computeLineSpacing(alt, selectedCamera, (extConfig._sidelap ?? 60) / 100);
+      const td = computeTriggerDistance(alt, selectedCamera, (extConfig._frontlap ?? 70) / 100);
+      updateSurveyConfig({
+        altitude: alt,
+        lineSpacing: Math.round(ls * 10) / 10,
+        cameraTriggerDistance: Math.round(td * 10) / 10,
+      });
+    },
+    [selectedCamera, extConfig._sidelap, extConfig._frontlap, updateSurveyConfig],
+  );
+
+  // The operator-entered wind. A bearing is required to align; speed is
   // optional and only drives the penalty hint. Blank/invalid inputs stay null so
   // nothing is fabricated.
-  const windBearingNum = parseFloat(windBearing);
-  const hasWindBearing = Number.isFinite(windBearingNum);
-  const windSpeedNum = parseFloat(windSpeed);
-  const hasWindSpeed = Number.isFinite(windSpeedNum) && windSpeedNum > 0;
+  const hasWindBearing = windBearing !== undefined;
+  const hasWindSpeed = windSpeed !== undefined && windSpeed > 0;
   // Crosswind the CURRENT grid angle forces onto the imaging legs. Optimal is 0
   // by definition, so this doubles as the benefit of clicking "Align to wind".
   // The wind helpers take compass line bearings, not grid angles.
   const crosswindPenalty = hasWindBearing && hasWindSpeed
-    ? windPenalty(gridAngleLineBearing(surveyConfig.gridAngle ?? 0), windBearingNum, windSpeedNum)
+    ? windPenalty(gridAngleLineBearing(surveyConfig.gridAngle ?? 0), windBearing, windSpeed)
     : null;
 
   const handleAlignToWind = useCallback(() => {
-    const wb = parseFloat(windBearing);
-    if (!Number.isFinite(wb)) return;
-    updateSurveyConfig({ gridAngle: Math.round(gridAngleLineBearing(optimalLineBearing(wb)) * 10) / 10 });
+    if (windBearing === undefined) return;
+    updateSurveyConfig({ gridAngle: Math.round(gridAngleLineBearing(optimalLineBearing(windBearing)) * 10) / 10 });
   }, [windBearing, updateSurveyConfig]);
 
+  const polygonRow = (poly: { id: string; vertices: unknown[] }, i: number, checked: boolean, onToggle: () => void) => (
+    <label key={poly.id} className="flex min-h-6 items-center gap-1.5 text-[11px] text-text-secondary cursor-pointer hover:text-text-primary">
+      <input type="checkbox" checked={checked} onChange={onToggle} className="accent-accent-primary w-3 h-3" />
+      {te("polygonItem", { index: i + 1, count: poly.vertices.length })}
+    </label>
+  );
+
   return (
-    <>
-      <div className="flex flex-col gap-1">
-        <div className="flex items-center gap-1.5 text-[10px] font-mono text-text-tertiary">
-          <Grid3X3 size={12} />
-          <span>
-            {surveyConfig.polygon
-              ? `${surveyConfig.polygon.length} vertices`
-              : drawnPolygons.length > 0
-                ? `${selectedPolygonIds.length} of ${drawnPolygons.length} polygon${drawnPolygons.length > 1 ? "s" : ""} selected`
-                : t("drawPolygonOnMap")}
-          </span>
-          {!surveyConfig.polygon && drawnPolygons.length === 0 && (
-            <button onClick={handleQuickRect}
-              className="flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-mono text-accent-primary border border-accent-primary/30 hover:bg-accent-primary/10 transition-colors cursor-pointer"
-              title="Create a 200m x 200m rectangle at current map center">
-              <SquareDashed size={10} /> Quick Rect
-            </button>
-          )}
-        </div>
-        {!surveyConfig.polygon && drawnPolygons.length > 1 && (
-          <div className="flex flex-col gap-0.5 pl-4">
-            {drawnPolygons.map((poly, i) => (
-              <label key={poly.id} className="flex items-center gap-1.5 text-[10px] font-mono text-text-secondary cursor-pointer hover:text-text-primary">
-                <input
-                  type="checkbox"
-                  checked={selectedPolygonIds.includes(poly.id)}
-                  onChange={() => togglePolygonSelection(poly.id)}
-                  className="accent-accent-primary w-3 h-3"
-                />
-                Polygon {i + 1} ({poly.vertices.length} pts)
-              </label>
-            ))}
-          </div>
+    <div className="flex flex-col">
+      <div className="flex min-h-7 items-center gap-2 text-[11px] text-text-tertiary">
+        <span className="min-w-0 flex-1 truncate">
+          {surveyConfig.polygon
+            ? te("polygonVertices", { count: surveyConfig.polygon.length })
+            : drawnPolygons.length > 0
+              ? te("polygonsSelected", { selected: selectedPolygonIds.length, total: drawnPolygons.length })
+              : t("drawPolygonOnMap")}
+        </span>
+        {!surveyConfig.polygon && drawnPolygons.length === 0 && (
+          <button type="button" onClick={handleQuickRect} title={te("quickRectHint")}
+            className="flex h-6 shrink-0 items-center gap-1 rounded-sm border border-border-default px-2 text-[11px] text-text-secondary hover:bg-bg-tertiary transition-colors cursor-pointer">
+            <SquareDashed size={12} /> {te("quickRect")}
+          </button>
         )}
       </div>
+      {!surveyConfig.polygon && drawnPolygons.length > 1 && (
+        <div className="flex flex-col pb-1">
+          {drawnPolygons.map((poly, i) =>
+            polygonRow(poly, i, selectedPolygonIds.includes(poly.id), () => togglePolygonSelection(poly.id)))}
+        </div>
+      )}
 
-      {/* Exclusion (keep-out) zones — mark drawn polygons the survey lines must skip. */}
+      {/* Exclusion (keep-out) zones: mark drawn polygons the survey lines must skip. */}
       {drawnPolygons.length > 1 && (
-        <div className="flex flex-col gap-1 border-t border-border-default pt-2">
-          <div className="flex items-center gap-1.5 text-[10px] font-mono text-text-tertiary">
-            <SquareDashed size={12} />
+        <div className="flex flex-col pb-1">
+          <div className="flex min-h-7 items-center gap-2 text-[11px] text-text-tertiary">
             <span>{t("survey.exclusions.label")}</span>
             {exclusionPolygonIds.length > 0 && (
-              <span className="text-accent-primary">
+              <span className="text-text-secondary">
                 {t("survey.exclusions.count", { count: exclusionPolygonIds.length })}
               </span>
             )}
           </div>
-          <div className="flex flex-col gap-0.5 pl-4">
-            {drawnPolygons.map((poly, i) => (
-              <label key={poly.id} className="flex items-center gap-1.5 text-[10px] font-mono text-text-secondary cursor-pointer hover:text-text-primary">
-                <input
-                  type="checkbox"
-                  checked={exclusionPolygonIds.includes(poly.id)}
-                  onChange={() => toggleExclusionPolygonId(poly.id)}
-                  className="accent-accent-primary w-3 h-3"
-                />
-                Polygon {i + 1} ({poly.vertices.length} pts)
-              </label>
-            ))}
-          </div>
-          <span className="text-[9px] font-mono text-text-tertiary pl-4">
+          {drawnPolygons.map((poly, i) =>
+            polygonRow(poly, i, exclusionPolygonIds.includes(poly.id), () => toggleExclusionPolygonId(poly.id)))}
+          <span className="text-[11px] text-text-tertiary">
             {exclusionPolygonIds.length > 0 ? t("survey.exclusions.hint") : t("survey.exclusions.empty")}
           </span>
         </div>
       )}
 
-      {/* Preset dropdown */}
-      <Select label={t("surveyPreset")} options={SURVEY_PRESET_OPTIONS}
-        value={extConfig._preset ?? ""} onChange={handlePresetChange} />
-
-      {/* Camera Profile */}
-      <Select label={t("cameraProfile")} options={CAMERA_OPTIONS}
-        value={extConfig._cameraName ?? ""} onChange={handleCameraChange} />
+      <PropertyRow label={t("surveyPreset")}>
+        <Select ariaLabel={t("surveyPreset")} compact options={SURVEY_PRESET_OPTIONS} value={extConfig._preset ?? ""} onChange={handlePresetChange} />
+      </PropertyRow>
+      <PropertyRow label={t("cameraProfile")}>
+        <Select ariaLabel={t("cameraProfile")} compact options={CAMERA_OPTIONS} value={extConfig._cameraName ?? ""} onChange={handleCameraChange} />
+      </PropertyRow>
       {gsdInfo && (
-        <Tooltip content="Ground Sample Distance. Lower = higher detail. 2 cm/px = excellent, 5 cm/px = typical survey, 10 cm/px = coarse overview." position="right">
-          <div className="flex items-center gap-1.5 px-2 py-1 bg-accent-primary/10 border border-accent-primary/20 cursor-help">
-            <Camera size={10} className="text-accent-primary shrink-0" />
-            <span className="text-[10px] font-mono text-accent-primary">GSD: {(gsdInfo.gsd * 100).toFixed(2)} cm/px</span>
-          </div>
-        </Tooltip>
+        <PropertyRow label={te("gsd")} hint={te("gsdHint")}>
+          <span className="block truncate font-mono text-xs text-text-primary">{(gsdInfo.gsd * 100).toFixed(2)} cm/px</span>
+        </PropertyRow>
       )}
 
       {/* GSD-first altitude solve + motion-blur-safe speed (needs a camera) */}
@@ -274,121 +277,100 @@ export function SurveyConfig() {
 
       {/* Sidelap/Frontlap (when camera selected) OR raw line spacing (fallback) */}
       {selectedCamera ? (
-        <div className="flex flex-col gap-2">
-          <div className="flex flex-col gap-1">
-            <label className="flex items-center justify-between text-xs text-text-secondary">
-              <span>Sidelap</span>
-              <span className="font-mono text-text-primary">{extConfig._sidelap ?? 60}%</span>
-            </label>
-            <input type="range" min={20} max={95} step={5}
-              value={extConfig._sidelap ?? 60}
-              onChange={(e) => handleSidelapChange(parseInt(e.target.value))}
-              className="w-full h-1 bg-bg-tertiary appearance-none cursor-pointer accent-accent-primary" />
-            <span className="text-[9px] font-mono text-text-tertiary">Line spacing: {surveyConfig.lineSpacing ?? 25} m</span>
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="flex items-center justify-between text-xs text-text-secondary">
-              <span>Frontlap</span>
-              <span className="font-mono text-text-primary">{extConfig._frontlap ?? 70}%</span>
-            </label>
-            <input type="range" min={20} max={95} step={5}
-              value={extConfig._frontlap ?? 70}
-              onChange={(e) => handleFrontlapChange(parseInt(e.target.value))}
-              className="w-full h-1 bg-bg-tertiary appearance-none cursor-pointer accent-accent-primary" />
-            <span className="text-[9px] font-mono text-text-tertiary">Trigger dist: {surveyConfig.cameraTriggerDistance ?? 0} m</span>
-          </div>
-        </div>
-      ) : (
         <>
-          <Input label={t("lineSpacing")} type="number" unit="m" min={MIN_LINE_SPACING_M} step={0.1} value={String(surveyConfig.lineSpacing ?? 25)}
-            onChange={(e) => updateSurveyConfig({ lineSpacing: parseSpacing(e.target.value, 25) })} />
+          <PropertyRow label={t("sidelap")}
+            trailing={<span className="w-9 text-right font-mono text-xs text-text-primary">{extConfig._sidelap ?? 60}%</span>}>
+            <input type="range" min={20} max={95} step={5} aria-label={t("sidelap")}
+              value={extConfig._sidelap ?? 60}
+              onChange={(e) => handleSidelapChange(Number(e.target.value))}
+              className="w-full h-1 bg-bg-tertiary appearance-none cursor-pointer accent-accent-primary" />
+          </PropertyRow>
+          <PropertyRow label={t("lineSpacing")}>
+            <span className="block truncate font-mono text-xs text-text-secondary">{surveyConfig.lineSpacing ?? 25} m</span>
+          </PropertyRow>
+          <PropertyRow label={te("frontlap")}
+            trailing={<span className="w-9 text-right font-mono text-xs text-text-primary">{extConfig._frontlap ?? 70}%</span>}>
+            <input type="range" min={20} max={95} step={5} aria-label={te("frontlap")}
+              value={extConfig._frontlap ?? 70}
+              onChange={(e) => handleFrontlapChange(Number(e.target.value))}
+              className="w-full h-1 bg-bg-tertiary appearance-none cursor-pointer accent-accent-primary" />
+          </PropertyRow>
+          <PropertyRow label={t("cameraTriggerDist")}>
+            <span className="block truncate font-mono text-xs text-text-secondary">{surveyConfig.cameraTriggerDistance ?? 0} m</span>
+          </PropertyRow>
         </>
+      ) : (
+        <PatternNumberRow label={t("lineSpacing")} unit="m" step={0.1} min={MIN_LINE_SPACING_M}
+          value={surveyConfig.lineSpacing ?? 25} onCommit={(lineSpacing) => updateSurveyConfig({ lineSpacing })} />
       )}
 
-      {/* Altitude + Speed (always visible) */}
-      <div className="grid grid-cols-2 gap-2">
-        <Input label={t("altitudeAboveHome")} type="number" unit="m" value={String(surveyConfig.altitude ?? 50)}
-          onChange={(e) => {
-            const alt = parseFloat(e.target.value) || 50;
-            updateSurveyConfig({ altitude: alt });
-            if (selectedCamera) {
-              const sidelap = extConfig._sidelap ?? 60;
-              const frontlap = extConfig._frontlap ?? 70;
-              const ls = computeLineSpacing(alt, selectedCamera, sidelap / 100);
-              const td = computeTriggerDistance(alt, selectedCamera, frontlap / 100);
-              updateSurveyConfig({ lineSpacing: Math.round(ls * 10) / 10, cameraTriggerDistance: Math.round(td * 10) / 10 });
-            }
-          }} />
-        <Input label="Speed" type="number" unit="m/s" value={String(surveyConfig.speed ?? 5)}
-          onChange={(e) => updateSurveyConfig({ speed: parseFloat(e.target.value) || 5 })} />
-      </div>
+      <PatternNumberRow label={t("altitudeAboveHome")} unit="m" step={1} min={1}
+        value={surveyConfig.altitude ?? 50} onCommit={handleAltitudeCommit} />
+      <PatternNumberRow label={t("speed")} unit="m/s" step={0.5} min={0.1}
+        value={surveyConfig.speed ?? 5} onCommit={(speed) => updateSurveyConfig({ speed })} />
 
-      {/* Advanced toggle */}
-      <button onClick={() => setShowAdvanced(!showAdvanced)}
-        className="flex items-center gap-1 text-[10px] font-mono text-text-tertiary hover:text-text-secondary w-full py-1 cursor-pointer">
-        <ChevronDown size={10} className={cn("transition-transform", showAdvanced && "rotate-180")} />
-        {showAdvanced ? t("hideAdvanced") : t("showAdvanced")}
-      </button>
+      <PropertySection title={te("advanced")} collapsible defaultOpen={false} persistKey="pattern.survey.advanced">
+        <PatternNumberRow label={t("gridAngle")} unit="deg" step={1} min={-360} max={360}
+          value={surveyConfig.gridAngle ?? 0} onCommit={(gridAngle) => updateSurveyConfig({ gridAngle })} />
 
-      {showAdvanced && (
-        <>
-          <Input label={t("gridAngle")} type="number" unit="deg" value={String(surveyConfig.gridAngle ?? 0)}
-            onChange={(e) => updateSurveyConfig({ gridAngle: parseFloat(e.target.value) || 0 })} />
+        {/* Wind alignment: orient survey legs along the wind so imaging passes stay
+            crab-free. Wind is operator-entered (no live weather source yet). */}
+        <span className="pt-2 pb-0.5 text-[11px] font-semibold text-text-tertiary">{t("survey.wind.title")}</span>
+        <PatternNumberRow label={t("survey.wind.bearing")} unit="deg" step={1} min={0} max={359}
+          placeholder="—" value={windBearing} onCommit={setWindBearing}
+          onClear={() => setWindBearing(undefined)} />
+        <PatternNumberRow label={t("survey.wind.speed")} unit="m/s" step={0.1} min={0}
+          placeholder="—" value={windSpeed} onCommit={setWindSpeed}
+          onClear={() => setWindSpeed(undefined)} />
+        <div className="flex flex-wrap items-center gap-2 py-1">
+          <button type="button" onClick={handleAlignToWind} disabled={!hasWindBearing}
+            className={cn(
+              "flex h-7 items-center gap-1.5 rounded-sm border border-border-default px-2 text-xs text-text-secondary transition-colors",
+              hasWindBearing ? "hover:bg-bg-tertiary cursor-pointer" : "opacity-50 cursor-not-allowed",
+            )}>
+            <Wind size={12} /> {t("survey.wind.align")}
+          </button>
+          {crosswindPenalty !== null && (
+            <span className="text-[11px] text-text-tertiary">
+              {t("survey.wind.penaltyHint", { penalty: crosswindPenalty.toFixed(1) })}
+            </span>
+          )}
+        </div>
 
-          {/* Wind alignment: orient survey legs along the wind so imaging passes stay
-              crab-free. Wind is operator-entered (no live weather source yet). */}
-          <div className="flex flex-col gap-1.5 border-t border-border-default pt-2">
-            <span className="text-[10px] font-mono text-text-tertiary">{t("survey.wind.title")}</span>
-            <div className="grid grid-cols-2 gap-2">
-              <Input label={t("survey.wind.bearing")} type="number" unit="deg" min={0} max={359}
-                placeholder="—" value={windBearing}
-                onChange={(e) => setWindBearing(e.target.value)} />
-              <Input label={t("survey.wind.speed")} type="number" unit="m/s" min={0} step={0.1}
-                placeholder="—" value={windSpeed}
-                onChange={(e) => setWindSpeed(e.target.value)} />
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <button type="button" onClick={handleAlignToWind} disabled={!hasWindBearing}
-                className={cn(
-                  "flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-mono border transition-colors",
-                  hasWindBearing
-                    ? "text-accent-primary border-accent-primary/30 hover:bg-accent-primary/10 cursor-pointer"
-                    : "text-text-tertiary border-border-default opacity-50 cursor-not-allowed"
-                )}>
-                <Wind size={10} /> {t("survey.wind.align")}
-              </button>
-              {crosswindPenalty !== null && (
-                <span className="text-[9px] font-mono text-text-tertiary">
-                  {t("survey.wind.penaltyHint", { penalty: crosswindPenalty.toFixed(1) })}
-                </span>
-              )}
-            </div>
-          </div>
-
-          <Input label={t("turnAroundDistance")} type="number" unit="m" value={String(surveyConfig.turnAroundDistance ?? 10)}
-            onChange={(e) => updateSurveyConfig({ turnAroundDistance: parseFloat(e.target.value) || 10 })} />
-          <Select label={t("entryPoint")} options={ENTRY_LOCATION_OPTIONS} value={surveyConfig.entryLocation ?? "topLeft"}
-            onChange={(v) => updateSurveyConfig({ entryLocation: v as "topLeft" | "topRight" | "bottomLeft" | "bottomRight" })} />
-          <Toggle label={t("alternateTransects")} checked={surveyConfig.flyAlternateTransects ?? false}
+        <PatternNumberRow label={t("turnAroundDistance")} unit="m" step={1} min={0}
+          value={surveyConfig.turnAroundDistance ?? 10}
+          onCommit={(turnAroundDistance) => updateSurveyConfig({ turnAroundDistance })} />
+        <PropertyRow label={t("entryPoint")}>
+          <SegmentedControl size="sm" stretch ariaLabel={t("entryPoint")} options={ENTRY_OPTIONS}
+            value={surveyConfig.entryLocation ?? "topLeft"}
+            onChange={(entryLocation) => updateSurveyConfig({ entryLocation })} />
+        </PropertyRow>
+        <PropertyRow label={t("alternateTransects")}>
+          <Toggle label={t("alternateTransects")} className="[&>span]:sr-only justify-end"
+            checked={surveyConfig.flyAlternateTransects ?? false}
             onChange={(v) => updateSurveyConfig({ flyAlternateTransects: v })} />
-          <Toggle label={t("crosshatch")} checked={extConfig.crosshatch ?? false}
+        </PropertyRow>
+        <PropertyRow label={t("crosshatch")}>
+          <Toggle label={t("crosshatch")} className="[&>span]:sr-only justify-end" checked={extConfig.crosshatch ?? false}
             onChange={(v) => updateSurveyConfig({ crosshatch: v, tieLines: false } as Partial<typeof surveyConfig>)} />
-          <Toggle label={t("tieLines")} checked={surveyConfig.tieLines ?? false}
+        </PropertyRow>
+        <PropertyRow label={t("tieLines")}>
+          <Toggle label={t("tieLines")} className="[&>span]:sr-only justify-end" checked={surveyConfig.tieLines ?? false}
             onChange={(v) => updateSurveyConfig({ tieLines: v })}
             disabled={extConfig.crosshatch === true} />
-          {surveyConfig.tieLines && (
-            <div className="grid grid-cols-2 gap-2">
-              <Input label={t("tieAngle")} type="number" unit="deg" value={String(surveyConfig.tieLineAngle ?? 90)}
-                onChange={(e) => updateSurveyConfig({ tieLineAngle: parseFloat(e.target.value) || 90 })} />
-              <Input label={t("tieSpacing")} type="number" unit="m" value={String(surveyConfig.tieLineSpacing ?? 25)}
-                onChange={(e) => updateSurveyConfig({ tieLineSpacing: parseFloat(e.target.value) || 25 })} />
-            </div>
-          )}
-          <Input label={t("cameraTriggerDist")} type="number" unit="m" placeholder="0 = off"
-            value={String(surveyConfig.cameraTriggerDistance ?? 0)}
-            onChange={(e) => updateSurveyConfig({ cameraTriggerDistance: parseFloat(e.target.value) || 0 })} />
-        </>
-      )}
+        </PropertyRow>
+        {surveyConfig.tieLines && (
+          <>
+            <PatternNumberRow label={t("tieAngle")} unit="deg" step={1} min={0} max={180}
+              value={surveyConfig.tieLineAngle ?? 90} onCommit={(tieLineAngle) => updateSurveyConfig({ tieLineAngle })} />
+            <PatternNumberRow label={t("tieSpacing")} unit="m" step={1} min={MIN_LINE_SPACING_M}
+              value={surveyConfig.tieLineSpacing ?? 25} onCommit={(tieLineSpacing) => updateSurveyConfig({ tieLineSpacing })} />
+          </>
+        )}
+        <PatternNumberRow label={t("cameraTriggerDist")} hint={te("zeroIsOff")} unit="m" step={0.5} min={0}
+          value={surveyConfig.cameraTriggerDistance ?? 0}
+          onCommit={(cameraTriggerDistance) => updateSurveyConfig({ cameraTriggerDistance })} />
+      </PropertySection>
 
       {/* Coverage statistics for the generated survey route */}
       <CoverageStats camera={selectedCamera} altitude={surveyConfig.altitude ?? 50}
@@ -396,14 +378,16 @@ export function SurveyConfig() {
 
       {/* Draw per-image camera footprints on the map to see overlap + gaps. */}
       {selectedCamera && (
-        <Toggle label={t("survey.coverage.showOverlay")} checked={showCoverageOverlay}
-          onChange={setShowCoverageOverlay} />
+        <PropertyRow label={t("survey.coverage.showOverlay")}>
+          <Toggle label={t("survey.coverage.showOverlay")} className="[&>span]:sr-only justify-end"
+            checked={showCoverageOverlay} onChange={setShowCoverageOverlay} />
+        </PropertyRow>
       )}
       {selectedCamera && showCoverageOverlay && coverage.total > coverage.points.length && (
-        <p className="text-[10px] text-status-warning">
+        <p className="py-0.5 text-[11px] text-status-warning">
           {t("survey.coverage.truncated", { shown: coverage.points.length, total: coverage.total })}
         </p>
       )}
-    </>
+    </div>
   );
 }

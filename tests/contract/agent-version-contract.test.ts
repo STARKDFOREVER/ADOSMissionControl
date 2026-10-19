@@ -34,6 +34,7 @@ const AGENT_CAPABILITIES_FROZEN: readonly string[] = [
   "signing.mavlink",
   "webrtc.signaling.last_error",
   "battery.health",
+  "tiles.pack",
 ];
 
 describe("agent /api/version contract", () => {

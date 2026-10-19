@@ -190,31 +190,26 @@ export function WeatherCard({ lat, lon, className }: WeatherCardProps) {
   const BadgeIcon = style?.Icon ?? Wind;
 
   return (
-    <div
-      className={cn(
-        "bg-bg-secondary border border-border-default rounded-md p-3 text-xs",
-        className,
+    <div className={cn("text-xs", className)}>
+      {(style || (loading && report)) && (
+        <div className="flex items-center gap-2 mb-2">
+          {style && (
+            <span
+              className={cn(
+                "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium",
+                style.badge,
+              )}
+            >
+              <BadgeIcon className="w-3 h-3" />
+              {t(style.labelKey)}
+            </span>
+          )}
+          {loading && report && <Loader2 className="w-3 h-3 animate-spin text-text-tertiary" aria-label={t("weather.loading")} />}
+        </div>
       )}
-    >
-      <div className="flex items-center gap-2 mb-2">
-        <Wind className="w-3.5 h-3.5 text-accent-primary" />
-        <span className="font-medium text-text-primary">{t("weather.title")}</span>
-        {loading && report && <Loader2 className="w-3 h-3 animate-spin text-text-tertiary" aria-label={t("weather.loading")} />}
-        {style && (
-          <span
-            className={cn(
-              "ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium",
-              style.badge,
-            )}
-          >
-            <BadgeIcon className="w-3 h-3" />
-            {t(style.labelKey)}
-          </span>
-        )}
-      </div>
 
       {demo && (
-        <div className="mb-2 text-[10px] text-status-warning">{t("weather.demoNote")}</div>
+        <div className="mb-2 text-[11px] text-status-warning">{t("weather.demoNote")}</div>
       )}
 
       {!report && (loading || !error) ? (
@@ -227,7 +222,7 @@ export function WeatherCard({ lat, lon, className }: WeatherCardProps) {
       ) : report ? (
         <div className="flex flex-col gap-2">
           {observedAt !== null && ageMin !== null && (
-            <div className={cn("text-[10px]", stale ? "text-status-warning" : "text-text-tertiary")}>
+            <div className={cn("text-[11px]", stale ? "text-status-warning" : "text-text-tertiary")}>
               {t("weather.observed", {
                 time: new Date(observedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
                 minutes: ageMin,
@@ -235,7 +230,7 @@ export function WeatherCard({ lat, lon, className }: WeatherCardProps) {
             </div>
           )}
           {assessment && assessment.reasons.length > 0 && (
-            <div className="text-[10px] text-text-tertiary">
+            <div className="text-[11px] text-text-tertiary">
               {assessment.reasons.map((r) => t(REASON_KEY[r])).join(" · ")}
             </div>
           )}

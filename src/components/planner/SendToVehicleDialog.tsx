@@ -1,0 +1,217 @@
+/**
+ * @module SendToVehicleDialog
+ * @description One place to send the plan to the selected vehicle: the
+ * mission and, when present and supported, the geofence and rally points.
+ * Items run in order; a failure is reported on its row and the rest still run.
+ * @license GPL-3.0-only
+ */
+"use client";
+
+import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
+import { Check, Loader2, X } from "lucide-react";
+import { Modal } from "@/components/ui/modal";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { useValidationOptions } from "@/hooks/use-validation-options";
+import { validateMission } from "@/lib/validation/mission-validator";
+import { buildFenceElements } from "@/lib/geofence-elements";
+import { useGeofenceStore } from "@/stores/geofence-store";
+import { useRallyStore } from "@/stores/rally-store";
+import { usePlannerStore } from "@/stores/planner-store";
+import { usePreflightChecklistStore } from "@/stores/preflight-checklist-store";
+import { PREFLIGHT_ITEM_IDS, countCheckedPreflightItems } from "@/components/planner/preflight-items";
+import type { Planner } from "@/app/plan/use-planner";
+
+type SendItem = "mission" | "geofence" | "rally";
+const ORDER: readonly SendItem[] = ["mission", "geofence", "rally"];
+
+interface TransferResult {
+  success: boolean;
+  message: string;
+}
+
+type RowState =
+  | { status: "running" }
+  | { status: "ok" | "failed"; message: string };
+
+interface SendToVehicleDialogProps {
+  open: boolean;
+  onClose: () => void;
+  p: Planner;
+  showGeofence: boolean;
+  showRally: boolean;
+}
+
+export function SendToVehicleDialog({ open, onClose, p, showGeofence, showRally }: SendToVehicleDialogProps) {
+  const t = useTranslations("planner.send");
+  const setDock = usePlannerStore((s) => s.setDock);
+
+  const validationOptions = useValidationOptions();
+  const errorCount = useMemo(
+    () => (p.waypoints.length > 0 ? validateMission(p.waypoints, validationOptions).errors.length : 0),
+    [p.waypoints, validationOptions],
+  );
+
+  const fenceType = useGeofenceStore((s) => s.fenceType);
+  const polygonPoints = useGeofenceStore((s) => s.polygonPoints);
+  const circleCenter = useGeofenceStore((s) => s.circleCenter);
+  const circleRadius = useGeofenceStore((s) => s.circleRadius);
+  const zones = useGeofenceStore((s) => s.zones);
+  const fenceHasGeometry = useMemo(
+    () => buildFenceElements(fenceType, polygonPoints, circleCenter, circleRadius, zones).length > 0,
+    [fenceType, polygonPoints, circleCenter, circleRadius, zones],
+  );
+  const rallyCount = useRallyStore((s) => s.points.length);
+
+  const checkedCount = countCheckedPreflightItems(usePreflightChecklistStore((s) => s.checked));
+
+  const available: Record<SendItem, boolean> = {
+    mission: p.waypoints.length > 0,
+    geofence: showGeofence && fenceHasGeometry,
+    rally: showRally && rallyCount > 0,
+  };
+  const blocked: Record<SendItem, boolean> = { mission: errorCount > 0, geofence: false, rally: false };
+  const items = ORDER.filter((item) => available[item]);
+
+  const [deselected, setDeselected] = useState<Partial<Record<SendItem, boolean>>>({});
+  const [rows, setRows] = useState<Partial<Record<SendItem, RowState>>>({});
+  const [running, setRunning] = useState(false);
+  // Each opening starts fresh: everything applicable selected, no results.
+  const [wasOpen, setWasOpen] = useState(open);
+  if (wasOpen !== open) {
+    setWasOpen(open);
+    if (open) {
+      setDeselected({});
+      setRows({});
+    }
+  }
+
+  const isSelected = (item: SendItem) => !blocked[item] && !deselected[item];
+  const selected = items.filter(isSelected);
+
+  const runners: Record<SendItem, () => Promise<TransferResult>> = {
+    mission: () => p.handleUpload(),
+    geofence: () => useGeofenceStore.getState().uploadFence(),
+    rally: () => useRallyStore.getState().uploadRallyPoints(),
+  };
+
+  const handleSend = async () => {
+    const plan = selected;
+    setRunning(true);
+    setRows({});
+    for (const item of plan) {
+      setRows((r) => ({ ...r, [item]: { status: "running" } }));
+      let result: TransferResult;
+      try {
+        result = await runners[item]();
+      } catch (err) {
+        result = { success: false, message: err instanceof Error ? err.message : String(err) };
+      }
+      setRows((r) => ({ ...r, [item]: { status: result.success ? "ok" : "failed", message: result.message } }));
+    }
+    setRunning(false);
+  };
+
+  const openDock = (tab: "issues" | "checklist") => {
+    setDock(tab, true);
+    onClose();
+  };
+
+  const labels: Record<SendItem, string> = {
+    mission: t("mission", { count: p.waypoints.length }),
+    geofence: t("geofence"),
+    rally: t("rally", { count: rallyCount }),
+  };
+  const statusLabels: Record<RowState["status"], string> = {
+    running: t("statusRunning"),
+    ok: t("statusOk"),
+    failed: t("statusFailed"),
+  };
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={t("title")}
+      size="sm"
+      closeBlocked={running}
+      disableBackdropClose={running}
+      footer={
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" size="md" disabled={running} onClick={onClose}>
+            {Object.keys(rows).length > 0 ? t("close") : t("cancel")}
+          </Button>
+          <Button variant="primary" size="md" loading={running} disabled={selected.length === 0} onClick={() => void handleSend()}>
+            {running ? t("sending") : t("send")}
+          </Button>
+        </div>
+      }
+    >
+      <div className="flex flex-col gap-3">
+        {items.length === 0 ? (
+          <p className="text-xs text-text-secondary">{t("nothing")}</p>
+        ) : (
+          <>
+            <p className="text-xs text-text-secondary">{t("intro")}</p>
+            <ul className="flex flex-col">
+              {items.map((item) => {
+                const row = rows[item];
+                return (
+                  <li key={item} className="flex flex-col gap-1 py-1.5" data-testid={`send-row-${item}`}>
+                    <div className="flex items-center gap-2 min-h-7">
+                      <input
+                        id={`send-item-${item}`}
+                        type="checkbox"
+                        checked={isSelected(item)}
+                        disabled={blocked[item] || running}
+                        onChange={() => setDeselected((d) => ({ ...d, [item]: !d[item] }))}
+                        className="accent-accent-primary w-3.5 h-3.5"
+                      />
+                      <label htmlFor={`send-item-${item}`} className={cn("flex-1 text-xs text-text-primary", blocked[item] && "text-text-tertiary")}>
+                        {labels[item]}
+                      </label>
+                      {row && (
+                        <span
+                          data-status={row.status}
+                          className={cn(
+                            "inline-flex items-center gap-1 text-[11px]",
+                            row.status === "running" && "text-text-tertiary",
+                            row.status === "ok" && "text-status-success",
+                            row.status === "failed" && "text-status-error",
+                          )}
+                        >
+                          {row.status === "running" ? <Loader2 size={12} className="animate-spin" /> : row.status === "ok" ? <Check size={12} /> : <X size={12} />}
+                          {statusLabels[row.status]}
+                        </span>
+                      )}
+                    </div>
+                    {item === "mission" && blocked.mission && (
+                      <div className="flex items-center gap-2 pl-6 text-[11px] text-status-error">
+                        <span>{t("blocked", { count: errorCount })}</span>
+                        <button type="button" onClick={() => openDock("issues")} className="underline cursor-pointer hover:text-text-primary focus-ring">
+                          {t("reviewIssues")}
+                        </button>
+                      </div>
+                    )}
+                    {row && row.status !== "running" && row.message && (
+                      <p className={cn("pl-6 text-[11px]", row.status === "failed" ? "text-status-error" : "text-text-tertiary")}>{row.message}</p>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </>
+        )}
+        <div className="flex items-center gap-2 pt-3 border-t border-border-default text-xs text-text-secondary">
+          <span>
+            {t("checklist", { done: checkedCount, total: PREFLIGHT_ITEM_IDS.length })}
+          </span>
+          <button type="button" onClick={() => openDock("checklist")} className="text-text-primary underline cursor-pointer hover:text-text-secondary focus-ring">
+            {t("openChecklist")}
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}

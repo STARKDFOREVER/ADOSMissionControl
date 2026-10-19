@@ -90,7 +90,6 @@ export const displayDefaults: Partial<SettingsStoreState> = {
   autoRecordOnArm: true,
   showNoFlyZones: false,
   noFlyRegion: null,
-  offlineTileCaching: false,
   locale: "en",
   themeMode: "dark",
   accentColor: "blue",
@@ -154,7 +153,6 @@ export const createDisplayActions: SettingsSliceFactory<
     | "setAutoRecordOnArm"
     | "setShowNoFlyZones"
     | "setNoFlyRegion"
-    | "setOfflineTileCaching"
     | "setGuidanceHdgLength"
     | "setGuidanceHdgWidth"
     | "setGuidanceHdgLineType"
@@ -236,7 +234,6 @@ export const createDisplayActions: SettingsSliceFactory<
   setAutoRecordOnArm: (autoRecordOnArm) => set({ autoRecordOnArm }),
   setShowNoFlyZones: (showNoFlyZones) => set({ showNoFlyZones }),
   setNoFlyRegion: (noFlyRegion) => set({ noFlyRegion }),
-  setOfflineTileCaching: (offlineTileCaching) => set({ offlineTileCaching }),
   setGuidanceHdgLength: (v) => {
     const n = clampGuidanceValue(v, GUIDANCE_LENGTH_RANGE);
     if (n !== undefined) set({ guidanceHdgLength: n });

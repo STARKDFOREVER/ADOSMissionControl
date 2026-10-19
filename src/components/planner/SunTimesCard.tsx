@@ -89,22 +89,13 @@ export function SunTimesCard({ lat, lon, date, className }: SunTimesCardProps) {
       : [];
 
   return (
-    <div
-      className={cn(
-        "bg-bg-secondary border border-border-default rounded-md p-3 text-xs",
-        className,
+    <div className={cn("text-xs", className)}>
+      {golden && (
+        <span className="mb-2 inline-flex items-center gap-1 rounded-full bg-accent-primary/15 px-2 py-0.5 text-[11px] font-medium text-accent-primary">
+          <Camera className="w-3 h-3" />
+          {t("goldenHourNow")}
+        </span>
       )}
-    >
-      <div className="flex items-center gap-2 mb-2">
-        <Sun className="w-3.5 h-3.5 text-accent-primary" />
-        <span className="font-medium text-text-primary">{t("sunTimes")}</span>
-        {golden && (
-          <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-accent-primary/15 px-2 py-0.5 text-[10px] font-medium text-accent-primary">
-            <Camera className="w-3 h-3" />
-            {t("goldenHourNow")}
-          </span>
-        )}
-      </div>
 
       {rows.length === 0 ? (
         <div className="text-text-secondary">{fmtTime(undefined)}</div>

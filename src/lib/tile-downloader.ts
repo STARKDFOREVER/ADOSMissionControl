@@ -1,14 +1,15 @@
 /**
  * Concurrent tile download engine.
  *
- * Downloads map tiles with configurable concurrency (default 6),
- * batched IndexedDB writes, and abort support. Skips already-cached tiles.
+ * Downloads map tiles with configurable concurrency (default 6) into the
+ * service worker's downloaded-areas cache, keyed the way the worker looks
+ * them up, with abort support. Skips tiles already downloaded.
  *
  * @module tile-downloader
  * @license GPL-3.0-only
  */
 
-import { getCachedTile, cacheTile } from "./tile-cache";
+import { TILE_CACHE_PINNED, isCacheableTileContentType, tileCacheKey } from "./tile-cache-key";
 
 const DEFAULT_CONCURRENCY = 6;
 /** Per-tile deadline covering the request and the body read. */
@@ -71,6 +72,25 @@ export async function downloadTiles(
     onProgress({ completed, total, bytes, skipped, failed });
   };
 
+  if (typeof caches === "undefined") {
+    return {
+      completed: 0,
+      failed: 0,
+      skipped: 0,
+      totalBytes: 0,
+      storageError: storageErrorMessage(new Error("Cache Storage is unavailable on this page")),
+    };
+  }
+  // Ask once that downloaded areas are not evicted under storage pressure.
+  // The browser may refuse; the download goes ahead either way.
+  navigator.storage?.persist?.().catch(() => {});
+  let cache: Cache;
+  try {
+    cache = await caches.open(TILE_CACHE_PINNED);
+  } catch (err) {
+    return { completed: 0, failed: 0, skipped: 0, totalBytes: 0, storageError: storageErrorMessage(err) };
+  }
+
   async function fetchOne(): Promise<void> {
     for (;;) {
       if (signal?.aborted || storageError) return;
@@ -78,12 +98,12 @@ export async function downloadTiles(
       const next = queue.next();
       if (next.done) return;
       const url = next.value;
+      const key = new Request(tileCacheKey(url));
 
       let blob: Blob;
+      let contentType: string;
       try {
-        // Check if already cached
-        const existing = await getCachedTile(url);
-        if (existing) {
+        if (await cache.match(key, { ignoreVary: true })) {
           skipped++;
           completed++;
           report();
@@ -92,11 +112,17 @@ export async function downloadTiles(
 
         // Fetch tile. A stalled server connection counts as a failed tile
         // after the timeout instead of holding this worker forever.
+        // `no-store` also tells the service worker not to keep a second,
+        // browsing-cache copy of a tile this download stores itself.
         const timeout = AbortSignal.timeout(TILE_FETCH_TIMEOUT_MS);
         const response = await fetch(url, {
+          cache: "no-store",
           signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
         });
-        if (!response.ok) {
+        contentType = response.headers.get("content-type") ?? "";
+        // A 200 that is not a tile (a captive portal or an HTML error page)
+        // is never stored, so it cannot poison later loads.
+        if (!response.ok || !isCacheableTileContentType(contentType)) {
           failed++;
           completed++;
           report();
@@ -112,7 +138,11 @@ export async function downloadTiles(
       }
 
       try {
-        await cacheTile(url, blob);
+        // The body is already decoded, so only its type is carried over.
+        await cache.put(
+          key,
+          new Response(blob, { status: 200, headers: { "Content-Type": contentType } }),
+        );
       } catch (err) {
         // A tile that is not stored is not available offline. Storage that
         // refused one write refuses the rest, so stop instead of reporting

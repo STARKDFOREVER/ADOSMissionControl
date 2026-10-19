@@ -8,40 +8,35 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Input } from "@/components/ui/input";
 import { usePatternStore } from "@/stores/pattern-store";
 import { landingApproachHeading } from "@/lib/patterns/landing-generator";
 import { LandingPointPicker } from "./LandingPointPicker";
+import { PatternNumberRow } from "./PatternNumberRow";
 
 export function VtolLandingConfig() {
   const t = useTranslations("planner");
   const config = usePatternStore((s) => s.vtolLandingConfig);
   const update = usePatternStore((s) => s.updateVtolLandingConfig);
   return (
-    <>
+    <div className="flex flex-col">
       <LandingPointPicker
         landingPoint={config.landingPoint}
         onChange={(landingPoint) => update({ landingPoint })}
       />
-      <Input label={t("approachHeading")} type="number" unit="deg" placeholder="0-360"
-        value={config.approachHeading === undefined ? "" : String(config.approachHeading)}
-        onChange={(e) => {
-          const v = parseFloat(e.target.value);
-          update({ approachHeading: Number.isFinite(v) ? v : undefined });
-        }} />
+      <PatternNumberRow label={t("approachHeading")} unit="deg" step={1} min={0} max={360} placeholder="0-360"
+        value={config.approachHeading} onCommit={(approachHeading) => update({ approachHeading })}
+        onClear={() => update({ approachHeading: undefined })} />
       {landingApproachHeading(config.approachHeading) === null && (
-        <p className="text-[10px] text-status-warning">{t("approachHeadingRequired")}</p>
+        <p className="py-0.5 text-[11px] text-status-warning">{t("approachHeadingRequired")}</p>
       )}
-      <Input label={t("transitionDistance")} type="number" unit="m" value={String(config.transitionDistance ?? 150)}
-        onChange={(e) => update({ transitionDistance: parseFloat(e.target.value) || 150 })} />
-      <Input label={`${t("approachAltitude")} (${t("aboveHome")})`} type="number" unit="m" value={String(config.approachAltitude ?? 50)}
-        onChange={(e) => update({ approachAltitude: parseFloat(e.target.value) || 50 })} />
-      <div className="grid grid-cols-2 gap-2">
-        <Input label={t("descentSpeed")} type="number" unit="m/s" value={String(config.descentSpeed ?? 2)}
-          onChange={(e) => update({ descentSpeed: parseFloat(e.target.value) || 2 })} />
-        <Input label={t("speedMs")} type="number" unit="m/s" value={String(config.speed ?? 8)}
-          onChange={(e) => update({ speed: parseFloat(e.target.value) || 8 })} />
-      </div>
-    </>
+      <PatternNumberRow label={t("transitionDistance")} unit="m" step={5} min={1}
+        value={config.transitionDistance ?? 150} onCommit={(transitionDistance) => update({ transitionDistance })} />
+      <PatternNumberRow label={t("approachAltitude")} hint={t("aboveHome")} unit="m" step={1} min={1}
+        value={config.approachAltitude ?? 50} onCommit={(approachAltitude) => update({ approachAltitude })} />
+      <PatternNumberRow label={t("descentSpeed")} unit="m/s" step={0.1} min={0.1}
+        value={config.descentSpeed ?? 2} onCommit={(descentSpeed) => update({ descentSpeed })} />
+      <PatternNumberRow label={t("speed")} unit="m/s" step={0.5} min={0.1}
+        value={config.speed ?? 8} onCommit={(speed) => update({ speed })} />
+    </div>
   );
 }

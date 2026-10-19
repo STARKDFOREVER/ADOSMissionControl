@@ -11,9 +11,10 @@
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Toggle } from "@/components/ui/toggle";
-import { Select } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { PropertyRow } from "@/components/ui/property-row";
+import { ScrubNumberField } from "@/components/ui/scrub-number-field";
+import { SegmentedControl, type SegmentedOption } from "@/components/ui/segmented-control";
 import { useToast } from "@/components/ui/toast";
 import { useGeofenceStore } from "@/stores/geofence-store";
 import type { FenceType, BreachAction } from "@/stores/geofence-store";
@@ -21,8 +22,12 @@ import { usePatternStore } from "@/stores/pattern-store";
 import { useMissionStore } from "@/stores/mission-store";
 import { useFenceUploadStatus } from "@/hooks/use-upload-status";
 import { Upload, Download, Pentagon, Circle, Trash2, ShieldPlus } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+
+const SECONDARY_BUTTON =
+  "flex h-7 items-center justify-center gap-1.5 rounded border border-border-default px-2 text-[11px] " +
+  "text-text-secondary hover:bg-bg-tertiary hover:text-text-primary transition-colors cursor-pointer " +
+  "disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent";
 
 /**
  * Resolve the boundary the auto-fence should wrap. Prefers an active
@@ -53,13 +58,10 @@ interface GeofenceEditorProps {
 export function GeofenceEditor({ onDrawOnMap }: GeofenceEditorProps) {
   const t = useTranslations("geofence");
   const tCommon = useTranslations("common");
+  const tEditor = useTranslations("planner.inspector.editor");
   const { toast } = useToast();
 
   const [autoFenceBuffer, setAutoFenceBuffer] = useState(50);
-  // The max-altitude field text. Only a positive number reaches the store:
-  // an empty field is not "no ceiling" (that silently disabled the validator's
-  // FENCE_ALT_MAX check), it is an input error.
-  const [maxAltText, setMaxAltText] = useState<string | null>(null);
 
   const enabled = useGeofenceStore((s) => s.enabled);
   const fenceType = useGeofenceStore((s) => s.fenceType);
@@ -78,16 +80,18 @@ export function GeofenceEditor({ onDrawOnMap }: GeofenceEditorProps) {
   const polygonPoints = useGeofenceStore((s) => s.polygonPoints);
   const circleCenter = useGeofenceStore((s) => s.circleCenter);
 
-  const GEOFENCE_TYPE_OPTIONS = useMemo(() => [
-    { value: "circle", label: t("circle") },
-    { value: "polygon", label: t("polygon") },
+  const typeOptions = useMemo<SegmentedOption<FenceType>[]>(() => [
+    { value: "circle", label: t("circle"), icon: <Circle size={11} /> },
+    { value: "polygon", label: t("polygon"), icon: <Pentagon size={11} /> },
   ], [t]);
 
-  const GEOFENCE_ACTION_OPTIONS = useMemo(() => [
-    { value: "RTL", label: t("rtlOrLand") },
-    { value: "LAND", label: t("land") },
-    { value: "REPORT", label: t("report") },
-  ], [t]);
+  // Short segment labels so three options fit the inspector; the full text is
+  // the tooltip.
+  const actionOptions = useMemo<SegmentedOption<BreachAction>[]>(() => [
+    { value: "RTL", label: tEditor("breachRtlShort"), title: t("rtlOrLand") },
+    { value: "LAND", label: tEditor("breachLandShort"), title: t("land") },
+    { value: "REPORT", label: tEditor("breachReportShort"), title: t("report") },
+  ], [t, tEditor]);
 
   const hasFenceGeometry =
     fenceType === "polygon" ? polygonPoints.length >= 3 : circleCenter !== null;
@@ -103,155 +107,139 @@ export function GeofenceEditor({ onDrawOnMap }: GeofenceEditorProps) {
     generateFromBoundary(boundary, autoFenceBuffer);
   };
 
-  const commitMaxAltitude = () => {
-    if (maxAltText === null) return;
-    const v = parseFloat(maxAltText);
-    if (Number.isFinite(v) && v > 0 && v !== maxAltitude) {
-      setMaxAltitude(v);
-    }
-    setMaxAltText(null);
-  };
-
   return (
-    <div className="flex flex-col gap-3 px-3 py-2">
-      <div className="flex items-center justify-between">
-        <Toggle label={t("enableGeofence")} checked={enabled} onChange={setEnabled} />
-        <Badge variant={enabled ? "success" : "neutral"} size="sm">
-          {enabled ? t("active") : t("off")}
-        </Badge>
-      </div>
+    <div className="flex flex-col gap-1">
+      <PropertyRow
+        label={t("enableGeofence")}
+        trailing={
+          <Badge variant={enabled ? "success" : "neutral"} size="sm">
+            {enabled ? t("active") : t("off")}
+          </Badge>
+        }
+      >
+        <Toggle
+          label={t("enableGeofence")}
+          checked={enabled}
+          onChange={setEnabled}
+          className="[&>span]:sr-only"
+        />
+      </PropertyRow>
 
       {/* One-click fence around the current mission/pattern boundary. */}
-      <div className="flex items-end gap-2 border-t border-border-default pt-2">
-        <div className="flex-1">
-          <Input
-            label={t("autoFenceBuffer")}
-            type="number"
-            unit="m"
-            min={0}
-            value={String(autoFenceBuffer)}
-            onChange={(e) => {
-              const v = parseFloat(e.target.value);
-              setAutoFenceBuffer(Number.isFinite(v) && v >= 0 ? v : 0);
-            }}
-            placeholder="50"
-          />
-        </div>
-        <button
-          type="button"
-          onClick={handleAutoFence}
-          title={t("autoFence")}
-          className="flex items-center justify-center gap-1.5 h-8 px-3 text-xs font-mono
-            text-accent-primary border border-accent-primary/30 hover:bg-accent-primary/10
-            transition-colors cursor-pointer whitespace-nowrap"
-        >
-          <ShieldPlus size={12} />
-          {t("autoFence")}
-        </button>
-      </div>
+      <PropertyRow
+        label={t("autoFenceBuffer")}
+        trailing={
+          <button type="button" onClick={handleAutoFence} title={t("autoFence")} className={SECONDARY_BUTTON}>
+            <ShieldPlus size={12} />
+            {t("autoFence")}
+          </button>
+        }
+      >
+        <ScrubNumberField
+          value={autoFenceBuffer}
+          onCommit={setAutoFenceBuffer}
+          min={0}
+          step={5}
+          unit="m"
+          ariaLabel={t("autoFenceBuffer")}
+        />
+      </PropertyRow>
 
       {enabled && (
         <>
-          <Select
-            label={t("type")}
-            options={GEOFENCE_TYPE_OPTIONS}
-            value={fenceType}
-            onChange={(v) => { if (v !== fenceType) setFenceType(v as FenceType); }}
-          />
-          <Input
-            label={t("maxAltitude")}
-            type="number"
-            unit="m"
-            value={maxAltText ?? String(maxAltitude)}
-            onChange={(e) => setMaxAltText(e.target.value)}
-            onBlur={commitMaxAltitude}
-            onKeyDown={(e) => { if (e.key === "Enter") commitMaxAltitude(); }}
-            error={maxAltText !== null && !(parseFloat(maxAltText) > 0) ? t("maxAltitudeRequired") : undefined}
-            placeholder="120"
-          />
-          <Select
-            label={t("fenceAction")}
-            options={GEOFENCE_ACTION_OPTIONS}
-            value={breachAction}
-            onChange={(v) => { if (v !== breachAction) setBreachAction(v as BreachAction); }}
-          />
+          <PropertyRow label={t("type")}>
+            <SegmentedControl
+              value={fenceType}
+              options={typeOptions}
+              onChange={setFenceType}
+              size="sm"
+              stretch
+              ariaLabel={t("type")}
+            />
+          </PropertyRow>
+          {/* Only a positive ceiling reaches the store: an empty field reverts
+              instead of silently disabling the FENCE_ALT_MAX check. */}
+          <PropertyRow label={t("maxAltitude")}>
+            <ScrubNumberField
+              value={maxAltitude}
+              onCommit={setMaxAltitude}
+              min={0.1}
+              step={5}
+              unit="m"
+              ariaLabel={t("maxAltitude")}
+            />
+          </PropertyRow>
+          <PropertyRow label={t("fenceAction")}>
+            <SegmentedControl
+              value={breachAction}
+              options={actionOptions}
+              onChange={setBreachAction}
+              size="sm"
+              stretch
+              ariaLabel={t("fenceAction")}
+            />
+          </PropertyRow>
 
-          {/* Draw on Map button */}
           {onDrawOnMap && (
             <button
+              type="button"
               onClick={() => onDrawOnMap(fenceType === "polygon" ? "polygon" : "circle")}
-              className="flex items-center justify-center gap-2 py-1.5 text-xs font-mono
-                text-accent-primary border border-accent-primary/30 hover:bg-accent-primary/10
-                transition-colors cursor-pointer"
+              className="mt-1 flex h-7 items-center justify-center gap-1.5 rounded border border-accent-primary/40
+                text-[11px] text-accent-primary hover:bg-accent-primary/10 transition-colors cursor-pointer"
             >
               {fenceType === "polygon" ? <Pentagon size={12} /> : <Circle size={12} />}
               {t("drawOnMap")}
             </button>
           )}
 
-          {/* Fence geometry status */}
-          <div className="text-[10px] font-mono text-text-tertiary">
+          <p className="text-[11px] text-text-tertiary">
             {fenceType === "polygon" && polygonPoints.length > 0 && (
               <span>{t("fencePointsDefined", { count: polygonPoints.length })}</span>
             )}
-            {fenceType === "circle" && circleCenter && (
-              <span>{t("circleFenceSet")}</span>
-            )}
-            {!hasFenceGeometry && (
-              <span>{t("noFenceBoundary")}</span>
-            )}
-          </div>
+            {fenceType === "circle" && circleCenter && <span>{t("circleFenceSet")}</span>}
+            {!hasFenceGeometry && <span>{t("noFenceBoundary")}</span>}
+          </p>
 
-          {/* Upload / Download buttons */}
-          <div className="flex gap-2">
+          <div className="flex gap-1">
             <button
+              type="button"
               onClick={() => { void uploadFence().then((r) => { if (!r.success) toast(r.message, "error"); }); }}
               disabled={!hasFenceGeometry}
-              className={cn(
-                "flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-mono transition-colors cursor-pointer",
-                "border border-border-default",
-                hasFenceGeometry
-                  ? "text-text-primary hover:bg-bg-tertiary"
-                  : "text-text-tertiary opacity-50 cursor-not-allowed"
-              )}
+              className={`${SECONDARY_BUTTON} flex-1`}
             >
               <Upload size={12} />
               {uploadState === "uploading" ? t("uploading") : t("uploadFence")}
             </button>
             <button
+              type="button"
               onClick={() => {
                 void downloadFence().then((r) => toast(r.message, r.success ? "success" : "error"));
               }}
-              className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-mono
-                text-text-primary border border-border-default hover:bg-bg-tertiary transition-colors cursor-pointer"
+              className={`${SECONDARY_BUTTON} flex-1`}
             >
               <Download size={12} />
               {t("download")}
             </button>
             <button
+              type="button"
               onClick={() => setConfirmClear(true)}
               disabled={!hasFenceGeometry}
               title={t("clearFence")}
               aria-label={t("clearFence")}
-              className={cn(
-                "flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs font-mono transition-colors cursor-pointer border border-border-default",
-                hasFenceGeometry
-                  ? "text-text-secondary hover:text-status-error hover:border-status-error/40"
-                  : "text-text-tertiary opacity-50 cursor-not-allowed"
-              )}
+              className={`${SECONDARY_BUTTON} hover:text-status-error`}
             >
               <Trash2 size={12} />
             </button>
           </div>
 
           {fenceStatus === "on-aircraft" && (
-            <div className="text-[10px] font-mono text-status-success">{t("fenceUploaded")}</div>
+            <p className="text-[11px] text-status-success">{t("fenceUploaded")}</p>
           )}
           {fenceStatus === "older-on-aircraft" && uploadState !== "error" && (
-            <div className="text-[10px] font-mono text-status-warning">{t("olderFenceOnAircraft")}</div>
+            <p className="text-[11px] text-status-warning">{t("olderFenceOnAircraft")}</p>
           )}
           {uploadState === "error" && (
-            <div className="text-[10px] font-mono text-status-error">{t("uploadFailed")}</div>
+            <p className="text-[11px] text-status-error">{t("uploadFailed")}</p>
           )}
         </>
       )}

@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import type { ReactNode } from "react";
 import { useDefaultCenter } from "@/hooks/use-default-center";
+import { DEFAULT_ZOOM_UNLOCATED } from "@/lib/map-constants";
 
 const MapContainer = dynamic(
   () => import("react-leaflet").then((m) => m.MapContainer),
@@ -30,18 +31,19 @@ interface MapWrapperProps {
 
 export function MapWrapper({
   center,
-  zoom = 12,
+  zoom,
   className = "w-full h-full",
   children,
 }: MapWrapperProps) {
   const defaultCenter = useDefaultCenter();
-  const mapCenter = center ?? defaultCenter;
+  const mapCenter = center ?? defaultCenter.center;
+  const mapZoom = zoom ?? (center || defaultCenter.located ? 12 : DEFAULT_ZOOM_UNLOCATED);
 
   return (
     <div className="isolate w-full h-full">
       <MapContainer
         center={mapCenter}
-        zoom={zoom}
+        zoom={mapZoom}
         className={className}
         zoomControl={false}
         style={{ background: "#0a0a0a" }}

@@ -7,47 +7,44 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Input } from "@/components/ui/input";
-import { MIN_LINE_SPACING_M, parseSpacing } from "@/lib/patterns/types";
+import { MIN_LINE_SPACING_M } from "@/lib/patterns/types";
 import { usePatternStore } from "@/stores/pattern-store";
 import { usePlannerStore } from "@/stores/planner-store";
-import { Route, PenLine } from "lucide-react";
+import { PenLine } from "lucide-react";
+import { PatternNumberRow } from "./PatternNumberRow";
 
 export function CorridorConfig() {
   const t = useTranslations("planner");
   const corridorConfig = usePatternStore((s) => s.corridorConfig);
   const updateCorridorConfig = usePatternStore((s) => s.updateCorridorConfig);
   return (
-    <>
-      <div className="flex items-center gap-1.5 text-[10px] font-mono text-text-tertiary">
-        <Route size={12} />
-        <span>
-          {corridorConfig.pathPoints
-            ? `${corridorConfig.pathPoints.length} ${t("pathPoints")}`
-            : t("drawCorridorHint")}
-        </span>
-      </div>
+    <div className="flex flex-col gap-1">
+      <p className="text-[11px] text-text-tertiary">
+        {corridorConfig.pathPoints
+          ? `${corridorConfig.pathPoints.length} ${t("pathPoints")}`
+          : t("drawCorridorHint")}
+      </p>
       {/* Arm a polygon draw tagged for the pattern, so the completed line feeds
           the corridor centerline (routed by the draw-mode destination tag). */}
       <button
+        type="button"
         onClick={() => usePlannerStore.getState().setMode({ kind: "draw", shape: "polygon", drawingFor: "pattern" })}
-        className="flex items-center justify-center gap-2 py-1.5 text-xs font-mono
-          text-accent-primary border border-accent-primary/30 hover:bg-accent-primary/10
-          transition-colors cursor-pointer"
+        className="flex h-7 w-full items-center justify-center gap-2 rounded-sm border border-border-default text-xs
+          text-text-secondary hover:bg-bg-tertiary transition-colors cursor-pointer"
       >
         <PenLine size={12} />
         {t("drawCorridorPath")}
       </button>
-      <Input label={t("corridorWidth")} type="number" unit="m" value={String(corridorConfig.corridorWidth ?? 50)}
-        onChange={(e) => updateCorridorConfig({ corridorWidth: parseFloat(e.target.value) || 50 })} />
-      <Input label={t("lineSpacing")} type="number" unit="m" min={MIN_LINE_SPACING_M} step={0.1} value={String(corridorConfig.lineSpacing ?? 20)}
-        onChange={(e) => updateCorridorConfig({ lineSpacing: parseSpacing(e.target.value, 20) })} />
-      <div className="grid grid-cols-2 gap-2">
-        <Input label={t("altitudeAboveHome")} type="number" unit="m" value={String(corridorConfig.altitude ?? 50)}
-          onChange={(e) => updateCorridorConfig({ altitude: parseFloat(e.target.value) || 50 })} />
-        <Input label={t("speedMs")} type="number" unit="m/s" value={String(corridorConfig.speed ?? 5)}
-          onChange={(e) => updateCorridorConfig({ speed: parseFloat(e.target.value) || 5 })} />
+      <div className="flex flex-col">
+        <PatternNumberRow label={t("corridorWidth")} unit="m" step={1} min={1} value={corridorConfig.corridorWidth ?? 50}
+          onCommit={(corridorWidth) => updateCorridorConfig({ corridorWidth })} />
+        <PatternNumberRow label={t("lineSpacing")} unit="m" step={0.1} min={MIN_LINE_SPACING_M} value={corridorConfig.lineSpacing ?? 20}
+          onCommit={(lineSpacing) => updateCorridorConfig({ lineSpacing })} />
+        <PatternNumberRow label={t("altitudeAboveHome")} unit="m" step={1} min={1} value={corridorConfig.altitude ?? 50}
+          onCommit={(altitude) => updateCorridorConfig({ altitude })} />
+        <PatternNumberRow label={t("speed")} unit="m/s" step={0.5} min={0.1} value={corridorConfig.speed ?? 5}
+          onCommit={(speed) => updateCorridorConfig({ speed })} />
       </div>
-    </>
+    </div>
   );
 }

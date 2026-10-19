@@ -8,11 +8,13 @@
  */
 "use client";
 
-import { cn } from "@/lib/utils";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 
 export interface BasemapOption {
   value: string;
   label: string;
+  /** Hover text, e.g. the full name behind a short label. */
+  title?: string;
 }
 
 interface BasemapSwitcherProps {
@@ -22,6 +24,8 @@ interface BasemapSwitcherProps {
   /** Stretch each segment to equal width to fill the container. */
   stretch?: boolean;
   className?: string;
+  /** Accessible name for the group. Defaults to the option labels. */
+  ariaLabel?: string;
 }
 
 export function BasemapSwitcher({
@@ -30,25 +34,17 @@ export function BasemapSwitcher({
   onChange,
   stretch,
   className,
+  ariaLabel,
 }: BasemapSwitcherProps) {
   return (
-    <div className={cn("flex gap-1", className)}>
-      {options.map((o) => (
-        <button
-          key={o.value}
-          onClick={() => onChange(o.value)}
-          aria-pressed={o.value === value}
-          className={cn(
-            "h-7 px-2 rounded text-[10px] font-mono font-bold transition-colors cursor-pointer",
-            stretch && "flex-1",
-            o.value === value
-              ? "bg-accent-primary text-bg-primary"
-              : "text-text-secondary hover:text-text-primary border border-border-default",
-          )}
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
+    <SegmentedControl
+      value={value}
+      options={options}
+      onChange={onChange}
+      stretch={stretch}
+      className={className}
+      ariaLabel={ariaLabel ?? options.map((o) => o.label).join(" / ")}
+      segmentClassName="text-[10px] font-mono font-bold"
+    />
   );
 }

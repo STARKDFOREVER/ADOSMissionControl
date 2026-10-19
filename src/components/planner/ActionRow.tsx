@@ -8,7 +8,6 @@
  */
 "use client";
 
-import { useCallback } from "react";
 import { useTranslations } from "next-intl";
 import {
   GripVertical, X, ChevronDown, ChevronRight,
@@ -16,10 +15,10 @@ import {
   Grab, ArrowDownUp, ToggleRight, CornerUpRight, Timer, Ruler, Shield, Home, Hash,
   type LucideIcon,
 } from "lucide-react";
-import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { PropertyRow } from "@/components/ui/property-row";
+import { ScrubNumberField } from "@/components/ui/scrub-number-field";
 import { cn } from "@/lib/utils";
-import { draftText, useSyncedDraft } from "@/hooks/use-synced-draft";
 import type {
   ActionCommand, CommandMissionAction, MissionAction, RawMissionAction,
 } from "@/lib/types";
@@ -162,8 +161,8 @@ function RawActionRow({
           onClick={onToggleExpand}
           className="flex-1 min-w-0 flex items-center gap-1.5 text-left cursor-pointer"
         >
-          <span className="text-[10px] font-mono text-text-primary truncate">{label}</span>
-          <span className="text-[9px] font-mono text-text-tertiary truncate">read-only</span>
+          <span className="text-[11px] font-mono text-text-primary truncate">{label}</span>
+          <span className="text-[11px] text-text-tertiary truncate">{t("actions.readOnly")}</span>
         </button>
         <button onClick={onToggleExpand} className="text-text-tertiary hover:text-text-primary shrink-0 cursor-pointer">
           {expanded ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
@@ -177,7 +176,7 @@ function RawActionRow({
         </button>
       </div>
       {expanded && (
-        <div className="px-2 pb-2 pt-0.5 text-[9px] font-mono text-text-tertiary">
+        <div className="px-2 pb-2 pt-0.5 text-[11px] font-mono text-text-tertiary break-words">
           p1–4: {action.param1}, {action.param2}, {action.param3}, {action.param4} · x/y/z: {action.x}, {action.y}, {action.z} · frame {action.frame}
         </div>
       )}
@@ -193,24 +192,6 @@ function CommandActionRow({
   const Icon = ACTION_ICON[action.command];
   const label = t(`actions.cmd.${action.command}`);
   const summary = summarize(action, targets);
-
-  // Drafts follow the action, so undo/redo never leaves a stale value in a
-  // field for the next blur to write back.
-  const [p1, setP1] = useSyncedDraft(draftText(action.param1));
-  const [p2, setP2] = useSyncedDraft(draftText(action.param2));
-  const [p3, setP3] = useSyncedDraft(draftText(action.param3));
-
-  // Commit a single numeric parameter, clearing it when the field is emptied.
-  const commitField = useCallback(
-    (field: "param1" | "param2" | "param3" | "holdTime", value: string) => {
-      if (field === "holdTime") return; // actions have no hold time
-      if (value === "") { onUpdate({ [field]: undefined }); return; }
-      const num = parseFloat(value);
-      if (!isNaN(num)) onUpdate({ [field]: num });
-    },
-    [onUpdate],
-  );
-
   return (
     <div
       draggable
@@ -227,8 +208,8 @@ function CommandActionRow({
           onClick={onToggleExpand}
           className="flex-1 min-w-0 flex items-center gap-1.5 text-left cursor-pointer"
         >
-          <span className="text-[10px] font-mono text-text-primary truncate">{label}</span>
-          {summary && <span className="text-[9px] font-mono text-text-tertiary truncate">{summary}</span>}
+          <span className="text-[11px] text-text-primary truncate">{label}</span>
+          {summary && <span className="text-[11px] font-mono text-text-tertiary truncate">{summary}</span>}
         </button>
         <button onClick={onToggleExpand} className="text-text-tertiary hover:text-text-primary shrink-0 cursor-pointer">
           {expanded ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
@@ -243,38 +224,30 @@ function CommandActionRow({
       </div>
 
       {expanded && (
-        <div className="px-2 pb-2 pt-0.5 flex flex-col gap-1.5">
+        <div className="px-2 pb-2 pt-0.5 flex flex-col">
           {action.command === "DO_JUMP" ? (
-            <div className="flex flex-col gap-1.5">
-              <Select
-                label={t("actions.jumpTarget")}
-                options={targets.map((tg) => ({ value: tg.id, label: tg.label }))}
+            <>
+              <PropertyRow label={t("actions.jumpTarget")}>
+                <Select ariaLabel={t("actions.jumpTarget")} compact options={targets.map((tg) => ({ value: tg.id, label: tg.label }))}
                 value={action.jumpTargetId ?? ""}
                 onChange={(v) => onUpdate({ jumpTargetId: v })}
-                placeholder={t("actions.jumpTargetPlaceholder")}
-              />
-              <Input
-                label={t("repeat")} type="number" placeholder="0" value={p2}
-                onChange={(e) => setP2(e.target.value)} onBlur={() => commitField("param2", p2)}
-              />
+                placeholder={t("actions.jumpTargetPlaceholder")} />
+              </PropertyRow>
+              <PropertyRow label={t("repeat")}>
+                <ScrubNumberField value={action.param2} step={1} precision={0} placeholder="0" ariaLabel={t("repeat")}
+                  onCommit={(n) => onUpdate({ param2: n })} onClear={() => onUpdate({ param2: undefined })} />
+              </PropertyRow>
               {!action.jumpTargetId && (
-                <span className="text-[9px] text-status-error">{t("actions.jumpNoTarget")}</span>
+                <span className="py-1 text-[11px] text-status-error">{t("actions.jumpNoTarget")}</span>
               )}
-              {p2 !== "" && Number(p2) < 0 && (
-                <span className="text-[9px] text-status-warning">{t("actions.jumpForever")}</span>
+              {(action.param2 ?? 0) < 0 && (
+                <span className="py-1 text-[11px] text-status-warning">{t("actions.jumpForever")}</span>
               )}
-            </div>
+            </>
           ) : POSITION_BEARING_ACTIONS.has(action.command) ? (
             <PositionEditor action={action} onUpdate={onUpdate} />
           ) : (
-            <CommandSpecificEditors
-              cmd={action.command}
-              params={action}
-              localParam1={p1} localParam2={p2} localParam3={p3} localHoldTime=""
-              setLocalParam1={setP1} setLocalParam2={setP2} setLocalParam3={setP3} setLocalHoldTime={() => {}}
-              commitField={commitField}
-              onUpdate={onUpdate}
-            />
+            <CommandSpecificEditors cmd={action.command} params={action} onUpdate={onUpdate} />
           )}
         </div>
       )}
@@ -290,21 +263,20 @@ function PositionEditor({
   action, onUpdate,
 }: { action: CommandMissionAction; onUpdate: (update: Partial<CommandMissionAction>) => void }) {
   const t = useTranslations("planner");
-  const [lat, setLat] = useSyncedDraft(draftText(action.lat));
-  const [lon, setLon] = useSyncedDraft(draftText(action.lon));
-  const [alt, setAlt] = useSyncedDraft(draftText(action.alt));
-  const commit = (field: "lat" | "lon" | "alt", value: string) => {
-    const num = parseFloat(value);
-    if (!isNaN(num)) onUpdate({ [field]: num });
-  };
   return (
-    <div className="grid grid-cols-3 gap-2">
-      <Input label={t("lat")} type="number" step="0.0001" value={lat}
-        onChange={(e) => setLat(e.target.value)} onBlur={() => commit("lat", lat)} />
-      <Input label={t("lon")} type="number" step="0.0001" value={lon}
-        onChange={(e) => setLon(e.target.value)} onBlur={() => commit("lon", lon)} />
-      <Input label={t("altitude")} type="number" unit="m" value={alt}
-        onChange={(e) => setAlt(e.target.value)} onBlur={() => commit("alt", alt)} />
+    <div className="flex flex-col">
+      <PropertyRow label={t("lat")}>
+        <ScrubNumberField value={action.lat} step={0.0001} precision={7} min={-90} max={90}
+          ariaLabel={t("lat")} onCommit={(lat) => onUpdate({ lat })} />
+      </PropertyRow>
+      <PropertyRow label={t("lon")}>
+        <ScrubNumberField value={action.lon} step={0.0001} precision={7} min={-180} max={180}
+          ariaLabel={t("lon")} onCommit={(lon) => onUpdate({ lon })} />
+      </PropertyRow>
+      <PropertyRow label={t("altitude")}>
+        <ScrubNumberField value={action.alt} step={1} unit="m"
+          ariaLabel={t("altitude")} onCommit={(alt) => onUpdate({ alt })} />
+      </PropertyRow>
     </div>
   );
 }

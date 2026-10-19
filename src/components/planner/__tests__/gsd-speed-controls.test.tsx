@@ -38,7 +38,11 @@ describe("GsdSpeedControls", () => {
 
   it("solves altitude from a target GSD and writes it to the survey config", () => {
     render(<GsdSpeedControls camera={camera} sidelapPct={60} frontlapPct={70} />);
-    fireEvent.change(screen.getByLabelText("targetGsd"), { target: { value: "2" } });
+    const field = screen.getByLabelText("targetGsd");
+    fireEvent.change(field, { target: { value: "2" } });
+    // Typing edits a draft; nothing reaches the store until the field commits.
+    expect(usePatternStore.getState().surveyConfig.altitude).toBeUndefined();
+    fireEvent.blur(field);
     // altitude = (2/100) * 12.29 * 5280 / 17.3 ≈ 75
     expect(usePatternStore.getState().surveyConfig.altitude).toBe(75);
   });

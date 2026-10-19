@@ -72,10 +72,14 @@ describe("migrateSettings", () => {
     expect(result.demoMode).toBe(false);
   });
 
-  it("v19 forces offlineTileCaching to false even when v16 set it to true", () => {
+  it("v19 moves the basemap to satellite", () => {
     const result = migrateSettings({}, 0);
-    expect(result.offlineTileCaching).toBe(false);
     expect(result.mapTileSource).toBe("satellite");
+  });
+
+  it("v54 drops the retired tile caching flag", () => {
+    const result = migrateSettings({ offlineTileCaching: true }, 53);
+    expect("offlineTileCaching" in result).toBe(false);
   });
 
   it("v52 drops the stored parameter filter presets", () => {

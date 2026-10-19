@@ -49,6 +49,9 @@ next-env.d.ts
 # cesium static assets (copied from node_modules by predev/prebuild)
 /public/cesium
 
+# vector basemap fonts, sprites and MapLibre worker (scripts/fetch-basemap-assets.mjs)
+/public/basemap-assets
+
 # rust deployer (tools/deploy) build artifacts + cached bootstrap binary
 /tools/deploy/target
 /tools/deploy/ados-deploy

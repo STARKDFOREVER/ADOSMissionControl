@@ -330,5 +330,10 @@ export function migrateSettings(
     // v53: the separate mono theme is retired; dark is now the neutral black ramp.
     if ((state.themeMode as string | undefined) === "mono") state.themeMode = "dark";
   }
+  if (version < 54) {
+    // v54: tiles are cached by the service worker for every basemap, so the
+    // opt-in IndexedDB caching flag has nothing left to switch.
+    delete state.offlineTileCaching;
+  }
   return state as Partial<SettingsStoreState>;
 }

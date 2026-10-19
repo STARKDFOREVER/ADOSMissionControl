@@ -77,14 +77,8 @@ export function WaypointActionTimeline({ waypoint, onUpdate, allowedCommands }: 
   };
 
   return (
-    <div className="flex flex-col gap-1.5 pt-1">
-      <div className="flex items-center gap-2">
-        <div className="h-px flex-1 bg-border-default" />
-        <span className="text-[9px] font-mono uppercase tracking-wider text-text-tertiary">
-          {t("actions.title")}
-        </span>
-        <div className="h-px flex-1 bg-border-default" />
-      </div>
+    // The host section already titles this "Actions", so no heading of its own.
+    <div className="flex flex-col gap-1.5">
 
       {actions.length > 0 && (
         <div className="flex flex-col gap-1 pl-1">
@@ -115,6 +109,8 @@ export function WaypointActionTimeline({ waypoint, onUpdate, allowedCommands }: 
       <Select
         value=""
         placeholder={t("actions.add")}
+        ariaLabel={t("actions.add")}
+        compact
         options={addOptions}
         onChange={(v) => addAction(v as ActionCommand)}
       />

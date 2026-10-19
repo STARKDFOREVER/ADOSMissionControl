@@ -1,16 +1,16 @@
 /**
  * @module LandingPointPicker
  * @description Reusable landing-point coordinate picker for the landing pattern
- * config sections. Provides numeric latitude/longitude inputs plus a
+ * config sections. Provides numeric latitude/longitude rows plus a
  * "Use map center" button that reads the current planner map center.
  * @license GPL-3.0-only
  */
 "use client";
 
 import { useTranslations } from "next-intl";
-import { NumericField } from "@/components/ui/numeric-field";
 import { usePlannerStore } from "@/stores/planner-store";
-import { Plane, Crosshair } from "lucide-react";
+import { Crosshair } from "lucide-react";
+import { PatternNumberRow } from "./PatternNumberRow";
 
 interface LandingPointPickerProps {
   /** Current landing point as [lat, lon], or undefined when not yet set. */
@@ -39,44 +39,23 @@ export function LandingPointPicker({ landingPoint, onChange }: LandingPointPicke
   };
 
   return (
-    <>
-      <div className="flex items-center gap-1.5 text-[10px] font-mono text-text-tertiary">
-        <Plane size={12} />
-        <span>
-          {landingPoint
-            ? `${t("landingPoint")}: ${lat!.toFixed(5)}, ${lon!.toFixed(5)}`
-            : t("setLandingPoint")}
-        </span>
-      </div>
-      <div className="grid grid-cols-2 gap-2">
-        <NumericField
-          label={t("lat")}
-          value={lat}
-          min={-90}
-          max={90}
-          step="any"
-          placeholder="—"
-          onCommit={setLat}
-        />
-        <NumericField
-          label={t("lon")}
-          value={lon}
-          min={-180}
-          max={180}
-          step="any"
-          placeholder="—"
-          onCommit={setLon}
-        />
+    <div className="flex flex-col gap-1 pb-1">
+      {!landingPoint && <p className="text-[11px] text-text-tertiary">{t("setLandingPoint")}</p>}
+      <div className="flex flex-col">
+        <PatternNumberRow label={t("lat")} value={lat} min={-90} max={90} step={0.00001} precision={7}
+          placeholder="—" onCommit={setLat} />
+        <PatternNumberRow label={t("lon")} value={lon} min={-180} max={180} step={0.00001} precision={7}
+          placeholder="—" onCommit={setLon} />
       </div>
       <button
+        type="button"
         onClick={useMapCenter}
-        className="flex items-center justify-center gap-2 py-1.5 text-xs font-mono
-          text-accent-primary border border-accent-primary/30 hover:bg-accent-primary/10
-          transition-colors cursor-pointer"
+        className="flex h-7 w-full items-center justify-center gap-2 rounded-sm border border-border-default text-xs
+          text-text-secondary hover:bg-bg-tertiary transition-colors cursor-pointer"
       >
         <Crosshair size={12} />
         {t("useMapCenter")}
       </button>
-    </>
+    </div>
   );
 }

@@ -78,9 +78,6 @@ export function usePlannerState() {
 
   const {
     activeTool, setActiveTool,
-    panelCollapsed, togglePanel,
-    altProfileCollapsed, toggleAltProfile,
-    expandedWaypointId, setExpandedWaypoint,
     selectedWaypointId, setSelectedWaypoint,
     defaultAlt, defaultSpeed, defaultAcceptRadius, defaultFrame,
     setDefaults,
@@ -88,12 +85,6 @@ export function usePlannerState() {
     useShallow((s) => ({
       activeTool: s.activeTool,
       setActiveTool: s.setActiveTool,
-      panelCollapsed: s.panelCollapsed,
-      togglePanel: s.togglePanel,
-      altProfileCollapsed: s.altProfileCollapsed,
-      toggleAltProfile: s.toggleAltProfile,
-      expandedWaypointId: s.expandedWaypointId,
-      setExpandedWaypoint: s.setExpandedWaypoint,
       selectedWaypointId: s.selectedWaypointId,
       setSelectedWaypoint: s.setSelectedWaypoint,
       defaultAlt: s.defaultAlt,
@@ -148,9 +139,6 @@ export function usePlannerState() {
     canUndo, canRedo, undo, redo, clearMission, setWaypoints,
     // Planner store
     activeTool, setActiveTool,
-    panelCollapsed, togglePanel,
-    altProfileCollapsed, toggleAltProfile,
-    expandedWaypointId, setExpandedWaypoint,
     selectedWaypointId, setSelectedWaypoint,
     defaultAlt, defaultSpeed, defaultAcceptRadius, defaultFrame, setDefaults,
     // Fleet

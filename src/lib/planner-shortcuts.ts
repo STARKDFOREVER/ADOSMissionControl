@@ -55,6 +55,9 @@ export const PLANNER_SHORTCUTS: readonly PlannerShortcut[] = [
   { key: "g", group: "panel", labelKey: "shortcuts.patterns" },
   { key: "i", group: "panel", labelKey: "shortcuts.validation" },
   { key: "/", group: "panel", labelKey: "shortcuts.search" },
+  { key: "[", group: "panel", labelKey: "shortcuts.outline" },
+  { key: "]", group: "panel", labelKey: "shortcuts.inspector" },
+  { key: "\\", group: "panel", labelKey: "shortcuts.focusMap" },
   // ── Overlays ──────────────────────────────────────────────────────────
   { key: "l", group: "overlay", labelKey: "shortcuts.overlays" },
   // ── Edit ──────────────────────────────────────────────────────────────
@@ -65,9 +68,12 @@ export const PLANNER_SHORTCUTS: readonly PlannerShortcut[] = [
   { key: "↑↓←→", group: "edit", labelKey: "shortcuts.nudge" },
   { key: "Del", group: "edit", labelKey: "shortcuts.delete" },
   { key: "Esc", group: "edit", labelKey: "shortcuts.cancel" },
+  { key: "Click", meta: true, group: "edit", labelKey: "shortcuts.multiSelect" },
+  { key: "Click", shift: true, group: "edit", labelKey: "shortcuts.rangeSelect" },
   // ── File ──────────────────────────────────────────────────────────────
   { key: "s", meta: true, group: "file", labelKey: "shortcuts.save" },
   { key: "s", meta: true, shift: true, group: "file", labelKey: "shortcuts.saveAs" },
+  { key: "o", meta: true, group: "file", labelKey: "shortcuts.openPlans" },
   { key: "n", meta: true, group: "file", labelKey: "shortcuts.newPlan", desktopOnly: true },
 ];
 

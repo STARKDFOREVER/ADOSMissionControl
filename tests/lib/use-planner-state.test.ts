@@ -57,10 +57,10 @@ describe("usePlannerState subscriptions", () => {
     const before = renders();
 
     act(() => {
-      usePlannerStore.getState().togglePanel();
+      usePlannerStore.getState().setDefaults({ defaultAlt: usePlannerStore.getState().defaultAlt + 7 });
     });
 
     expect(renders()).toBeGreaterThan(before);
-    expect(hook.result.current.panelCollapsed).toBe(usePlannerStore.getState().panelCollapsed);
+    expect(hook.result.current.defaultAlt).toBe(usePlannerStore.getState().defaultAlt);
   });
 });

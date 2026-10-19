@@ -4,7 +4,7 @@
  * @license GPL-3.0-only
  */
 
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, type Dispatch, type SetStateAction } from "react";
 import { useTranslations } from "next-intl";
 import { usePlanLibraryStore } from "@/stores/plan-library-store";
 import { useDroneManager } from "@/stores/drone-manager";
@@ -37,10 +37,9 @@ interface IODeps {
   isDirty: boolean;
   libAutoSaveTimer: React.MutableRefObject<ReturnType<typeof setTimeout> | null>;
   setWaypoints: (wps: Waypoint[]) => void;
-  setMissionName: (name: string) => void;
-  setSelectedDroneId: (id: string) => void;
+  setMissionName: Dispatch<SetStateAction<string>>;
+  setSelectedDroneId: Dispatch<SetStateAction<string>>;
   setSelectedWaypoint: (id: string | null) => void;
-  setExpandedWaypoint: (id: string | null) => void;
   setShowDownloadConfirm: (show: boolean) => void;
   downloadMission: () => Promise<Waypoint[]>;
   toast: (message: string, status?: "success" | "warning" | "error" | "info") => void;
@@ -50,7 +49,7 @@ export function usePlannerIO(deps: IODeps) {
   const {
     waypoints, missionName, selectedDroneId, activePlanId, isDirty,
     libAutoSaveTimer, setWaypoints, setMissionName, setSelectedDroneId,
-    setSelectedWaypoint, setExpandedWaypoint, setShowDownloadConfirm,
+    setSelectedWaypoint, setShowDownloadConfirm,
     downloadMission, toast,
   } = deps;
   const t = useTranslations("plannerIo");
@@ -113,6 +112,19 @@ export function usePlannerIO(deps: IODeps) {
       }
     })();
   }, [setWaypoints, toast, t, setMissionName, setSelectedDroneId]);
+
+  // The plan name and vehicle live in page state, so a remount (a reload, a
+  // route change) starts them empty while the library still has a plan open.
+  // Seed them from that plan, or the planner bar shows a named plan as
+  // untitled and the dirty check below flags the empty name as an edit.
+  useEffect(() => {
+    if (!activePlanId) return;
+    const plan = usePlanLibraryStore.getState().plans.find((pl) => pl.id === activePlanId);
+    if (!plan) return;
+    setMissionName((current) => current || plan.name);
+    const droneId = plan.metadata.droneId;
+    if (droneId) setSelectedDroneId((current) => current || droneId);
+  }, [activePlanId, setMissionName, setSelectedDroneId]);
 
   // Auto-save to IndexedDB on any planner change, path or geometry. Flushed on
   // unmount rather than cancelled — cancelling discarded up to the last two
@@ -255,9 +267,8 @@ export function usePlannerIO(deps: IODeps) {
     setMissionName(t("untitledPlan"));
     setSelectedDroneId("");
     setSelectedWaypoint(null);
-    setExpandedWaypoint(null);
     toast(t("newPlanCreated"), "info");
-  }, [setSelectedWaypoint, setExpandedWaypoint, toast, t, setMissionName, setSelectedDroneId]);
+  }, [setSelectedWaypoint, toast, t, setMissionName, setSelectedDroneId]);
 
   const handleFocusSearch = useCallback(() => {
     document.dispatchEvent(new CustomEvent("plan-library:focus-search"));

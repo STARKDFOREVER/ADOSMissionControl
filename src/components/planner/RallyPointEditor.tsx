@@ -7,17 +7,29 @@
  */
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
-import { MapPin, Upload, Download, Trash2, Plus } from "lucide-react";
-import { NumericField } from "@/components/ui/numeric-field";
+import { Upload, Download, Trash2, Plus } from "lucide-react";
+import { PropertyRow } from "@/components/ui/property-row";
+import { ScrubNumberField } from "@/components/ui/scrub-number-field";
 import { useRallyStore, type RallyPoint } from "@/stores/rally-store";
 import { usePlannerStore } from "@/stores/planner-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useRallyUploadStatus } from "@/hooks/use-upload-status";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { cn } from "@/lib/utils";
 
-export function RallyPointEditor() {
+const SECONDARY_BUTTON =
+  "flex h-7 items-center justify-center gap-1.5 rounded border border-border-default px-2 text-[11px] " +
+  "text-text-secondary hover:bg-bg-tertiary hover:text-text-primary transition-colors cursor-pointer " +
+  "disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent";
+
+interface RallyPointEditorProps {
+  /** Rally point to highlight and scroll into view (e.g. picked on the map). */
+  focusId?: string | null;
+}
+
+export function RallyPointEditor({ focusId = null }: RallyPointEditorProps = {}) {
   const t = useTranslations("rally");
   const tCommon = useTranslations("common");
   // Rally placement is the single sticky "rally" tool — keep clicking to drop
@@ -31,6 +43,19 @@ export function RallyPointEditor() {
   const clearPoints = useRallyStore((s) => s.clearPoints);
   const uploadRallyPoints = useRallyStore((s) => s.uploadRallyPoints);
   const downloadRallyPoints = useRallyStore((s) => s.downloadRallyPoints);
+
+  // The rally store keeps no selection, so the highlighted row is local. A
+  // new `focusId` from the parent moves it.
+  const [selectedId, setSelectedId] = useState<string | null>(focusId);
+  const [prevFocusId, setPrevFocusId] = useState<string | null>(focusId);
+  if (focusId !== prevFocusId) {
+    setPrevFocusId(focusId);
+    if (focusId) setSelectedId(focusId);
+  }
+  const rowRefs = useRef(new Map<string, HTMLDivElement>());
+  useEffect(() => {
+    if (focusId) rowRefs.current.get(focusId)?.scrollIntoView?.({ block: "nearest" });
+  }, [focusId]);
 
   const [uploading, setUploading] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -72,60 +97,73 @@ export function RallyPointEditor() {
     else void runDownload();
   }, [points.length, runDownload]);
 
+  const registerRow = useCallback((id: string, el: HTMLDivElement | null) => {
+    if (el) rowRefs.current.set(id, el);
+    else rowRefs.current.delete(id);
+  }, []);
+
   return (
-    <div className="flex flex-col gap-2 px-3 py-2">
-      {/* Action buttons */}
-      <div className="flex items-center gap-1.5">
-        <button
-          onClick={() => setActiveTool(addingRallyPoint ? "select" : "rally")}
-          className={`flex items-center gap-1 px-2 py-1 text-[10px] font-mono border cursor-pointer transition-colors ${
-            addingRallyPoint
-              ? "bg-accent-primary/20 border-accent-primary text-accent-primary"
-              : "bg-bg-tertiary border-border-default text-text-secondary hover:text-text-primary"
-          }`}
-        >
-          <Plus size={10} />
-          {t("addRally")}
-        </button>
-        <button
-          onClick={handleUpload}
-          disabled={uploading || points.length === 0 || !canUpload}
-          className="flex items-center gap-1 px-2 py-1 text-[10px] font-mono bg-bg-tertiary border border-border-default text-text-secondary hover:text-text-primary disabled:opacity-40 cursor-pointer transition-colors"
-        >
-          <Upload size={10} />
-          {uploading ? "..." : t("uploadRally")}
-        </button>
-        <button
-          onClick={handleDownload}
-          disabled={downloading || !canDownload}
-          className="flex items-center gap-1 px-2 py-1 text-[10px] font-mono bg-bg-tertiary border border-border-default text-text-secondary hover:text-text-primary disabled:opacity-40 cursor-pointer transition-colors"
-        >
-          <Download size={10} />
-          {downloading ? "..." : t("downloadRally")}
-        </button>
-        <button
-          onClick={() => setConfirmClear(true)}
-          disabled={points.length === 0}
-          title={t("clearRally")}
-          aria-label={t("clearRally")}
-          className="flex items-center gap-1 px-2 py-1 text-[10px] font-mono bg-bg-tertiary border border-border-default text-text-secondary hover:text-status-error disabled:opacity-40 cursor-pointer transition-colors"
-        >
-          <Trash2 size={10} />
-        </button>
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-1">
+        <div className="flex gap-1">
+          <button
+            type="button"
+            onClick={() => setActiveTool(addingRallyPoint ? "select" : "rally")}
+            aria-pressed={addingRallyPoint}
+            className={cn(
+              SECONDARY_BUTTON,
+              "flex-1",
+              addingRallyPoint && "border-accent-primary bg-accent-primary/10 text-accent-primary hover:bg-accent-primary/10 hover:text-accent-primary",
+            )}
+          >
+            <Plus size={12} />
+            {t("addRally")}
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirmClear(true)}
+            disabled={points.length === 0}
+            title={t("clearRally")}
+            aria-label={t("clearRally")}
+            className={cn(SECONDARY_BUTTON, "hover:text-status-error")}
+          >
+            <Trash2 size={12} />
+          </button>
+        </div>
+        <div className="flex gap-1">
+          <button
+            type="button"
+            onClick={handleUpload}
+            disabled={uploading || points.length === 0 || !canUpload}
+            className={cn(SECONDARY_BUTTON, "min-w-0 flex-1")}
+          >
+            <Upload size={12} className="shrink-0" />
+            <span className="truncate">{uploading ? "..." : t("uploadRally")}</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleDownload}
+            disabled={downloading || !canDownload}
+            className={cn(SECONDARY_BUTTON, "min-w-0 flex-1")}
+          >
+            <Download size={12} className="shrink-0" />
+            <span className="truncate">{downloading ? "..." : t("downloadRally")}</span>
+          </button>
+        </div>
       </div>
 
-      {/* Rally point list */}
       {points.length === 0 ? (
-        <p className="text-[10px] text-text-tertiary font-mono py-1">
-          {t("noRallyPoints")}
-        </p>
+        <p className="text-[11px] text-text-tertiary">{t("noRallyPoints")}</p>
       ) : (
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-2">
           {points.map((point, idx) => (
             <RallyPointRow
               key={point.id}
               point={point}
               index={idx}
+              selected={point.id === selectedId}
+              rowRef={registerRow}
+              onSelect={setSelectedId}
               onUpdate={updatePoint}
               onRemove={removePoint}
             />
@@ -134,23 +172,15 @@ export function RallyPointEditor() {
       )}
 
       {uploadStatus === "on-aircraft" && (
-        <p className="text-[10px] text-status-success font-mono">
-          {t("rallyUploaded")}
-        </p>
+        <p className="text-[11px] text-status-success">{t("rallyUploaded")}</p>
       )}
       {uploadStatus === "older-on-aircraft" && (
-        <p className="text-[10px] text-status-warning font-mono">
-          {t("olderRallyOnAircraft")}
-        </p>
+        <p className="text-[11px] text-status-warning">{t("olderRallyOnAircraft")}</p>
       )}
-      {transferError && (
-        <p className="text-[10px] text-status-error font-mono">{transferError}</p>
-      )}
+      {transferError && <p className="text-[11px] text-status-error">{transferError}</p>}
 
       {addingRallyPoint && (
-        <p className="text-[10px] text-accent-primary font-mono animate-pulse">
-          {t("clickToAdd")}
-        </p>
+        <p className="text-[11px] text-accent-primary animate-pulse">{t("clickToAdd")}</p>
       )}
 
       <ConfirmDialog
@@ -178,38 +208,68 @@ export function RallyPointEditor() {
 interface RallyPointRowProps {
   point: RallyPoint;
   index: number;
+  selected: boolean;
+  rowRef: (id: string, el: HTMLDivElement | null) => void;
+  onSelect: (id: string) => void;
   onUpdate: (id: string, update: Partial<RallyPoint>) => void;
   onRemove: (id: string) => void;
 }
 
-function RallyPointRow({ point, index, onUpdate, onRemove }: RallyPointRowProps) {
+function RallyPointRow({ point, index, selected, rowRef, onSelect, onUpdate, onRemove }: RallyPointRowProps) {
+  const t = useTranslations("rally");
+  const tPlanner = useTranslations("planner");
+  const tEditor = useTranslations("planner.inspector.editor");
   // Fields follow the point, so a map drag shows here at once and a later blur
   // never writes the pre-drag coordinates back.
   return (
-    <div className="flex items-start gap-1.5 p-1.5 bg-bg-tertiary/50 border border-border-default">
-      {/* Index badge */}
-      <div className="flex items-center justify-center w-5 h-5 shrink-0 mt-0.5">
-        <MapPin size={12} className="text-status-warning" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <span className="text-[10px] font-mono font-semibold text-text-secondary">
-          R{index + 1}
+    <div
+      ref={(el) => rowRef(point.id, el)}
+      data-selected={selected || undefined}
+      aria-current={selected ? "true" : undefined}
+      onClick={() => onSelect(point.id)}
+      className={cn(
+        "-mx-1 flex flex-col rounded px-1 pb-1 transition-colors",
+        selected ? "bg-accent-primary/10" : "hover:bg-bg-tertiary/50",
+      )}
+    >
+      <div className="flex min-h-7 items-center gap-2">
+        <span
+          className={cn(
+            "flex h-4 min-w-4 shrink-0 items-center justify-center rounded px-1 font-mono text-[11px]",
+            selected ? "bg-accent-primary text-accent-foreground" : "bg-bg-tertiary text-text-secondary",
+          )}
+        >
+          {index + 1}
         </span>
-        <div className="grid grid-cols-3 gap-1 mt-1">
-          <NumericField label="Lat" step="0.0001" min={-90} max={90} value={point.lat}
-            onCommit={(lat) => onUpdate(point.id, { lat })} />
-          <NumericField label="Lon" step="0.0001" min={-180} max={180} value={point.lon}
-            onCommit={(lon) => onUpdate(point.id, { lon })} />
-          <NumericField label="Alt" unit="m" min={0} value={point.alt}
-            onCommit={(alt) => onUpdate(point.id, { alt })} />
-        </div>
+        <span className="shrink-0 text-xs text-text-primary">{t("rallyNum", { num: index + 1 })}</span>
+        <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-text-tertiary">
+          {point.lat.toFixed(5)}, {point.lon.toFixed(5)}
+        </span>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove(point.id);
+          }}
+          title={tEditor("removeRallyPoint")}
+          aria-label={tEditor("removeRallyPoint")}
+          className="shrink-0 text-text-tertiary hover:text-status-error transition-colors cursor-pointer"
+        >
+          <Trash2 size={12} />
+        </button>
       </div>
-      <button
-        onClick={() => onRemove(point.id)}
-        className="text-text-tertiary hover:text-status-error transition-colors shrink-0 mt-0.5 cursor-pointer"
-      >
-        <Trash2 size={12} />
-      </button>
+      <PropertyRow label={tPlanner("lat")}>
+        <ScrubNumberField value={point.lat} step={0.0001} precision={7} min={-90} max={90}
+          ariaLabel={tPlanner("lat")} onCommit={(lat) => onUpdate(point.id, { lat })} />
+      </PropertyRow>
+      <PropertyRow label={tPlanner("lon")}>
+        <ScrubNumberField value={point.lon} step={0.0001} precision={7} min={-180} max={180}
+          ariaLabel={tPlanner("lon")} onCommit={(lon) => onUpdate(point.id, { lon })} />
+      </PropertyRow>
+      <PropertyRow label={t("altitude")}>
+        <ScrubNumberField value={point.alt} step={1} min={0} unit="m"
+          ariaLabel={t("altitude")} onCommit={(alt) => onUpdate(point.id, { alt })} />
+      </PropertyRow>
     </div>
   );
 }

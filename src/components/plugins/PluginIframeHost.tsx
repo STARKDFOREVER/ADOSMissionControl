@@ -145,6 +145,11 @@ export function PluginIframeHost({
     // The frame must not leak the operator's URL (which carries node ids)
     // to anything it references.
     iframe.setAttribute("referrerpolicy", "no-referrer");
+    // The frame document declares `color-scheme: dark light`. A browser paints
+    // an embedded document opaque whenever its colour scheme differs from the
+    // iframe element's, so without the same declaration here a transparent
+    // overlay plugin (the `map.overlay` slot) blanked the map underneath it.
+    iframe.style.colorScheme = "dark light";
     container.appendChild(iframe);
     iframeRef.current = iframe;
     return () => {

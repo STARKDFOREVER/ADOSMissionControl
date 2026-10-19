@@ -12,8 +12,21 @@ import type { Jurisdiction } from "@/lib/jurisdiction";
 
 export type { Jurisdiction };
 
-/** `"custom"` = operator-supplied tile URL template (`customTileUrl`). */
-export type MapTileSource = "osm" | "satellite" | "terrain" | "dark" | "custom";
+/**
+ * Basemap id. `"custom"` = operator-supplied tile URL template
+ * (`customTileUrl`); `"streets-dark"`/`"streets-light"` = the self-hosted
+ * vector basemap; `"field-pack"` = a vector tile pack served by the paired
+ * ground agent.
+ */
+export type MapTileSource =
+  | "osm"
+  | "satellite"
+  | "terrain"
+  | "dark"
+  | "streets-dark"
+  | "streets-light"
+  | "custom"
+  | "field-pack";
 export type UnitSystem = "metric" | "imperial";
 
 /**

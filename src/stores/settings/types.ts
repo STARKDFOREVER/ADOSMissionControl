@@ -103,7 +103,6 @@ export interface SettingsStoreState {
    * looks exactly like clear airspace.
    */
   noFlyRegion: string | null;
-  offlineTileCaching: boolean;
   locale: string;
   themeMode: ThemeMode;
   accentColor: AccentColor;
@@ -199,7 +198,6 @@ export interface SettingsStoreState {
   setShowNoFlyZones: (show: boolean) => void;
   /** Set the no-fly dataset region, or null to clear it. */
   setNoFlyRegion: (region: string | null) => void;
-  setOfflineTileCaching: (enabled: boolean) => void;
   setGuidanceHdgLength: (v: number) => void;
   setGuidanceHdgWidth: (v: number) => void;
   setGuidanceHdgLineType: (v: GuidanceLineType) => void;

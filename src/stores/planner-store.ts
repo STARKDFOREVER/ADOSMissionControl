@@ -1,8 +1,9 @@
 /**
  * @module planner-store
  * @description Zustand store for mission planner UI state.
- * Manages active tool selection, panel visibility, waypoint selection/expansion,
- * and default values for new waypoints (altitude, speed, accept radius, frame).
+ * Manages active tool selection, the side panels, dock and inspector target,
+ * waypoint selection, the last map view, and default values for new waypoints
+ * (altitude, speed, accept radius, frame).
  * @license GPL-3.0-only
  */
 
@@ -21,6 +22,26 @@ import {
 } from "@/lib/planner-mode";
 import { useDrawingStore } from "./drawing-store";
 import { usePatternStore } from "./pattern-store";
+import { DEFAULT_ZOOM_UNLOCATED } from "@/lib/map-constants";
+
+/** Dock tabs, in display order. */
+export const DOCK_TABS = ["altitude", "terrain", "issues", "energy", "site", "checklist"] as const;
+export type DockTab = (typeof DOCK_TABS)[number];
+
+/**
+ * What the inspector shows when no waypoint is selected. A waypoint selection
+ * (one → Waypoint, several → Batch) always wins over this; it is what the
+ * outline, a shortcut or a menu item last pointed the inspector at.
+ */
+export type InspectorTarget =
+  | { kind: "mission" }
+  | { kind: "pattern" }
+  | { kind: "geofence" }
+  | { kind: "rally"; id: string | null }
+  | { kind: "poi"; id: string | null }
+  | { kind: "transform" };
+
+const MISSION_TARGET: InspectorTarget = { kind: "mission" };
 
 interface PlannerStoreState {
   /**
@@ -35,12 +56,20 @@ interface PlannerStoreState {
    * every transition so existing consumers can keep reading it unchanged.
    */
   activeTool: PlannerTool;
-  /** Whether the right-side mission panel is collapsed. */
-  panelCollapsed: boolean;
-  /** Whether the altitude profile chart is collapsed. */
-  altProfileCollapsed: boolean;
-  /** ID of the waypoint whose inline editor is expanded, or null. */
-  expandedWaypointId: string | null;
+  /** Whether the right-side inspector is open. Closed hides it without unmounting. */
+  inspectorOpen: boolean;
+  /** Whether the left-side plan outline is open. */
+  outlineOpen: boolean;
+  /** Whether the bottom dock drawer is expanded (collapsed shows the stats strip). */
+  dockOpen: boolean;
+  /** The dock tab shown when the drawer is expanded. */
+  dockTab: DockTab;
+  /** What the inspector edits when no waypoint is selected. */
+  inspectorTarget: InspectorTarget;
+  /** Open state of persisted collapsible inspector sections, by key. */
+  sectionOpen: Record<string, boolean>;
+  /** Whether the plan library sheet is shown over the map while a plan is open. */
+  librarySheetOpen: boolean;
   /** ID of the currently selected waypoint, or null. */
   selectedWaypointId: string | null;
   /** IDs of waypoints selected for batch editing. */
@@ -59,8 +88,6 @@ interface PlannerStoreState {
   fitRequestTs: number;
   /** Pan-to-point request (null = none). PlannerMap watches this and recenters. */
   panRequest: { lat: number; lon: number; ts: number } | null;
-  /** Whether the pattern editor section is open in the right panel. */
-  patternSectionOpen: boolean;
   /** Current map center for features that need map position (e.g. Quick Rect). */
   mapCenter: [number, number];
   /** Current map viewport bounds (null until the map first reports them). */
@@ -85,9 +112,19 @@ interface PlannerStoreState {
    * mode itself (not read from a sibling store at click time).
    */
   armDatum: (pattern: DatumPattern) => void;
-  togglePanel: () => void;
-  toggleAltProfile: () => void;
-  setExpandedWaypoint: (id: string | null) => void;
+  toggleInspector: () => void;
+  toggleOutline: () => void;
+  /** Toggle both side panels together: closes both when either is open. */
+  togglePanels: () => void;
+  /**
+   * Show the dock on `tab`. With `open` omitted, a second call on the tab that
+   * is already showing collapses the drawer (the T / I shortcut behaviour).
+   */
+  setDock: (tab: DockTab, open?: boolean) => void;
+  /** Point the inspector at a target. Any non-mission target clears the waypoint selection. */
+  setInspectorTarget: (target: InspectorTarget) => void;
+  setSectionOpen: (key: string, open: boolean) => void;
+  setLibrarySheetOpen: (open: boolean) => void;
   setSelectedWaypoint: (id: string | null) => void;
   /** Toggle a waypoint in multi-selection (Ctrl+click). */
   toggleWaypointSelection: (id: string) => void;
@@ -104,8 +141,8 @@ interface PlannerStoreState {
   requestPan: (lat: number, lon: number) => void;
   /** Reset pan request after the map has processed it. */
   clearPanRequest: () => void;
-  /** Set pattern section open/closed. */
-  setPatternSectionOpen: (open: boolean) => void;
+  /** Clear both the single and the multi selection. */
+  clearSelection: () => void;
   /** Update current map center. */
   setMapCenter: (center: [number, number]) => void;
   /** Update current map viewport bounds + zoom (from move/zoom events). */
@@ -143,9 +180,13 @@ export const usePlannerStore = create<PlannerStoreState>()(
   const state: PlannerStoreState = {
   mode: DEFAULT_PLANNER_MODE,
   activeTool: "select",
-  panelCollapsed: false,
-  altProfileCollapsed: true,
-  expandedWaypointId: null,
+  inspectorOpen: true,
+  outlineOpen: typeof window !== "undefined" && window.innerWidth >= 1280,
+  dockOpen: false,
+  dockTab: "altitude",
+  inspectorTarget: MISSION_TARGET,
+  sectionOpen: {},
+  librarySheetOpen: false,
   selectedWaypointId: null,
   selectedWaypointIds: [],
   selectionMode: "single",
@@ -155,10 +196,9 @@ export const usePlannerStore = create<PlannerStoreState>()(
   defaultFrame: "relative",
   fitRequestTs: 0,
   panRequest: null,
-  patternSectionOpen: false,
   mapCenter: [0, 0],
   mapBounds: null,
-  mapZoom: 13,
+  mapZoom: DEFAULT_ZOOM_UNLOCATED,
 
   setActiveTool: (tool) => {
     const mode = usePlannerStore.getState().mode;
@@ -176,9 +216,26 @@ export const usePlannerStore = create<PlannerStoreState>()(
   },
   setMode: (mode) => applyMode(mode),
   armDatum: (pattern) => applyMode(transition(usePlannerStore.getState().mode, { type: "armDatum", pattern })),
-  togglePanel: () => set((s) => ({ panelCollapsed: !s.panelCollapsed })),
-  toggleAltProfile: () => set((s) => ({ altProfileCollapsed: !s.altProfileCollapsed })),
-  setExpandedWaypoint: (expandedWaypointId) => set({ expandedWaypointId }),
+  toggleInspector: () => set((s) => ({ inspectorOpen: !s.inspectorOpen })),
+  toggleOutline: () => set((s) => ({ outlineOpen: !s.outlineOpen })),
+  togglePanels: () =>
+    set((s) => {
+      const open = !(s.inspectorOpen || s.outlineOpen);
+      return { inspectorOpen: open, outlineOpen: open };
+    }),
+  setDock: (dockTab, open) =>
+    set((s) => ({
+      dockTab,
+      dockOpen: open ?? !(s.dockOpen && s.dockTab === dockTab),
+    })),
+  setInspectorTarget: (inspectorTarget) =>
+    set(
+      inspectorTarget.kind === "mission"
+        ? { inspectorTarget }
+        : { inspectorTarget, selectedWaypointId: null, selectedWaypointIds: [], selectionMode: "single" },
+    ),
+  setSectionOpen: (key, open) => set((s) => ({ sectionOpen: { ...s.sectionOpen, [key]: open } })),
+  setLibrarySheetOpen: (librarySheetOpen) => set({ librarySheetOpen }),
   setSelectedWaypoint: (selectedWaypointId) => set({ selectedWaypointId }),
   toggleWaypointSelection: (id) =>
     set((s) => {
@@ -204,7 +261,7 @@ export const usePlannerStore = create<PlannerStoreState>()(
   clearFitRequest: () => set({ fitRequestTs: 0 }),
   requestPan: (lat, lon) => set({ panRequest: { lat, lon, ts: Date.now() } }),
   clearPanRequest: () => set({ panRequest: null }),
-  setPatternSectionOpen: (patternSectionOpen) => set({ patternSectionOpen }),
+  clearSelection: () => set({ selectedWaypointId: null, selectedWaypointIds: [], selectionMode: "single" }),
   setMapCenter: (mapCenter) => set({ mapCenter }),
   setMapView: (mapBounds, mapZoom) => set({ mapBounds, mapZoom }),
   };
@@ -213,12 +270,22 @@ export const usePlannerStore = create<PlannerStoreState>()(
     {
       name: PLANNER_STORE_KEY,
       storage: createJSONStorage(indexedDBStorage.storage),
-      version: 2,
+      version: 3,
       partialize: (state) => ({
         defaultAlt: state.defaultAlt,
         defaultSpeed: state.defaultSpeed,
         defaultAcceptRadius: state.defaultAcceptRadius,
         defaultFrame: state.defaultFrame,
+        // The last map view, so the planner reopens where the operator left it.
+        mapCenter: state.mapCenter,
+        mapZoom: state.mapZoom,
+        // Panel layout: which side panels and dock are open, and which
+        // collapsible inspector sections the operator left open.
+        inspectorOpen: state.inspectorOpen,
+        outlineOpen: state.outlineOpen,
+        dockOpen: state.dockOpen,
+        dockTab: state.dockTab,
+        sectionOpen: state.sectionOpen,
       }),
       migrate: (persisted, version) => {
         const state = persisted as Record<string, unknown>;
@@ -231,6 +298,9 @@ export const usePlannerStore = create<PlannerStoreState>()(
           // older payload). The persisted defaults are preserved untouched.
           state.mode = DEFAULT_PLANNER_MODE;
         }
+        // v3 added the persisted map view and panel layout. Older payloads
+        // simply lack them, so the store defaults fill in: the map opens
+        // unlocated or at the GPS fix, and the panels take their defaults.
         return state as Partial<PlannerStoreState>;
       },
     }

@@ -7,6 +7,7 @@ import { Analytics } from "@/components/analytics/Analytics";
 import { LocalStoreHydrator } from "@/components/history/LocalStoreHydrator";
 import { StorageFailureAlerts } from "@/components/history/StorageFailureAlerts";
 import { PluginLifecycleUiHost } from "@/components/plugins/install-dialog/use-plugin-lifecycle-ui";
+import { ServiceWorkerRegistrar } from "@/components/shell/ServiceWorkerRegistrar";
 
 import ConvexClientProvider from "./ConvexClientProvider";
 import { ConvexAuthNextjsServerProvider } from "@convex-dev/auth/nextjs/server";
@@ -50,6 +51,7 @@ export default function RootLayout({
         </ConvexClientProvider>
         <LocalStoreHydrator />
         <Analytics />
+        <ServiceWorkerRegistrar />
       </body>
     </html>
   );

@@ -45,12 +45,19 @@ interface FlightPlanLibraryProps {
   isDownloading?: boolean;
   /** Whether any drone is connected */
   hasDrone?: boolean;
+  /**
+   * "sheet" renders the library over the map while a plan is open: it never
+   * collapses to a strip, and its collapse button calls `onClose` instead.
+   */
+  presentation?: "panel" | "sheet";
+  /** Close the sheet (sheet presentation only). */
+  onClose?: () => void;
 }
 
 /** The workspace-replacing action waiting on the unsaved-changes answer. */
 type PendingAction = { kind: "switch"; planId: string } | { kind: "new" } | { kind: "import" };
 
-export function FlightPlanLibrary({ context, onPlanLoaded, onSave, onPlanRenamed, onDownloadFromDrone, isDownloading, hasDrone }: FlightPlanLibraryProps) {
+export function FlightPlanLibrary({ context, onPlanLoaded, onSave, onPlanRenamed, onDownloadFromDrone, isDownloading, hasDrone, presentation = "panel", onClose }: FlightPlanLibraryProps) {
   const t = useTranslations("library");
   const plans = usePlanLibraryStore((s) => s.plans);
   const folders = usePlanLibraryStore((s) => s.folders);
@@ -190,7 +197,8 @@ export function FlightPlanLibrary({ context, onPlanLoaded, onSave, onPlanRenamed
     [createPlan, onPlanLoaded, toast, t]
   );
 
-  if (libraryCollapsed) {
+  const sheet = presentation === "sheet";
+  if (libraryCollapsed && !sheet) {
     return (
       <div className="w-10 shrink-0 flex flex-col items-center h-full border-r border-border-default bg-bg-secondary">
         <button
@@ -206,8 +214,8 @@ export function FlightPlanLibrary({ context, onPlanLoaded, onSave, onPlanRenamed
 
   return (
     <>
-      <div className="w-64 shrink-0 flex flex-col h-full border-r border-border-default bg-bg-secondary">
-        <PlanLibraryHeader onNew={handleNewPlan} onCollapse={toggleLibrary} />
+      <div className={`${context === "plan" ? "w-80" : "w-64"} shrink-0 flex flex-col h-full border-r border-border-default bg-bg-secondary${sheet ? " shadow-2xl" : ""}`}>
+        <PlanLibraryHeader onNew={handleNewPlan} onCollapse={sheet && onClose ? onClose : toggleLibrary} />
         <PlanSearchBar />
 
         <div className="flex-1 overflow-y-auto">

@@ -1,18 +1,20 @@
 /**
  * @module SarConfigSections
- * @description SAR pattern configuration UIs — Expanding Square, Sector Search, Parallel Track.
+ * @description SAR pattern configuration UIs: expanding square, sector search, parallel track.
  * Extracted from PatternConfigSections.tsx.
  * @license GPL-3.0-only
  */
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Input } from "@/components/ui/input";
-import { MIN_LINE_SPACING_M, parseSpacing } from "@/lib/patterns/types";
+import { MIN_LINE_SPACING_M } from "@/lib/patterns/types";
+import { PropertyRow } from "@/components/ui/property-row";
 import { usePatternStore } from "@/stores/pattern-store";
 import { usePlannerStore } from "@/stores/planner-store";
 import type { DatumPattern } from "@/lib/planner-mode";
-import { Search, Crosshair } from "lucide-react";
+import { Crosshair } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { PatternNumberRow } from "./PatternNumberRow";
 
 /**
  * Arms datum placement for this section's search pattern, so the next map click
@@ -21,103 +23,113 @@ import { Search, Crosshair } from "lucide-react";
  * state.
  */
 function SetDatumButton({ pattern }: { pattern: DatumPattern }) {
+  const te = useTranslations("planner.inspector.editor");
   const armed = usePlannerStore((s) => s.activeTool === "datum");
   const armDatum = usePlannerStore((s) => s.armDatum);
   const setActiveTool = usePlannerStore((s) => s.setActiveTool);
   return (
     <button
+      type="button"
+      aria-pressed={armed}
       onClick={() => (armed ? setActiveTool("select") : armDatum(pattern))}
-      className={`flex items-center gap-1 px-2 py-1 text-[10px] font-mono border cursor-pointer transition-colors ${
+      className={cn(
+        "flex h-7 w-full items-center justify-center gap-2 rounded-sm border text-xs transition-colors cursor-pointer",
         armed
-          ? "bg-accent-primary/20 border-accent-primary text-accent-primary animate-pulse"
-          : "bg-bg-tertiary border-border-default text-text-secondary hover:text-text-primary"
-      }`}
+          ? "border-accent-primary bg-accent-primary/15 text-accent-primary"
+          : "border-border-default text-text-secondary hover:bg-bg-tertiary",
+      )}
     >
-      <Crosshair size={10} />
-      {armed ? "Click map to set point" : "Set on map"}
+      <Crosshair size={12} />
+      {armed ? te("clickMapToSetPoint") : te("setOnMap")}
     </button>
+  );
+}
+
+/** The search datum (or start point) as a row, or the hint to place one. */
+function PointRow({ label, point, emptyHint }: { label: string; point: [number, number] | undefined; emptyHint: string }) {
+  if (!point) return <p className="py-1 text-[11px] text-text-tertiary">{emptyHint}</p>;
+  return (
+    <PropertyRow label={label}>
+      <span className="block truncate font-mono text-xs text-text-primary">
+        {point[0].toFixed(4)}, {point[1].toFixed(4)}
+      </span>
+    </PropertyRow>
   );
 }
 
 export function SarExpandingSquareConfig() {
   const t = useTranslations("planner");
+  const te = useTranslations("planner.inspector.editor");
   const config = usePatternStore((s) => s.sarExpandingSquareConfig);
   const update = usePatternStore((s) => s.updateSarExpandingSquareConfig);
   return (
-    <>
-      <div className="flex items-center gap-1.5 text-[10px] font-mono text-text-tertiary">
-        <Search size={12} />
-        <span>{config.center ? `Datum: ${config.center[0].toFixed(4)}, ${config.center[1].toFixed(4)}` : t("clickMapSetDatum")}</span>
-      </div>
+    <div className="flex flex-col">
+      <PointRow label={te("datum")} point={config.center} emptyHint={t("clickMapSetDatum")} />
       <SetDatumButton pattern="expandingSquare" />
-      <Input label={t("legSpacing")} type="number" unit="m" min={MIN_LINE_SPACING_M} step={0.1} value={String(config.legSpacing ?? 50)}
-        onChange={(e) => update({ legSpacing: parseSpacing(e.target.value, 50) })} />
-      <Input label={t("maxLegs")} type="number" value={String(config.maxLegs ?? 20)}
-        onChange={(e) => update({ maxLegs: parseInt(e.target.value) || 20 })} />
-      <Input label={t("startBearing")} type="number" unit="deg" value={String(config.startBearing ?? 0)}
-        onChange={(e) => update({ startBearing: parseFloat(e.target.value) || 0 })} />
-      <div className="grid grid-cols-2 gap-2">
-        <Input label={t("altitudeAboveHome")} type="number" unit="m" value={String(config.altitude ?? 50)}
-          onChange={(e) => update({ altitude: parseFloat(e.target.value) || 50 })} />
-        <Input label={t("speedMs")} type="number" unit="m/s" value={String(config.speed ?? 5)}
-          onChange={(e) => update({ speed: parseFloat(e.target.value) || 5 })} />
+      <div className="mt-1 flex flex-col">
+        <PatternNumberRow label={t("legSpacing")} unit="m" step={0.1} min={MIN_LINE_SPACING_M}
+          value={config.legSpacing ?? 50} onCommit={(legSpacing) => update({ legSpacing })} />
+        <PatternNumberRow label={t("maxLegs")} step={1} min={1} precision={0}
+          value={config.maxLegs ?? 20} onCommit={(maxLegs) => update({ maxLegs })} />
+        <PatternNumberRow label={t("startBearing")} unit="deg" step={1} min={0} max={360}
+          value={config.startBearing ?? 0} onCommit={(startBearing) => update({ startBearing })} />
+        <PatternNumberRow label={t("altitudeAboveHome")} unit="m" step={1} min={1}
+          value={config.altitude ?? 50} onCommit={(altitude) => update({ altitude })} />
+        <PatternNumberRow label={t("speed")} unit="m/s" step={0.5} min={0.1}
+          value={config.speed ?? 5} onCommit={(speed) => update({ speed })} />
       </div>
-    </>
+    </div>
   );
 }
 
 export function SarSectorSearchConfig() {
   const t = useTranslations("planner");
+  const te = useTranslations("planner.inspector.editor");
   const config = usePatternStore((s) => s.sarSectorSearchConfig);
   const update = usePatternStore((s) => s.updateSarSectorSearchConfig);
   return (
-    <>
-      <div className="flex items-center gap-1.5 text-[10px] font-mono text-text-tertiary">
-        <Search size={12} />
-        <span>{config.center ? `Datum: ${config.center[0].toFixed(4)}, ${config.center[1].toFixed(4)}` : t("clickMapSetDatum")}</span>
-      </div>
+    <div className="flex flex-col">
+      <PointRow label={te("datum")} point={config.center} emptyHint={t("clickMapSetDatum")} />
       <SetDatumButton pattern="sectorSearch" />
-      <Input label={t("searchRadius")} type="number" unit="m" value={String(config.radius ?? 200)}
-        onChange={(e) => update({ radius: parseFloat(e.target.value) || 200 })} />
-      <Input label={t("sweeps")} type="number" value={String(config.sweeps ?? 3)}
-        onChange={(e) => update({ sweeps: parseInt(e.target.value) || 3 })} />
-      <Input label={t("startBearing")} type="number" unit="deg" value={String(config.startBearing ?? 0)}
-        onChange={(e) => update({ startBearing: parseFloat(e.target.value) || 0 })} />
-      <div className="grid grid-cols-2 gap-2">
-        <Input label={t("altitudeAboveHome")} type="number" unit="m" value={String(config.altitude ?? 50)}
-          onChange={(e) => update({ altitude: parseFloat(e.target.value) || 50 })} />
-        <Input label={t("speedMs")} type="number" unit="m/s" value={String(config.speed ?? 5)}
-          onChange={(e) => update({ speed: parseFloat(e.target.value) || 5 })} />
+      <div className="mt-1 flex flex-col">
+        <PatternNumberRow label={t("searchRadius")} unit="m" step={5} min={1}
+          value={config.radius ?? 200} onCommit={(radius) => update({ radius })} />
+        <PatternNumberRow label={t("sweeps")} step={1} min={1} precision={0}
+          value={config.sweeps ?? 3} onCommit={(sweeps) => update({ sweeps })} />
+        <PatternNumberRow label={t("startBearing")} unit="deg" step={1} min={0} max={360}
+          value={config.startBearing ?? 0} onCommit={(startBearing) => update({ startBearing })} />
+        <PatternNumberRow label={t("altitudeAboveHome")} unit="m" step={1} min={1}
+          value={config.altitude ?? 50} onCommit={(altitude) => update({ altitude })} />
+        <PatternNumberRow label={t("speed")} unit="m/s" step={0.5} min={0.1}
+          value={config.speed ?? 5} onCommit={(speed) => update({ speed })} />
       </div>
-    </>
+    </div>
   );
 }
 
 export function SarParallelTrackConfig() {
   const t = useTranslations("planner");
+  const te = useTranslations("planner.inspector.editor");
   const config = usePatternStore((s) => s.sarParallelTrackConfig);
   const update = usePatternStore((s) => s.updateSarParallelTrackConfig);
   return (
-    <>
-      <div className="flex items-center gap-1.5 text-[10px] font-mono text-text-tertiary">
-        <Search size={12} />
-        <span>{config.startPoint ? `Start: ${config.startPoint[0].toFixed(4)}, ${config.startPoint[1].toFixed(4)}` : t("clickMapSetStart")}</span>
-      </div>
+    <div className="flex flex-col">
+      <PointRow label={te("start")} point={config.startPoint} emptyHint={t("clickMapSetStart")} />
       <SetDatumButton pattern="parallelTrack" />
-      <Input label={t("trackLength")} type="number" unit="m" value={String(config.trackLength ?? 500)}
-        onChange={(e) => update({ trackLength: parseFloat(e.target.value) || 500 })} />
-      <Input label={t("trackSpacing")} type="number" unit="m" min={MIN_LINE_SPACING_M} step={0.1} value={String(config.trackSpacing ?? 50)}
-        onChange={(e) => update({ trackSpacing: parseSpacing(e.target.value, 50) })} />
-      <Input label={t("trackCount")} type="number" value={String(config.trackCount ?? 10)}
-        onChange={(e) => update({ trackCount: parseInt(e.target.value) || 10 })} />
-      <Input label={t("bearing")} type="number" unit="deg" value={String(config.bearing ?? 0)}
-        onChange={(e) => update({ bearing: parseFloat(e.target.value) || 0 })} />
-      <div className="grid grid-cols-2 gap-2">
-        <Input label={t("altitudeAboveHome")} type="number" unit="m" value={String(config.altitude ?? 50)}
-          onChange={(e) => update({ altitude: parseFloat(e.target.value) || 50 })} />
-        <Input label={t("speedMs")} type="number" unit="m/s" value={String(config.speed ?? 5)}
-          onChange={(e) => update({ speed: parseFloat(e.target.value) || 5 })} />
+      <div className="mt-1 flex flex-col">
+        <PatternNumberRow label={t("trackLength")} unit="m" step={10} min={1}
+          value={config.trackLength ?? 500} onCommit={(trackLength) => update({ trackLength })} />
+        <PatternNumberRow label={t("trackSpacing")} unit="m" step={0.1} min={MIN_LINE_SPACING_M}
+          value={config.trackSpacing ?? 50} onCommit={(trackSpacing) => update({ trackSpacing })} />
+        <PatternNumberRow label={t("trackCount")} step={1} min={1} precision={0}
+          value={config.trackCount ?? 10} onCommit={(trackCount) => update({ trackCount })} />
+        <PatternNumberRow label={t("bearing")} unit="deg" step={1} min={0} max={360}
+          value={config.bearing ?? 0} onCommit={(bearing) => update({ bearing })} />
+        <PatternNumberRow label={t("altitudeAboveHome")} unit="m" step={1} min={1}
+          value={config.altitude ?? 50} onCommit={(altitude) => update({ altitude })} />
+        <PatternNumberRow label={t("speed")} unit="m/s" step={0.5} min={0.1}
+          value={config.speed ?? 5} onCommit={(speed) => update({ speed })} />
       </div>
-    </>
+    </div>
   );
 }

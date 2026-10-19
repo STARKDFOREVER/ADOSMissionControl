@@ -1,112 +1,72 @@
 /**
  * @module PreflightChecklist
- * @description Pre-flight checklist panel for the mission planner. Renders the
+ * @description Pre-flight checklist for the mission planner. Renders the
  * default checklist grouped by category with a per-item toggle and a running
- * progress count. The operator ticks items off before uploading a mission.
+ * progress count. The operator ticks items off before sending a mission.
  *
- * Checked state is local to this component (the checklist is advisory, not
- * persisted telemetry). All logic lives in the pure `preflight-checklist`
- * module; this file is presentation + local state only.
+ * Ticks live in `usePreflightChecklistStore` (session-only, not persisted) so
+ * they survive the dock collapsing or switching tabs. All checklist logic lives
+ * in the pure `preflight-checklist` module; this file is presentation only.
  * @license GPL-3.0-only
  */
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useTranslations } from "next-intl";
-import { CheckSquare, Square, ClipboardCheck, CheckCircle2 } from "lucide-react";
+import { CheckSquare, Square, CheckCircle2 } from "lucide-react";
 import {
   DEFAULT_CHECKLIST,
-  toggleItem,
-  setAllChecked,
   checklistProgress,
   groupByCategory,
-  type ChecklistItem,
-  type CheckedMap,
 } from "@/lib/preflight-checklist";
+import { usePreflightChecklistStore } from "@/stores/preflight-checklist-store";
 
-interface PreflightChecklistProps {
-  /** Override the item set (defaults to the built-in checklist). */
-  items?: readonly ChecklistItem[];
-  /**
-   * Optional callback fired after each toggle with whether every item is now
-   * ticked. Lets a parent gate an upload button on a complete checklist.
-   */
-  onCompleteChange?: (complete: boolean) => void;
-}
-
-export function PreflightChecklist({
-  items = DEFAULT_CHECKLIST,
-  onCompleteChange,
-}: PreflightChecklistProps) {
+export function PreflightChecklist() {
   const t = useTranslations("planner.checklist");
-  const [checked, setChecked] = useState<CheckedMap>({});
+  const checked = usePreflightChecklistStore((s) => s.checked);
+  const toggle = usePreflightChecklistStore((s) => s.toggle);
+  const clear = usePreflightChecklistStore((s) => s.clear);
 
-  const progress = useMemo(
-    () => checklistProgress(items, checked),
-    [items, checked],
-  );
-  const groups = useMemo(() => groupByCategory(items), [items]);
-
-  const applyState = useCallback(
-    (next: CheckedMap) => {
-      setChecked(next);
-      onCompleteChange?.(checklistProgress(items, next).complete);
-    },
-    [items, onCompleteChange],
-  );
-
-  const handleToggle = useCallback(
-    (id: string) => applyState(toggleItem(checked, id)),
-    [applyState, checked],
-  );
-
-  const handleClear = useCallback(
-    () => applyState(setAllChecked(items, false)),
-    [applyState, items],
-  );
+  const progress = useMemo(() => checklistProgress(DEFAULT_CHECKLIST, checked), [checked]);
+  const groups = useMemo(() => groupByCategory(DEFAULT_CHECKLIST), []);
 
   return (
-    <div className="flex flex-col gap-2 bg-bg-secondary border border-border-default rounded p-3">
-      {/* Header + progress */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5 text-text-primary">
-          <ClipboardCheck size={13} className="text-accent-primary" />
-          <span className="text-[11px] font-mono font-semibold uppercase tracking-wide">
-            {t("title")}
+    <div className="flex flex-col gap-2 text-xs">
+      {/* Progress */}
+      <div className="flex items-center gap-2">
+        <div className="h-1 flex-1 rounded bg-bg-tertiary overflow-hidden">
+          <div
+            className={`h-full transition-[width] ${
+              progress.complete ? "bg-status-success" : "bg-accent-primary"
+            }`}
+            style={{ width: `${Math.round(progress.ratio * 100)}%` }}
+          />
+        </div>
+        {progress.complete ? (
+          <span className="flex items-center gap-1 text-[11px] text-status-success">
+            <CheckCircle2 size={11} />
+            {t("ready")}
           </span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          {progress.complete ? (
-            <span className="flex items-center gap-1 text-[10px] font-mono text-status-success">
-              <CheckCircle2 size={11} />
-              {t("ready")}
-            </span>
-          ) : (
-            <span className="text-[10px] font-mono text-text-secondary tabular-nums">
-              {t("progress", {
-                checked: progress.checked,
-                total: progress.total,
-              })}
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Progress bar */}
-      <div className="h-1 w-full rounded bg-bg-tertiary overflow-hidden">
-        <div
-          className={`h-full transition-all ${
-            progress.complete ? "bg-status-success" : "bg-accent-primary"
-          }`}
-          style={{ width: `${Math.round(progress.ratio * 100)}%` }}
-        />
+        ) : (
+          <span className="text-[11px] font-mono text-text-secondary tabular-nums">
+            {t("progress", { checked: progress.checked, total: progress.total })}
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={clear}
+          disabled={progress.checked === 0}
+          className="text-[11px] text-text-secondary hover:text-text-primary disabled:opacity-40 disabled:cursor-default cursor-pointer transition-colors"
+        >
+          {t("clear")}
+        </button>
       </div>
 
       {/* Grouped items */}
-      <div className="flex flex-col gap-2">
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-x-4 gap-y-2">
         {groups.map((group) => (
           <div key={group.category} className="flex flex-col gap-0.5">
-            <span className="text-[9px] font-mono uppercase tracking-wide text-text-tertiary px-0.5">
+            <span className="font-body text-[11px] font-semibold text-text-tertiary px-0.5">
               {t(`category.${group.category}`)}
             </span>
             {group.items.map((item) => {
@@ -115,23 +75,18 @@ export function PreflightChecklist({
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => handleToggle(item.id)}
+                  onClick={() => toggle(item.id)}
                   aria-pressed={isChecked}
                   className="flex items-center gap-2 px-1.5 py-1 text-left rounded hover:bg-bg-tertiary transition-colors cursor-pointer"
                 >
                   {isChecked ? (
-                    <CheckSquare
-                      size={13}
-                      className="shrink-0 text-accent-primary"
-                    />
+                    <CheckSquare size={13} className="shrink-0 text-accent-primary" />
                   ) : (
                     <Square size={13} className="shrink-0 text-text-tertiary" />
                   )}
                   <span
-                    className={`text-[11px] font-mono ${
-                      isChecked
-                        ? "text-text-tertiary line-through"
-                        : "text-text-secondary"
+                    className={`text-xs ${
+                      isChecked ? "text-text-tertiary line-through" : "text-text-secondary"
                     }`}
                   >
                     {t(item.labelKey)}
@@ -141,18 +96,6 @@ export function PreflightChecklist({
             })}
           </div>
         ))}
-      </div>
-
-      {/* Clear */}
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={handleClear}
-          disabled={progress.checked === 0}
-          className="text-[10px] font-mono text-text-secondary hover:text-text-primary disabled:opacity-40 disabled:cursor-default cursor-pointer transition-colors"
-        >
-          {t("clear")}
-        </button>
       </div>
     </div>
   );

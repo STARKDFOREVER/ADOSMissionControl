@@ -1,23 +1,22 @@
 /**
  * @module OfflineMapManager
- * @description Cache statistics and management UI for Settings > Data page.
- * Shows tile count, cache size, caching toggle, and clear button.
+ * @description Map tile storage for Settings > Data: tiles kept from browsing,
+ * tiles in downloaded areas, browser storage usage, and clearing each cache.
  * @license GPL-3.0-only
  */
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { getCacheStats, clearAllTiles, MAX_CACHE_SIZE } from "@/lib/tile-cache";
+import { getTileStorageStats, clearTileCache, type TileStorageStats } from "@/lib/tile-storage";
 import { formatBytes } from "@/lib/tile-math";
-import { useSettingsStore } from "@/stores/settings-store";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Toggle } from "@/components/ui/toggle";
-import { Trash2, WifiOff, HardDrive } from "lucide-react";
+import { Trash2, WifiOff, HardDrive, MapPinned } from "lucide-react";
 import { CustomTileSourceEditor } from "@/components/map/CustomTileSourceEditor";
+import { FieldTilePacksCard } from "./FieldTilePacksCard";
 
-/** IndexedDB can hang (blocked upgrade, private mode); stop waiting after this. */
+/** Cache Storage can stall (a busy disk, private mode); stop waiting after this. */
 const CACHE_STATS_TIMEOUT_MS = 5_000;
 
 function withTimeout<T>(work: Promise<T>, ms: number): Promise<T> {
@@ -27,21 +26,19 @@ function withTimeout<T>(work: Promise<T>, ms: number): Promise<T> {
   return promise;
 }
 
+const EMPTY_STATS: TileStorageStats = { runtimeTiles: 0, pinnedTiles: 0, usageBytes: null, quotaBytes: null };
+
 export function OfflineMapManager() {
   const t = useTranslations("offlineMapManager");
-  const [stats, setStats] = useState({ tileCount: 0, totalBytes: 0 });
+  const [stats, setStats] = useState<TileStorageStats>(EMPTY_STATS);
   const [loading, setLoading] = useState(true);
   const [cacheError, setCacheError] = useState<string | null>(null);
-  const [clearing, setClearing] = useState(false);
+  const [clearing, setClearing] = useState<"runtime" | "pinned" | null>(null);
   const [isOnline, setIsOnline] = useState(true);
 
-  const cachingEnabled = useSettingsStore((s) => s.offlineTileCaching);
-  const setCachingEnabled = useSettingsStore((s) => s.setOfflineTileCaching);
-
-  // Load cache stats
   const refreshStats = useCallback(async () => {
     try {
-      setStats(await withTimeout(getCacheStats(), CACHE_STATS_TIMEOUT_MS));
+      setStats(await withTimeout(getTileStorageStats(), CACHE_STATS_TIMEOUT_MS));
       setCacheError(null);
     } catch (err) {
       setCacheError(err instanceof Error ? err.message : String(err));
@@ -67,20 +64,25 @@ export function OfflineMapManager() {
     };
   }, []);
 
-  const handleClear = useCallback(async () => {
-    if (!confirm(t("clearConfirm"))) return;
-    setClearing(true);
-    try {
-      await clearAllTiles();
-    } catch (err) {
-      setCacheError(err instanceof Error ? err.message : String(err));
-    } finally {
-      await refreshStats();
-      setClearing(false);
-    }
-  }, [refreshStats, t]);
+  const handleClear = useCallback(
+    async (which: "runtime" | "pinned") => {
+      if (!confirm(t(which === "runtime" ? "clearRuntimeConfirm" : "clearPinnedConfirm"))) return;
+      setClearing(which);
+      try {
+        await clearTileCache(which);
+      } catch (err) {
+        setCacheError(err instanceof Error ? err.message : String(err));
+      } finally {
+        await refreshStats();
+        setClearing(null);
+      }
+    },
+    [refreshStats, t],
+  );
 
-  const usagePct = MAX_CACHE_SIZE > 0 ? (stats.totalBytes / MAX_CACHE_SIZE) * 100 : 0;
+  const count = (n: number) => (loading ? "..." : cacheError ? "—" : n.toLocaleString());
+  const { usageBytes, quotaBytes } = stats;
+  const usagePct = usageBytes !== null && quotaBytes ? (usageBytes / quotaBytes) * 100 : 0;
 
   return (
     <div className="flex flex-col gap-3">
@@ -99,54 +101,59 @@ export function OfflineMapManager() {
         <CustomTileSourceEditor />
       </Card>
 
+      <FieldTilePacksCard />
+
       <Card title={t("cacheTitle")} padding={true}>
         <div className="flex flex-col gap-3">
-          {/* Usage bar */}
-          <div>
-            <div className="flex justify-between text-[10px] font-mono text-text-secondary mb-1">
-              <span>{loading ? "..." : cacheError ? "—" : formatBytes(stats.totalBytes)}</span>
-              <span>{formatBytes(MAX_CACHE_SIZE)}</span>
+          {/* Browser storage for this origin. Tiles share it with plans and logs. */}
+          {usageBytes !== null && quotaBytes !== null && (
+            <div>
+              <div className="flex justify-between text-[10px] font-mono text-text-secondary mb-1">
+                <span>{t("storageUsage", { used: formatBytes(usageBytes), quota: formatBytes(quotaBytes) })}</span>
+              </div>
+              <div className="w-full h-2 bg-bg-tertiary rounded overflow-hidden">
+                <div
+                  className="h-full bg-accent-primary transition-all"
+                  style={{ width: `${Math.min(usagePct, 100)}%` }}
+                />
+              </div>
             </div>
-            <div className="w-full h-2 bg-bg-tertiary rounded overflow-hidden">
-              <div
-                className="h-full bg-accent-primary transition-all"
-                style={{ width: `${Math.min(usagePct, 100)}%` }}
-              />
-            </div>
-          </div>
+          )}
 
-          {/* Stats */}
-          <div className="flex items-center gap-4 text-[10px] font-mono text-text-secondary">
+          <div className="flex flex-col gap-1 text-[10px] font-mono text-text-secondary">
             <div className="flex items-center gap-1">
               <HardDrive size={10} />
-              <span>
-                {t("tilesCached", {
-                  count: loading ? "..." : cacheError ? "—" : stats.tileCount.toLocaleString(),
-                })}
-              </span>
+              <span>{t("browsingTiles", { count: count(stats.runtimeTiles) })}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <MapPinned size={10} />
+              <span>{t("downloadedTiles", { count: count(stats.pinnedTiles) })}</span>
             </div>
           </div>
           {cacheError && (
             <p className="text-[10px] text-status-error">{t("unavailable", { error: cacheError })}</p>
           )}
 
-          {/* Caching toggle */}
-          <Toggle
-            label={t("tileCaching")}
-            checked={cachingEnabled}
-            onChange={setCachingEnabled}
-          />
-
-          {/* Clear button */}
-          <Button
-            variant="secondary"
-            size="sm"
-            icon={<Trash2 size={12} />}
-            onClick={handleClear}
-            disabled={clearing || stats.tileCount === 0}
-          >
-            {clearing ? t("clearing") : t("clearAll")}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={<Trash2 size={12} />}
+              onClick={() => handleClear("runtime")}
+              disabled={clearing !== null || stats.runtimeTiles === 0}
+            >
+              {clearing === "runtime" ? t("clearing") : t("clearRuntime")}
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={<Trash2 size={12} />}
+              onClick={() => handleClear("pinned")}
+              disabled={clearing !== null || stats.pinnedTiles === 0}
+            >
+              {clearing === "pinned" ? t("clearing") : t("clearPinned")}
+            </Button>
+          </div>
 
           <p className="text-[9px] text-text-tertiary">{t("help")}</p>
         </div>

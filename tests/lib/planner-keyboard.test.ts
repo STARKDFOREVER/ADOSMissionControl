@@ -1,7 +1,7 @@
 /**
  * Unit tests for the single planner keyboard dispatcher: typing-target guard,
- * the Escape / Backspace precedence ordering against an active draw, and the
- * Electron-only gating of the New / Open accelerator chords.
+ * the Escape / Backspace precedence ordering against an active draw, the side
+ * panel keys, the plans-sheet chord and the Electron-only gating of New.
  *
  * @license GPL-3.0-only
  */
@@ -37,12 +37,17 @@ function makeParams(overrides: Partial<Params> = {}): Params {
     selectedWaypointId: null,
     removeWaypoint: vi.fn(),
     setSelectedWaypoint: vi.fn(),
-    expandedWaypointId: null,
-    setExpandedWaypoint: vi.fn(),
+    selectedCount: 0,
+    clearSelection: vi.fn(),
+    inspectorIsMission: true,
+    resetInspector: vi.fn(),
     handleSave: vi.fn(),
     handleSaveAs: vi.fn(),
     handleNewPlan: vi.fn(),
-    handleFocusSearch: vi.fn(),
+    onTogglePlans: vi.fn(),
+    onToggleOutline: vi.fn(),
+    onToggleInspector: vi.fn(),
+    onTogglePanels: vi.fn(),
     onTogglePatternEditor: vi.fn(),
     onToggleValidation: vi.fn(),
     onToggleTerrain: vi.fn(),
@@ -103,30 +108,57 @@ describe("planner keyboard dispatcher", () => {
   it("Escape cancels an active draw before any generic clear", () => {
     const api = drawApi(true);
     getActiveDrawApi.mockReturnValue(api);
-    const params = makeParams({ activeTool: "polygon", expandedWaypointId: "wp-1" });
+    const params = makeParams({ activeTool: "polygon", selectedWaypointId: "wp-1", inspectorIsMission: false });
     renderHook(() => useKeyboardShortcuts(params));
 
     press("Escape");
 
     expect(api.cancel).toHaveBeenCalledTimes(1);
     expect(params.setActiveTool).toHaveBeenCalledWith("select");
-    // The expanded-waypoint collapse must NOT run while a draw was cancelled.
-    expect(params.setExpandedWaypoint).not.toHaveBeenCalled();
+    // Neither the selection nor the inspector may change while a draw was cancelled.
+    expect(params.clearSelection).not.toHaveBeenCalled();
+    expect(params.resetInspector).not.toHaveBeenCalled();
   });
 
-  it("Escape collapses an expanded waypoint when not drawing", () => {
-    const params = makeParams({ activeTool: "select", expandedWaypointId: "wp-1" });
+  it("Escape clears a single or multi selection first when not drawing", () => {
+    const single = makeParams({ activeTool: "waypoint", selectedWaypointId: "wp-1", inspectorIsMission: false });
+    const { unmount } = renderHook(() => useKeyboardShortcuts(single));
+    press("Escape");
+    expect(single.clearSelection).toHaveBeenCalledTimes(1);
+    expect(single.resetInspector).not.toHaveBeenCalled();
+    expect(single.setActiveTool).not.toHaveBeenCalled();
+    unmount();
+
+    const multi = makeParams({ selectedCount: 3 });
+    renderHook(() => useKeyboardShortcuts(multi));
+    press("Escape");
+    expect(multi.clearSelection).toHaveBeenCalledTimes(1);
+  });
+
+  it("Escape returns the inspector to the mission before clearing the tool", () => {
+    const params = makeParams({ activeTool: "waypoint", inspectorIsMission: false });
     renderHook(() => useKeyboardShortcuts(params));
     press("Escape");
-    expect(params.setExpandedWaypoint).toHaveBeenCalledWith(null);
+    expect(params.resetInspector).toHaveBeenCalledTimes(1);
     expect(params.setActiveTool).not.toHaveBeenCalled();
   });
 
-  it("Escape clears a non-select tool to select when not drawing", () => {
-    const params = makeParams({ activeTool: "waypoint", expandedWaypointId: null });
+  it("Escape clears a non-select tool to select when nothing else is pending", () => {
+    const params = makeParams({ activeTool: "waypoint" });
     renderHook(() => useKeyboardShortcuts(params));
     press("Escape");
     expect(params.setActiveTool).toHaveBeenCalledWith("select");
+  });
+
+  it("[, ] and \\ toggle the outline, the inspector and both panels", () => {
+    const params = makeParams();
+    renderHook(() => useKeyboardShortcuts(params));
+    expect(press("[").defaultPrevented).toBe(true);
+    press("]");
+    press("\\");
+    expect(params.onToggleOutline).toHaveBeenCalledTimes(1);
+    expect(params.onToggleInspector).toHaveBeenCalledTimes(1);
+    expect(params.onTogglePanels).toHaveBeenCalledTimes(1);
   });
 
   it("Backspace pops a draw vertex while drawing and never deletes a waypoint", () => {
@@ -173,32 +205,37 @@ describe("planner keyboard dispatcher", () => {
     expect(params.removeWaypoint).not.toHaveBeenCalled();
   });
 
-  describe("Electron-only accelerator chords", () => {
-    it("does NOT hijack Cmd/Ctrl+N or Cmd/Ctrl+O in the browser", () => {
+  describe("file chords", () => {
+    it("Cmd/Ctrl+O opens the plans sheet in the browser too", () => {
+      isElectron.mockReturnValue(false);
+      const params = makeParams();
+      renderHook(() => useKeyboardShortcuts(params));
+
+      const openEvent = press("o", { ctrlKey: true });
+
+      expect(params.onTogglePlans).toHaveBeenCalledTimes(1);
+      expect(openEvent.defaultPrevented).toBe(true);
+    });
+
+    it("does NOT hijack Cmd/Ctrl+N in the browser", () => {
       isElectron.mockReturnValue(false);
       const params = makeParams();
       renderHook(() => useKeyboardShortcuts(params));
 
       const newEvent = press("n", { metaKey: true });
-      const openEvent = press("o", { metaKey: true });
 
       expect(params.handleNewPlan).not.toHaveBeenCalled();
-      expect(params.handleFocusSearch).not.toHaveBeenCalled();
-      // The native chord is left intact (not prevented).
       expect(newEvent.defaultPrevented).toBe(false);
-      expect(openEvent.defaultPrevented).toBe(false);
     });
 
-    it("fires New / Open in the desktop build", () => {
+    it("fires New in the desktop build", () => {
       isElectron.mockReturnValue(true);
       const params = makeParams();
       renderHook(() => useKeyboardShortcuts(params));
 
       const newEvent = press("n", { metaKey: true });
-      press("o", { metaKey: true });
 
       expect(params.handleNewPlan).toHaveBeenCalledTimes(1);
-      expect(params.handleFocusSearch).toHaveBeenCalledTimes(1);
       expect(newEvent.defaultPrevented).toBe(true);
     });
   });

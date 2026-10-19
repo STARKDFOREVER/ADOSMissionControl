@@ -19,6 +19,8 @@ export interface LatLngBounds {
 }
 
 export interface TileProvider {
+  /** `raster`: image tiles drawn by Leaflet. `vector`: MVT drawn by MapLibre. */
+  kind: "raster" | "vector";
   url: string;
   subdomains: string[];
   maxZoom: number;
@@ -29,13 +31,21 @@ export interface TileProvider {
   name: string;
   /** Short uppercase label for the segmented basemap control. */
   label: string;
+  /** Vector style flavor; set for `vector` providers only. */
+  flavor?: "dark" | "light";
 }
 
-/** Every basemap id except the operator-supplied one. */
-export type BuiltInTileSource = Exclude<MapTileSource, "custom">;
+/** Every basemap id with a fixed catalog entry (not operator- or agent-supplied). */
+export type BuiltInTileSource = Exclude<MapTileSource, "custom" | "field-pack">;
+
+/** Vector tiles of the self-hosted basemap. */
+export const VECTOR_BASEMAP_URL = "https://tiles.altnautica.com/planet/{z}/{x}/{y}.mvt";
+const VECTOR_BASEMAP_ATTRIBUTION =
+  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &middot; <a href="https://protomaps.com">Protomaps</a>';
 
 export const TILE_PROVIDERS: Record<BuiltInTileSource, TileProvider> = {
   dark: {
+    kind: "raster",
     url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
     subdomains: ["a", "b", "c", "d"],
     maxZoom: 20,
@@ -45,6 +55,7 @@ export const TILE_PROVIDERS: Record<BuiltInTileSource, TileProvider> = {
     label: "DARK",
   },
   osm: {
+    kind: "raster",
     url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
     subdomains: ["a", "b", "c"],
     maxZoom: 19,
@@ -54,6 +65,7 @@ export const TILE_PROVIDERS: Record<BuiltInTileSource, TileProvider> = {
     label: "OSM",
   },
   satellite: {
+    kind: "raster",
     url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
     subdomains: [],
     maxZoom: 18,
@@ -63,6 +75,7 @@ export const TILE_PROVIDERS: Record<BuiltInTileSource, TileProvider> = {
     label: "SAT",
   },
   terrain: {
+    kind: "raster",
     url: "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
     subdomains: ["a", "b", "c"],
     maxZoom: 17,
@@ -70,6 +83,30 @@ export const TILE_PROVIDERS: Record<BuiltInTileSource, TileProvider> = {
     attribution: '&copy; <a href="https://opentopomap.org">OpenTopoMap</a>',
     name: "OpenTopoMap",
     label: "TOPO",
+  },
+  // Vector tiles stop at z15; MapLibre overzooms them past that, so the
+  // on-screen map still zooms to street level.
+  "streets-dark": {
+    kind: "vector",
+    url: VECTOR_BASEMAP_URL,
+    subdomains: [],
+    maxZoom: 15,
+    avgTileKB: 30,
+    attribution: VECTOR_BASEMAP_ATTRIBUTION,
+    name: "Streets dark (vector)",
+    label: "STREETS",
+    flavor: "dark",
+  },
+  "streets-light": {
+    kind: "vector",
+    url: VECTOR_BASEMAP_URL,
+    subdomains: [],
+    maxZoom: 15,
+    avgTileKB: 30,
+    attribution: VECTOR_BASEMAP_ATTRIBUTION,
+    name: "Streets light (vector)",
+    label: "LIGHT",
+    flavor: "light",
   },
 };
 
@@ -163,9 +200,19 @@ export function subdomainsForUrl(urlTemplate: string): string[] {
 }
 
 /** Basemap ids in picker order, including the operator-supplied source. */
-export const BASEMAP_ORDER: MapTileSource[] = ["dark", "osm", "satellite", "terrain", "custom"];
+export const BASEMAP_ORDER: MapTileSource[] = [
+  "dark",
+  "osm",
+  "satellite",
+  "terrain",
+  "streets-dark",
+  "streets-light",
+  "custom",
+];
 export const CUSTOM_BASEMAP_LABEL = "CUSTOM";
 export const CUSTOM_BASEMAP_NAME = "Custom (self-hosted)";
+export const FIELD_PACK_BASEMAP_LABEL = "FIELD";
+export const FIELD_PACK_BASEMAP_NAME = "Field pack (ground agent)";
 /** Size estimate for a custom source, between OSM's 25 and Esri's 40. */
 export const CUSTOM_TILE_AVG_KB = 25;
 export const DEFAULT_CUSTOM_TILE_MAX_ZOOM = 19;
@@ -174,12 +221,16 @@ export const MAX_CUSTOM_TILE_MAX_ZOOM = 24;
 
 /** Short uppercase label for the segmented basemap control. */
 export function basemapLabel(source: MapTileSource): string {
-  return source === "custom" ? CUSTOM_BASEMAP_LABEL : TILE_PROVIDERS[source].label;
+  if (source === "custom") return CUSTOM_BASEMAP_LABEL;
+  if (source === "field-pack") return FIELD_PACK_BASEMAP_LABEL;
+  return TILE_PROVIDERS[source].label;
 }
 
 /** Long-form menu name. */
 export function basemapName(source: MapTileSource): string {
-  return source === "custom" ? CUSTOM_BASEMAP_NAME : TILE_PROVIDERS[source].name;
+  if (source === "custom") return CUSTOM_BASEMAP_NAME;
+  if (source === "field-pack") return FIELD_PACK_BASEMAP_NAME;
+  return TILE_PROVIDERS[source].name;
 }
 
 /** Clamp an operator-entered max zoom into Leaflet's usable range. */
@@ -220,13 +271,13 @@ export function validateTileUrlTemplate(template: string): string | null {
 
 /**
  * Build a provider for an operator-supplied template. Subdomains come from
- * {@link subdomainsForUrl} — the same function `CachedTileLayer.getTileUrl`
- * calls — so the downloader's write key and the on-screen read key stay
- * byte-identical for a template that carries `{s}`.
+ * {@link subdomainsForUrl}, the same list the on-screen layer is given, so the
+ * downloader and the map spread requests over the same shards.
  */
 export function customTileProvider(custom: CustomTileSource): TileProvider {
   const url = custom.url.trim();
   return {
+    kind: "raster",
     url,
     subdomains: subdomainsForUrl(url),
     maxZoom: clampTileZoom(custom.maxZoom),
@@ -237,28 +288,59 @@ export function customTileProvider(custom: CustomTileSource): TileProvider {
   };
 }
 
+/** ZXY template for one pack served by a ground agent. */
+export function fieldPackTileUrl(baseUrl: string, pack: string): string {
+  return `${baseUrl}/api/v1/ground-station/tiles/${encodeURIComponent(pack)}/{z}/{x}/{y}.mvt`;
+}
+
+/**
+ * Build the provider for one ground-station tile pack. Vector, so MapLibre
+ * draws it; the pack's own max zoom bounds tile requests and MapLibre
+ * overzooms past it.
+ */
+export function fieldPackProvider(baseUrl: string, pack: { name: string; maxzoom: number }): TileProvider {
+  return {
+    kind: "vector",
+    url: fieldPackTileUrl(baseUrl, pack.name),
+    subdomains: [],
+    maxZoom: pack.maxzoom,
+    avgTileKB: TILE_PROVIDERS["streets-dark"].avgTileKB,
+    attribution: VECTOR_BASEMAP_ATTRIBUTION,
+    name: `${FIELD_PACK_BASEMAP_NAME}: ${pack.name}`,
+    label: FIELD_PACK_BASEMAP_LABEL,
+    flavor: "dark",
+  };
+}
+
 /**
  * Resolve the provider a source id selects. A `"custom"` id with an unusable
  * template resolves to `dark`: an empty or malformed template makes Leaflet
- * request garbage URLs forever and paints nothing.
+ * request garbage URLs forever and paints nothing. `"field-pack"` resolves to
+ * the ground station's pack when one is reachable, else to the hosted vector
+ * streets basemap, the closest equivalent.
  */
-export function resolveBasemap(source: MapTileSource, custom: CustomTileSource): TileProvider {
+export function resolveBasemap(
+  source: MapTileSource,
+  custom: CustomTileSource,
+  fieldPack?: TileProvider | null,
+): TileProvider {
   if (source === "custom") {
     return validateTileUrlTemplate(custom.url) === null
       ? customTileProvider(custom)
       : TILE_PROVIDERS.dark;
   }
+  if (source === "field-pack") return fieldPack ?? TILE_PROVIDERS["streets-dark"];
   // Guards a persisted id from a build that carried a provider this one does not.
   return TILE_PROVIDERS[source] ?? TILE_PROVIDERS.dark;
 }
 
 /**
- * Resolve a single tile URL from a template. This is the ONE place both the
- * offline downloader and the on-screen cached layer build a tile URL, so the
- * write key and the read key are byte-for-byte identical. The subdomain uses
- * the same `Math.abs(x + y) % len` scheme Leaflet uses internally, and `{r}`
- * resolves to `@2x` on HiDPI displays (only for templates that carry an `{r}`
- * slot, so non-retina providers are never affected).
+ * Resolve a single tile URL from a template, as the offline downloader
+ * requests it. The subdomain uses the same `Math.abs(x + y) % len` scheme
+ * Leaflet uses internally, and `{r}` resolves to `@2x` on HiDPI displays
+ * (only for templates that carry an `{r}` slot, so non-retina providers are
+ * never affected). The cache key (`tileCacheKey`) folds the shard away, so a
+ * downloaded tile is found whichever shard the map asks.
  */
 export function resolveTileUrl(
   urlTemplate: string,

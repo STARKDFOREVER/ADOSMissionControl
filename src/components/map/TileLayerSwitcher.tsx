@@ -1,12 +1,13 @@
 /**
  * @module TileLayerSwitcher
  * @description Replaces the static TileLayer with a switchable tile source.
- * Renders the active tile layer and a small control button to pick between the
- * built-in basemaps and an operator-supplied ("custom") tile server. The
- * catalog itself lives in `@/lib/tile-math` so the picker, the minimap selector
- * and the offline downloader cannot drift. Persists selection to
- * settings-store. Supports offline tile caching via IndexedDB and a no-fly
- * zone overlay toggle.
+ * Renders the active basemap (raster tiles through Leaflet, vector tiles
+ * through MapLibre) and a small control button to pick between the built-in
+ * basemaps and an operator-supplied ("custom") tile server. The catalog
+ * itself lives in `@/lib/tile-math` so the picker, the minimap selector and
+ * the offline downloader cannot drift. Persists selection to settings-store.
+ * Tiles are cached by the service worker (`public/sw.js`). Also carries the
+ * no-fly zone overlay toggle.
  * @license GPL-3.0-only
  */
 
@@ -18,13 +19,16 @@ import { useSettingsStore, type MapTileSource } from "@/stores/settings-store";
 import {
   BASEMAP_ORDER,
   basemapLabel,
+  fieldPackProvider,
   resolveBasemap,
   validateTileUrlTemplate,
 } from "@/lib/tile-math";
+import { useFieldTilePacks } from "@/hooks/use-field-tile-packs";
+import { activeFieldPack, useFieldPackStore } from "@/stores/field-pack-store";
 import { useTileHealthStore } from "@/stores/tile-health-store";
 import { CustomTileSourceEditor } from "./CustomTileSourceEditor";
 import L from "leaflet";
-import { CachedTileLayer } from "./CachedTileLayer";
+import { VectorBasemapLayer } from "./VectorBasemapLayer";
 import { NoFlyZoneOverlay } from "./NoFlyZoneOverlay";
 import type { NoFlyDataState } from "./NoFlyZoneOverlay";
 import { NO_FLY_ZONES_BY_REGION, noFlyZonesForRegion } from "@/lib/no-fly-zones";
@@ -33,14 +37,35 @@ import { Select } from "@/components/ui/select";
 import { BasemapSwitcher } from "./BasemapSwitcher";
 import { MapControl } from "./MapControl";
 
+interface ManagedTileLayerProps {
+  url: string;
+  attribution: string;
+  maxZoom: number;
+  subdomains: string[];
+  /**
+   * Request tiles with `crossOrigin="anonymous"` so the service worker gets a
+   * readable response it may cache. False for an operator-supplied server,
+   * which usually sends no CORS header: an `anonymous` <img> then fails to
+   * load at all.
+   */
+  crossOrigin: boolean;
+}
+
 /** Tile layer rebuilt whenever the source changes, so each source brings its
  *  own maxZoom and attribution rather than inheriting the first one's. */
-function ManagedTileLayer({ url, attribution, maxZoom }: { url: string; attribution: string; maxZoom: number }) {
+function ManagedTileLayer({ url, attribution, maxZoom, subdomains, crossOrigin }: ManagedTileLayerProps) {
   const map = useMap();
+  const subdomainKey = subdomains.join("");
 
   useEffect(() => {
     useTileHealthStore.getState().observe(url);
-    const layer = L.tileLayer(url, { attribution, maxZoom });
+    const layer = L.tileLayer(url, {
+      attribution,
+      maxZoom,
+      crossOrigin,
+      // Leaflet's default `abc` would leave a four-shard CDN's `d` unused.
+      ...(subdomainKey ? { subdomains: subdomainKey } : {}),
+    });
     try {
       layer.addTo(map);
       layer.on("tileload", () => useTileHealthStore.getState().recordLoad());
@@ -59,7 +84,7 @@ function ManagedTileLayer({ url, attribution, maxZoom }: { url: string; attribut
         /* map may already be destroyed during dev reconnect */
       }
     };
-  }, [map, url, attribution, maxZoom]);
+  }, [map, url, attribution, maxZoom, subdomainKey, crossOrigin]);
 
   return null;
 }
@@ -71,7 +96,6 @@ interface TileLayerSwitcherProps {
 export function TileLayerSwitcher({ showControls = true }: TileLayerSwitcherProps) {
   const source = useSettingsStore((s) => s.mapTileSource);
   const setSource = useSettingsStore((s) => s.setMapTileSource);
-  const cachingEnabled = useSettingsStore((s) => s.offlineTileCaching);
   const showNfz = useSettingsStore((s) => s.showNoFlyZones);
   const setShowNfz = useSettingsStore((s) => s.setShowNoFlyZones);
   const noFlyRegion = useSettingsStore((s) => s.noFlyRegion);
@@ -86,7 +110,21 @@ export function TileLayerSwitcher({ showControls = true }: TileLayerSwitcherProp
     () => ({ url: customTileUrl, maxZoom: customTileMaxZoom, attribution: customTileAttribution }),
     [customTileUrl, customTileMaxZoom, customTileAttribution],
   );
-  const config = resolveBasemap(source, custom);
+  // A paired ground station's tile pack is offered only while one is usable.
+  const fieldSource = useFieldTilePacks();
+  const selectedPack = useFieldPackStore((s) => s.selectedPack);
+  const setSelectedPack = useFieldPackStore((s) => s.setSelectedPack);
+  const fieldPack = activeFieldPack(fieldSource, selectedPack);
+  const usablePacks = fieldSource?.packs.filter((p) => p.usable) ?? [];
+  const fieldProvider = useMemo(
+    () => (fieldSource && fieldPack ? fieldPackProvider(fieldSource.baseUrl, fieldPack) : null),
+    [fieldSource, fieldPack],
+  );
+  const order = fieldProvider ? [...BASEMAP_ORDER, "field-pack" as const] : BASEMAP_ORDER;
+  const config = resolveBasemap(source, custom, fieldProvider);
+  const fieldAuth = source === "field-pack" && fieldProvider && fieldSource
+    ? { authBaseUrl: fieldSource.baseUrl, apiKey: fieldSource.apiKey }
+    : {};
 
   const handleSelect = useCallback((s: MapTileSource) => {
     setSource(s);
@@ -97,18 +135,21 @@ export function TileLayerSwitcher({ showControls = true }: TileLayerSwitcherProp
 
   return (
     <>
-      {cachingEnabled ? (
-        <CachedTileLayer
+      {config.kind === "vector" ? (
+        <VectorBasemapLayer
           url={config.url}
           attribution={config.attribution}
           maxZoom={config.maxZoom}
-          crossOrigin={source !== "custom"}
+          flavor={config.flavor ?? "dark"}
+          {...fieldAuth}
         />
       ) : (
         <ManagedTileLayer
           url={config.url}
           attribution={config.attribution}
           maxZoom={config.maxZoom}
+          subdomains={config.subdomains}
+          crossOrigin={source !== "custom"}
         />
       )}
 
@@ -139,8 +180,27 @@ export function TileLayerSwitcher({ showControls = true }: TileLayerSwitcherProp
                   stretch
                   value={source}
                   onChange={(v) => handleSelect(v as MapTileSource)}
-                  options={BASEMAP_ORDER.map((s) => ({ value: s, label: basemapLabel(s) }))}
+                  options={order.map((s) => ({ value: s, label: basemapLabel(s) }))}
                 />
+                {source === "field-pack" && fieldPack && (
+                  <div className="flex flex-col gap-1 px-1 pb-1">
+                    <span className="px-1 text-[11px] font-mono text-text-secondary">
+                      Field pack: {fieldPack.name}
+                    </span>
+                    {usablePacks.length > 1 && (
+                      <Select
+                        value={fieldPack.name}
+                        onChange={(v) => setSelectedPack(v)}
+                        options={usablePacks.map((p) => ({ value: p.name, label: p.name }))}
+                      />
+                    )}
+                  </div>
+                )}
+                {source === "field-pack" && !fieldPack && (
+                  <span className="px-1 text-[11px] font-mono text-status-warning">
+                    No field pack reachable. Showing STREETS until the ground station serves one.
+                  </span>
+                )}
                 {/* Operator-supplied tile server. Editing it here keeps the
                     whole flow on the map; /config/data mounts the same editor. */}
                 {source === "custom" && (

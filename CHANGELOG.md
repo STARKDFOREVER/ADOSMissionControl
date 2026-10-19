@@ -25,6 +25,18 @@ the project follows [Semantic Versioning](https://semver.org/).
   region picker, per-rule duty governor meters and a blocked banner that names
   the reason and the fix. The Radio tab shows every WFB adapter with a
   diversity summary, and the RC / ELRS tab shows every ELRS module.
+- **Vector street basemaps.** "Streets" (dark) and "Light" draw self-hosted
+  vector tiles with crisp labels at any screen density, in the app language
+  where the map data carries it. Label fonts, icons and the map renderer's
+  worker are fetched into `public/basemap-assets/` before dev and build.
+- **Field tile packs.** When a paired ground station serves a vector tile
+  pack over the local network, the basemap picker offers "Field" and the map
+  works with no internet. Settings > Data lists the station's packs.
+- **Send to vehicle.** One dialog sends the mission, the geofence and the
+  rally points (each when present), shows any blocking issues and the
+  pre-flight checklist progress, and reports each item's result.
+- Inspector number fields commit on blur or Enter and can be scrubbed by
+  dragging their label (Shift ×10, Alt ×0.1) or stepped with the arrow keys.
 
 ### Changed
 
@@ -37,6 +49,39 @@ the project follows [Semantic Versioning](https://semver.org/).
   panel); without one it is a host node.
 - The display, buttons and peripherals tabs moved to a profile-neutral
   `nodes/device/` folder.
+- **The planner is rebuilt around the selection.** With no plan open, the plan
+  library docks beside a full-bleed map. With a plan open: a planner bar (plan
+  name, vehicle, issue count, Save, Send to vehicle, and every import, export
+  and plan action in its menu); a plan outline on the left (mission rows with
+  drag reorder, insert-between and multi-select, plus shapes, geofence, rally
+  points and points of interest); an inspector on the right that follows the
+  selection (mission, waypoint, batch, pattern, geofence, rally, POI,
+  transform); a grouped tool rail on the map with a pattern and template
+  gallery; and a dock along the bottom with the mission stats and the
+  altitude, terrain, issues, energy, site and checklist tabs. `[`, `]` and `\`
+  toggle the side panels and Ctrl/Cmd+O opens the plan library. Every menu
+  action, panel and dock tab is in the command palette. Pattern number fields
+  no longer snap back to their default while you type.
+- The planner map opens where you last left it, else at your GPS fix, else
+  showing the whole world. It used to open on open ocean at street zoom, which
+  rendered as a solid dark square. The locate button shows even with no plan
+  open, and the Overview and fleet maps pair an unknown position with a
+  world-wide zoom too.
+- Plugin frames declare the same colour scheme as their document, so a
+  transparent map overlay plugin no longer blanks the map under it.
+- Map tiles are cached for every basemap, always: a service worker keeps the
+  tiles you view and serves them when the connection drops, and serves the
+  app itself offline once it has loaded. Downloaded areas live in their own
+  cache that is never trimmed. Settings > Data shows both caches and the
+  browser storage they use, with a clear button for each. The download panel
+  warns when an area may not fit the free browser storage.
+
+### Removed
+
+- The planner Copilot (the plain-language mission input and its "Map this
+  area" button). Flight patterns and mission templates cover the same set-ups.
+- The "Tile caching" setting. Caching is always on, so the toggle went with
+  the old browser-database tile store.
 
 ## [0.60.0] - 2026-10-11
 

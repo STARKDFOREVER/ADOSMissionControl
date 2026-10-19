@@ -10,7 +10,8 @@
 
 import { useMemo } from "react";
 import { useTranslations } from "next-intl";
-import { Layers, AlertTriangle } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
+import { PropertyRow } from "@/components/ui/property-row";
 import { usePatternStore } from "@/stores/pattern-store";
 import type { CameraProfile } from "@/lib/patterns/gsd-calculator";
 import { computeCoverageStats, detectCoverageGaps } from "@/lib/patterns/coverage";
@@ -53,22 +54,16 @@ export function CoverageStats({ camera, altitude, minSideOverlap = 0.6 }: Covera
   ];
 
   return (
-    <div className="flex flex-col gap-1 px-2 py-1.5 bg-bg-secondary border border-border-default">
-      <div className="flex items-center gap-1.5 text-[10px] font-mono text-text-secondary">
-        <Layers size={11} className="text-accent-primary shrink-0" />
-        <span>{t("coverage.title")}</span>
-      </div>
-      <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
-        {rows.map(([label, value]) => (
-          <div key={label} className="flex items-center justify-between text-[10px] font-mono">
-            <span className="text-text-tertiary">{label}</span>
-            <span className="text-text-primary">{value}</span>
-          </div>
-        ))}
-      </div>
+    <div className="flex flex-col">
+      <span className="py-1 text-[11px] font-semibold text-text-tertiary">{t("coverage.title")}</span>
+      {rows.map(([label, value]) => (
+        <PropertyRow key={label} label={label}>
+          <span className="block truncate font-mono text-xs text-text-primary">{value}</span>
+        </PropertyRow>
+      ))}
       {gaps.hasGap && (
-        <div className="flex items-start gap-1.5 text-[9px] font-mono text-status-warning">
-          <AlertTriangle size={10} className="shrink-0 mt-0.5" />
+        <div className="flex items-start gap-1.5 py-1 text-[11px] text-status-warning">
+          <AlertTriangle size={12} className="shrink-0 mt-0.5" />
           <span>{t("coverage.gapWarning")}</span>
         </div>
       )}

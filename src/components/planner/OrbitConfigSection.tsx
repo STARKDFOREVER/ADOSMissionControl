@@ -6,45 +6,57 @@
  */
 "use client";
 
+import { useMemo } from "react";
 import { useTranslations } from "next-intl";
-import { Select } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
+import { RotateCw, RotateCcw } from "lucide-react";
+import { PropertyRow } from "@/components/ui/property-row";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { usePatternStore } from "@/stores/pattern-store";
 import { useDrawingStore } from "@/stores/drawing-store";
-import { Circle } from "lucide-react";
-import { DIRECTION_OPTIONS } from "./pattern-editor-constants";
+import { PatternNumberRow } from "./PatternNumberRow";
 
 export function OrbitConfig() {
   const t = useTranslations("planner");
+  const te = useTranslations("planner.inspector.editor");
   const orbitConfig = usePatternStore((s) => s.orbitConfig);
   const updateOrbitConfig = usePatternStore((s) => s.updateOrbitConfig);
   const drawnCircles = useDrawingStore((s) => s.circles);
+  // Short labels so both segments fit the inspector; the full words are the title.
+  const directionOptions = useMemo(() => [
+    { value: "cw" as const, label: te("directionCwShort"), title: te("directionCw"), icon: <RotateCw size={11} /> },
+    { value: "ccw" as const, label: te("directionCcwShort"), title: te("directionCcw"), icon: <RotateCcw size={11} /> },
+  ], [te]);
   return (
-    <>
-      <div className="flex items-center gap-1.5 text-[10px] font-mono text-text-tertiary">
-        <Circle size={12} />
-        <span>
-          {orbitConfig.center
-            ? `Center: ${orbitConfig.center[0].toFixed(4)}, ${orbitConfig.center[1].toFixed(4)}`
-            : drawnCircles.length > 0 ? t("usingLastDrawnCircle") : t("drawCircleFirst")}
-        </span>
-      </div>
-      <Input label={t("radius")} type="number" unit="m" value={String(orbitConfig.radius ?? 50)}
-        onChange={(e) => updateOrbitConfig({ radius: parseFloat(e.target.value) || 50 })} />
-      <Select label={t("direction")} options={DIRECTION_OPTIONS} value={orbitConfig.direction ?? "cw"}
-        onChange={(v) => updateOrbitConfig({ direction: v as "cw" | "ccw" })} />
-      <Input label={t("turns")} type="number" value={String(orbitConfig.turns ?? 1)}
-        onChange={(e) => updateOrbitConfig({ turns: parseInt(e.target.value) || 1 })} />
-      <Input label={t("startAngle")} type="number" unit="deg" placeholder="0 = North" value={String(orbitConfig.startAngle ?? 0)}
-        onChange={(e) => updateOrbitConfig({ startAngle: parseFloat(e.target.value) || 0 })} />
-      <div className="grid grid-cols-2 gap-2">
-        <Input label={t("altitudeAboveHome")} type="number" unit="m" value={String(orbitConfig.altitude ?? 50)}
-          onChange={(e) => updateOrbitConfig({ altitude: parseFloat(e.target.value) || 50 })} />
-        <Input label={t("speedMs")} type="number" unit="m/s" value={String(orbitConfig.speed ?? 5)}
-          onChange={(e) => updateOrbitConfig({ speed: parseFloat(e.target.value) || 5 })} />
-      </div>
-      <Input label={t("orbitTargetHeight")} type="number" unit="m" value={String(orbitConfig.targetHeight ?? 0)}
-        onChange={(e) => updateOrbitConfig({ targetHeight: parseFloat(e.target.value) || 0 })} />
-    </>
+    <div className="flex flex-col">
+      {orbitConfig.center ? (
+        <PropertyRow label={te("center")}>
+          <span className="block truncate font-mono text-xs text-text-primary">
+            {orbitConfig.center[0].toFixed(4)}, {orbitConfig.center[1].toFixed(4)}
+          </span>
+        </PropertyRow>
+      ) : (
+        <p className="py-1 text-[11px] text-text-tertiary">
+          {drawnCircles.length > 0 ? t("usingLastDrawnCircle") : t("drawCircleFirst")}
+        </p>
+      )}
+      <PatternNumberRow label={t("radius")} unit="m" step={1} min={1} value={orbitConfig.radius ?? 50}
+        onCommit={(radius) => updateOrbitConfig({ radius })} />
+      <PropertyRow label={t("direction")}>
+        <SegmentedControl size="sm" stretch ariaLabel={t("direction")} options={directionOptions}
+          value={orbitConfig.direction ?? "cw"}
+          onChange={(direction) => updateOrbitConfig({ direction })} />
+      </PropertyRow>
+      <PatternNumberRow label={t("turns")} step={1} min={1} precision={0} value={orbitConfig.turns ?? 1}
+        onCommit={(turns) => updateOrbitConfig({ turns })} />
+      <PatternNumberRow label={t("startAngle")} unit="deg" step={1} min={0} max={360}
+        hint={te("startAngleHint")} value={orbitConfig.startAngle ?? 0}
+        onCommit={(startAngle) => updateOrbitConfig({ startAngle })} />
+      <PatternNumberRow label={t("altitudeAboveHome")} unit="m" step={1} min={1} value={orbitConfig.altitude ?? 50}
+        onCommit={(altitude) => updateOrbitConfig({ altitude })} />
+      <PatternNumberRow label={t("speed")} unit="m/s" step={0.5} min={0.1} value={orbitConfig.speed ?? 5}
+        onCommit={(speed) => updateOrbitConfig({ speed })} />
+      <PatternNumberRow label={t("orbitTargetHeight")} unit="m" step={1} min={0} value={orbitConfig.targetHeight ?? 0}
+        onCommit={(targetHeight) => updateOrbitConfig({ targetHeight })} />
+    </div>
   );
 }

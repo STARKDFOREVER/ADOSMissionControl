@@ -109,13 +109,13 @@ export function TemplatesPanel() {
   );
 
   return (
-    <div className="flex flex-col gap-1 px-3 py-2">
-      <p className="text-[10px] text-text-tertiary font-mono px-0.5 pb-1">
+    <div className="flex flex-col gap-1">
+      <p className="pb-1 text-[11px] text-text-tertiary">
         {t("intro")}
       </p>
 
       {!hasCenter && (
-        <p className="text-[10px] text-status-warning font-mono px-0.5 pb-1">
+        <p className="pb-1 text-[11px] text-status-warning">
           {t("noCenterHint")}
         </p>
       )}
@@ -126,7 +126,7 @@ export function TemplatesPanel() {
         const showBoxHint = tpl.needsBoundary && !boundary;
         const showBoundaryHint = tpl.needsBoundary && !!boundary;
         return (
-          <div key={tpl.id} className="flex flex-col">
+          <div key={tpl.id} className="-mx-2 flex flex-col">
             <button
               type="button"
               disabled={!hasCenter}
@@ -137,21 +137,21 @@ export function TemplatesPanel() {
                 isPending && "bg-bg-tertiary",
               )}
             >
-              <Icon size={13} className="mt-0.5 shrink-0 text-accent-primary" />
+              <Icon size={13} className="mt-0.5 shrink-0 text-text-secondary" />
               <span className="min-w-0 flex flex-col">
                 <span className="text-xs font-medium text-text-primary truncate">
                   {t(tpl.nameKey)}
                 </span>
-                <span className="text-[10px] text-text-tertiary leading-snug">
+                <span className="text-[11px] text-text-tertiary leading-snug">
                   {t(tpl.descKey)}
                 </span>
                 {showBoxHint && (
-                  <span className="text-[10px] text-text-tertiary font-mono mt-0.5">
+                  <span className="mt-0.5 text-[11px] text-text-tertiary">
                     {t("needsBoundaryHint")}
                   </span>
                 )}
                 {showBoundaryHint && (
-                  <span className="text-[10px] text-accent-primary font-mono mt-0.5">
+                  <span className="mt-0.5 text-[11px] text-text-secondary">
                     {t("usingBoundaryHint")}
                   </span>
                 )}
@@ -160,7 +160,7 @@ export function TemplatesPanel() {
 
             {isPending && (
               <div className="flex items-center gap-2 px-2 pb-1.5 pt-0.5">
-                <span className="text-[10px] text-text-secondary flex-1">
+                <span className="text-[11px] text-text-secondary flex-1">
                   {t("replaceConfirm")}
                 </span>
                 <button
@@ -169,14 +169,14 @@ export function TemplatesPanel() {
                     setPendingId(null);
                     apply(tpl);
                   }}
-                  className="text-[10px] font-medium text-status-warning hover:underline cursor-pointer"
+                  className="text-[11px] font-medium text-status-warning hover:underline cursor-pointer"
                 >
                   {t("replace")}
                 </button>
                 <button
                   type="button"
                   onClick={() => setPendingId(null)}
-                  className="text-[10px] text-text-tertiary hover:text-text-primary cursor-pointer"
+                  className="text-[11px] text-text-tertiary hover:text-text-primary cursor-pointer"
                 >
                   {t("cancel")}
                 </button>

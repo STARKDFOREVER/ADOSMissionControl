@@ -45,7 +45,7 @@ describe("positioned actions", () => {
     const onUpdate = vi.fn();
     renderWithIntl(<WaypointActionTimeline waypoint={PARENT} onUpdate={onUpdate} />);
     fireEvent.click(screen.getByRole("combobox"));
-    fireEvent.click(screen.getByRole("option", { name: /Region of Interest/ }));
+    fireEvent.click(screen.getByRole("option", { name: /Region of interest/ }));
 
     const actions = onUpdate.mock.calls[0][0].actions as CommandMissionAction[];
     expect(actions).toHaveLength(1);

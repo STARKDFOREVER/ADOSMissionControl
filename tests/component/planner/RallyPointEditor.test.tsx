@@ -23,6 +23,7 @@ import { clearHistory, undoHistory } from "@/lib/planner-history";
 import { renderWithIntl } from "../../helpers/intl-wrapper";
 
 const R1 = { id: "r1", lat: 12.97, lon: 77.59, alt: 30 };
+const R2 = { id: "r2", lat: 12.98, lon: 77.6, alt: 40 };
 
 beforeEach(() => {
   clearHistory();
@@ -35,8 +36,8 @@ describe("RallyPointEditor", () => {
     renderWithIntl(<RallyPointEditor />);
     act(() => { useRallyStore.getState().updatePoint("r1", { lat: -33.8568, lon: 151.2153 }); });
 
-    const lat = screen.getByLabelText("Lat") as HTMLInputElement;
-    const lon = screen.getByLabelText("Lon") as HTMLInputElement;
+    const lat = screen.getByLabelText("Latitude") as HTMLInputElement;
+    const lon = screen.getByLabelText("Longitude") as HTMLInputElement;
     expect(lat.value).toBe("-33.8568");
     fireEvent.focus(lat); fireEvent.blur(lat);
     fireEvent.focus(lon); fireEvent.blur(lon);
@@ -46,7 +47,7 @@ describe("RallyPointEditor", () => {
 
   it("clears only after confirmation, and undo restores the points", () => {
     renderWithIntl(<RallyPointEditor />);
-    fireEvent.click(screen.getByRole("button", { name: "Clear All" }));
+    fireEvent.click(screen.getByRole("button", { name: "Clear all" }));
     expect(useRallyStore.getState().points).toHaveLength(1);
 
     fireEvent.click(screen.getByRole("button", { name: "Delete" }));
@@ -54,5 +55,13 @@ describe("RallyPointEditor", () => {
 
     act(() => undoHistory());
     expect(useRallyStore.getState().points).toEqual([R1]);
+  });
+
+  it("highlights the focused row", () => {
+    useRallyStore.setState({ points: [R1, R2] });
+    const { container } = renderWithIntl(<RallyPointEditor focusId="r2" />);
+    const current = container.querySelectorAll('[aria-current="true"]');
+    expect(current).toHaveLength(1);
+    expect(current[0].textContent).toContain("Rally 2");
   });
 });

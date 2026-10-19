@@ -9,16 +9,17 @@
  */
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { X, CloudDownload, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
+import { FloatingPanel } from "@/components/ui/floating-panel";
 import {
   totalTileCount, estimateDownloadSize, formatBytes,
   BASEMAP_ORDER, basemapName, resolveBasemap, validateTileUrlTemplate,
   type LatLngBounds,
 } from "@/lib/tile-math";
-import { MAX_CACHE_SIZE } from "@/lib/tile-cache";
+import { freeTileStorageBytes } from "@/lib/tile-storage";
 import { useTileDownloadStore, MAX_DOWNLOAD_TILES } from "@/stores/tile-download-store";
 import { cn } from "@/lib/utils";
 import { useSettingsStore, type MapTileSource } from "@/stores/settings-store";
@@ -86,16 +87,24 @@ export function DownloadAreaPanel({ bounds, currentZoom, currentProvider, onClos
     [bounds, zoomMin, zoomMax, providerConfig.avgTileKB],
   );
 
+  // Downloaded areas are never evicted, so the warning is about the browser's
+  // remaining quota, not a cache ceiling. Unknown quota shows no warning.
+  const [freeBytes, setFreeBytes] = useState<number | null>(null);
+  useEffect(() => {
+    let live = true;
+    freeTileStorageBytes().then((b) => {
+      if (live) setFreeBytes(b);
+    });
+    return () => {
+      live = false;
+    };
+  }, [result]);
+
   const tooMany = tileCount > MAX_DOWNLOAD_TILES;
   const isLarge = !tooMany && tileCount > 50000;
-  const wouldExceedCache = estSize > MAX_CACHE_SIZE;
+  const wouldExceedStorage = freeBytes !== null && estSize > freeBytes;
 
   const handleDownload = useCallback(async () => {
-    // Auto-enable caching if disabled
-    const settings = useSettingsStore.getState();
-    if (!settings.offlineTileCaching) {
-      settings.setOfflineTileCaching(true);
-    }
     clearResult();
     await startDownload(bounds, zoomMin, zoomMax, providerConfig);
   }, [bounds, zoomMin, zoomMax, providerConfig, startDownload, clearResult]);
@@ -108,7 +117,7 @@ export function DownloadAreaPanel({ bounds, currentZoom, currentProvider, onClos
   const progressPct = progress.total > 0 ? (progress.completed / progress.total) * 100 : 0;
 
   return (
-    <div className="absolute top-24 left-14 z-[1001] w-72 bg-bg-secondary/95 backdrop-blur-sm border border-border-default rounded-lg overflow-hidden">
+    <FloatingPanel layer="popover" padded={false} className="top-24 left-14 w-72 overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-border-default">
         <div className="flex items-center gap-2">
@@ -206,11 +215,11 @@ export function DownloadAreaPanel({ bounds, currentZoom, currentProvider, onClos
             </span>
           </div>
         )}
-        {wouldExceedCache && !tooMany && !isDownloading && (
+        {wouldExceedStorage && !tooMany && !isDownloading && (
           <div className="flex items-start gap-1.5 px-2 py-1.5 bg-status-warning/10 border border-status-warning/30 rounded">
             <AlertTriangle size={12} className="text-status-warning shrink-0 mt-0.5" />
             <span className="text-[9px] text-status-warning">
-              May exceed cache limit ({formatBytes(MAX_CACHE_SIZE)}). Oldest tiles will be evicted.
+              May exceed the free browser storage ({formatBytes(freeBytes ?? 0)}). The download stops when storage is full.
             </span>
           </div>
         )}
@@ -284,6 +293,6 @@ export function DownloadAreaPanel({ bounds, currentZoom, currentProvider, onClos
           </>
         )}
       </div>
-    </div>
+    </FloatingPanel>
   );
 }

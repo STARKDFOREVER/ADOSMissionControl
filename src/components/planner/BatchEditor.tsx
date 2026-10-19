@@ -2,36 +2,40 @@
 
 /**
  * @module BatchEditor
- * @description Multi-select waypoint editing panel.
- * Shift+click and Ctrl/Cmd+click for multi-selection.
- * Bulk change altitude, speed, command, or delete selected waypoints.
+ * @description Multi-select waypoint editing. Shift+click and Ctrl/Cmd+click
+ * build the selection. Each field shows the shared value, or "Mixed" when the
+ * selected waypoints differ; a typed value is applied to every selected
+ * waypoint with Set, and only the field set is changed.
  * @license GPL-3.0-only
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useTranslations } from "next-intl";
-import { Trash2, MountainSnow, Gauge, Command } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Trash2 } from "lucide-react";
 import { Select } from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { PropertyRow } from "@/components/ui/property-row";
+import { ScrubNumberField } from "@/components/ui/scrub-number-field";
 import { useMissionStore } from "@/stores/mission-store";
-import type { WaypointCommand } from "@/lib/types";
+import type { Waypoint, WaypointCommand } from "@/lib/types";
 
 interface BatchEditorProps {
   selectedIds: string[];
   onClearSelection: () => void;
 }
 
-const BATCH_COMMANDS: Array<{ value: string; label: string }> = [
-  { value: "WAYPOINT", label: "Waypoint" },
-  { value: "LOITER", label: "Loiter (unlimited)" },
-  { value: "LOITER_TIME", label: "Loiter (Time)" },
-  { value: "SPLINE_WAYPOINT", label: "Spline" },
-];
+const BATCH_COMMANDS: WaypointCommand[] = ["WAYPOINT", "LOITER", "LOITER_TIME", "SPLINE_WAYPOINT"];
+
+/** Whether every waypoint has the same value for `field`. */
+function allSame(wps: Waypoint[], field: keyof Waypoint): boolean {
+  return wps.every((wp) => wp[field] === wps[0][field]);
+}
+
+const setButtonClass =
+  "h-7 px-2 rounded-sm text-xs text-text-secondary border border-border-default hover:bg-bg-tertiary hover:text-text-primary transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed focus-ring";
 
 export function BatchEditor({ selectedIds, onClearSelection }: BatchEditorProps) {
-  const t = useTranslations("planner");
+  const t = useTranslations("planner.inspector.batch");
   const batchUpdateWaypoints = useMissionStore((s) => s.batchUpdateWaypoints);
   const setWaypoints = useMissionStore((s) => s.setWaypoints);
   const waypoints = useMissionStore((s) => s.waypoints);
@@ -42,21 +46,40 @@ export function BatchEditor({ selectedIds, onClearSelection }: BatchEditorProps)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const count = selectedIds.length;
+  const selected = useMemo(
+    () => waypoints.filter((wp) => selectedIds.includes(wp.id)),
+    [waypoints, selectedIds],
+  );
+  const first = selected[0];
+  const altMixed = !allSame(selected, "alt");
+  const speedMixed = !allSame(selected, "speed");
+  const sharedCommand = allSame(selected, "command") ? first?.command : undefined;
+  const commandPlaceholder = !sharedCommand
+    ? t("mixedCommand")
+    : BATCH_COMMANDS.includes(sharedCommand) ? t(`commands.${sharedCommand}`) : sharedCommand;
+
+  const commandOptions = useMemo(
+    () => BATCH_COMMANDS.map((value) => ({ value, label: t(`commands.${value}`) })),
+    [t],
+  );
 
   const applyAltitude = useCallback(() => {
     if (batchAlt === null) return;
     // One undo entry for the whole batch (not one per waypoint).
     batchUpdateWaypoints(selectedIds, { alt: batchAlt });
+    setBatchAlt(null);
   }, [selectedIds, batchAlt, batchUpdateWaypoints]);
 
   const applySpeed = useCallback(() => {
     if (batchSpeed === null) return;
     batchUpdateWaypoints(selectedIds, { speed: batchSpeed });
+    setBatchSpeed(null);
   }, [selectedIds, batchSpeed, batchUpdateWaypoints]);
 
   const applyCommand = useCallback(() => {
     if (!batchCommand) return;
     batchUpdateWaypoints(selectedIds, { command: batchCommand as WaypointCommand });
+    setBatchCommand("");
   }, [selectedIds, batchCommand, batchUpdateWaypoints]);
 
   const deleteSelected = useCallback(() => {
@@ -66,86 +89,33 @@ export function BatchEditor({ selectedIds, onClearSelection }: BatchEditorProps)
   }, [waypoints, selectedIds, setWaypoints, onClearSelection]);
 
   if (count < 2) {
-    return (
-      <div className="px-3 py-2">
-        <p className="text-[10px] text-text-tertiary font-mono">
-          {t("batchEditHint")}
-        </p>
-      </div>
-    );
+    return <p className="text-[11px] text-text-tertiary">{t("hint")}</p>;
   }
 
   return (
-    <div className="px-3 py-2 space-y-2">
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-text-secondary">
-          {t("waypointsSelected", { count })}
-        </span>
-        <button
-          onClick={onClearSelection}
-          className="text-[10px] text-text-tertiary hover:text-text-primary cursor-pointer"
-        >
-          {t("clear")}
-        </button>
-      </div>
+    <div className="flex flex-col">
+      <PropertyRow label={t("altitude")}
+        trailing={<button type="button" className={setButtonClass} onClick={applyAltitude} disabled={batchAlt === null}>{t("set")}</button>}>
+        <ScrubNumberField value={batchAlt ?? (altMixed ? undefined : first?.alt)} mixed={batchAlt === null && altMixed}
+          step={5} min={0} max={10000} unit="m" ariaLabel={t("altitude")} onCommit={setBatchAlt} />
+      </PropertyRow>
+      <PropertyRow label={t("speed")}
+        trailing={<button type="button" className={setButtonClass} onClick={applySpeed} disabled={batchSpeed === null}>{t("set")}</button>}>
+        <ScrubNumberField value={batchSpeed ?? (speedMixed ? undefined : first?.speed)} mixed={batchSpeed === null && speedMixed}
+          placeholder={t("defaultSpeed")}
+          step={1} min={0} max={100} unit="m/s" ariaLabel={t("speed")} onCommit={setBatchSpeed} />
+      </PropertyRow>
+      <PropertyRow label={t("command")}
+        trailing={<button type="button" className={setButtonClass} onClick={applyCommand} disabled={!batchCommand}>{t("set")}</button>}>
+        <Select value={batchCommand} onChange={setBatchCommand} options={commandOptions} placeholder={commandPlaceholder}
+          ariaLabel={t("command")} compact  />
+      </PropertyRow>
 
-      <div className="flex items-center gap-1.5">
-        <MountainSnow size={12} className="text-text-tertiary shrink-0" />
-        <Input
-          type="number"
-          value={batchAlt ?? ""}
-          onChange={(e) => setBatchAlt(e.target.value ? Number(e.target.value) : null)}
-          min={0}
-          max={10000}
-          step={5}
-          className="flex-1"
-          label={t("altitudeM")}
-        />
-        <Button variant="ghost" size="sm" onClick={applyAltitude} disabled={batchAlt === null}>
-          {t("set")}
-        </Button>
-      </div>
-
-      <div className="flex items-center gap-1.5">
-        <Gauge size={12} className="text-text-tertiary shrink-0" />
-        <Input
-          type="number"
-          value={batchSpeed ?? ""}
-          onChange={(e) => setBatchSpeed(e.target.value ? Number(e.target.value) : null)}
-          min={0}
-          max={100}
-          step={1}
-          className="flex-1"
-          label={t("speedMs")}
-        />
-        <Button variant="ghost" size="sm" onClick={applySpeed} disabled={batchSpeed === null}>
-          {t("set")}
-        </Button>
-      </div>
-
-      <div className="flex items-center gap-1.5">
-        <Command size={12} className="text-text-tertiary shrink-0" />
-        <Select
-          value={batchCommand}
-          onChange={setBatchCommand}
-          options={BATCH_COMMANDS}
-          placeholder={t("commandPlaceholder")}
-          className="flex-1"
-        />
-        <Button variant="ghost" size="sm" onClick={applyCommand} disabled={!batchCommand}>
-          {t("set")}
-        </Button>
-      </div>
-
-      <Button
-        variant="ghost"
-        size="sm"
-        className="w-full text-status-error"
-        icon={<Trash2 size={12} />}
-        onClick={() => setShowDeleteConfirm(true)}
-      >
-        {t("deleteWaypoints", { count })}
-      </Button>
+      <button type="button" onClick={() => setShowDeleteConfirm(true)}
+        className="mt-3 flex h-7 items-center justify-center gap-1.5 rounded-sm border border-border-default text-xs text-status-error hover:bg-status-error/10 transition-colors cursor-pointer focus-ring">
+        <Trash2 size={12} />
+        {t("delete", { count })}
+      </button>
 
       <ConfirmDialog
         open={showDeleteConfirm}
@@ -154,9 +124,9 @@ export function BatchEditor({ selectedIds, onClearSelection }: BatchEditorProps)
           setShowDeleteConfirm(false);
         }}
         onCancel={() => setShowDeleteConfirm(false)}
-        title={t("deleteWaypointsTitle")}
-        message={t("deleteWaypointsConfirm", { count })}
-        confirmLabel={t("delete")}
+        title={t("deleteTitle")}
+        message={t("deleteConfirm", { count })}
+        confirmLabel={t("deleteConfirmLabel")}
         variant="danger"
       />
     </div>

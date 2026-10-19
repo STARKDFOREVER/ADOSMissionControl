@@ -10,10 +10,11 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Input } from "@/components/ui/input";
+import { PropertyRow } from "@/components/ui/property-row";
 import { usePatternStore } from "@/stores/pattern-store";
 import { fixedWingApproachDistance, landingApproachHeading } from "@/lib/patterns/landing-generator";
 import { LandingPointPicker } from "./LandingPointPicker";
+import { PatternNumberRow } from "./PatternNumberRow";
 
 export function FixedWingLandingConfig() {
   const t = useTranslations("planner");
@@ -21,32 +22,28 @@ export function FixedWingLandingConfig() {
   const update = usePatternStore((s) => s.updateFixedWingLandingConfig);
   const approachDistance = fixedWingApproachDistance(config.loiterAltitude ?? 60, config.glideSlopeAngle ?? 5);
   return (
-    <>
+    <div className="flex flex-col">
       <LandingPointPicker
         landingPoint={config.landingPoint}
         onChange={(landingPoint) => update({ landingPoint })}
       />
-      <Input label={t("approachHeading")} type="number" unit="deg" placeholder="0-360"
-        value={config.approachHeading === undefined ? "" : String(config.approachHeading)}
-        onChange={(e) => {
-          const v = parseFloat(e.target.value);
-          update({ approachHeading: Number.isFinite(v) ? v : undefined });
-        }} />
+      <PatternNumberRow label={t("approachHeading")} unit="deg" step={1} min={0} max={360} placeholder="0-360"
+        value={config.approachHeading} onCommit={(approachHeading) => update({ approachHeading })}
+        onClear={() => update({ approachHeading: undefined })} />
       {landingApproachHeading(config.approachHeading) === null && (
-        <p className="text-[10px] text-status-warning">{t("approachHeadingRequired")}</p>
+        <p className="py-0.5 text-[11px] text-status-warning">{t("approachHeadingRequired")}</p>
       )}
-      <Input label={t("glideSlopeAngle")} type="number" unit="deg" value={String(config.glideSlopeAngle ?? 5)}
-        onChange={(e) => update({ glideSlopeAngle: parseFloat(e.target.value) || 5 })} />
-      <div className="grid grid-cols-2 gap-2">
-        <Input label={`${t("loiterAltitude")} (${t("aboveHome")})`} type="number" unit="m" value={String(config.loiterAltitude ?? 60)}
-          onChange={(e) => update({ loiterAltitude: parseFloat(e.target.value) || 60 })} />
-        <Input label={t("speedMs")} type="number" unit="m/s" value={String(config.speed ?? 15)}
-          onChange={(e) => update({ speed: parseFloat(e.target.value) || 15 })} />
-      </div>
-      <div className="flex items-center justify-between text-[10px] font-mono">
-        <span className="text-text-secondary">{t("approachDistance")}</span>
-        <span className="text-text-primary">{approachDistance === null ? "—" : `${Math.round(approachDistance)} m`}</span>
-      </div>
-    </>
+      <PatternNumberRow label={t("glideSlopeAngle")} unit="deg" step={0.5} min={0.5} max={45}
+        value={config.glideSlopeAngle ?? 5} onCommit={(glideSlopeAngle) => update({ glideSlopeAngle })} />
+      <PatternNumberRow label={t("loiterAltitude")} hint={t("aboveHome")} unit="m" step={1} min={1}
+        value={config.loiterAltitude ?? 60} onCommit={(loiterAltitude) => update({ loiterAltitude })} />
+      <PatternNumberRow label={t("speed")} unit="m/s" step={0.5} min={0.1}
+        value={config.speed ?? 15} onCommit={(speed) => update({ speed })} />
+      <PropertyRow label={t("approachDistance")}>
+        <span className="block truncate font-mono text-xs text-text-primary">
+          {approachDistance === null ? "—" : `${Math.round(approachDistance)} m`}
+        </span>
+      </PropertyRow>
+    </div>
   );
 }

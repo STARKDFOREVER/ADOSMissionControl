@@ -1,21 +1,24 @@
 /**
  * @module PatternEditor
- * @description Right panel section for configuring flight patterns (survey, orbit, corridor, SAR, structure scan).
- * Shows relevant controls based on active pattern type, generation stats, and Generate/Clear buttons.
- * Integrates GSD calculator for survey mode: camera profile dropdown auto-computes line spacing.
+ * @description Flight pattern editor (survey, orbit, corridor, perimeter, SAR,
+ * structure scan, landings). Shows the active pattern's settings, a "Draw
+ * area" shortcut for area patterns, readiness, generation stats, and the
+ * Generate / Apply / Clear actions. Survey mode integrates the GSD calculator.
  * @license GPL-3.0-only
  */
 "use client";
 
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useId, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { Select } from "@/components/ui/select";
+import { PropertyRow } from "@/components/ui/property-row";
 import { usePatternStore } from "@/stores/pattern-store";
 import { selectPatternType } from "@/stores/pattern-selection";
 import { useDrawingStore } from "@/stores/drawing-store";
+import { usePlannerStore } from "@/stores/planner-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { formatDistance, formatArea } from "@/lib/units/format";
-import { Play, Trash2, AlertTriangle, Check, X, Puzzle } from "lucide-react";
+import { Play, Trash2, AlertTriangle, Check, X, Puzzle, PenLine } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FleetPluginSlot } from "@/components/plugins/FleetPluginSlot";
 import { useFleetPluginContributions } from "@/hooks/use-fleet-plugin-contributions";
@@ -29,6 +32,7 @@ import { FixedWingLandingConfig } from "./FixedWingLandingConfigSection";
 import { VtolLandingConfig } from "./VtolLandingConfigSection";
 import { PerimeterConfig } from "./PerimeterConfigSection";
 import type { SurveyConfig as SurveyConfigType } from "@/lib/patterns/types";
+import type { PatternType } from "@/stores/pattern-store";
 import { CAMERA_PROFILES, computeLineSpacing, computeTriggerDistance } from "@/lib/patterns/gsd-calculator";
 
 /** Survey config plus the planner's UI-only overlap / camera helper fields. */
@@ -50,8 +54,23 @@ const SURVEY_DELIVERABLE_PRESETS = [
   { key: "fastLowDetail", labelKey: "presetFastLowDetail", sideOverlap: 60, frontOverlap: 60 },
 ] as const;
 
+/**
+ * The shape "Draw area" arms for each area pattern. Corridor draws its path
+ * with its own button; point-origin patterns (SAR, landings) use the datum tool.
+ */
+const DRAW_AREA_SHAPE: Partial<Record<NonNullable<PatternType>, "polygon" | "circle">> = {
+  survey: "polygon",
+  perimeter: "polygon",
+  structureScan: "polygon",
+  orbit: "circle",
+};
+
+const secondaryButton =
+  "flex h-7 items-center justify-center gap-1.5 rounded-sm border border-border-default px-2 text-xs text-text-secondary transition-colors hover:bg-bg-tertiary hover:text-text-primary cursor-pointer focus-ring";
+
 export function PatternEditor({ onApply }: PatternEditorProps) {
   const t = useTranslations("planner");
+  const tIns = useTranslations("planner.inspector.pattern");
   const units = useSettingsStore((s) => s.units);
   const activeType = usePatternStore((s) => s.activePatternType);
   const surveyConfig = usePatternStore((s) => s.surveyConfig);
@@ -79,10 +98,6 @@ export function PatternEditor({ onApply }: PatternEditorProps) {
     },
     []
   );
-
-  const handleGenerate = useCallback(() => {
-    generate();
-  }, [generate]);
 
   // Compute whether geometry is available for the active pattern type
   const hasGeometry = useMemo(() => {
@@ -131,129 +146,133 @@ export function PatternEditor({ onApply }: PatternEditorProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeType, configKey, polygons.length, circles.length, generate]);
 
+  const typeRow = (
+    <PropertyRow label={tIns("type")}>
+      <Select options={PATTERN_TYPE_OPTIONS} value={activeType ?? ""} onChange={handleTypeChange}
+        ariaLabel={tIns("type")} compact placeholder={activeType ? undefined : tIns("selectType")} />
+    </PropertyRow>
+  );
+
   if (!activeType) {
     return (
-      <div className="px-3 py-2">
-        <Select label={t("patternType")} options={PATTERN_TYPE_OPTIONS} value="" onChange={handleTypeChange} placeholder={t("selectPattern")} />
-        <p className="text-[10px] font-mono text-text-tertiary mt-2">
-          {t("drawPatternHint")}
-        </p>
+      <div className="flex flex-col">
+        {typeRow}
+        <p className="mt-1 text-[11px] text-text-tertiary">{tIns("hint")}</p>
         <PluginMissionTemplates />
       </div>
     );
   }
 
-  return (
-    <div className="flex flex-col gap-3 px-3 py-2">
-      <Select label={t("patternType")} options={PATTERN_TYPE_OPTIONS} value={activeType} onChange={handleTypeChange} />
-      {activeType === "survey" && <SurveyConfig />}
-      {activeType === "survey" && <SurveyDeliverablePresets />}
-      {activeType === "orbit" && <OrbitConfig />}
-      {activeType === "corridor" && <CorridorConfig />}
-      {activeType === "expandingSquare" && <SarExpandingSquareConfig />}
-      {activeType === "sectorSearch" && <SarSectorSearchConfig />}
-      {activeType === "parallelTrack" && <SarParallelTrackConfig />}
-      {activeType === "structureScan" && <StructureScanConfig />}
-      {activeType === "perimeter" && <PerimeterConfig />}
-      {activeType === "fixedWingLanding" && <FixedWingLandingConfig />}
-      {activeType === "vtolLanding" && <VtolLandingConfig />}
+  const drawShape = DRAW_AREA_SHAPE[activeType];
+  const missingGeometryHint =
+    activeType === "survey" || activeType === "structureScan" || activeType === "perimeter" ? t("drawPolygonFirst") :
+    activeType === "orbit" ? t("drawCircleFirst") :
+    activeType === "corridor" ? t("setPathPoints") :
+    activeType === "parallelTrack" ? t("setStartPoint") :
+    activeType === "fixedWingLanding" || activeType === "vtolLanding" ? t("setLandingPoint") : t("setDatumPoint");
 
-      {/* Readiness indicator */}
-      <div className="flex items-center gap-1.5 px-2 py-1">
-        {isGenerating ? (
-          <>
-            <div className="w-1.5 h-1.5 rounded-full bg-accent-primary animate-pulse" />
-            <span className="text-[10px] font-mono text-accent-primary">{t("generating")}</span>
-          </>
-        ) : hasGeometry ? (
-          <>
-            <div className="w-1.5 h-1.5 rounded-full bg-status-success" />
-            <span className="text-[10px] font-mono text-status-success">{t("ready")}</span>
-          </>
-        ) : (
-          <>
-            <div className="w-1.5 h-1.5 rounded-full bg-status-warning" />
-            <span className="text-[10px] font-mono text-status-warning">
-              {activeType === "survey" || activeType === "structureScan" || activeType === "perimeter" ? t("drawPolygonFirst") :
-               activeType === "orbit" ? t("drawCircleFirst") :
-               activeType === "corridor" ? t("setPathPoints") :
-               activeType === "parallelTrack" ? t("setStartPoint") :
-               activeType === "fixedWingLanding" || activeType === "vtolLanding" ? t("setLandingPoint") : t("setDatumPoint")}
-            </span>
-          </>
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-col">
+        {typeRow}
+        {drawShape && (
+          <button type="button" className={cn(secondaryButton, "mt-1")}
+            onClick={() => usePlannerStore.getState().setMode({ kind: "draw", shape: drawShape, drawingFor: "pattern" })}>
+            <PenLine size={12} />
+            {tIns("drawArea")}
+          </button>
         )}
       </div>
 
-      {/* Generate / Clear buttons */}
-      <div className="flex gap-2">
-        <button onClick={handleGenerate} disabled={isGenerating}
-          className={cn(
-            "flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-mono font-semibold transition-colors cursor-pointer",
-            "bg-accent-primary/20 text-accent-primary border border-accent-primary/30 hover:bg-accent-primary/30",
-            isGenerating && "opacity-50 cursor-wait"
-          )}>
-          <Play size={12} />{isGenerating ? t("generating") : t("generatePattern")}
+      <div className="flex flex-col gap-1">
+        {activeType === "survey" && <SurveyConfig />}
+        {activeType === "survey" && <SurveyDeliverablePresets />}
+        {activeType === "orbit" && <OrbitConfig />}
+        {activeType === "corridor" && <CorridorConfig />}
+        {activeType === "expandingSquare" && <SarExpandingSquareConfig />}
+        {activeType === "sectorSearch" && <SarSectorSearchConfig />}
+        {activeType === "parallelTrack" && <SarParallelTrackConfig />}
+        {activeType === "structureScan" && <StructureScanConfig />}
+        {activeType === "perimeter" && <PerimeterConfig />}
+        {activeType === "fixedWingLanding" && <FixedWingLandingConfig />}
+        {activeType === "vtolLanding" && <VtolLandingConfig />}
+      </div>
+
+      {/* Readiness indicator */}
+      <div className="flex items-center gap-1.5" role="status">
+        <span className={cn(
+          "h-1.5 w-1.5 shrink-0 rounded-full",
+          isGenerating ? "bg-text-secondary animate-pulse" : hasGeometry ? "bg-status-success" : "bg-status-warning",
+        )} />
+        <span className={cn(
+          "text-[11px]",
+          isGenerating ? "text-text-secondary" : hasGeometry ? "text-status-success" : "text-status-warning",
+        )}>
+          {isGenerating ? t("generating") : hasGeometry ? t("ready") : missingGeometryHint}
+        </span>
+      </div>
+
+      {error && (
+        <div className="flex items-start gap-1.5">
+          <AlertTriangle size={12} className="mt-0.5 shrink-0 text-status-error" />
+          <span className="text-[11px] text-status-error">{error}</span>
+        </div>
+      )}
+
+      {/* Generate / Apply / Clear */}
+      <div className="flex gap-1.5">
+        <button type="button" onClick={generate} disabled={isGenerating}
+          className={cn(secondaryButton, "flex-1", isGenerating && "opacity-50 cursor-wait")}>
+          <Play size={12} />{isGenerating ? t("generating") : tIns("generate")}
         </button>
         {(polygons.length > 0 || circles.length > 0) && (
-          <button onClick={() => useDrawingStore.getState().clearAll()}
-            className="flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-mono text-text-secondary border border-border-default hover:bg-bg-tertiary transition-colors cursor-pointer"
-            title="Clear drawn shapes">
-            <X size={12} /> Shapes
+          <button type="button" onClick={() => useDrawingStore.getState().clearAll()}
+            className={secondaryButton} title={tIns("clearShapesTitle")}>
+            <X size={12} /> {tIns("clearShapes")}
           </button>
         )}
-        <button onClick={clear}
-          className="flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-mono text-text-secondary border border-border-default hover:bg-bg-tertiary transition-colors cursor-pointer">
+        <button type="button" onClick={clear} className={secondaryButton}
+          title={tIns("clearPattern")} aria-label={tIns("clearPattern")}>
           <Trash2 size={12} />
         </button>
       </div>
 
-      {error && (
-        <div className="flex items-center gap-1.5 px-2 py-1.5 bg-status-error/10 border border-status-error/20">
-          <AlertTriangle size={12} className="text-status-error shrink-0" />
-          <span className="text-[10px] font-mono text-status-error">{error}</span>
-        </div>
-      )}
-
-      {/* Apply button (above stats for prominence) */}
       {patternResult && onApply && (
-        <button onClick={onApply}
-          className={cn(
-            "w-full flex items-center justify-center gap-1.5 py-2 text-xs font-mono font-semibold",
-            "bg-accent-primary/20 text-accent-primary border border-accent-primary/30 hover:bg-accent-primary/30 transition-colors cursor-pointer"
-          )}>
-          <Check size={12} />{t("applyToMission", { count: patternResult.waypoints.length })}
+        <button type="button" onClick={onApply}
+          className="flex h-8 w-full items-center justify-center gap-1.5 rounded-sm bg-accent-primary text-xs font-semibold text-bg-primary transition-colors hover:bg-accent-primary/90 cursor-pointer focus-ring">
+          <Check size={12} />{tIns("apply", { count: patternResult.waypoints.length })}
         </button>
       )}
 
-      {/* Pattern stats */}
       {patternResult && (
-        <div className="border border-border-default p-2">
-          <div className="text-[10px] font-mono text-text-tertiary mb-1">{t("patternStats")}</div>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[10px] font-mono">
-            <span className="text-text-secondary">{t("distance")}</span>
-            <span className="text-text-primary">{formatDistance(patternResult.stats.totalDistance, units)}</span>
-            <span className="text-text-secondary">{t("estimatedTime")}</span>
-            <span className="text-text-primary">{Math.floor(patternResult.stats.estimatedTime / 60)}m {Math.round(patternResult.stats.estimatedTime % 60)}s</span>
-            <span className="text-text-secondary">{t("waypoints")}</span>
-            <span className="text-text-primary">{patternResult.waypoints.length}</span>
-            {patternResult.stats.photoCount > 0 && (<>
-              <span className="text-text-secondary">{t("photos")}</span>
-              <span className="text-text-primary">{patternResult.stats.photoCount}</span>
-            </>)}
-            {patternResult.stats.coveredArea > 0 && (<>
-              <span className="text-text-secondary">{t("area")}</span>
-              <span className="text-text-primary">{formatArea(patternResult.stats.coveredArea, units)}</span>
-            </>)}
-            {patternResult.stats.transectCount > 0 && (<>
-              <span className="text-text-secondary">{t("transects")}</span>
-              <span className="text-text-primary">{patternResult.stats.transectCount}</span>
-            </>)}
-          </div>
+        <div className="flex flex-col border-t border-border-default pt-2">
+          <span className="mb-1 font-body text-[11px] font-semibold text-text-tertiary">{tIns("stats")}</span>
+          <StatRow label={tIns("distance")} value={formatDistance(patternResult.stats.totalDistance, units)} />
+          <StatRow label={tIns("time")}
+            value={`${Math.floor(patternResult.stats.estimatedTime / 60)}m ${Math.round(patternResult.stats.estimatedTime % 60)}s`} />
+          <StatRow label={tIns("waypoints")} value={String(patternResult.waypoints.length)} />
+          {patternResult.stats.photoCount > 0 && (
+            <StatRow label={tIns("photos")} value={String(patternResult.stats.photoCount)} />
+          )}
+          {patternResult.stats.coveredArea > 0 && (
+            <StatRow label={tIns("area")} value={formatArea(patternResult.stats.coveredArea, units)} />
+          )}
+          {patternResult.stats.transectCount > 0 && (
+            <StatRow label={tIns("transects")} value={String(patternResult.stats.transectCount)} />
+          )}
         </div>
       )}
 
       <PluginMissionTemplates />
     </div>
+  );
+}
+
+function StatRow({ label, value }: { label: string; value: string }) {
+  return (
+    <PropertyRow label={label}>
+      <span className="font-mono text-xs text-text-primary">{value}</span>
+    </PropertyRow>
   );
 }
 
@@ -277,13 +296,18 @@ export function SurveyDeliverablePresets() {
     }
     store.updateSurveyConfig(update as Partial<SurveyConfigType>);
   }, []);
+  const labelId = useId();
+  // Label above, buttons across the full width: three presets don't fit beside
+  // a 96 px label. A long name wraps inside its button rather than truncating.
   return (
-    <div className="flex flex-col gap-1">
-      <span className="text-[10px] font-mono uppercase tracking-wider text-text-tertiary">{t("deliverablePresets")}</span>
-      <div className="flex gap-1.5">
+    <div className="flex flex-col gap-1 py-1" role="group" aria-labelledby={labelId}>
+      <span id={labelId} className="text-xs leading-tight text-text-secondary">
+        {t("deliverablePresets")}
+      </span>
+      <div className="flex gap-1">
         {SURVEY_DELIVERABLE_PRESETS.map((p) => (
-          <button key={p.key} onClick={() => apply(p.sideOverlap, p.frontOverlap)}
-            className="flex-1 py-1 text-[10px] font-mono text-text-secondary border border-border-default hover:bg-bg-tertiary hover:text-text-primary transition-colors cursor-pointer">
+          <button key={p.key} type="button" onClick={() => apply(p.sideOverlap, p.frontOverlap)}
+            className="min-h-7 min-w-0 flex-1 rounded-sm border border-border-default px-1 py-0.5 text-[11px] leading-tight text-text-secondary transition-colors hover:bg-bg-tertiary hover:text-text-primary cursor-pointer focus-ring">
             {t(p.labelKey)}
           </button>
         ))}
@@ -308,10 +332,10 @@ function PluginMissionTemplates() {
 function PluginMissionTemplatesBody() {
   const t = useTranslations("plugins");
   return (
-    <div className="mt-3 space-y-1.5">
+    <div className="flex flex-col gap-1.5 border-t border-border-default pt-2">
       <div className="flex items-center gap-1.5">
-        <Puzzle size={12} className="text-accent-primary" />
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">
+        <Puzzle size={12} className="text-text-tertiary" />
+        <span className="font-body text-[11px] font-semibold text-text-tertiary">
           {t("missionTemplatesHeading")}
         </span>
       </div>

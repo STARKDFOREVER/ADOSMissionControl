@@ -1,6 +1,6 @@
 /**
  * @module waypoint-constants
- * @description Constants for WaypointListItem: command options, command letter map.
+ * @description Constants for the waypoint outline rows and inspector: command options, command letter map.
  * @license GPL-3.0-only
  */
 
@@ -14,17 +14,17 @@ import type { VehicleClass } from "@/lib/protocol/types";
  */
 export const NAV_COMMAND_OPTIONS: { value: NavCommand; label: string }[] = [
   { value: "WAYPOINT", label: "Waypoint" },
-  { value: "SPLINE_WAYPOINT", label: "Spline Waypoint" },
+  { value: "SPLINE_WAYPOINT", label: "Spline waypoint" },
   { value: "TAKEOFF", label: "Takeoff" },
   { value: "LAND", label: "Land" },
   { value: "LOITER", label: "Loiter (unlimited)" },
-  { value: "LOITER_TIME", label: "Loiter (Time)" },
-  { value: "LOITER_TURNS", label: "Loiter (Turns)" },
-  { value: "RTL", label: "Return to Launch" },
-  { value: "VTOL_TAKEOFF", label: "VTOL Takeoff" },
-  { value: "VTOL_LAND", label: "VTOL Land" },
-  { value: "NAV_PAYLOAD_PLACE", label: "Payload Place" },
-  { value: "DO_LAND_START", label: "Land Start" },
+  { value: "LOITER_TIME", label: "Loiter (time)" },
+  { value: "LOITER_TURNS", label: "Loiter (turns)" },
+  { value: "RTL", label: "Return to launch" },
+  { value: "VTOL_TAKEOFF", label: "VTOL takeoff" },
+  { value: "VTOL_LAND", label: "VTOL land" },
+  { value: "NAV_PAYLOAD_PLACE", label: "Payload place" },
+  { value: "DO_LAND_START", label: "Land start" },
 ];
 
 /**
@@ -46,6 +46,24 @@ export const ACTION_COMMAND_GROUPS: { groupKey: string; commands: ActionCommand[
  * upload refuses it.
  */
 export const INAV_ACTION_COMMANDS: readonly ActionCommand[] = ["ROI", "DO_JUMP", "CONDITION_YAW"];
+
+/**
+ * The iNav waypoint actions that own a position, each mapped onto the
+ * navigation command the mission model and the iNav translator share. SET_POI,
+ * JUMP and SET_HEAD are attached actions (ROI, DO_JUMP, CONDITION_YAW).
+ */
+export const INAV_ACTION_OPTIONS: { value: NavCommand; label: string }[] = [
+  { value: "WAYPOINT",    label: "WAYPOINT" },
+  { value: "LOITER",      label: "POSHOLD_UNLIM" },
+  { value: "LOITER_TIME", label: "POSHOLD_TIME" },
+  { value: "RTL",         label: "RTH" },
+  { value: "LAND",        label: "LAND" },
+];
+
+/** iNav action name per navigation command, for compact rows. */
+export const INAV_ACTION_LABEL: Record<string, string> = Object.fromEntries(
+  INAV_ACTION_OPTIONS.map((o) => [o.value, o.label]),
+);
 
 /**
  * The planner's default acceptance radius for a newly created waypoint. It

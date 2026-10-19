@@ -87,7 +87,6 @@ function buildActions(activeTool = "polygon") {
       addRallyPoint: vi.fn(),
       setContextMenu: vi.fn(),
       setSelectedWaypoint: vi.fn(),
-      setExpandedWaypoint: vi.fn(),
       setShowClearConfirm: vi.fn(),
       setShowDownloadConfirm: vi.fn(),
       setMissionName: vi.fn(),

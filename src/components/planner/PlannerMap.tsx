@@ -15,7 +15,7 @@ import type { RallyPoint } from "@/stores/rally-store";
 import type { DrawnPolygon, DrawnCircle } from "@/lib/drawing/types";
 import { bearing } from "@/lib/telemetry-utils";
 import { MAP_COLORS } from "@/lib/map-constants";
-import { useDefaultCenter } from "@/hooks/use-default-center";
+import { useInitialPlannerView } from "@/hooks/use-initial-planner-view";
 import { DrawingManager } from "@/lib/drawing/drawing-manager";
 import { registerActiveDrawApi } from "@/lib/drawing/active-draw-api";
 import { useDrawingStore } from "@/stores/drawing-store";
@@ -99,7 +99,8 @@ export function PlannerMap({
   onMapClick, onMapRightClick, onWaypointClick, onWaypointDragEnd, onWaypointRightClick, onDrawingComplete,
 }: PlannerMapProps) {
   const [mapInstance, setMapInstance] = useState<L.Map | null>(null);
-  const [zoom, setZoom] = useState(13);
+  const initialView = useInitialPlannerView();
+  const [zoom, setZoom] = useState(initialView.zoom);
   const drawingManagerRef = useRef<DrawingManager | null>(null);
   const drawingMode = useDrawingStore((s) => s.drawingMode);
   const setDrawingMode = useDrawingStore((s) => s.setDrawingMode);
@@ -116,7 +117,69 @@ export function PlannerMap({
   const mode = usePlannerStore((s) => s.mode);
   const fitRequestTs = usePlannerStore((s) => s.fitRequestTs);
   const clearFitRequest = usePlannerStore((s) => s.clearFitRequest);
-  const defaultCenter = useDefaultCenter();
+  // One-shot recentres. The map reads centre/zoom only at mount, so a view that
+  // resolves later (the persisted view finishing hydration, the first GPS fix)
+  // is applied here once, and never after the operator has moved the map.
+  const userMovedRef = useRef(false);
+  const hydratedViewAppliedRef = useRef(false);
+  const gpsViewAppliedRef = useRef(false);
+  const restoredFitRef = useRef(false);
+
+  useEffect(() => {
+    if (!mapInstance) return;
+    const markMoved = () => { userMovedRef.current = true; };
+    const container = mapInstance.getContainer();
+    const domEvents = ["wheel", "dblclick", "touchstart", "keydown"] as const;
+    mapInstance.on("dragstart", markMoved);
+    domEvents.forEach((ev) => container.addEventListener(ev, markMoved, { passive: true }));
+    return () => {
+      mapInstance.off("dragstart", markMoved);
+      domEvents.forEach((ev) => container.removeEventListener(ev, markMoved));
+    };
+  }, [mapInstance]);
+
+  const { center: viewCenter, zoom: viewZoom, source: viewSource, hydrated: viewHydrated } = initialView;
+  useEffect(() => {
+    if (!mapInstance || !viewHydrated || hydratedViewAppliedRef.current) return;
+    hydratedViewAppliedRef.current = true;
+    if (viewSource !== "persisted" || userMovedRef.current) return;
+    const c = mapInstance.getCenter();
+    if (c.lat === viewCenter[0] && c.lng === viewCenter[1] && mapInstance.getZoom() === viewZoom) return;
+    mapInstance.setView(viewCenter, viewZoom, { animate: false });
+    // viewCenter/viewZoom intentionally omitted: this applies the hydrated view once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapInstance, viewHydrated, viewSource]);
+
+  useEffect(() => {
+    if (!mapInstance || !viewHydrated || viewSource !== "gps" || gpsViewAppliedRef.current) return;
+    gpsViewAppliedRef.current = true;
+    if (userMovedRef.current || waypoints.length > 0) return;
+    mapInstance.setView(viewCenter, viewZoom);
+    // Applied once, on the first fix; later fixes never drag the map.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapInstance, viewHydrated, viewSource]);
+
+  useEffect(() => {
+    if (!viewHydrated || restoredFitRef.current || !hasActivePlan || waypoints.length === 0) return;
+    restoredFitRef.current = true;
+    if (viewSource === "persisted" || userMovedRef.current) return;
+    usePlannerStore.getState().requestFit();
+  }, [viewHydrated, viewSource, hasActivePlan, waypoints.length]);
+
+  // The side panels and the dock resize the map region without a window
+  // resize, which is the only resize Leaflet tracks on its own. Re-measure on
+  // every container size change, keeping the centre fixed, so no strip of the
+  // map is left untiled and a just-fitted plan stays in the middle.
+  useEffect(() => {
+    if (!mapInstance) return;
+    let frame = 0;
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => mapInstance.invalidateSize({ animate: false }));
+    });
+    observer.observe(mapInstance.getContainer());
+    return () => { cancelAnimationFrame(frame); observer.disconnect(); };
+  }, [mapInstance]);
 
   useEffect(() => {
     if (!mapInstance) return;
@@ -336,7 +399,7 @@ export function PlannerMap({
     <div className="w-full h-full relative">
       {hasActivePlan && <PlannerGpsBadge />}
       {hasActivePlan && <GuidanceSettingsMenu placement="top-right" />}
-      <MapContainer center={defaultCenter} zoom={13} className="w-full h-full bg-bg-primary" zoomControl={false}
+      <MapContainer center={viewCenter} zoom={viewZoom} className="w-full h-full bg-bg-primary" zoomControl={false}
         ref={(instance) => { if (instance) setMapInstance(instance); }}>
         <TileLayerSwitcher showControls={hasActivePlan} />
         {hasActivePlan && <CursorTracker />}
@@ -348,7 +411,8 @@ export function PlannerMap({
         {/* Spline curve overlay (when spline waypoints present) */}
         {hasActivePlan && splinePositions.length >= 2 && <Polyline positions={splinePositions} pathOptions={SPLINE_PATH_STYLE} />}
         {hasActivePlan && segments.map((seg) => <Marker key={seg.key} position={seg.position} icon={makeSegmentLabel(seg.label)} interactive={false} />)}
-        {hasActivePlan && <><GcsMarker /><LocateControl /><PatternOverlay /></>}
+        <LocateControl />
+        {hasActivePlan && <><GcsMarker /><PatternOverlay /></>}
         {/* Geofence: primary fence (editable) + inclusion/exclusion zones */}
         {hasActivePlan && <><EditableGeofenceOverlay /><GeofenceZonesOverlay /></>}
         {hasActivePlan && <PlannerGuidanceVectors />}
@@ -381,14 +445,6 @@ export function PlannerMap({
           iframeClassName="absolute inset-0 w-full h-full border-0"
         />
       </div>
-
-      {!hasActivePlan && (
-        <div className="absolute inset-0 z-[999] flex items-center justify-center bg-bg-primary/35 backdrop-blur-[1px] pointer-events-none">
-          <div className="bg-bg-secondary/90 border border-border-default px-4 py-2 shadow-lg">
-            <span className="text-xs text-text-secondary font-mono">Create or select a flight plan to start</span>
-          </div>
-        </div>
-      )}
 
       {/* One mode-driven hint banner for every interaction mode. The select
           mode keeps a subdued always-on hint that a plain click adds a

@@ -10,7 +10,7 @@ import { NAV_COMMAND_OPTIONS } from "../../../src/components/planner/waypoint-co
 import { cmdMap } from "../../../src/lib/mission/command-map";
 import { createPX4Handler } from "../../../src/lib/protocol/firmware/px4";
 
-/** The same predicate WaypointListItem applies to NAV_COMMAND_OPTIONS. */
+/** The same predicate the waypoint inspector's command select applies to NAV_COMMAND_OPTIONS. */
 function filterNav(supported: Set<number> | null, current: string) {
   if (!supported) return NAV_COMMAND_OPTIONS;
   return NAV_COMMAND_OPTIONS.filter(

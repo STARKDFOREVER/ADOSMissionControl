@@ -7,33 +7,28 @@
 import { CAMERA_PROFILES } from "@/lib/patterns/gsd-calculator";
 
 export const PATTERN_TYPE_OPTIONS = [
-  { value: "survey", label: "Survey Grid", description: "Grid/lawnmower pattern for area coverage and mapping" },
+  { value: "survey", label: "Survey grid", description: "Grid/lawnmower pattern for area coverage and mapping" },
   { value: "orbit", label: "Orbit", description: "Circular flight around a point of interest" },
   { value: "corridor", label: "Corridor", description: "Linear corridor sweep along a path" },
   { value: "perimeter", label: "Perimeter", description: "One closed loop around a boundary, optionally inset" },
-  { value: "expandingSquare", label: "SAR: Expanding Square", description: "Search pattern expanding outward from a datum point" },
-  { value: "sectorSearch", label: "SAR: Sector Search", description: "Pie-slice search radiating from a datum point" },
-  { value: "parallelTrack", label: "SAR: Parallel Track", description: "Systematic parallel sweeps across a search area" },
-  { value: "structureScan", label: "Structure Scan", description: "Multi-layer orbit for 3D structure inspection" },
-  { value: "fixedWingLanding", label: "Fixed-Wing Landing", description: "Straight-in approach and landing sequence for a fixed-wing aircraft" },
-  { value: "vtolLanding", label: "VTOL Landing", description: "Cruise approach, transition, and vertical landing for a VTOL aircraft" },
+  { value: "expandingSquare", label: "SAR: expanding square", description: "Search pattern expanding outward from a datum point" },
+  { value: "sectorSearch", label: "SAR: sector search", description: "Pie-slice search radiating from a datum point" },
+  { value: "parallelTrack", label: "SAR: parallel track", description: "Systematic parallel sweeps across a search area" },
+  { value: "structureScan", label: "Structure scan", description: "Multi-layer orbit for 3D structure inspection" },
+  { value: "fixedWingLanding", label: "Fixed-wing landing", description: "Straight-in approach and landing sequence for a fixed-wing aircraft" },
+  { value: "vtolLanding", label: "VTOL landing", description: "Cruise approach, transition, and vertical landing for a VTOL aircraft" },
 ];
 
-export const ENTRY_LOCATION_OPTIONS = [
-  { value: "topLeft", label: "Top Left" },
-  { value: "topRight", label: "Top Right" },
-  { value: "bottomLeft", label: "Bottom Left" },
-  { value: "bottomRight", label: "Bottom Right" },
+export const ENTRY_LOCATION_OPTIONS: { value: "topLeft" | "topRight" | "bottomLeft" | "bottomRight"; label: string }[] = [
+  { value: "topLeft", label: "Top left" },
+  { value: "topRight", label: "Top right" },
+  { value: "bottomLeft", label: "Bottom left" },
+  { value: "bottomRight", label: "Bottom right" },
 ];
 
-export const DIRECTION_OPTIONS = [
-  { value: "cw", label: "Clockwise" },
-  { value: "ccw", label: "Counter-clockwise" },
-];
-
-export const SCAN_DIRECTION_OPTIONS = [
-  { value: "bottom-up", label: "Bottom Up" },
-  { value: "top-down", label: "Top Down" },
+export const SCAN_DIRECTION_OPTIONS: { value: "bottom-up" | "top-down"; label: string }[] = [
+  { value: "bottom-up", label: "Bottom up" },
+  { value: "top-down", label: "Top down" },
 ];
 
 export const CAMERA_OPTIONS = [

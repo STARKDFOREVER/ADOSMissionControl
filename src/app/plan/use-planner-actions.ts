@@ -14,7 +14,6 @@ import { useGeofenceStore } from "@/stores/geofence-store";
 import { randomId } from "@/lib/utils";
 import { acceptRadiusDefault } from "@/components/planner/waypoint-constants";
 import { clearAutoSave } from "@/lib/mission-io";
-import { DEFAULT_CENTER } from "@/lib/map-constants";
 import { useDrawingStore } from "@/stores/drawing-store";
 import { useRallyStore } from "@/stores/rally-store";
 import { withPlannerHistory } from "@/lib/planner-history";
@@ -49,7 +48,6 @@ interface ActionsDeps {
   // State setters
   setContextMenu: (menu: ContextMenuState | null) => void;
   setSelectedWaypoint: (id: string | null) => void;
-  setExpandedWaypoint: (id: string | null) => void;
   setShowClearConfirm: (show: boolean) => void;
   // Optional so the composition layer (use-planner.ts, not owned by this file)
   // can wire it in a follow-up without a compile break; the pattern-apply gate
@@ -114,7 +112,7 @@ export function usePlannerActions(deps: ActionsDeps) {
     selectedDroneId, missionName, contextMenu,
     addWaypoint, removeWaypoint, insertWaypoint, clearMission, setWaypoints,
     downloadMission, uploadMission,
-    addRallyPoint, setContextMenu, setSelectedWaypoint, setExpandedWaypoint,
+    addRallyPoint, setContextMenu, setSelectedWaypoint,
     setShowClearConfirm, setShowPatternApplyConfirm, setShowDownloadConfirm,
     setMissionName, setSelectedDroneId,
     toast,
@@ -213,6 +211,24 @@ export function usePlannerActions(deps: ActionsDeps) {
     [setContextMenu]
   );
 
+  // Insert a fresh waypoint just before or after an existing one, nudged off
+  // it so the two markers don't stack. Shared by the map context menu and the
+  // waypoint inspector's menu.
+  const handleInsertRelative = useCallback(
+    (waypointId: string, where: "before" | "after") => {
+      const idx = waypoints.findIndex((w) => w.id === waypointId);
+      if (idx === -1) return;
+      const ref = waypoints[idx];
+      const newWp: Waypoint = {
+        id: randomId(), lat: clampLat(ref.lat + 0.0005), lon: clampLon(ref.lon + 0.0005),
+        alt: clampAlt(defaultAlt), command: "WAYPOINT", frame: placementFrame(),
+        ...acceptRadiusDefault("WAYPOINT", defaultAcceptRadius),
+      };
+      insertWaypoint(newWp, where === "before" ? idx : idx + 1);
+    },
+    [waypoints, defaultAlt, defaultAcceptRadius, insertWaypoint]
+  );
+
   const handleContextAction = useCallback(
     (actionId: string) => {
       if (!contextMenu) return;
@@ -250,27 +266,19 @@ export function usePlannerActions(deps: ActionsDeps) {
           }
           break;
         case "edit":
-          if (waypointId) { setSelectedWaypoint(waypointId); setExpandedWaypoint(waypointId); }
+          if (waypointId) setSelectedWaypoint(waypointId);
           break;
         case "insert-before":
-        case "insert-after": {
-          if (!waypointId) break;
-          const idx = waypoints.findIndex((w) => w.id === waypointId);
-          if (idx === -1) break;
-          const ref = waypoints[idx];
-          const newWp: Waypoint = {
-            id: randomId(), lat: clampLat(ref.lat + 0.0005), lon: clampLon(ref.lon + 0.0005),
-            alt: clampAlt(defaultAlt), command: "WAYPOINT", frame: placementFrame(),
-            ...acceptRadiusDefault("WAYPOINT", defaultAcceptRadius),
-          };
-          insertWaypoint(newWp, actionId === "insert-before" ? idx : idx + 1);
+          if (waypointId) handleInsertRelative(waypointId, "before");
           break;
-        }
+        case "insert-after":
+          if (waypointId) handleInsertRelative(waypointId, "after");
+          break;
         case "delete-wp": if (waypointId) removeWaypoint(waypointId); break;
       }
       setContextMenu(null);
     },
-    [contextMenu, activePlanId, addWaypoint, addRallyPoint, insertWaypoint, removeWaypoint, defaultAlt, defaultAcceptRadius, waypoints, setSelectedWaypoint, setExpandedWaypoint, toast, setContextMenu]
+    [contextMenu, activePlanId, addWaypoint, addRallyPoint, removeWaypoint, defaultAlt, defaultAcceptRadius, waypoints, setSelectedWaypoint, toast, setContextMenu, handleInsertRelative]
   );
 
   const handleWaypointClick = useCallback((id: string, additive?: boolean, range?: boolean) => {
@@ -278,11 +286,41 @@ export function usePlannerActions(deps: ActionsDeps) {
     if (range && planner.selectedWaypointId) {
       planner.selectRange(planner.selectedWaypointId, id, waypoints.map((w) => w.id));
     } else if (additive) {
+      // The first Ctrl/Cmd+click after a plain selection carries that waypoint
+      // into the batch, so two clicks make a two-waypoint batch.
+      const anchor = planner.selectedWaypointId;
+      if (planner.selectedWaypointIds.length === 0 && anchor && anchor !== id) {
+        planner.toggleWaypointSelection(anchor);
+      }
       planner.toggleWaypointSelection(id);
     } else {
+      // A plain click starts over: one waypoint, no batch.
+      planner.clearMultiSelection();
       setSelectedWaypoint(id);
     }
   }, [setSelectedWaypoint, waypoints]);
+
+  // Insert a waypoint between waypoint index-1 and index. Position is the midpoint
+  // of its two neighbours, altitude their average, and it inherits the preceding
+  // waypoint's frame + speed. When inserting past the last row (no following
+  // waypoint) the new point is nudged off the previous one.
+  const handleInsertAt = useCallback((index: number) => {
+    const wps = useMissionStore.getState().waypoints;
+    const before = wps[index - 1];
+    if (!before) return;
+    const after = wps[index];
+    const newWp: Waypoint = {
+      id: randomId(),
+      lat: after ? (before.lat + after.lat) / 2 : before.lat + 0.0005,
+      lon: after ? (before.lon + after.lon) / 2 : before.lon + 0.0005,
+      alt: after ? (before.alt + after.alt) / 2 : before.alt,
+      speed: before.speed,
+      frame: before.frame ?? usePlannerStore.getState().defaultFrame,
+      command: "WAYPOINT",
+      ...acceptRadiusDefault("WAYPOINT", usePlannerStore.getState().defaultAcceptRadius),
+    };
+    useMissionStore.getState().insertWaypoint(newWp, index);
+  }, []);
 
   const handleWaypointDragEnd = useCallback(
     (id: string, lat: number, lon: number) => {
@@ -315,13 +353,12 @@ export function usePlannerActions(deps: ActionsDeps) {
       useGeofenceStore.getState().clearFence();
     });
     void clearAutoSave();
-    setSelectedWaypoint(null);
-    setExpandedWaypoint(null);
+    usePlannerStore.getState().clearSelection();
     setMissionName("");
     setSelectedDroneId("");
     setShowClearConfirm(false);
     toast("Mission cleared", "info");
-  }, [clearMission, setSelectedWaypoint, setExpandedWaypoint, toast, setMissionName, setSelectedDroneId, setShowClearConfirm]);
+  }, [clearMission, toast, setMissionName, setSelectedDroneId, setShowClearConfirm]);
 
   const handleReverseWaypoints = useCallback(() => {
     if (waypoints.length < 2) return;
@@ -329,11 +366,14 @@ export function usePlannerActions(deps: ActionsDeps) {
     toast("Waypoints reversed", "info");
   }, [waypoints, setWaypoints, toast]);
 
-  const handleUpload = useCallback(async () => {
+  /** Upload the mission. Toasts the outcome and returns it for callers that report it inline. */
+  const handleUpload = useCallback(async (): Promise<{ success: boolean; message: string }> => {
     const ok = await uploadMission();
-    if (ok) { toast("Mission uploaded to FC", "success"); return; }
+    if (ok) { toast("Mission uploaded to FC", "success"); return { success: true, message: "Mission uploaded to FC" }; }
     const reason = useMissionStore.getState().uploadError;
-    toast(reason ? `Mission upload failed: ${reason}` : "Mission upload failed", "error");
+    const message = reason ? `Mission upload failed: ${reason}` : "Mission upload failed";
+    toast(message, "error");
+    return { success: false, message };
   }, [uploadMission, toast]);
 
   const handleDrawingComplete = useCallback(
@@ -369,19 +409,19 @@ export function usePlannerActions(deps: ActionsDeps) {
           toast(`Geofence polygon set (${shape.vertices.length} vertices)`, "success");
         } else if (routeToPattern && patternType === "survey") {
           patternStore.updateSurveyConfig({ polygon: shape.vertices });
-          usePlannerStore.getState().setPatternSectionOpen(true);
+          usePlannerStore.getState().setInspectorTarget({ kind: "pattern" });
           // The boundary now renders from the pattern config; drop the raw drawn
           // polygon so the ring is not painted twice.
           drawingStore.removePolygon(shape.id);
           toast(`Survey area set (${shape.vertices.length} vertices)`, "success");
         } else if (routeToPattern && patternType === "structureScan") {
           patternStore.updateStructureScanConfig({ structurePolygon: shape.vertices });
-          usePlannerStore.getState().setPatternSectionOpen(true);
+          usePlannerStore.getState().setInspectorTarget({ kind: "pattern" });
           drawingStore.removePolygon(shape.id);
           toast(`Structure boundary set (${shape.vertices.length} vertices)`, "success");
         } else if (routeToPattern && patternType === "corridor") {
           patternStore.updateCorridorConfig({ pathPoints: shape.vertices });
-          usePlannerStore.getState().setPatternSectionOpen(true);
+          usePlannerStore.getState().setInspectorTarget({ kind: "pattern" });
           // The corridor renders from its centerline; drop the raw filled polygon.
           drawingStore.removePolygon(shape.id);
           toast(`Corridor path set (${shape.vertices.length} points)`, "success");
@@ -397,7 +437,7 @@ export function usePlannerActions(deps: ActionsDeps) {
           toast(`Geofence circle set (r=${Math.round(shape.radius)}m)`, "success");
         } else if (routeToPattern && patternType === "orbit") {
           patternStore.updateOrbitConfig({ center: shape.center, radius: shape.radius });
-          usePlannerStore.getState().setPatternSectionOpen(true);
+          usePlannerStore.getState().setInspectorTarget({ kind: "pattern" });
           // The orbit renders from its config circle; drop the raw drawn circle.
           drawingStore.removeCircle(shape.id);
           toast(`Orbit area set (r=${Math.round(shape.radius)}m)`, "success");
@@ -452,9 +492,11 @@ export function usePlannerActions(deps: ActionsDeps) {
   const handleAddManualWaypoint = useCallback(() => {
     if (!activePlanId) { toast("Create or select a flight plan first", "info"); return; }
     const lastWp = waypoints[waypoints.length - 1];
+    // With no waypoint to follow, the new one goes where the operator is looking.
+    const [centerLat, centerLon] = usePlannerStore.getState().mapCenter;
     const wp: Waypoint = {
-      id: randomId(), lat: clampLat(lastWp ? lastWp.lat + 0.001 : DEFAULT_CENTER[0]),
-      lon: clampLon(lastWp ? lastWp.lon + 0.001 : DEFAULT_CENTER[1]), alt: clampAlt(defaultAlt), command: "WAYPOINT",
+      id: randomId(), lat: clampLat(lastWp ? lastWp.lat + 0.001 : centerLat),
+      lon: clampLon(lastWp ? lastWp.lon + 0.001 : centerLon), alt: clampAlt(defaultAlt), command: "WAYPOINT",
       frame: placementFrame(),
       ...acceptRadiusDefault("WAYPOINT", defaultAcceptRadius),
     };
@@ -463,7 +505,7 @@ export function usePlannerActions(deps: ActionsDeps) {
 
   return {
     handleMapClick, handleMapRightClick, handleWaypointRightClick,
-    handleContextAction, handleWaypointClick, handleWaypointDragEnd,
+    handleContextAction, handleWaypointClick, handleWaypointDragEnd, handleInsertAt, handleInsertRelative,
     handleClearAll, confirmClear, handleReverseWaypoints, handleUpload,
     handleDrawingComplete, handlePatternApply, applyPatternConfirmed, handleAddManualWaypoint,
   };

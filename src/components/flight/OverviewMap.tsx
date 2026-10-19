@@ -13,6 +13,7 @@ import { useSettingsStore } from "@/stores/settings-store";
 import { projectByBearing, getLineTypeDashArray, GPS_FIX_LABELS } from "@/lib/drawing/geo-utils";
 import { Pause, Play, Ruler } from "lucide-react";
 import { useDefaultCenter } from "@/hooks/use-default-center";
+import { DEFAULT_ZOOM_UNLOCATED } from "@/lib/map-constants";
 import {
   MapContainer,
   Marker,
@@ -297,8 +298,8 @@ export function OverviewMap({
       )}
 
       <MapContainer
-        center={dronePos ?? defaultCenter}
-        zoom={17}
+        center={dronePos ?? defaultCenter.center}
+        zoom={dronePos ? 17 : defaultCenter.located ? 15 : DEFAULT_ZOOM_UNLOCATED}
         className="w-full h-full"
         zoomControl={false}
         dragging={!compact}

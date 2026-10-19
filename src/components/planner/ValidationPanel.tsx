@@ -28,6 +28,7 @@ export function ValidationPanel({
   onSelectWaypoint,
 }: ValidationPanelProps) {
   const t = useTranslations("validation");
+  const tDock = useTranslations("planner.dock");
   const [result, setResult] = useState<ValidationResult | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -65,48 +66,40 @@ export function ValidationPanel({
 
   if (waypoints.length === 0) {
     return (
-      <div className="px-3 py-2">
-        <p className="text-[10px] text-text-tertiary font-mono">
-          {t("addWaypointsToValidate")}
-        </p>
-      </div>
+      <p className="text-[11px] text-text-tertiary">{t("addWaypointsToValidate")}</p>
     );
   }
 
   // Waiting for debounce
   if (!result) {
-    return (
-      <div className="px-3 py-2">
-        <span className="text-[10px] text-text-tertiary font-mono">{t("validating")}</span>
-      </div>
-    );
+    return <span className="text-[11px] text-text-tertiary">{t("validating")}</span>;
   }
 
   const totalIssues = result.errors.length + result.warnings.length;
 
   return (
-    <div className="flex flex-col gap-1.5 px-3 py-2">
+    <div className="flex flex-col gap-1.5">
       {/* Summary */}
       <div className="flex items-center gap-1.5">
         {result.valid && result.warnings.length === 0 ? (
           <>
             <CheckCircle size={12} className="text-status-success" />
-            <span className="text-[10px] font-mono text-status-success">{t("missionValid")}</span>
+            <span className="text-[11px] text-status-success">{t("missionValid")}</span>
           </>
         ) : result.valid ? (
           <>
             <AlertTriangle size={12} className="text-status-warning" />
-            <span className="text-[10px] font-mono text-text-secondary">
-              {result.warnings.length} warning{result.warnings.length !== 1 ? "s" : ""}
+            <span className="text-[11px] text-text-secondary">
+              {tDock("warningCount", { count: result.warnings.length })}
             </span>
           </>
         ) : (
           <>
             <XCircle size={12} className="text-status-error" />
-            <span className="text-[10px] font-mono text-text-secondary">
-              {result.errors.length} error{result.errors.length !== 1 ? "s" : ""}
-              {result.warnings.length > 0 &&
-                `, ${result.warnings.length} warning${result.warnings.length !== 1 ? "s" : ""}`}
+            <span className="text-[11px] text-text-secondary">
+              {result.warnings.length > 0
+                ? tDock("errorWarningCount", { errors: result.errors.length, warnings: result.warnings.length })
+                : tDock("errorCount", { count: result.errors.length })}
             </span>
           </>
         )}
@@ -114,7 +107,7 @@ export function ValidationPanel({
 
       {/* Issue list */}
       {totalIssues > 0 && (
-        <div className="flex flex-col gap-0.5 max-h-[120px] overflow-y-auto">
+        <div className="flex flex-col gap-0.5">
           {result.errors.map((issue, i) => (
             <IssueRow key={`err-${i}`} issue={issue} onClick={handleIssueClick} />
           ))}
@@ -146,6 +139,7 @@ function IssueRow({
 
   return (
     <button
+      type="button"
       onClick={() => onClick(issue)}
       className={`flex items-start gap-1.5 px-1.5 py-1 text-left cursor-pointer transition-colors hover:bg-bg-tertiary ${
         issue.waypointId ? "" : "cursor-default"
@@ -157,7 +151,7 @@ function IssueRow({
         <AlertTriangle size={10} className="text-status-warning shrink-0 mt-0.5" />
       )}
       <span
-        className={`text-[10px] font-mono ${
+        className={`text-[11px] ${
           isError ? "text-status-error" : "text-status-warning"
         }`}
       >

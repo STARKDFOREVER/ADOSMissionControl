@@ -20,6 +20,10 @@ export interface SelectProps {
   searchPlaceholder?: string;
   /** Max dropdown height in px. Default 280. */
   maxHeight?: number;
+  /** Accessible name when there is no visible `label` (e.g. inside a labelled row). */
+  ariaLabel?: string;
+  /** Inspector-row size: 28 px tall with 12 px text, matching the number fields. */
+  compact?: boolean;
 }
 
 export function isGrouped(

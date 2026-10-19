@@ -10,6 +10,9 @@ import { usePlannerState } from "./use-planner-state";
 import { usePlannerActions } from "./use-planner-actions";
 import { usePlannerIO } from "./use-planner-io";
 
+/** Everything the planner page hands its panels: state, handlers and IO. */
+export type Planner = ReturnType<typeof usePlanner>;
+
 export function usePlanner() {
   const state = usePlannerState();
 
@@ -34,7 +37,6 @@ export function usePlanner() {
     addRallyPoint: state.addRallyPoint,
     setContextMenu: state.setContextMenu,
     setSelectedWaypoint: state.setSelectedWaypoint,
-    setExpandedWaypoint: state.setExpandedWaypoint,
     setShowClearConfirm: state.setShowClearConfirm,
     setShowPatternApplyConfirm: state.setShowPatternApplyConfirm,
     setShowDownloadConfirm: state.setShowDownloadConfirm,
@@ -54,7 +56,6 @@ export function usePlanner() {
     setMissionName: state.setMissionName,
     setSelectedDroneId: state.setSelectedDroneId,
     setSelectedWaypoint: state.setSelectedWaypoint,
-    setExpandedWaypoint: state.setExpandedWaypoint,
     setShowDownloadConfirm: state.setShowDownloadConfirm,
     downloadMission: state.downloadMission,
     toast: state.toast,
@@ -69,12 +70,6 @@ export function usePlanner() {
     downloadState: state.downloadState,
     activeTool: state.activeTool,
     setActiveTool: state.setActiveTool,
-    panelCollapsed: state.panelCollapsed,
-    togglePanel: state.togglePanel,
-    altProfileCollapsed: state.altProfileCollapsed,
-    toggleAltProfile: state.toggleAltProfile,
-    expandedWaypointId: state.expandedWaypointId,
-    setExpandedWaypoint: state.setExpandedWaypoint,
     selectedWaypointId: state.selectedWaypointId,
     setSelectedWaypoint: state.setSelectedWaypoint,
     defaultAlt: state.defaultAlt,

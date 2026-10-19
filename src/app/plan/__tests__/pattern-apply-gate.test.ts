@@ -61,7 +61,6 @@ function makeDeps(over: Partial<Deps> = {}): Deps {
     addRallyPoint: vi.fn(),
     setContextMenu: vi.fn(),
     setSelectedWaypoint: vi.fn(),
-    setExpandedWaypoint: vi.fn(),
     setShowClearConfirm: vi.fn(),
     setShowPatternApplyConfirm: vi.fn(),
     setShowDownloadConfirm: vi.fn(),

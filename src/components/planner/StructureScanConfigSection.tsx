@@ -7,52 +7,49 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Select } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { NumericField } from "@/components/ui/numeric-field";
+import { PropertyRow } from "@/components/ui/property-row";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { usePatternStore } from "@/stores/pattern-store";
 import { useDrawingStore } from "@/stores/drawing-store";
-import { Building } from "lucide-react";
 import { SCAN_DIRECTION_OPTIONS } from "./pattern-editor-constants";
+import { PatternNumberRow } from "./PatternNumberRow";
 
 export function StructureScanConfig() {
   const t = useTranslations("planner");
+  const te = useTranslations("planner.inspector.editor");
   const config = usePatternStore((s) => s.structureScanConfig);
   const update = usePatternStore((s) => s.updateStructureScanConfig);
   const drawnPolygons = useDrawingStore((s) => s.polygons);
   return (
-    <>
-      <div className="flex items-center gap-1.5 text-[10px] font-mono text-text-tertiary">
-        <Building size={12} />
-        <span>
-          {config.structurePolygon
-            ? t("verticesCount", { count: config.structurePolygon.length })
-            : drawnPolygons.length > 0
-              ? t("usingLastDrawnPolygon", { count: drawnPolygons[drawnPolygons.length - 1].vertices.length })
-              : t("drawStructureBoundary")}
-        </span>
-      </div>
-      <div className="grid grid-cols-2 gap-2">
-        <Input label={`${t("bottomAlt")} (${t("aboveHome")})`} type="number" unit="m" value={String(config.bottomAlt ?? 10)}
-          onChange={(e) => update({ bottomAlt: parseFloat(e.target.value) || 10 })} />
-        <Input label={`${t("topAlt")} (${t("aboveHome")})`} type="number" unit="m" value={String(config.topAlt ?? 50)}
-          onChange={(e) => update({ topAlt: parseFloat(e.target.value) || 50 })} />
-      </div>
-      <Input label={t("layerSpacing")} type="number" unit="m" value={String(config.layerSpacing ?? 10)}
-        onChange={(e) => update({ layerSpacing: parseFloat(e.target.value) || 10 })} />
-      <Input label={t("scanDistance")} type="number" unit="m" value={String(config.scanDistance ?? 15)}
-        onChange={(e) => update({ scanDistance: parseFloat(e.target.value) || 15 })} />
-      <NumericField label={t("gimbalPitch")} unit="deg" min={-90} max={90} value={config.gimbalPitch ?? -30}
-        onCommit={(gimbalPitch) => update({ gimbalPitch })} />
-      <Input label={t("pointsPerLayer")} type="number" value={String(config.pointsPerLayer ?? 16)}
-        onChange={(e) => update({ pointsPerLayer: parseInt(e.target.value) || 16 })} />
-      <Select label={t("direction")} options={SCAN_DIRECTION_OPTIONS} value={config.direction ?? "bottom-up"}
-        onChange={(v) => update({ direction: v as "bottom-up" | "top-down" })} />
-      <Input label={t("speedMs")} type="number" unit="m/s" value={String(config.speed ?? 3)}
-        onChange={(e) => update({ speed: parseFloat(e.target.value) || 3 })} />
-      <Input label={t("cameraTriggerDist")} type="number" unit="m" placeholder="0 = off"
-        value={String(config.cameraTriggerDistance ?? 0)}
-        onChange={(e) => update({ cameraTriggerDistance: parseFloat(e.target.value) || 0 })} />
-    </>
+    <div className="flex flex-col">
+      <p className="py-1 text-[11px] text-text-tertiary">
+        {config.structurePolygon
+          ? t("verticesCount", { count: config.structurePolygon.length })
+          : drawnPolygons.length > 0
+            ? t("usingLastDrawnPolygon", { count: drawnPolygons[drawnPolygons.length - 1].vertices.length })
+            : t("drawStructureBoundary")}
+      </p>
+      <PatternNumberRow label={t("bottomAlt")} hint={t("aboveHome")} unit="m" step={1} min={0}
+        value={config.bottomAlt ?? 10} onCommit={(bottomAlt) => update({ bottomAlt })} />
+      <PatternNumberRow label={t("topAlt")} hint={t("aboveHome")} unit="m" step={1} min={1}
+        value={config.topAlt ?? 50} onCommit={(topAlt) => update({ topAlt })} />
+      <PatternNumberRow label={t("layerSpacing")} unit="m" step={1} min={0.5}
+        value={config.layerSpacing ?? 10} onCommit={(layerSpacing) => update({ layerSpacing })} />
+      <PatternNumberRow label={t("scanDistance")} unit="m" step={1} min={1}
+        value={config.scanDistance ?? 15} onCommit={(scanDistance) => update({ scanDistance })} />
+      <PatternNumberRow label={t("gimbalPitch")} unit="deg" step={1} min={-90} max={90}
+        value={config.gimbalPitch ?? -30} onCommit={(gimbalPitch) => update({ gimbalPitch })} />
+      <PatternNumberRow label={t("pointsPerLayer")} step={1} min={3} precision={0}
+        value={config.pointsPerLayer ?? 16} onCommit={(pointsPerLayer) => update({ pointsPerLayer })} />
+      <PropertyRow label={t("direction")}>
+        <SegmentedControl size="sm" stretch ariaLabel={t("direction")} options={SCAN_DIRECTION_OPTIONS}
+          value={config.direction ?? "bottom-up"} onChange={(direction) => update({ direction })} />
+      </PropertyRow>
+      <PatternNumberRow label={t("speed")} unit="m/s" step={0.5} min={0.1}
+        value={config.speed ?? 3} onCommit={(speed) => update({ speed })} />
+      <PatternNumberRow label={t("cameraTriggerDist")} hint={te("zeroIsOff")} unit="m" step={0.5} min={0}
+        value={config.cameraTriggerDistance ?? 0}
+        onCommit={(cameraTriggerDistance) => update({ cameraTriggerDistance })} />
+    </div>
   );
 }
