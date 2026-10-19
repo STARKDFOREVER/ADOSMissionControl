@@ -4974,7 +4974,6 @@
       "longPress": "लंबा प्रेस",
       "bindingHint": "हर छोटे और लंबे प्रेस के लिए क्रिया चुनें।",
       "button": "बटन",
-      "unassigned": "प्रोफ़ाइल डिफ़ॉल्ट",
       "pickerLabel": "{button} {press} क्रिया",
       "notRead": "इस नोड से बटन मैपिंग अभी पढ़ी नहीं गई है।",
       "passthroughNote": "प्लगइन पास-थ्रू प्रेस को केवल उस प्लगइन को देता है जिसने उसे लिया है, जैसे Visor पर REC और MARK।",
@@ -8018,6 +8017,7 @@
           "rgb24": "RGB 24-bit",
           "nv12": "NV12",
           "yuv420p": "YUV 4:2:0",
+          "bayer": "Bayer (RGGB 8-bit)",
           "bayer_rggb8": "Bayer RGGB 8-bit",
           "bayer_rggb16": "Bayer RGGB 16-bit"
         },

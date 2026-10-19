@@ -4974,7 +4974,6 @@
       "longPress": "ਲੰਬਾ ਦਬਾਉ",
       "bindingHint": "ਹਰ ਛੋਟੇ ਅਤੇ ਲੰਬੇ ਦਬਾਅ ਲਈ ਕਾਰਵਾਈ ਚੁਣੋ।",
       "button": "ਬਟਨ",
-      "unassigned": "ਪ੍ਰੋਫਾਈਲ ਡਿਫੌਲਟ",
       "pickerLabel": "{button} {press} ਕਾਰਵਾਈ",
       "notRead": "ਇਸ ਨੋਡ ਤੋਂ ਬਟਨ ਮੈਪਿੰਗ ਅਜੇ ਨਹੀਂ ਪੜ੍ਹੀ ਗਈ।",
       "passthroughNote": "ਪਲੱਗਇਨ ਪਾਸ-ਥਰੂ ਦਬਾਅ ਸਿਰਫ਼ ਉਸ ਪਲੱਗਇਨ ਨੂੰ ਦਿੰਦਾ ਹੈ ਜਿਸ ਨੇ ਇਸਨੂੰ ਲਿਆ, ਜਿਵੇਂ Visor ਉੱਤੇ REC ਅਤੇ MARK।",
@@ -8018,6 +8017,7 @@
           "rgb24": "RGB 24-bit",
           "nv12": "NV12",
           "yuv420p": "YUV 4:2:0",
+          "bayer": "Bayer (RGGB 8-bit)",
           "bayer_rggb8": "Bayer RGGB 8-bit",
           "bayer_rggb16": "Bayer RGGB 16-bit"
         },

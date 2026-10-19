@@ -103,13 +103,16 @@ export interface RosterCamera {
   encoder?: string | null;
 }
 
-/** Pixel formats a captured camera (`capture: true`) may be delivered in. */
+/** Pixel formats a captured camera (`capture: true`) may be delivered in:
+ * every value the agent accepts. `bayer` is the agent's alias for
+ * `bayer_rggb8`. */
 export const CAMERA_CAPTURE_FORMATS = [
   "gray8",
   "gray16",
   "rgb24",
   "nv12",
   "yuv420p",
+  "bayer",
   "bayer_rggb8",
   "bayer_rggb16",
 ] as const;

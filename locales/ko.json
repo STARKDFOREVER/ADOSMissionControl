@@ -4974,7 +4974,6 @@
       "longPress": "길게 누름",
       "bindingHint": "짧게 누름과 길게 누름마다 동작을 선택합니다.",
       "button": "버튼",
-      "unassigned": "프로필 기본값",
       "pickerLabel": "{button} {press} 동작",
       "notRead": "이 노드에서 버튼 매핑을 아직 읽지 않았습니다.",
       "passthroughNote": "플러그인 전달은 누름을 등록한 플러그인에만 전달합니다(예: Visor의 REC, MARK).",
@@ -8018,6 +8017,7 @@
           "rgb24": "RGB 24-bit",
           "nv12": "NV12",
           "yuv420p": "YUV 4:2:0",
+          "bayer": "Bayer (RGGB 8-bit)",
           "bayer_rggb8": "Bayer RGGB 8-bit",
           "bayer_rggb16": "Bayer RGGB 16-bit"
         },

@@ -4974,7 +4974,6 @@
       "longPress": "ದೀರ್ಘ ಒತ್ತಿ",
       "bindingHint": "ಪ್ರತಿ ಸಣ್ಣ ಮತ್ತು ದೀರ್ಘ ಒತ್ತುವಿಕೆಗೆ ಕ್ರಿಯೆಯನ್ನು ಆರಿಸಿ.",
       "button": "ಬಟನ್",
-      "unassigned": "ಪ್ರೊಫೈಲ್ ಡೀಫಾಲ್ಟ್",
       "pickerLabel": "{button} {press} ಕ್ರಿಯೆ",
       "notRead": "ಈ ನೋಡ್‌ನಿಂದ ಬಟನ್ ಮ್ಯಾಪಿಂಗ್ ಇನ್ನೂ ಓದಲಾಗಿಲ್ಲ.",
       "passthroughNote": "ಪ್ಲಗಿನ್ ಪಾಸ್-ಥ್ರೂ ಒತ್ತುವಿಕೆಯನ್ನು ಅದನ್ನು ಪಡೆದ ಪ್ಲಗಿನ್‌ಗೆ ಮಾತ್ರ ನೀಡುತ್ತದೆ, ಉದಾ. Visor ನಲ್ಲಿ REC ಮತ್ತು MARK.",
@@ -8018,6 +8017,7 @@
           "rgb24": "RGB 24-bit",
           "nv12": "NV12",
           "yuv420p": "YUV 4:2:0",
+          "bayer": "Bayer (RGGB 8-bit)",
           "bayer_rggb8": "Bayer RGGB 8-bit",
           "bayer_rggb16": "Bayer RGGB 16-bit"
         },

@@ -4974,7 +4974,6 @@
       "longPress": "Pulsación larga",
       "bindingHint": "Elige la acción para cada pulsación corta y larga.",
       "button": "Botón",
-      "unassigned": "Predeterminado del perfil",
       "pickerLabel": "Acción de {press} de {button}",
       "notRead": "La asignación de botones aún no se ha leído de este nodo.",
       "passthroughNote": "El paso a plugin entrega la pulsación solo al plugin que la reclamó, como REC y MARK en un Visor.",
@@ -8018,6 +8017,7 @@
           "rgb24": "RGB 24-bit",
           "nv12": "NV12",
           "yuv420p": "YUV 4:2:0",
+          "bayer": "Bayer (RGGB 8-bit)",
           "bayer_rggb8": "Bayer RGGB 8-bit",
           "bayer_rggb16": "Bayer RGGB 16-bit"
         },

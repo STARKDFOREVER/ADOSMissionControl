@@ -28,7 +28,7 @@ import dynamic from "next/dynamic";
 import type { SurfaceSpec } from "../surface-types";
 import { surfaceNodeDeviceId } from "../surface-types";
 import { STATUS_GROUP, LINK_GROUP } from "../surface-groups";
-import { DEVICE_SURFACES } from "./device";
+import { deviceSurfaces } from "./device";
 import { AGENT_SURFACE } from "../agent/agent-surface";
 import { DashboardPinUnlockCard } from "@/components/command/nodes/ground-station/DashboardPinUnlockCard";
 
@@ -146,7 +146,7 @@ export const GROUND_STATION_SURFACES: SurfaceSpec[] = [
     when: (ctx) => ctx.crsfPresent === "present",
     render: (ctx) => <RcElrsLinkTab nodeDeviceId={surfaceNodeDeviceId(ctx)} />,
   },
-  ...DEVICE_SURFACES,
+  ...deviceSurfaces("ground_station"),
   {
     id: "logs",
     labelKey: "dronePanel.logs",

@@ -4974,7 +4974,6 @@
       "longPress": "लांब दाब",
       "bindingHint": "प्रत्येक लहान आणि लांब दाबासाठी क्रिया निवडा.",
       "button": "बटण",
-      "unassigned": "प्रोफाइल डीफॉल्ट",
       "pickerLabel": "{button} {press} क्रिया",
       "notRead": "या नोडमधून बटण मॅपिंग अद्याप वाचले नाही.",
       "passthroughNote": "प्लगइन पास-थ्रू दाब फक्त तो घेतलेल्या प्लगइनला देतो, उदा. Visor वरील REC आणि MARK.",
@@ -8018,6 +8017,7 @@
           "rgb24": "RGB 24-bit",
           "nv12": "NV12",
           "yuv420p": "YUV 4:2:0",
+          "bayer": "Bayer (RGGB 8-bit)",
           "bayer_rggb8": "Bayer RGGB 8-bit",
           "bayer_rggb16": "Bayer RGGB 16-bit"
         },

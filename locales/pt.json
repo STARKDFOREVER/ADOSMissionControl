@@ -4974,7 +4974,6 @@
       "longPress": "Pressão longa",
       "bindingHint": "Escolha a ação de cada pressão curta e longa.",
       "button": "Botão",
-      "unassigned": "Padrão do perfil",
       "pickerLabel": "Ação de {press} de {button}",
       "notRead": "O mapeamento de botões ainda não foi lido deste nó.",
       "passthroughNote": "O repasse ao plugin entrega a pressão apenas ao plugin que a reivindicou, como REC e MARK em um Visor.",
@@ -8018,6 +8017,7 @@
           "rgb24": "RGB 24-bit",
           "nv12": "NV12",
           "yuv420p": "YUV 4:2:0",
+          "bayer": "Bayer (RGGB 8-bit)",
           "bayer_rggb8": "Bayer RGGB 8-bit",
           "bayer_rggb16": "Bayer RGGB 16-bit"
         },

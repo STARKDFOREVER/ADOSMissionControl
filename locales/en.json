@@ -4979,7 +4979,6 @@
       "longPress": "Long press",
       "bindingHint": "Pick the action for each short and long press.",
       "button": "Button",
-      "unassigned": "Profile default",
       "pickerLabel": "{button} {press} action",
       "notRead": "The button mapping has not been read from this node yet.",
       "passthroughNote": "Plugin pass-through hands the press only to the plugin that claimed it, such as REC and MARK on a Visor.",
@@ -8023,6 +8022,7 @@
           "rgb24": "RGB 24-bit",
           "nv12": "NV12",
           "yuv420p": "YUV 4:2:0",
+          "bayer": "Bayer (RGGB 8-bit)",
           "bayer_rggb8": "Bayer RGGB 8-bit",
           "bayer_rggb16": "Bayer RGGB 16-bit"
         },

@@ -3,10 +3,11 @@
 /**
  * @module ButtonMappingCard
  * @description The front-panel button mapping: one action picker per button
- * press (short and long for B1–B4). Save sends the whole mapping; a press
- * left unassigned falls back to the profile default on the node. An action
- * the node reports but this app does not know stays selectable under its raw
- * name, so a save never rewrites it.
+ * press (short and long for B1–B4), seeded from the profile's defaults under
+ * the node's mapping. Save sends only the presses that differ from the
+ * profile defaults, so a later change to a default still reaches the node.
+ * An action the node reports but this app does not know stays selectable
+ * under its raw name, so a save never rewrites it.
  * @license GPL-3.0-only
  */
 
@@ -18,58 +19,54 @@ import { Select, type SelectOption } from "@/components/ui/select";
 import {
   PANEL_BUTTONS,
   PANEL_BUTTON_ACTIONS,
+  PANEL_BUTTON_DEFAULTS,
+  buttonOverrides,
+  type PanelProfile,
 } from "@/lib/api/ground-station/types/ui";
 
 const PRESSES = ["short", "long"] as const;
 
 export interface ButtonMappingCardProps {
+  /** The panel profile whose defaults the mapping is merged over. */
+  profile: PanelProfile;
   /** The node's mapping, or null before it has been read. */
   mapping: Record<string, string> | null;
-  /** Persist the edited mapping (the node's echo arrives as a new `mapping`). */
-  onSave: (mapping: Record<string, string>) => Promise<void>;
+  /** Persist the presses that differ from the profile defaults (the node's
+   * echo arrives as a new `mapping`). */
+  onSave: (overrides: Record<string, string>) => Promise<void>;
 }
 
-export function ButtonMappingCard({ mapping, onSave }: ButtonMappingCardProps) {
+export function ButtonMappingCard({ profile, mapping, onSave }: ButtonMappingCardProps) {
   const t = useTranslations("hardware.buttons");
-  const [draft, setDraft] = useState<Record<string, string>>(mapping ?? {});
+  const effective = useMemo(
+    () => ({ ...PANEL_BUTTON_DEFAULTS[profile], ...mapping }),
+    [profile, mapping],
+  );
+  const [draft, setDraft] = useState<Record<string, string>>(effective);
   const [saving, setSaving] = useState(false);
 
   // A fresh read (or the node's echo after a save) replaces the draft.
   useEffect(() => {
-    setDraft(mapping ?? {});
-  }, [mapping]);
+    setDraft(effective);
+  }, [effective]);
 
   const known = useMemo<SelectOption[]>(
-    () => [
-      { value: "", label: t("unassigned") },
-      ...PANEL_BUTTON_ACTIONS.map((a) => ({ value: a, label: t(`actions.${a}`) })),
-    ],
+    () => PANEL_BUTTON_ACTIONS.map((a) => ({ value: a, label: t(`actions.${a}`) })),
     [t],
   );
 
-  const dirty = useMemo(() => {
-    const base = mapping ?? {};
-    const keys = new Set([...Object.keys(base), ...Object.keys(draft)]);
-    return [...keys].some((k) => (base[k] ?? "") !== (draft[k] ?? ""));
-  }, [mapping, draft]);
+  const dirty = Object.keys(draft).some((k) => draft[k] !== effective[k]);
 
   const optionsFor = (value: string): SelectOption[] =>
-    value === "" || known.some((o) => o.value === value)
-      ? known
-      : [...known, { value, label: value }];
+    known.some((o) => o.value === value) ? known : [...known, { value, label: value }];
 
   const setPress = (key: string, value: string) =>
-    setDraft((prev) => {
-      const next = { ...prev };
-      if (value === "") delete next[key];
-      else next[key] = value;
-      return next;
-    });
+    setDraft((prev) => ({ ...prev, [key]: value }));
 
   const save = async () => {
     setSaving(true);
     try {
-      await onSave(draft);
+      await onSave(buttonOverrides(draft, profile));
     } finally {
       setSaving(false);
     }
@@ -96,7 +93,7 @@ export function ButtonMappingCard({ mapping, onSave }: ButtonMappingCardProps) {
                 <td className="px-3 py-2 font-mono text-text-primary">{id}</td>
                 {PRESSES.map((press) => {
                   const key = `${id}_${press}`;
-                  const value = draft[key] ?? "";
+                  const value = draft[key];
                   return (
                     <td key={press} className="px-3 py-1.5">
                       <Select
@@ -126,7 +123,7 @@ export function ButtonMappingCard({ mapping, onSave }: ButtonMappingCardProps) {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setDraft(mapping ?? {})}
+            onClick={() => setDraft(effective)}
             disabled={!dirty || saving}
           >
             {t("reset")}

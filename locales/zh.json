@@ -4974,7 +4974,6 @@
       "longPress": "长按",
       "bindingHint": "为每个短按和长按选择动作。",
       "button": "按钮",
-      "unassigned": "配置文件默认",
       "pickerLabel": "{button} {press} 动作",
       "notRead": "尚未从此节点读取按钮映射。",
       "passthroughNote": "插件透传只把按键交给认领它的插件，例如 Visor 上的 REC 和 MARK。",
@@ -8018,6 +8017,7 @@
           "rgb24": "RGB 24-bit",
           "nv12": "NV12",
           "yuv420p": "YUV 4:2:0",
+          "bayer": "Bayer (RGGB 8-bit)",
           "bayer_rggb8": "Bayer RGGB 8-bit",
           "bayer_rggb16": "Bayer RGGB 16-bit"
         },

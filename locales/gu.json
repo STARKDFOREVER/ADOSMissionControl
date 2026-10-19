@@ -4974,7 +4974,6 @@
       "longPress": "લાંબું દબાણ",
       "bindingHint": "દરેક ટૂંકા અને લાંબા દબાણ માટે ક્રિયા પસંદ કરો.",
       "button": "બટન",
-      "unassigned": "પ્રોફાઇલ ડિફૉલ્ટ",
       "pickerLabel": "{button} {press} ક્રિયા",
       "notRead": "આ નોડમાંથી બટન મેપિંગ હજી વાંચ્યું નથી.",
       "passthroughNote": "પ્લગઇન પાસ-થ્રુ દબાણને ફક્ત તેને દાવો કરનાર પ્લગઇનને આપે છે, જેમ કે Visor પર REC અને MARK.",
@@ -8018,6 +8017,7 @@
           "rgb24": "RGB 24-bit",
           "nv12": "NV12",
           "yuv420p": "YUV 4:2:0",
+          "bayer": "Bayer (RGGB 8-bit)",
           "bayer_rggb8": "Bayer RGGB 8-bit",
           "bayer_rggb16": "Bayer RGGB 16-bit"
         },

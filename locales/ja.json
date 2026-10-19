@@ -4974,7 +4974,6 @@
       "longPress": "長押し",
       "bindingHint": "短押しと長押しそれぞれの動作を選択します。",
       "button": "ボタン",
-      "unassigned": "プロファイルの既定",
       "pickerLabel": "{button} {press} の動作",
       "notRead": "このノードからボタン割り当てをまだ読み込んでいません。",
       "passthroughNote": "プラグインへ渡すと、押下はそれを登録したプラグインにのみ届きます (Visor の REC や MARK など)。",
@@ -8018,6 +8017,7 @@
           "rgb24": "RGB 24-bit",
           "nv12": "NV12",
           "yuv420p": "YUV 4:2:0",
+          "bayer": "Bayer (RGGB 8-bit)",
           "bayer_rggb8": "Bayer RGGB 8-bit",
           "bayer_rggb16": "Bayer RGGB 16-bit"
         },

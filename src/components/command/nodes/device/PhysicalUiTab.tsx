@@ -20,6 +20,12 @@ import { HintChip } from "@/components/hardware/HintChip";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { groundStationApiFromAgent } from "@/lib/api/ground-station-api";
+import {
+  PANEL_BUTTON_DEFAULTS,
+  PANEL_SCREEN_DEFAULTS,
+  type PanelProfile,
+  type UiConfig,
+} from "@/lib/api/ground-station/types/ui";
 import { isDemoMode } from "@/lib/utils";
 import { useNodeDirectAgent } from "@/components/command/settings/use-node-direct-agent";
 import { useGroundStationStore } from "@/stores/ground-station-store";
@@ -27,15 +33,27 @@ import { ButtonMappingCard } from "./ButtonMappingCard";
 
 const SLIDER_DEBOUNCE_MS = 300;
 
-const DEFAULT_SCREEN_ORDER = ["Link", "Drone", "GCS", "Net", "System"];
-
 export interface PhysicalUiTabProps {
   /** The node this tab is rendered for. Forwarded to the cards that WRITE the
    * node's config so the write cannot land on the previously focused node. */
   nodeDeviceId: string | null;
+  /** The node's panel profile: whose button and screen defaults apply. */
+  profile: PanelProfile;
 }
 
-export function PhysicalUiTab({ nodeDeviceId }: PhysicalUiTabProps) {
+/** The demo node's panel config. The demo seed is a ground station's; a demo
+ * Visor shows the Visor's own defaults under the seeded brightness. */
+export function demoUi(seed: UiConfig | null, profile: PanelProfile): UiConfig | null {
+  if (profile === "ground_station") return seed;
+  const screens = [...PANEL_SCREEN_DEFAULTS[profile]];
+  return {
+    oled: seed?.oled ?? { brightness: 204 },
+    buttons: { mapping: { ...PANEL_BUTTON_DEFAULTS[profile] } },
+    screens: { order: screens, enabled: screens },
+  };
+}
+
+export function PhysicalUiTab({ nodeDeviceId, profile }: PhysicalUiTabProps) {
   // The transport is this node's own connection, never the ambient one: the
   // focused connection lags the render on a node switch, so reading it would
   // load (and later write) the previously shown node.
@@ -52,7 +70,8 @@ export function PhysicalUiTab({ nodeDeviceId }: PhysicalUiTabProps) {
   // Demo mode has no REST endpoint behind its agent URL, so the seeded config
   // is the node's config there.
   const demo = isDemoMode();
-  const ui = demo ? storeUi : client && uiFor === client.baseUrl ? storeUi : null;
+  const demoConfig = useMemo(() => demoUi(storeUi, profile), [storeUi, profile]);
+  const ui = demo ? demoConfig : client && uiFor === client.baseUrl ? storeUi : null;
   const lastError = useGroundStationStore((s) => s.lastError);
   const loadUi = useGroundStationStore((s) => s.loadUi);
   const applyOled = useGroundStationStore((s) => s.applyOled);
@@ -81,8 +100,7 @@ export function PhysicalUiTab({ nodeDeviceId }: PhysicalUiTabProps) {
     if (!client) return;
     let cancelled = false;
     if (demo) {
-      const seeded = useGroundStationStore.getState().ui;
-      if (seeded) setBrightness(seeded.oled.brightness);
+      if (demoConfig) setBrightness(demoConfig.oled.brightness);
     } else {
       void loadUi(client).then((loaded) => {
         if (cancelled || !loaded) return;
@@ -93,7 +111,7 @@ export function PhysicalUiTab({ nodeDeviceId }: PhysicalUiTabProps) {
     return () => {
       cancelled = true;
     };
-  }, [client, demo, loadUi, loadPairedBluetooth]);
+  }, [client, demo, demoConfig, loadUi, loadPairedBluetooth]);
 
   // The client for a write. Demo mode has a truthy agent URL but no REST
   // endpoint, so a write there says it is inert instead of doing nothing.
@@ -118,10 +136,10 @@ export function PhysicalUiTab({ nodeDeviceId }: PhysicalUiTabProps) {
     await applyOled(current, update);
   };
 
-  const saveButtons = async (mapping: Record<string, string>) => {
+  const saveButtons = async (overrides: Record<string, string>) => {
     const current = writeClient();
     if (!current) return;
-    const saved = await applyButtons(current, mapping);
+    const saved = await applyButtons(current, overrides);
     if (saved) toast(t("buttons.saved"), "success");
   };
 
@@ -134,8 +152,8 @@ export function PhysicalUiTab({ nodeDeviceId }: PhysicalUiTabProps) {
   };
 
   const hasAgent = direct !== null;
-  const screenOrder = ui?.screens.order ?? DEFAULT_SCREEN_ORDER;
-  const enabledScreens = new Set(ui?.screens.enabled ?? DEFAULT_SCREEN_ORDER);
+  const screenOrder = ui?.screens.order ?? PANEL_SCREEN_DEFAULTS[profile];
+  const enabledScreens = new Set(ui?.screens.enabled ?? PANEL_SCREEN_DEFAULTS[profile]);
 
   if (!hasAgent) {
     return (
@@ -203,7 +221,11 @@ export function PhysicalUiTab({ nodeDeviceId }: PhysicalUiTabProps) {
         </div>
       </section>
 
-      <ButtonMappingCard mapping={ui?.buttons.mapping ?? null} onSave={saveButtons} />
+      <ButtonMappingCard
+        profile={profile}
+        mapping={ui?.buttons.mapping ?? null}
+        onSave={saveButtons}
+      />
 
       {/* Screens card (read-only) */}
       <section className="rounded border border-border-default bg-bg-secondary p-5">

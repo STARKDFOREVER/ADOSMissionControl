@@ -9,6 +9,8 @@
 import { describe, it, expect } from "vitest";
 
 import { coerceRoster, legsWithEdit } from "../camera-roster";
+import { CAMERA_CAPTURE_FORMATS } from "../camera-roster-types";
+import messages from "../../../../locales/en.json";
 import {
   captureDraftFrom,
   captureDraftPatch,
@@ -45,6 +47,18 @@ describe("camera-roster · capture keys", () => {
     const [odd] = coerceRoster([{ ...WIRE, format: "mjpeg", trigger: "gpio" }]);
     expect(odd.format).toBeNull();
     expect(odd.trigger).toBeNull();
+    // `bayer` is the agent's accepted alias for bayer_rggb8: kept, not dropped.
+    const [alias] = coerceRoster([{ ...WIRE, format: "bayer" }]);
+    expect(alias.format).toBe("bayer");
+  });
+
+  it("offers every pixel format the agent accepts, each labelled", () => {
+    expect([...CAMERA_CAPTURE_FORMATS].sort()).toEqual(
+      ["bayer", "bayer_rggb16", "bayer_rggb8", "gray16", "gray8", "nv12", "rgb24", "yuv420p"],
+    );
+    for (const f of CAMERA_CAPTURE_FORMATS) {
+      expect(messages.cameras.editor.capture.formats[f]).toBeTruthy();
+    }
   });
 
   it("keeps every capture key through an unrelated edit", () => {

@@ -4974,7 +4974,6 @@
       "longPress": "Tekan lama",
       "bindingHint": "Pilih aksi untuk setiap tekan singkat dan tekan lama.",
       "button": "Tombol",
-      "unassigned": "Bawaan profil",
       "pickerLabel": "Aksi {press} {button}",
       "notRead": "Pemetaan tombol belum dibaca dari node ini.",
       "passthroughNote": "Teruskan ke plugin memberikan tekanan hanya kepada plugin yang mengklaimnya, seperti REC dan MARK pada Visor.",
@@ -8018,6 +8017,7 @@
           "rgb24": "RGB 24-bit",
           "nv12": "NV12",
           "yuv420p": "YUV 4:2:0",
+          "bayer": "Bayer (RGGB 8-bit)",
           "bayer_rggb8": "Bayer RGGB 8-bit",
           "bayer_rggb16": "Bayer RGGB 16-bit"
         },

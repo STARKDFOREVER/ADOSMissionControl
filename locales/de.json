@@ -4974,7 +4974,6 @@
       "longPress": "Lang drücken",
       "bindingHint": "Wähle die Aktion für jedes kurze und lange Drücken.",
       "button": "Taste",
-      "unassigned": "Profilstandard",
       "pickerLabel": "{button} {press} Aktion",
       "notRead": "Die Tastenbelegung wurde von diesem Knoten noch nicht gelesen.",
       "passthroughNote": "Plugin-Durchreichen gibt den Tastendruck nur an das Plugin weiter, das ihn beansprucht, etwa REC und MARK auf einem Visor.",
@@ -8018,6 +8017,7 @@
           "rgb24": "RGB 24-bit",
           "nv12": "NV12",
           "yuv420p": "YUV 4:2:0",
+          "bayer": "Bayer (RGGB 8-bit)",
           "bayer_rggb8": "Bayer RGGB 8-bit",
           "bayer_rggb16": "Bayer RGGB 16-bit"
         },

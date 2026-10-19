@@ -4974,7 +4974,6 @@
       "longPress": "Appui long",
       "bindingHint": "Choisissez l’action de chaque appui court et long.",
       "button": "Bouton",
-      "unassigned": "Valeur par défaut du profil",
       "pickerLabel": "Action {press} de {button}",
       "notRead": "L’affectation des boutons n’a pas encore été lue sur ce nœud.",
       "passthroughNote": "Le relais plugin transmet l’appui uniquement au plugin qui l’a réservé, comme REC et MARK sur un Visor.",
@@ -8018,6 +8017,7 @@
           "rgb24": "RGB 24-bit",
           "nv12": "NV12",
           "yuv420p": "YUV 4:2:0",
+          "bayer": "Bayer (RGGB 8-bit)",
           "bayer_rggb8": "Bayer RGGB 8-bit",
           "bayer_rggb16": "Bayer RGGB 16-bit"
         },

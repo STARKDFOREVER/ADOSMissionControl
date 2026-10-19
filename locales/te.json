@@ -4974,7 +4974,6 @@
       "longPress": "పొడవైన నొక్కు",
       "bindingHint": "ప్రతి చిన్న మరియు పొడవైన నొక్కుకు చర్యను ఎంచుకోండి.",
       "button": "బటన్",
-      "unassigned": "ప్రొఫైల్ డిఫాల్ట్",
       "pickerLabel": "{button} {press} చర్య",
       "notRead": "ఈ నోడ్ నుండి బటన్ మ్యాపింగ్ ఇంకా చదవలేదు.",
       "passthroughNote": "ప్లగిన్ పాస్-త్రూ నొక్కును దాన్ని తీసుకున్న ప్లగిన్‌కు మాత్రమే ఇస్తుంది, ఉదా. Visor పై REC మరియు MARK.",
@@ -8018,6 +8017,7 @@
           "rgb24": "RGB 24-bit",
           "nv12": "NV12",
           "yuv420p": "YUV 4:2:0",
+          "bayer": "Bayer (RGGB 8-bit)",
           "bayer_rggb8": "Bayer RGGB 8-bit",
           "bayer_rggb16": "Bayer RGGB 16-bit"
         },
