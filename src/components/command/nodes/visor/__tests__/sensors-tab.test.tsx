@@ -42,6 +42,11 @@ describe("rateLevel", () => {
     expect(rateLevel(3, 0)).toBe("ok");
   });
 
+  it("draws no verdict when the expected rate is unknown", () => {
+    expect(rateLevel(50, null)).toBe("none");
+    expect(rateLevel(0, null)).toBe("none");
+  });
+
   it("reads a negative sigma as unmeasured", () => {
     expect(sigmaMs(-1)).toBeNull();
     expect(sigmaMs(400_000)).toBe("0.40");
@@ -62,6 +67,12 @@ describe("Visor SensorsTab", () => {
     expect(within(imu!).getByText(/^1000/).className).toContain("text-status-success");
     expect(screen.getByText("ados-sensorhub 0.1.0")).toBeTruthy();
     expect(screen.getByText("clock σ 0.40 ms")).toBeTruthy();
+    // Unknown expected rate: the plain rate, no "(expected)" and no colour verdict.
+    const mag = rows.find((r) => within(r).queryByText("mag0"));
+    const magRate = within(mag!).getByText(/^50\.0/);
+    expect(magRate.textContent).toBe("50.0");
+    expect(magRate.className).toContain("text-text-secondary");
+    expect(magRate.className).not.toMatch(/text-status-/);
   });
 
   it("says the service is not fitted on present:false, never an empty table", () => {

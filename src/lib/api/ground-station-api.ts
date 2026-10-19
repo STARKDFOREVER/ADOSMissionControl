@@ -75,7 +75,7 @@ export class GroundStationApi {
   subscribeUplinkEvents = (onEvent: (e: UplinkEvent) => void) => net.subscribeUplinkEvents(this.ctx, onEvent);
   getUi = () => ui.getUi(this.ctx);
   setOled = (update: OledUpdate) => ui.setOled(this.ctx, update);
-  setButtons = (mapping: Record<string, unknown>) => ui.setButtons(this.ctx, mapping);
+  setButtons = (mapping: Record<string, string>) => ui.setButtons(this.ctx, mapping);
   setScreens = (update: ScreensUpdate) => ui.setScreens(this.ctx, update);
   getDisplay = () => p.getDisplay(this.ctx);
   setDisplay = (update: DisplayUpdate) => p.setDisplay(this.ctx, update);

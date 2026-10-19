@@ -1809,7 +1809,8 @@
       "hflipHint": "Mirror the image left–right (helps a downward camera mounted upside-down).",
       "vflipLabel": "Vertical flip",
       "vflipHint": "Mirror the image top–bottom.",
-      "perLegManagedHint": "This node streams several cameras, so each stream takes its orientation and bitrate from its own settings on the Cameras tab. The single-camera orientation and bitrate are not used."
+      "perLegManagedHint": "This node streams several cameras, so each stream takes its orientation and bitrate from its own settings on the Cameras tab. The single-camera orientation and bitrate are not used.",
+      "legCaptured": "Captured"
     },
     "profile": {
       "title": "Profile",
@@ -4971,8 +4972,28 @@
       "title": "Botones",
       "shortPress": "Pulsación corta",
       "longPress": "Pulsación larga",
-      "readOnlyNote": "Solo lectura: las acciones de los botones son fijas en esta versión.",
-      "bindingHint": "La pulsación larga es reasignable. La pulsación corta la fija el perfil."
+      "bindingHint": "Elige la acción para cada pulsación corta y larga.",
+      "button": "Botón",
+      "unassigned": "Predeterminado del perfil",
+      "pickerLabel": "Acción de {press} de {button}",
+      "notRead": "La asignación de botones aún no se ha leído de este nodo.",
+      "passthroughNote": "El paso a plugin entrega la pulsación solo al plugin que la reclamó, como REC y MARK en un Visor.",
+      "reset": "Restablecer",
+      "save": "Guardar",
+      "saving": "Guardando…",
+      "saved": "Asignación de botones guardada",
+      "actions": {
+        "cycle_screen": "Pantalla siguiente",
+        "back": "Atrás",
+        "confirm": "Confirmar",
+        "menu": "Menú",
+        "show_network": "Mostrar red",
+        "show_qr": "Mostrar QR de emparejamiento",
+        "pair_drone": "Emparejar dron",
+        "toggle_backlight": "Alternar retroiluminación",
+        "passthrough": "Paso a plugin",
+        "shutdown_prompt": "Aviso de apagado"
+      }
     },
     "screens": {
       "title": "Pantallas",
@@ -5582,7 +5603,11 @@
         "fecRec": "FEC recovered",
         "verified": "Verified",
         "unverified": "Unverified",
-        "rssiHistory": "{iface} {chain} history"
+        "rssiHistory": "{iface} {chain} history",
+        "absentTitle": "No radio adapters",
+        "absentBody": "This node has no WFB receive plane, so there are no adapters to show.",
+        "lostEstimate": "Estimated: several adapters receive the same stream.",
+        "fecRecPerStream": "Counted per stream, not per adapter, when several adapters receive the same stream."
       }
     },
     "videoLink": {
@@ -7980,7 +8005,38 @@
       "mountPitch": "Mount pitch (deg)",
       "save": "Save",
       "cancel": "Cancel",
-      "primaryAlwaysOn": "The primary stream always runs, so it cannot be turned off."
+      "primaryAlwaysOn": "The primary stream always runs, so it cannot be turned off.",
+      "capture": {
+        "title": "Capture",
+        "toggle": "Captured by the vision engine",
+        "hint": "The vision engine owns this camera and records its raw frames; the video stream is encoded from those frames.",
+        "format": "Pixel format",
+        "formatDefault": "Default (RGB24)",
+        "formats": {
+          "gray8": "Gray 8-bit",
+          "gray16": "Gray 16-bit",
+          "rgb24": "RGB 24-bit",
+          "nv12": "NV12",
+          "yuv420p": "YUV 4:2:0",
+          "bayer_rggb8": "Bayer RGGB 8-bit",
+          "bayer_rggb16": "Bayer RGGB 16-bit"
+        },
+        "trigger": "Trigger",
+        "triggerDefault": "Default (free-running)",
+        "triggers": {
+          "none": "Free-running",
+          "hub": "Sensor hub",
+          "fc": "Flight controller"
+        },
+        "exposure": "Exposure (µs)",
+        "gain": "Gain",
+        "keyframe": "Keyframe interval (frames)",
+        "auto": "Auto",
+        "autoHint": "Leave a field empty to keep the node default: auto exposure, untouched gain, an encoder-chosen keyframe interval.",
+        "exposureInvalid": "Exposure must be a whole number of at least 1 µs.",
+        "gainInvalid": "Gain must be a number.",
+        "keyframeInvalid": "Keyframe interval must be a whole number from 0 to 30."
+      }
     },
     "addDialog": {
       "title": "Add IP camera",

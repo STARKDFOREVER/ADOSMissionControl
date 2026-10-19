@@ -24,6 +24,7 @@ afterEach(() => {
 });
 
 const BASE_CONFIG = {
+  cameras: [],
   video: {
     camera: {
       source: "csi",
@@ -33,7 +34,6 @@ const BASE_CONFIG = {
       fps: 30,
       bitrate_kbps: 4000,
     },
-    cameras: [],
     wfb: {
       channel: 149,
       tx_power_dbm: 5,
@@ -46,21 +46,28 @@ const BASE_CONFIG = {
 };
 
 const MULTI_CONFIG = {
-  video: {
-    ...BASE_CONFIG.video,
-    cameras: [
-      {
-        id: "main",
-        role: "primary",
-        source: "rtsp://192.168.144.25:8554/main.264",
-        codec: "h264",
-        width: 1920,
-        height: 1080,
-        fps: 30,
-      },
-      { id: "ir", source: "rtsp://192.168.144.25:8554/video2", enabled: false },
-    ],
-  },
+  ...BASE_CONFIG,
+  cameras: [
+    {
+      id: "main",
+      role: "primary",
+      source: "rtsp://192.168.144.25:8554/main.264",
+      codec: "h264",
+      width: 1920,
+      height: 1080,
+      fps: 30,
+    },
+    { id: "ir", source: "rtsp://192.168.144.25:8554/video2", enabled: false },
+    {
+      id: "down",
+      source: "/dev/video2",
+      capture: true,
+      format: "gray8",
+      exposure_us: 4000,
+      gain: 2,
+      trigger: "hub",
+    },
+  ],
 };
 
 function renderSection(
@@ -83,13 +90,23 @@ describe("parseCameraLegs", () => {
   it("distinguishes no-list from an empty list and keeps entries defensive", () => {
     expect(parseCameraLegs(null)).toBeNull();
     expect(parseCameraLegs({ video: {} })).toBeNull();
+    // The retired `video.cameras` list is not the camera list.
+    expect(parseCameraLegs({ video: { cameras: MULTI_CONFIG.cameras } })).toBeNull();
     expect(parseCameraLegs(BASE_CONFIG)).toEqual([]);
     const legs = parseCameraLegs(MULTI_CONFIG)!;
-    expect(legs).toHaveLength(2);
+    expect(legs).toHaveLength(3);
     expect(legs[0].id).toBe("main");
     expect(legs[0].enabled).toBe(true);
+    expect(legs[0].capture).toBe(false);
     expect(legs[1].enabled).toBe(false);
     expect(legs[1].width).toBeNull();
+    expect(legs[2]).toMatchObject({
+      capture: true,
+      format: "gray8",
+      exposure_us: 4000,
+      gain: 2,
+      trigger: "hub",
+    });
   });
 });
 
@@ -133,6 +150,8 @@ describe("VideoSection camera streams", () => {
     expect(screen.getByText("ir")).toBeTruthy();
     expect(screen.getByText(/rtsp:\/\/192\.168\.144\.25:8554\/main\.264/)).toBeTruthy();
     expect(screen.getByText("disabled")).toBeTruthy();
+    expect(screen.getByText("Captured")).toBeTruthy();
+    expect(screen.getByText(/gray8 4000 µs gain 2 trigger hub/)).toBeTruthy();
   });
 
   it("offers no camera-block writers the multi-stream pipeline never reads", () => {

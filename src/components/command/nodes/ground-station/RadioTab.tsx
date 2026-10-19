@@ -11,11 +11,14 @@
  * A multi-adapter node also gets the per-adapter cards and the receive
  * diversity summary, read from `GET /api/v1/radio/adapters` when this node is
  * reachable and from the capability radio block (`RadioState.adapters`)
- * otherwise. Single-adapter nodes keep the plain view.
+ * otherwise. Single-adapter nodes keep the plain view. A node whose adapters
+ * read says `present: false` has no receive plane: it gets an empty state,
+ * never adapters borrowed from the capability block.
  * @license GPL-3.0-only
  */
 
 import { useTranslations } from "next-intl";
+import { Antenna } from "lucide-react";
 import { PageIntro } from "@/components/hardware/PageIntro";
 import { HintChip } from "@/components/hardware/HintChip";
 import { RadioPanel } from "@/components/hardware/radio/RadioPanel";
@@ -27,6 +30,7 @@ import {
   selectDeviceCapabilities,
   useAgentCapabilitiesStore,
 } from "@/stores/agent-capabilities-store";
+import { LaneCard } from "./lane-ui";
 import { PhoneReceiversCard } from "./PhoneReceiversCard";
 import { RadioAdaptersView } from "./RadioAdaptersView";
 import { useRadioAdapters } from "./use-radio-adapters";
@@ -43,7 +47,12 @@ export function RadioTab({ nodeDeviceId }: RadioTabProps) {
   const apiKey = direct?.apiKey ?? null;
   const radio = useAgentCapabilitiesStore((s) => selectDeviceCapabilities(s, nodeDeviceId)?.radio ?? null);
   const restOwned = useRadioAdapters(agentUrl, apiKey);
-  const adapters = restOwned?.adapters.length ? restOwned.adapters : (radio?.adapters ?? []);
+  const absent = restOwned?.present === false;
+  const adapters = absent
+    ? []
+    : restOwned?.adapters.length
+      ? restOwned.adapters
+      : (radio?.adapters ?? []);
   const summary = diversitySummary(adapters, restOwned?.diversity ?? null, radio?.lossPercent ?? null);
 
   return (
@@ -57,7 +66,12 @@ export function RadioTab({ nodeDeviceId }: RadioTabProps) {
         <CloudModeLimitedNotice feature="radio" />
       ) : (
         <>
-          {adapters.length > 1 ? (
+          {absent ? (
+            <LaneCard title={t("adapters.title")} icon={Antenna}>
+              <p className="text-sm text-text-primary">{t("adapters.absentTitle")}</p>
+              <p className="mt-1 text-xs text-text-secondary">{t("adapters.absentBody")}</p>
+            </LaneCard>
+          ) : adapters.length > 1 ? (
             <RadioAdaptersView adapters={adapters} summary={summary} historyKey={nodeDeviceId ?? direct.agentUrl} />
           ) : null}
           <RadioPanel />

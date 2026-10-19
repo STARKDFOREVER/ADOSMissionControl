@@ -14,13 +14,15 @@ export function setOled(ctx: RequestContext, update: OledUpdate): Promise<UiConf
   });
 }
 
+/** Replace the button mapping wholesale; keys left out fall back to the
+ * profile defaults. */
 export function setButtons(
   ctx: RequestContext,
-  mapping: Record<string, unknown>,
+  mapping: Record<string, string>,
 ): Promise<UiConfig> {
   return gsRequest<UiConfig>(ctx, "/api/v1/ground-station/ui/buttons", {
     method: "PUT",
-    body: JSON.stringify(mapping),
+    body: JSON.stringify({ mapping }),
   });
 }
 

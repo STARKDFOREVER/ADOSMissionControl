@@ -7,8 +7,9 @@
  * the same posture the real `/api/config` surface has).
  *
  * The block set matches the dot-paths the settings sections read: identity
- * (`agent.*`), network (`network.*`), MAVLink routing, swarm, video + WFB,
- * battery health, discovery, cloud/remote, and security. A single config carries every block; the settings-nav gates hide
+ * (`agent.*`), network (`network.*`), MAVLink routing, swarm, the top-level
+ * `cameras[]` list, video + WFB, battery health, discovery, cloud/remote, and
+ * security. A single config carries every block; the settings-nav gates hide
  * the pages that do not apply to a profile (a ground station has no MAVLink
  * router, a workstation no radio), so the config stays profile-agnostic apart
  * from `agent.profile`.
@@ -74,6 +75,24 @@ function buildConfig(profile: NodeProfile): ConfigObject {
       // plausible pair so the read-only readout is exercisable offline.
       tasks: { enabled: true, assigned_task_id: "survey-cell-12", bundle_position: 2 },
     },
+    // One list for every camera: the forward stream leg, and a down-facing
+    // global-shutter camera the vision engine captures for mapping.
+    cameras: [
+      { id: "main", source: "/dev/video0", role: "primary" },
+      {
+        id: "down",
+        source: "/dev/video2",
+        role: "down",
+        width: 1280,
+        height: 800,
+        fps: 20,
+        capture: true,
+        format: "gray8",
+        exposure_us: 4000,
+        gain: 2,
+        trigger: "fc",
+      },
+    ],
     video: {
       camera: {
         source: "/dev/video0",
@@ -83,7 +102,6 @@ function buildConfig(profile: NodeProfile): ConfigObject {
         height: 1080,
         bitrate_kbps: 6000,
       },
-      cameras: [{ id: "main", source: "/dev/video0", role: "eo" }],
       wfb: {
         fleet_id: 1,
         fleet_slot: profile === "ground-station" ? 0 : 3,

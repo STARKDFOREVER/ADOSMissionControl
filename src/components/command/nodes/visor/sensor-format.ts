@@ -8,13 +8,16 @@
 import type { RigSensor, SensorsGnssSummary } from "@/lib/api/agent/sensors";
 
 /** How a live rate compares with the rate the rig expects. `idle` is a sensor
- * that is not expected to deliver right now, drawn neutral. */
-export type RateLevel = "ok" | "warn" | "bad" | "idle";
+ * that is not expected to deliver right now, drawn neutral; `none` is a sensor
+ * whose expected rate the node does not know, so no verdict is drawn. */
+export type RateLevel = "ok" | "warn" | "bad" | "idle" | "none";
 
-/** Rates draw amber below 90 % of expected and red below 50 %. A sensor with
- * no expected rate is judged only on whether it delivers at all, and a silent
- * one is idle rather than failing. */
-export function rateLevel(rateHz: number, expectedHz: number): RateLevel {
+/** Rates draw amber below 90 % of expected and red below 50 %. An unknown
+ * expected rate (null) gives no verdict. A sensor expected at 0 Hz is judged
+ * only on whether it delivers at all, and a silent one is idle rather than
+ * failing. */
+export function rateLevel(rateHz: number, expectedHz: number | null): RateLevel {
+  if (expectedHz === null) return "none";
   if (!(expectedHz > 0)) return rateHz > 0 ? "ok" : "idle";
   const ratio = rateHz / expectedHz;
   if (ratio < 0.5) return "bad";
@@ -34,6 +37,7 @@ export const LEVEL_TEXT: Record<RateLevel, string> = {
   warn: "text-status-warning",
   bad: "text-status-error",
   idle: "text-text-tertiary",
+  none: "text-text-secondary",
 };
 
 /** A sync sigma in milliseconds, or null when the node reports it unmeasured

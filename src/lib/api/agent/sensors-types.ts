@@ -41,7 +41,9 @@ export interface RigSensor {
   role: string;
   source: RigSensorSource;
   rate_hz: number;
-  expected_hz: number;
+  /** Null when the expected rate is unknown: the UI then draws no rate
+   * verdict. */
+  expected_hz: number | null;
   last_t_ns: number;
   /** Milliseconds since the last sample; null before the first one. */
   age_ms: number | null;

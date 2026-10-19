@@ -16,7 +16,7 @@ import { useEffect, useState } from "react";
 
 import { coerceRoster } from "@/lib/agent/camera-roster";
 import { timedFetch } from "@/lib/agent/agent-client/timeout";
-import type { RosterCamera } from "@/lib/agent/feature-types";
+import type { RosterCamera } from "@/lib/agent/camera-roster-types";
 import { isHttpsOrigin, resolveNodeAgentReach } from "@/lib/plugins/node-agent-reach";
 import { relayProxyBaseUrl } from "@/lib/nodes/relay-reach";
 import { isDemoMode } from "@/lib/utils";

@@ -75,6 +75,9 @@ function normalizeDiversity(raw: unknown): RadioDiversity | null {
 export async function getRadioAdapters(ctx: RequestContext): Promise<RadioAdaptersResponse> {
   const raw = await gsRequest<Record<string, unknown>>(ctx, "/api/v1/radio/adapters");
   return {
+    // Only an explicit `false` reads absent; an agent that predates the field
+    // serves adapters only when it has them.
+    present: raw?.present !== false,
     adapters: normalizeRadioAdapters(raw?.adapters),
     diversity: normalizeDiversity(raw?.diversity),
   };

@@ -19,7 +19,7 @@ import {
   CAMERA_ORIENTATIONS,
   CAMERA_PURPOSES,
   type CameraLegInput,
-} from "@/lib/agent/feature-types";
+} from "@/lib/agent/camera-roster-types";
 import { slugCameraId } from "@/lib/agent/camera-roster";
 import { cn } from "@/lib/utils";
 

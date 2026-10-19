@@ -43,7 +43,7 @@ import type {
   SigningDisableResult,
   SigningEnrollResult,
 } from "./types";
-import type { CameraLegInput, RosterCamera } from "../feature-types";
+import type { CameraLegInput, RosterCamera } from "../camera-roster-types";
 import type { BatteryHealth } from "../schemas/battery";
 
 export class AgentClient {

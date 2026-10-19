@@ -3,9 +3,9 @@
 /**
  * @module PhysicalUiTab
  * @description Command-tab home for the physical-UI surface (OLED
- * live card, Buttons, Screens — buttons and screens are read-only
- * in this build). Shared by every node with a front panel (ground station,
- * Visor).
+ * live card, Buttons, Screens — the button mapping is editable, the screen
+ * list read-only in this build). Shared by every node with a front panel
+ * (ground station, Visor).
  * @license GPL-3.0-only
  */
 
@@ -23,11 +23,11 @@ import { groundStationApiFromAgent } from "@/lib/api/ground-station-api";
 import { isDemoMode } from "@/lib/utils";
 import { useNodeDirectAgent } from "@/components/command/settings/use-node-direct-agent";
 import { useGroundStationStore } from "@/stores/ground-station-store";
+import { ButtonMappingCard } from "./ButtonMappingCard";
 
 const SLIDER_DEBOUNCE_MS = 300;
 
 const DEFAULT_SCREEN_ORDER = ["Link", "Drone", "GCS", "Net", "System"];
-const DEFAULT_BUTTONS = ["B1", "B2", "B3", "B4"];
 
 export interface PhysicalUiTabProps {
   /** The node this tab is rendered for. Forwarded to the cards that WRITE the
@@ -49,10 +49,14 @@ export function PhysicalUiTab({ nodeDeviceId }: PhysicalUiTabProps) {
 
   const storeUi = useGroundStationStore((s) => s.ui);
   const uiFor = useGroundStationStore((s) => s.uiFor);
-  const ui = client && uiFor === client.baseUrl ? storeUi : null;
+  // Demo mode has no REST endpoint behind its agent URL, so the seeded config
+  // is the node's config there.
+  const demo = isDemoMode();
+  const ui = demo ? storeUi : client && uiFor === client.baseUrl ? storeUi : null;
   const lastError = useGroundStationStore((s) => s.lastError);
   const loadUi = useGroundStationStore((s) => s.loadUi);
   const applyOled = useGroundStationStore((s) => s.applyOled);
+  const applyButtons = useGroundStationStore((s) => s.applyButtons);
   const storeBluetooth = useGroundStationStore((s) => s.bluetooth);
   const pairedDevices =
     client && storeBluetooth.pairedFor === client.baseUrl ? storeBluetooth.paired : [];
@@ -76,22 +80,29 @@ export function PhysicalUiTab({ nodeDeviceId }: PhysicalUiTabProps) {
   useEffect(() => {
     if (!client) return;
     let cancelled = false;
-    void loadUi(client).then((loaded) => {
-      if (cancelled || !loaded) return;
-      setBrightness(loaded.oled.brightness);
-    });
+    if (demo) {
+      const seeded = useGroundStationStore.getState().ui;
+      if (seeded) setBrightness(seeded.oled.brightness);
+    } else {
+      void loadUi(client).then((loaded) => {
+        if (cancelled || !loaded) return;
+        setBrightness(loaded.oled.brightness);
+      });
+    }
     void loadPairedBluetooth(client);
     return () => {
       cancelled = true;
     };
-  }, [client, loadUi, loadPairedBluetooth]);
+  }, [client, demo, loadUi, loadPairedBluetooth]);
 
   // The client for a write. Demo mode has a truthy agent URL but no REST
   // endpoint, so a write there says it is inert instead of doing nothing.
   const writeClient = () => {
-    const current = clientRef.current;
-    if (!current && isDemoMode()) toast(t("demoReadOnly"), "info");
-    return current;
+    if (demo) {
+      toast(t("demoReadOnly"), "info");
+      return null;
+    }
+    return clientRef.current;
   };
 
   const handleForgetBt = async (mac: string, name: string) => {
@@ -107,6 +118,13 @@ export function PhysicalUiTab({ nodeDeviceId }: PhysicalUiTabProps) {
     await applyOled(current, update);
   };
 
+  const saveButtons = async (mapping: Record<string, string>) => {
+    const current = writeClient();
+    if (!current) return;
+    const saved = await applyButtons(current, mapping);
+    if (saved) toast(t("buttons.saved"), "success");
+  };
+
   const handleBrightness = (v: number) => {
     setBrightness(v);
     if (brightnessTimerRef.current) clearTimeout(brightnessTimerRef.current);
@@ -116,8 +134,6 @@ export function PhysicalUiTab({ nodeDeviceId }: PhysicalUiTabProps) {
   };
 
   const hasAgent = direct !== null;
-  const buttonEntries = ui?.buttons ?? {};
-  const buttonIds = DEFAULT_BUTTONS;
   const screenOrder = ui?.screens.order ?? DEFAULT_SCREEN_ORDER;
   const enabledScreens = new Set(ui?.screens.enabled ?? DEFAULT_SCREEN_ORDER);
 
@@ -187,43 +203,7 @@ export function PhysicalUiTab({ nodeDeviceId }: PhysicalUiTabProps) {
         </div>
       </section>
 
-      {/* Buttons card (read-only) */}
-      <section className="rounded border border-border-default bg-bg-secondary p-5">
-        <div className="mb-4 flex flex-wrap items-center gap-2">
-          <h2 className="text-lg font-medium text-text-primary">{t("buttons.title")}</h2>
-          <HintChip>Long-press is remappable. Short-press is fixed by profile.</HintChip>
-        </div>
-        <div className="overflow-hidden rounded border border-border-default">
-          <table className="w-full text-sm">
-            <thead className="bg-bg-tertiary text-xs uppercase tracking-wide text-text-secondary">
-              <tr>
-                <th className="px-3 py-2 text-left">Button</th>
-                <th className="px-3 py-2 text-left">{t("buttons.shortPress")}</th>
-                <th className="px-3 py-2 text-left">{t("buttons.longPress")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {buttonIds.map((id) => {
-                const binding = buttonEntries[id] ?? {};
-                return (
-                  <tr key={id} className="border-t border-border-default">
-                    <td className="px-3 py-2 font-mono text-text-primary">{id}</td>
-                    <td className="px-3 py-2 text-text-secondary">
-                      {binding.short_press ?? "unassigned"}
-                    </td>
-                    <td className="px-3 py-2 text-text-secondary">
-                      {binding.long_press ?? "unassigned"}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        <p className="mt-3 text-xs text-text-secondary">
-          {t("buttons.readOnlyNote")}
-        </p>
-      </section>
+      <ButtonMappingCard mapping={ui?.buttons.mapping ?? null} onSave={saveButtons} />
 
       {/* Screens card (read-only) */}
       <section className="rounded border border-border-default bg-bg-secondary p-5">

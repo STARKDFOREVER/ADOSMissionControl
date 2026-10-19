@@ -14,7 +14,7 @@ import {
   legsWithEdit,
   slugCameraId,
 } from "../camera-roster";
-import type { RosterCamera } from "../feature-types";
+import type { RosterCamera } from "../camera-roster-types";
 
 describe("camera-roster · bitrate/calibration round-trip", () => {
   it("coerces bitrate_kbps + calibration off the roster payload", () => {

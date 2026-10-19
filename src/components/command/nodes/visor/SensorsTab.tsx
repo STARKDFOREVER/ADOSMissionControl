@@ -126,7 +126,9 @@ function SensorTable({ sensors }: { sensors: SensorsStatus }) {
                 ) : (
                   <td className={cn("px-3 py-1.5", LEVEL_TEXT[rateLevel(s.rate_hz, s.expected_hz)])}>
                     {formatHz(s.rate_hz)}
-                    <span className="text-text-tertiary"> ({formatHz(s.expected_hz)})</span>
+                    {s.expected_hz !== null ? (
+                      <span className="text-text-tertiary"> ({formatHz(s.expected_hz)})</span>
+                    ) : null}
                   </td>
                 )}
                 <td className="px-3 py-1.5 text-text-secondary">

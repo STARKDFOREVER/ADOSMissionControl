@@ -27,7 +27,7 @@ import {
   Trash2,
   type LucideIcon,
 } from "lucide-react";
-import type { RosterCamera } from "@/lib/agent/feature-types";
+import type { RosterCamera } from "@/lib/agent/camera-roster-types";
 import { Badge } from "@/components/ui/badge";
 import { Toggle } from "@/components/ui/toggle";
 import { useUiStore } from "@/stores/ui-store";

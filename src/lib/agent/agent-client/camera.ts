@@ -9,7 +9,7 @@
  * @license GPL-3.0-only
  */
 
-import type { CameraLegInput, RosterCamera } from "../feature-types";
+import type { CameraLegInput, RosterCamera } from "../camera-roster-types";
 import { coerceRoster, legsWithEdit } from "../camera-roster";
 import { agentRequest, type RequestContext } from "./transport";
 

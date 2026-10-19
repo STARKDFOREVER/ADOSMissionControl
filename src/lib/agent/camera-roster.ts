@@ -15,14 +15,20 @@
  * @license GPL-3.0-only
  */
 
-import type {
-  CameraFingerprint,
-  CameraLegInput,
-  RosterCamera,
-  RosterCameraState,
-} from "./feature-types";
+import {
+  CAMERA_CAPTURE_FORMATS,
+  CAMERA_TRIGGERS,
+  type CameraCaptureFormat,
+  type CameraFingerprint,
+  type CameraLegInput,
+  type CameraTrigger,
+  type RosterCamera,
+  type RosterCameraState,
+} from "./camera-roster-types";
 
-/** Operator edit to one camera (a subset of the leg's editable fields). */
+/** Operator edit to one camera (a subset of the leg's editable fields). A
+ * `null` on a capture key clears it so the agent falls back to its default
+ * (auto exposure, untouched gain, encoder-chosen GOP). */
 export interface CameraPatch {
   name?: string | null;
   orientation?: string | null;
@@ -32,6 +38,12 @@ export interface CameraPatch {
   role?: string | null;
   fov_deg?: number | null;
   mount_pitch_deg?: number | null;
+  capture?: boolean;
+  format?: CameraCaptureFormat | null;
+  exposure_us?: number | null;
+  gain?: number | null;
+  trigger?: CameraTrigger | null;
+  keyframe_interval?: number | null;
 }
 
 // ── coercion ──────────────────────────────────────────────────
@@ -50,6 +62,11 @@ function boolOrNull(v: unknown): boolean | null {
 }
 function strArray(v: unknown): string[] {
   return Array.isArray(v) ? v.filter((e): e is string => typeof e === "string") : [];
+}
+function oneOf<T extends string>(v: unknown, allowed: readonly T[]): T | null {
+  return typeof v === "string" && (allowed as readonly string[]).includes(v)
+    ? (v as T)
+    : null;
 }
 
 const STATES: ReadonlyArray<RosterCameraState> = [
@@ -107,6 +124,17 @@ export function coerceRoster(raw: unknown): RosterCamera[] {
         match: coerceMatch(e.match),
         fov_deg: numOrNull(e.fov_deg),
         mount_pitch_deg: numOrNull(e.mount_pitch_deg),
+        capture: boolOrNull(e.capture),
+        format: oneOf(e.format, CAMERA_CAPTURE_FORMATS),
+        exposure_us: numOrNull(e.exposure_us),
+        gain: numOrNull(e.gain),
+        trigger: oneOf(e.trigger, CAMERA_TRIGGERS),
+        trigger_channel: numOrNull(e.trigger_channel),
+        keyframe_interval: numOrNull(e.keyframe_interval),
+        rotation: numOrNull(e.rotation),
+        hflip: boolOrNull(e.hflip),
+        vflip: boolOrNull(e.vflip),
+        encoder: strOrNull(e.encoder),
       },
     ];
   });
@@ -154,7 +182,38 @@ export function legFromCamera(
   if (typeof cam.bitrate_kbps === "number") leg.bitrate_kbps = cam.bitrate_kbps;
   if (typeof cam.calibration === "string") leg.calibration = cam.calibration;
   if (cam.match) leg.match = cam.match;
+  applyCaptureKeys(leg, cam, p);
   return leg;
+}
+
+/** The patch-editable capture keys of a `cameras[]` entry. */
+const CAPTURE_PATCH_KEYS = [
+  "capture",
+  "format",
+  "exposure_us",
+  "gain",
+  "trigger",
+  "keyframe_interval",
+] as const;
+
+/** Carry the capture + encode-plane keys onto the leg. The agent merges each
+ * leg onto its stored entry (an omitted key is kept, `null` clears it), so a
+ * key the patch names rides as patched, including a clearing `null`, and
+ * every other key the roster carried rides as read. */
+function applyCaptureKeys(
+  leg: CameraLegInput,
+  cam: RosterCamera,
+  p: CameraPatch,
+): void {
+  for (const key of CAPTURE_PATCH_KEYS) {
+    const value = p[key] !== undefined ? p[key] : cam[key];
+    if (p[key] !== undefined || value != null) Object.assign(leg, { [key]: value });
+  }
+  if (typeof cam.trigger_channel === "number") leg.trigger_channel = cam.trigger_channel;
+  if (typeof cam.rotation === "number") leg.rotation = cam.rotation;
+  if (typeof cam.hflip === "boolean") leg.hflip = cam.hflip;
+  if (typeof cam.vflip === "boolean") leg.vflip = cam.vflip;
+  if (typeof cam.encoder === "string") leg.encoder = cam.encoder;
 }
 
 /** The declared operator legs of a roster (the base of every write). */

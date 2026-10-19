@@ -77,8 +77,23 @@ function AdapterCard({ adapter, rings, rev }: AdapterCardProps) {
           })
         )}
         <StatRow label={t("packets")} value={fmtNum(adapter.packets)} />
-        <StatRow label={t("lost")} value={pct(loss)} />
-        <StatRow label={t("fecRec")} value={fmtNum(adapter.fec_rec)} />
+        {adapter.fec_rec === null && loss !== null ? (
+          // FEC is per stream when several adapters receive it, so the
+          // per-adapter loss is the agent's estimate.
+          <StatRow label={t("lost")} value={<span title={t("lostEstimate")}>≈ {pct(loss)}</span>} />
+        ) : (
+          <StatRow label={t("lost")} value={pct(loss)} />
+        )}
+        <StatRow
+          label={t("fecRec")}
+          value={
+            adapter.fec_rec === null ? (
+              <span title={t("fecRecPerStream")}>—</span>
+            ) : (
+              fmtNum(adapter.fec_rec)
+            )
+          }
+        />
       </dl>
     </div>
   );

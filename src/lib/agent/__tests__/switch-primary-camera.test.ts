@@ -9,7 +9,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { switchPrimaryCamera } from "../agent-client/camera";
-import type { CameraLegInput } from "../feature-types";
+import type { CameraLegInput } from "../camera-roster-types";
 
 const CTX = { baseUrl: "http://192.168.1.50:8080", apiKey: "k" };
 

@@ -21,11 +21,11 @@ import type {
   SetupStatus,
   SystemResources,
 } from "@/lib/agent/types";
+import type { AgentCapabilities } from "@/lib/agent/feature-types";
 import type {
-  AgentCapabilities,
   CameraLegInput,
   RosterCamera,
-} from "@/lib/agent/feature-types";
+} from "@/lib/agent/camera-roster-types";
 import type {
   SigningCounters,
   SigningDisableResult,

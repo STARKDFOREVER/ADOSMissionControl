@@ -220,10 +220,16 @@ export function seedGroundStationStore(): void {
     ui: {
       oled: { brightness: 180 },
       buttons: {
-        button_a: { short_press: "next_screen", long_press: "toggle_backlight" },
-        button_b: { short_press: "prev_screen", long_press: "open_pair_window" },
-        button_c: { short_press: "cycle_uplink" },
-        button_d: { short_press: "mute_alerts", long_press: "reboot" },
+        mapping: {
+          B1_short: "cycle_screen",
+          B1_long: "toggle_backlight",
+          B2_short: "show_network",
+          B2_long: "show_qr",
+          B3_short: "confirm",
+          B3_long: "pair_drone",
+          B4_short: "back",
+          B4_long: "shutdown_prompt",
+        },
       },
       screens: {
         order: ["link", "uplink", "mesh", "pair"],

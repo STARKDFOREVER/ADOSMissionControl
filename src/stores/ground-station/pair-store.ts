@@ -45,6 +45,10 @@ export interface PairSlice {
     api: GroundStationApi,
     update: OledUpdate,
   ) => Promise<UiConfig | null>;
+  applyButtons: (
+    api: GroundStationApi,
+    mapping: Record<string, string>,
+  ) => Promise<UiConfig | null>;
   applyScreens: (
     api: GroundStationApi,
     update: ScreensUpdate,
@@ -134,6 +138,18 @@ export const createPairSlice: GroundStationSliceCreator<PairSlice> = (
   applyOled: async (api, update) => {
     try {
       const ui = await api.setOled(update);
+      if (get().uiFor === api.baseUrl) set({ ui, lastError: null });
+      return ui;
+    } catch (err) {
+      const { message } = errorMessage(err);
+      set({ lastError: message });
+      return null;
+    }
+  },
+
+  applyButtons: async (api, mapping) => {
+    try {
+      const ui = await api.setButtons(mapping);
       if (get().uiFor === api.baseUrl) set({ ui, lastError: null });
       return ui;
     } catch (err) {

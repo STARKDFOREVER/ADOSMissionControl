@@ -8,7 +8,7 @@
  */
 // Exempt from 300 LOC soft rule: demo fixture data.
 
-import type { RosterCamera } from "@/lib/agent/feature-types";
+import type { RosterCamera } from "@/lib/agent/camera-roster-types";
 
 const MOCK_CAMERA_ROSTER: RosterCamera[] = [
   {
@@ -54,6 +54,13 @@ const MOCK_CAMERA_ROSTER: RosterCamera[] = [
     match: { usb: "1bcf:2c99" },
     fov_deg: 120,
     mount_pitch_deg: -90,
+    // Captured by the vision engine for mapping, triggered by the FC.
+    capture: true,
+    format: "gray8",
+    exposure_us: 4000,
+    gain: 2,
+    trigger: "fc",
+    keyframe_interval: 10,
   },
   {
     id: "video4",

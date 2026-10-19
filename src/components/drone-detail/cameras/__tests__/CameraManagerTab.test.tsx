@@ -15,7 +15,7 @@ import { render, screen, fireEvent, act } from "@testing-library/react";
 import messages from "../../../../../locales/en.json";
 import { CameraManagerTab } from "../CameraManagerTab";
 import { useCameraManagerStore } from "@/stores/camera-manager-store";
-import type { RosterCamera } from "@/lib/agent/feature-types";
+import type { RosterCamera } from "@/lib/agent/camera-roster-types";
 
 const camera: RosterCamera = {
   id: "belly",

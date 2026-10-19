@@ -1809,7 +1809,8 @@
       "hflipHint": "Mirror the image left–right (helps a downward camera mounted upside-down).",
       "vflipLabel": "Vertical flip",
       "vflipHint": "Mirror the image top–bottom.",
-      "perLegManagedHint": "This node streams several cameras, so each stream takes its orientation and bitrate from its own settings on the Cameras tab. The single-camera orientation and bitrate are not used."
+      "perLegManagedHint": "This node streams several cameras, so each stream takes its orientation and bitrate from its own settings on the Cameras tab. The single-camera orientation and bitrate are not used.",
+      "legCaptured": "Captured"
     },
     "profile": {
       "title": "Profile",
@@ -4971,8 +4972,28 @@
       "title": "ボタン",
       "shortPress": "短押し",
       "longPress": "長押し",
-      "readOnlyNote": "読み取り専用：このビルドではボタンの動作は固定されており変更できません。",
-      "bindingHint": "長押しは再割り当て可能です。短押しはプロファイルで固定されています。"
+      "bindingHint": "短押しと長押しそれぞれの動作を選択します。",
+      "button": "ボタン",
+      "unassigned": "プロファイルの既定",
+      "pickerLabel": "{button} {press} の動作",
+      "notRead": "このノードからボタン割り当てをまだ読み込んでいません。",
+      "passthroughNote": "プラグインへ渡すと、押下はそれを登録したプラグインにのみ届きます (Visor の REC や MARK など)。",
+      "reset": "リセット",
+      "save": "保存",
+      "saving": "保存中…",
+      "saved": "ボタン割り当てを保存しました",
+      "actions": {
+        "cycle_screen": "次の画面",
+        "back": "戻る",
+        "confirm": "確定",
+        "menu": "メニュー",
+        "show_network": "ネットワークを表示",
+        "show_qr": "ペアリング QR を表示",
+        "pair_drone": "ドローンをペアリング",
+        "toggle_backlight": "バックライト切替",
+        "passthrough": "プラグインへ渡す",
+        "shutdown_prompt": "電源オフ確認"
+      }
     },
     "screens": {
       "title": "画面",
@@ -5582,7 +5603,11 @@
         "fecRec": "FEC recovered",
         "verified": "Verified",
         "unverified": "Unverified",
-        "rssiHistory": "{iface} {chain} history"
+        "rssiHistory": "{iface} {chain} history",
+        "absentTitle": "No radio adapters",
+        "absentBody": "This node has no WFB receive plane, so there are no adapters to show.",
+        "lostEstimate": "Estimated: several adapters receive the same stream.",
+        "fecRecPerStream": "Counted per stream, not per adapter, when several adapters receive the same stream."
       }
     },
     "videoLink": {
@@ -7980,7 +8005,38 @@
       "mountPitch": "Mount pitch (deg)",
       "save": "Save",
       "cancel": "Cancel",
-      "primaryAlwaysOn": "The primary stream always runs, so it cannot be turned off."
+      "primaryAlwaysOn": "The primary stream always runs, so it cannot be turned off.",
+      "capture": {
+        "title": "Capture",
+        "toggle": "Captured by the vision engine",
+        "hint": "The vision engine owns this camera and records its raw frames; the video stream is encoded from those frames.",
+        "format": "Pixel format",
+        "formatDefault": "Default (RGB24)",
+        "formats": {
+          "gray8": "Gray 8-bit",
+          "gray16": "Gray 16-bit",
+          "rgb24": "RGB 24-bit",
+          "nv12": "NV12",
+          "yuv420p": "YUV 4:2:0",
+          "bayer_rggb8": "Bayer RGGB 8-bit",
+          "bayer_rggb16": "Bayer RGGB 16-bit"
+        },
+        "trigger": "Trigger",
+        "triggerDefault": "Default (free-running)",
+        "triggers": {
+          "none": "Free-running",
+          "hub": "Sensor hub",
+          "fc": "Flight controller"
+        },
+        "exposure": "Exposure (µs)",
+        "gain": "Gain",
+        "keyframe": "Keyframe interval (frames)",
+        "auto": "Auto",
+        "autoHint": "Leave a field empty to keep the node default: auto exposure, untouched gain, an encoder-chosen keyframe interval.",
+        "exposureInvalid": "Exposure must be a whole number of at least 1 µs.",
+        "gainInvalid": "Gain must be a number.",
+        "keyframeInvalid": "Keyframe interval must be a whole number from 0 to 30."
+      }
     },
     "addDialog": {
       "title": "Add IP camera",

@@ -26,7 +26,10 @@ import { useFleetDrones } from "@/stores/node-registry/use-fleet-drones";
 import { useNodeDirectAgent } from "@/components/command/settings/use-node-direct-agent";
 import { useCameraManagerStore } from "@/stores/camera-manager-store";
 import { useToast } from "@/components/ui/toast";
-import type { CameraLegInput, RosterCamera } from "@/lib/agent/feature-types";
+import type {
+  CameraLegInput,
+  RosterCamera,
+} from "@/lib/agent/camera-roster-types";
 import type { CameraPatch } from "@/lib/agent/camera-roster";
 import { hasClientPath } from "@/lib/agent/config-access";
 import {

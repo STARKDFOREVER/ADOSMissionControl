@@ -108,6 +108,10 @@ export interface GroundStationState {
   applyAp: (api: GroundStationApi, update: ApUpdate) => Promise<ApStatus | null>;
   loadUi: (api: GroundStationApi) => Promise<UiConfig | null>;
   applyOled: (api: GroundStationApi, update: OledUpdate) => Promise<UiConfig | null>;
+  applyButtons: (
+    api: GroundStationApi,
+    mapping: Record<string, string>,
+  ) => Promise<UiConfig | null>;
   applyScreens: (
     api: GroundStationApi,
     update: ScreensUpdate,

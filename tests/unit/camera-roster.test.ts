@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import type { RosterCamera } from "@/lib/agent/feature-types";
+import type { RosterCamera } from "@/lib/agent/camera-roster-types";
 import {
   coerceRoster,
   isOperatorDeclared,

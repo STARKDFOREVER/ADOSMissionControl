@@ -3,22 +3,23 @@
 /**
  * @module command/settings/VideoSection
  * @description The node Settings "Video" page: the camera stream config the
- * agent persists — the multi-stream `video.cameras` list when the node
- * declares one, else the single camera block — plus the encode preferences.
- * A drone gets the page; a ground station and a workstation run no camera
- * pipeline of their own, so they get nothing.
+ * agent persists — the top-level `cameras[]` list when the node declares one,
+ * else the single camera block — plus the encode preferences. A drone gets
+ * the page; a ground station and a workstation run no camera pipeline of
+ * their own, so they get nothing.
  *
  * The radio half of `video.*` lives on its own Radio page: this file owns
  * cameras and encoding, and renders no `video.wfb.*` field at all.
  *
- * Writer discipline: stream sources and legs are managed on the Cameras
- * tab, so they render read-only here and this page never runs a second
- * writer for the same keys. The single camera block's orientation and
- * bitrate are writable only on a single-stream node: once `video.cameras`
- * lists legs, the pipeline encodes each leg from its own settings and never
- * reads the camera block, so those writers are replaced by a pointer to the
- * per-leg controls. There is no wire-codec control: the encoder sends H.264
- * only and nothing on the node reads a codec preference.
+ * Writer discipline: the `cameras[]` entries (stream legs and their capture
+ * keys) are managed on the Cameras tab, so they render read-only here and
+ * this page never runs a second writer for the same keys. The single camera
+ * block's orientation and bitrate are writable only on a single-stream node:
+ * once `cameras[]` lists entries, the pipeline encodes each from its own
+ * settings and never reads the camera block, so those writers are replaced
+ * by a pointer to the per-camera controls. There is no wire-codec control:
+ * the encoder sends H.264 only and nothing on the node reads a codec
+ * preference.
  * @license GPL-3.0-only
  */
 
@@ -42,8 +43,8 @@ interface SectionProps {
   setValue: (key: string, value: string) => Promise<void>;
 }
 
-/** One entry of the persisted `video.cameras` list, defensively parsed: a
- * malformed entry renders what it has, never a guess. */
+/** One entry of the persisted top-level `cameras[]` list, defensively
+ * parsed: a malformed entry renders what it has, never a guess. */
 export interface CameraLegEntry {
   id: string | null;
   role: string | null;
@@ -59,15 +60,21 @@ export interface CameraLegEntry {
   hflip: boolean;
   /** Vertical image flip, default false. */
   vflip: boolean;
+  /** The vision engine owns (captures) this camera. */
+  capture: boolean;
+  format: string | null;
+  exposure_us: number | null;
+  gain: number | null;
+  trigger: string | null;
 }
 
-/** Parse the `video.cameras` config list. Returns null when the config does
- * not carry a list (older agent / config not loaded) — distinct from a
+/** Parse the top-level `cameras[]` config list. Returns null when the config
+ * does not carry a list (older agent / config not loaded) — distinct from a
  * present-but-empty list (a single-stream node). */
 export function parseCameraLegs(
   config: Record<string, unknown> | null,
 ): CameraLegEntry[] | null {
-  const raw = readConfigPath(config, "video.cameras");
+  const raw = readConfigPath(config, "cameras");
   if (!Array.isArray(raw)) return null;
   const str = (v: unknown): string | null =>
     typeof v === "string" && v.length > 0 ? v : null;
@@ -93,6 +100,11 @@ export function parseCameraLegs(
       rotation: rotation(e.rotation),
       hflip: e.hflip === true,
       vflip: e.vflip === true,
+      capture: e.capture === true,
+      format: str(e.format),
+      exposure_us: num(e.exposure_us),
+      gain: num(e.gain),
+      trigger: str(e.trigger),
     }));
 }
 
@@ -120,6 +132,19 @@ function formatShape(
   const rate = fps != null ? `${fps} fps` : null;
   if (res && rate) return `${res} @ ${rate}`;
   return res ?? rate;
+}
+
+/** The capture keys of a captured camera as a compact label (format,
+ * exposure, gain, trigger), or null for a camera the vision engine does not
+ * own. */
+function formatCapture(leg: CameraLegEntry): string | null {
+  if (!leg.capture) return null;
+  const parts: string[] = [];
+  if (leg.format) parts.push(leg.format);
+  if (leg.exposure_us != null) parts.push(`${leg.exposure_us} µs`);
+  if (leg.gain != null) parts.push(`gain ${leg.gain}`);
+  if (leg.trigger && leg.trigger !== "none") parts.push(`trigger ${leg.trigger}`);
+  return parts.length ? parts.join(" ") : null;
 }
 
 /** Read a numeric config value, or null. */
@@ -175,6 +200,11 @@ export function VideoSection({
                       {leg.role}
                     </span>
                   ) : null}
+                  {leg.capture ? (
+                    <span className="rounded border border-accent-primary/40 px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-accent-primary">
+                      {t("legCaptured")}
+                    </span>
+                  ) : null}
                   {!leg.enabled ? (
                     <span className="text-[10px] text-text-tertiary">
                       {t("legDisabled")}
@@ -187,6 +217,7 @@ export function VideoSection({
                     leg.codec,
                     formatShape(leg.width, leg.height, leg.fps),
                     formatOrientation(leg.rotation, leg.hflip, leg.vflip),
+                    formatCapture(leg),
                   ]
                     .filter((p): p is string => p != null)
                     .join(" · ")}

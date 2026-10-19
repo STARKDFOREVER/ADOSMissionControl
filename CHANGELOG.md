@@ -44,6 +44,21 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Cameras come from the agent's single top-level `cameras[]` list; the
+  retired `video.cameras` list is no longer read. The camera editor edits each
+  camera's capture keys (captured by the vision engine, pixel format, manual
+  exposure, gain, trigger source, keyframe interval), refuses values the agent
+  rejects, and keeps every capture key through an unrelated edit. The Video
+  settings page marks captured cameras with their capture settings.
+- The front-panel Buttons card on ground stations and Visors is editable: one
+  action picker per short and long press, including plugin pass-through (the
+  press goes only to the plugin that claimed it, such as REC and MARK) and the
+  power-off prompt. It reads the agent's `buttons.mapping` shape, which the
+  earlier read-only table did not.
+- A rig sensor with no known expected rate shows its rate without a verdict.
+  A node whose radio adapters read reports no receive plane shows an empty
+  state instead of capability adapters, and an adapter whose FEC recoveries
+  are counted per stream shows a dash for them with its loss marked estimated.
 - A node reporting a profile Mission Control does not know is shown as an
   unknown node with a neutral glyph and only the Agent page, instead of being
   treated as a drone. Compute nodes keep their own profile and present as

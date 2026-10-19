@@ -47,6 +47,8 @@ export const DEMO_VISOR_SENSORS: SensorsStatus = {
     { id: "cam_fl", kind: "camera", role: "front_left", source: "vision", rate_hz: 20, expected_hz: 20, last_t_ns: T_NS - 9_000_000, age_ms: 9, sigma_ns: 400_000 },
     { id: "cam_fr", kind: "camera", role: "front_right", source: "vision", rate_hz: 19.8, expected_hz: 20, last_t_ns: T_NS - 11_000_000, age_ms: 11, sigma_ns: 400_000 },
     { id: "baro0", kind: "baro", role: "nav", source: "hub", rate_hz: 25, expected_hz: 25, last_t_ns: T_NS - 20_000_000, age_ms: 20, sigma_ns: 400_000 },
+    // No expected rate known for the magnetometer: the UI draws no verdict.
+    { id: "mag0", kind: "mag", role: "nav", source: "hub", rate_hz: 50, expected_hz: null, last_t_ns: T_NS - 20_000_000, age_ms: 20, sigma_ns: 400_000 },
     { id: "gnss0", kind: "gnss", role: "nav", source: "hub", rate_hz: 0, expected_hz: 5, last_t_ns: 0, age_ms: null, sigma_ns: -1 },
   ],
   gnss: { fix: "none", sats: 0, hdop: 99.9, rtk: "none" },

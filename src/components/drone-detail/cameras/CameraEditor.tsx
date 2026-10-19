@@ -3,9 +3,10 @@
 /**
  * @module drone-detail/cameras/CameraEditor
  * @description Modal for editing (or assigning) one camera: name, mount
- * orientation, purposes, enabled + primary-stream designation, and an advanced
- * disclosure for field-of-view + mount pitch. Save builds a minimal patch of the
- * changed fields and hands it up; the tab persists the whole leg list.
+ * orientation, purposes, enabled + primary-stream designation, the capture
+ * keys, and an advanced disclosure for field-of-view + mount pitch. Save
+ * builds a minimal patch of the changed fields and hands it up; the tab
+ * persists the whole leg list.
  * @license GPL-3.0-only
  */
 
@@ -20,9 +21,15 @@ import {
   CAMERA_ORIENTATIONS,
   CAMERA_PURPOSES,
   type RosterCamera,
-} from "@/lib/agent/feature-types";
+} from "@/lib/agent/camera-roster-types";
 import type { CameraPatch } from "@/lib/agent/camera-roster";
 import { cn } from "@/lib/utils";
+import {
+  CameraCaptureFields,
+  captureDraftFrom,
+  captureDraftPatch,
+  type CaptureFieldError,
+} from "./CameraCaptureFields";
 
 const INPUT_CLASS =
   "w-full rounded-md border border-border-default bg-bg-tertiary px-2 py-1.5 text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent-primary focus:outline-none";
@@ -66,6 +73,8 @@ export function CameraEditor({
   const [mount, setMount] = useState(
     camera.mount_pitch_deg != null ? String(camera.mount_pitch_deg) : "",
   );
+  const [captureDraft, setCaptureDraft] = useState(() => captureDraftFrom(camera));
+  const [captureError, setCaptureError] = useState<CaptureFieldError | null>(null);
 
   const orientationOptions = useMemo<SelectOption[]>(
     () => [
@@ -84,7 +93,12 @@ export function CameraEditor({
     );
 
   const handleSave = () => {
-    const patch: CameraPatch = {};
+    const capture = captureDraftPatch(camera, captureDraft);
+    if ("error" in capture) {
+      setCaptureError(capture.error);
+      return;
+    }
+    const patch: CameraPatch = { ...capture.patch };
     const trimmedName = name.trim();
     if (trimmedName !== (camera.name ?? "")) {
       patch.name = trimmedName === "" ? null : trimmedName;
@@ -203,6 +217,15 @@ export function CameraEditor({
             </p>
           </div>
         ) : null}
+
+        <CameraCaptureFields
+          draft={captureDraft}
+          error={captureError}
+          onChange={(draft) => {
+            setCaptureDraft(draft);
+            setCaptureError(null);
+          }}
+        />
 
         <CollapsibleSection title={t("editor.advanced")} defaultOpen={false}>
           <div className="grid grid-cols-2 gap-3 pt-2">

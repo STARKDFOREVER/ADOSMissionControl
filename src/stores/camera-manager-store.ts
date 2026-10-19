@@ -17,7 +17,7 @@
  */
 
 import { create } from "zustand";
-import type { RosterCamera } from "@/lib/agent/feature-types";
+import type { RosterCamera } from "@/lib/agent/camera-roster-types";
 import type { CameraPatch } from "@/lib/agent/camera-roster";
 
 /** One drone's camera-management state. */
@@ -134,5 +134,15 @@ function applyPatch(cam: RosterCamera, patch: CameraPatch): RosterCamera {
       patch.mount_pitch_deg !== undefined
         ? patch.mount_pitch_deg
         : cam.mount_pitch_deg,
+    capture: patch.capture !== undefined ? patch.capture : cam.capture,
+    format: patch.format !== undefined ? patch.format : cam.format,
+    exposure_us:
+      patch.exposure_us !== undefined ? patch.exposure_us : cam.exposure_us,
+    gain: patch.gain !== undefined ? patch.gain : cam.gain,
+    trigger: patch.trigger !== undefined ? patch.trigger : cam.trigger,
+    keyframe_interval:
+      patch.keyframe_interval !== undefined
+        ? patch.keyframe_interval
+        : cam.keyframe_interval,
   };
 }

@@ -21,7 +21,11 @@ export interface RadioAdapter {
   /** One reading per receive chain; empty when unmeasured. */
   rssi_dbm: number[];
   packets: number | null;
+  /** May be an estimate when `fec_rec` is null (several adapters receive the
+   * same stream). */
   lost: number | null;
+  /** Null when more than one adapter receives the same stream: FEC recovery
+   * is per stream, not per adapter. */
   fec_rec: number | null;
   verified: boolean | null;
 }
@@ -35,6 +39,8 @@ export interface RadioDiversity {
 
 /** `GET /api/v1/radio/adapters`. */
 export interface RadioAdaptersResponse {
+  /** False when the node has no receive plane (no WFB adapters at all). */
+  present: boolean;
   adapters: RadioAdapter[];
   diversity: RadioDiversity | null;
 }

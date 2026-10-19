@@ -10,13 +10,31 @@ export interface OledConfig {
   brightness: number;
 }
 
-export interface ButtonBinding {
-  short_press?: string;
-  long_press?: string;
-}
+/** The front-panel button ids, in panel order. Each has a short- and a
+ * long-press binding keyed `<id>_short` / `<id>_long`. */
+export const PANEL_BUTTONS = ["B1", "B2", "B3", "B4"] as const;
+
+/** The actions a front-panel press can be bound to. `passthrough` delivers
+ * the press only to plugins subscribed to it (the capture plugin's REC and
+ * MARK); `shutdown_prompt` opens the power-off confirmation on the panel. */
+export const PANEL_BUTTON_ACTIONS = [
+  "cycle_screen",
+  "back",
+  "confirm",
+  "menu",
+  "show_network",
+  "show_qr",
+  "pair_drone",
+  "toggle_backlight",
+  "passthrough",
+  "shutdown_prompt",
+] as const;
+export type PanelButtonAction = (typeof PANEL_BUTTON_ACTIONS)[number];
 
 export interface ButtonsConfig {
-  [buttonId: string]: ButtonBinding;
+  /** `B<n>_short` / `B<n>_long` → action name, merged over the profile's
+   * defaults by the agent. */
+  mapping: Record<string, string>;
 }
 
 export interface ScreensConfig {
