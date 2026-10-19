@@ -28,6 +28,8 @@ import { useDroneStore } from "@/stores/drone-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useChecklistStore } from "@/stores/checklist-store";
 import { useSkillConfirmStore } from "@/stores/skill-confirm-store";
+import { useNodeRegistryStore } from "@/stores/node-registry";
+import { nodeCanFly } from "@/lib/nodes/node-profile";
 
 /**
  * A command is offered only while the FC heartbeat is younger than this. Past
@@ -76,8 +78,11 @@ export function buildSkillContextFor(droneId: string): SkillContext {
   const drone = useDroneManager.getState().getSelectedDrone();
   // The selected drone is the one the context targets; guard the id matches so
   // a stale droneId can't read another drone's protocol.
+  // A node that is not a vehicle (a Visor's sensor hub) is never handed a
+  // protocol, so no skill can fly it.
+  const flies = nodeCanFly(useNodeRegistryStore.getState().getEntry(droneId)?.presence?.profile);
   const protocol =
-    drone && drone.id === droneId ? drone.protocol : null;
+    flies && drone && drone.id === droneId ? drone.protocol : null;
   const live = protocol && protocol.isConnected ? protocol : null;
 
   const droneState = useDroneStore.getState();

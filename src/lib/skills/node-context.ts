@@ -58,6 +58,7 @@ import { createFirmwareHandlerByType } from "@/lib/protocol/firmware/ardupilot";
 import { agentModeName } from "@/lib/agent/agent-mode-names";
 import { telemetryValue } from "@/lib/nodes/presence";
 import { nodeFcReading, type FcNode } from "@/lib/nodes/fc-reading";
+import { nodeCanFly } from "@/lib/nodes/node-profile";
 import { useCommandFleetStore } from "@/stores/command-fleet-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useNodeRegistryStore } from "@/stores/node-registry";
@@ -222,8 +223,10 @@ export function buildSkillContextForNode(
   options: NodeSkillContextOptions = {},
 ): SkillContext {
   const managed = useDroneManager.getState().drones.get(node._id);
+  // A node that is not a vehicle is never given a command path.
+  const flies = nodeCanFly(node.profile);
   const liveFc =
-    node.isDirectFc && managed && managed.protocol.isConnected
+    flies && node.isDirectFc && managed && managed.protocol.isConnected
       ? managed.protocol
       : null;
 
@@ -294,7 +297,7 @@ export function buildSkillContextForNode(
     (node.fcFirmware?.trim().toLowerCase() === "ardupilot" ? "ardupilot" : null);
 
   const sink =
-    armed === null
+    armed === null || !flies
       ? null
       : resolveNodeCommandSink(node, { ...options, agentFirmware });
 

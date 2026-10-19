@@ -15,6 +15,7 @@ import {
 import { bridgeTelemetry } from "./drone-manager-bridge";
 import { bindSigning } from "@/lib/protocol/signing-binding";
 import { useNodeRegistryStore } from "./node-registry";
+import { guardFlightActions } from "@/lib/nodes/flight-guard";
 import { bindInavConfigStores } from "./inav-config-binding";
 import { bindDroneSelection } from "./drone-selection";
 import {
@@ -227,7 +228,12 @@ export const useDroneManager = create<DroneManagerState>((set, get) => ({
     const drone: ManagedDrone = {
       id,
       name,
-      protocol,
+      // Flight actions on a node that is not a vehicle (a Visor's sensor
+      // hub) are refused here, whatever surface or hotkey issued them.
+      protocol: guardFlightActions(
+        protocol,
+        () => useNodeRegistryStore.getState().getEntry(id)?.presence?.profile,
+      ),
       transport,
       vehicleInfo,
       unsubscribers,

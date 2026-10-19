@@ -98,6 +98,18 @@ export function showsFcSurfaces(profile: NodeProfile, fcReachable: boolean): boo
   return profile === "drone" || (profile === "visor" && fcReachable);
 }
 
+/**
+ * Whether a node is a vehicle the GCS may fly: arm/disarm, mode changes,
+ * takeoff/land/RTL, guided and mission commands, uploads, motor and servo
+ * tests, stick override. A Visor's flight controller is a sensor hub, never
+ * a vehicle, so a Visor keeps only the read and configuration FC surfaces.
+ * Every flight action, in the UI and at the protocol, asks this one rule.
+ * A node whose profile is not read yet (a bare FC) stays flyable.
+ */
+export function nodeCanFly(profile: NodeProfile | null | undefined): boolean {
+  return profile !== "visor";
+}
+
 /** A ground station's role as every node surface labels it. */
 export type GroundRoleKey = "direct" | "relay" | "receiver" | "unknown";
 

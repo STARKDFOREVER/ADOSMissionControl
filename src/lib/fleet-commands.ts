@@ -13,6 +13,7 @@
 
 import { getFleetDrones } from "@/stores/node-registry/use-fleet-drones";
 import { useDroneManager } from "@/stores/drone-manager";
+import { nodeCanFly } from "@/lib/nodes/node-profile";
 
 export interface FleetCommandOutcome {
   /** Drones that acknowledged the command. */
@@ -33,7 +34,8 @@ export interface FleetCommandOutcome {
  * not recalled.
  */
 export async function returnFleetToLaunch(): Promise<FleetCommandOutcome> {
-  const fleet = getFleetDrones();
+  // Only vehicles are recalled; a Visor's sensor hub is not one.
+  const fleet = getFleetDrones().filter((d) => nodeCanFly(d.profile));
   const targets = fleet.filter(
     (d) => d.connectionState === "in_flight" || d.connectionState === "armed",
   );

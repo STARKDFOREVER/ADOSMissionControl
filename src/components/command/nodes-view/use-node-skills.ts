@@ -47,6 +47,7 @@ import {
 } from "@/lib/skills";
 import type { NodeCommandSinkOptions } from "@/lib/nodes/command-sink";
 import { describeNodeReach, type NodeReachDescriptor } from "@/lib/nodes/node-reach";
+import { nodeCanFly } from "@/lib/nodes/node-profile";
 import type { NodeRowModel } from "@/lib/nodes/node-rows";
 import type { CommandAgentLiveness } from "@/lib/nodes/presence";
 
@@ -262,7 +263,9 @@ export function useNodeSkills(
   const resolve = useCallback(
     (skillId: string): NodeSkillAction | null => {
       const skill = skills.get(skillId);
-      if (!skill) return null;
+      // A node that is not a vehicle (a Visor's sensor hub) offers no flight
+      // action at all: not even a disabled one.
+      if (!skill || !nodeCanFly(node.profile)) return null;
 
       const state = resolveBoardSkillState(skill, ctx, reach, liveness);
       const disabled = state.kind === "disabled";

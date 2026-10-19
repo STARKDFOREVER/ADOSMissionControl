@@ -13,6 +13,7 @@ import { useDroneManager, onUnexpectedDisconnect } from "../drone-manager";
 import { useNodeRegistryStore } from "@/stores/node-registry";
 import { MockProtocol } from "@/mock/mock-protocol";
 import type { AutopilotVersionData, LinkInfo, Transport, VehicleInfo } from "@/lib/protocol/types";
+import { unguardedProtocol } from "@/lib/nodes/flight-guard";
 
 interface TestTransport extends Transport {
   emitClose(): void;
@@ -145,7 +146,8 @@ describe("drone-manager multi-link lifecycle", () => {
     useDroneManager.getState().addDrone("fc:a", "A", first.protocol, testTransport(), first.vehicleInfo, meta);
     useDroneManager.getState().addDrone("fc:a", "A", second.protocol, testTransport(), second.vehicleInfo, meta);
     expect(lost).not.toHaveBeenCalled();
-    expect(useDroneManager.getState().drones.get("fc:a")?.protocol).toBe(second.protocol);
+    const stored = useDroneManager.getState().drones.get("fc:a")?.protocol;
+    expect(stored && unguardedProtocol(stored)).toBe(second.protocol);
     unsub();
   });
 

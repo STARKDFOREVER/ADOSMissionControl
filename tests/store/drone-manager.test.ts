@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useDroneManager } from '@/stores/drone-manager';
 import { useNodeRegistryStore } from '@/stores/node-registry';
 import type { DroneProtocol, Transport, VehicleInfo } from '@/lib/protocol/types';
+import { unguardedProtocol } from '@/lib/nodes/flight-guard';
 
 // Mock the bridge and dependent stores to isolate drone-manager
 vi.mock('@/stores/drone-manager-bridge', () => ({
@@ -142,7 +143,8 @@ describe('drone-manager', () => {
 
     useDroneManager.getState().addDrone('drone-1', 'Test', protocol, transport, vehicleInfo);
     // Auto-selected
-    expect(useDroneManager.getState().getSelectedProtocol()).toBe(protocol);
+    const selected = useDroneManager.getState().getSelectedProtocol();
+    expect(selected && unguardedProtocol(selected)).toBe(protocol);
   });
 
   it('multiple drones can be managed', () => {
