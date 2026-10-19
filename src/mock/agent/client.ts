@@ -42,7 +42,7 @@ import { MOCK_PERIPHERALS } from "./peripherals";
 import { MOCK_PEERS } from "./fleet";
 import { getMockCapabilities } from "./capabilities";
 import { getMockCameraRoster } from "./cameras";
-import { MOCK_LOGS } from "./logs";
+import { currentMockLogs, setMockLogOverride } from "./logs";
 import { buildMockBatteryHealth } from "./battery";
 import { MockLoggingService } from "./logging";
 import {
@@ -73,13 +73,11 @@ for (let i = 0; i < 60; i++) {
 }
 
 // ── Demo profile override ───────────────────────────────────
-// Demo mode drives MULTIPLE node profiles (drone / workstation / ground-station)
-// through ONE mock connection. DemoProvider publishes the currently-selected
-// node's profile-correct status/services/resources here so the polled
-// MockAgentClient returns the SAME data the singleton agent-system store is
-// seeded with — one source of truth, no race between the poll and the seed
-// (otherwise a workstation/GS momentarily shows the drone's "CM4 · FC connected"
-// default, a false reading).
+// Demo mode drives MULTIPLE node profiles through ONE mock connection.
+// DemoProvider publishes the selected node's profile-correct status/services/
+// resources/logs here so the polled MockAgentClient returns the SAME data the
+// agent-system store is seeded with, with no race between poll and seed (a
+// workstation/GS never flashes the drone's "CM4 · FC connected" default).
 
 let overrideStatus: AgentStatus | null = null;
 let overrideServices: ServiceInfo[] | null = null;
@@ -89,10 +87,12 @@ export function setMockAgentOverride(o: {
   status?: AgentStatus | null;
   services?: ServiceInfo[] | null;
   resources?: SystemResources | null;
+  logs?: LogEntry[] | null;
 }): void {
   if (o.status !== undefined) overrideStatus = o.status;
   if (o.services !== undefined) overrideServices = o.services;
   if (o.resources !== undefined) overrideResources = o.resources;
+  if (o.logs !== undefined) setMockLogOverride(o.logs);
 }
 
 // ── MockAgentClient ─────────────────────────────────────────
@@ -261,7 +261,7 @@ export class MockAgentClient extends MockAgentClientExtras {
 
   async getLogs(params?: { level?: string; limit?: number }): Promise<LogEntry[]> {
     await delay(40);
-    let logs = MOCK_LOGS;
+    let logs = currentMockLogs();
     if (params?.level) {
       logs = logs.filter((l) => l.level === params.level);
     }

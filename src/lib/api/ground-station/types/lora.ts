@@ -122,6 +122,11 @@ export interface LoraRegionPlan {
   band_mhz: [number, number];
   rules: string[];
   supported_by_module: boolean;
+  /** The ELRS domain this region expects per band (`2g4`: `ISM2G4` |
+   * `CE_LBT`; `900`: `FCC915` | `AU915` | `EU868` | `IN866` | `AU433` |
+   * `EU433`). Null for a band (or the whole field, on an older agent) when
+   * the region has no expected domain. */
+  elrs_domains?: { "2g4": string | null; "900": string | null } | null;
 }
 
 export interface LoraRegionsResponse {

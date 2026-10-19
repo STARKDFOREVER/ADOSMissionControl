@@ -12,7 +12,11 @@
 import { useShallow } from "zustand/react/shallow";
 import { useNodeDirectAgent } from "@/components/command/settings/use-node-direct-agent";
 import { nodeSensorsApiFromAgent } from "@/lib/api/agent/sensors";
-import { useNodeSensorsStore, type NodeSensorsReadings } from "@/stores/node-sensors-store";
+import {
+  useNodeSensorsStore,
+  type NodeSensorsError,
+  type NodeSensorsReadings,
+} from "@/stores/node-sensors-store";
 import { useAgentPoll } from "../ground-station/use-gs-poll";
 
 const POLL_MS = 3000;
@@ -22,7 +26,7 @@ export interface NodeSensorsView {
   reachable: boolean;
   /** This node's readings, or null until one has been read. */
   readings: NodeSensorsReadings | null;
-  error: string | null;
+  error: NodeSensorsError | null;
 }
 
 export function useNodeSensors(nodeDeviceId: string | null): NodeSensorsView {

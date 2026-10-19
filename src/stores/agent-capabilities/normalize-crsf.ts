@@ -134,6 +134,7 @@ export function normalizeElrsModules(raw: unknown): ElrsModule[] {
       snrDb: num(link.snr_db ?? link.snrDb),
       txPowerMw: num(link.tx_power_mw ?? link.txPowerMw),
       rfMode: str(link.rf_mode ?? link.rfMode),
+      domain: str(m.domain),
     });
   }
   return out;

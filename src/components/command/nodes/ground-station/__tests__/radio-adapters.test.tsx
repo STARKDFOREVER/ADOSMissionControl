@@ -5,8 +5,8 @@
  * otherwise derived from the receive adapters) and one card per adapter.
  */
 
-import { describe, it, expect, afterEach } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
+import { render, screen, cleanup, act, renderHook } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import messages from "../../../../../../locales/en.json";
 import {
@@ -15,6 +15,11 @@ import {
   normalizeRadioAdapters,
 } from "@/lib/api/ground-station/radio-adapters";
 import { RadioAdaptersView } from "../RadioAdaptersView";
+import { useRadioAdapters } from "../use-radio-adapters";
+import {
+  RSSI_HISTORY_CAPACITY,
+  useAdapterRssiHistoryStore,
+} from "@/stores/ground-station/adapter-rssi-history-store";
 
 afterEach(cleanup);
 
@@ -68,7 +73,7 @@ describe("RadioAdaptersView", () => {
     const adapters = normalizeRadioAdapters(WIRE.slice(0, 3));
     render(
       <NextIntlClientProvider locale="en" messages={messages}>
-        <RadioAdaptersView adapters={adapters} summary={diversitySummary(adapters, null, 0.25)} />
+        <RadioAdaptersView adapters={adapters} summary={diversitySummary(adapters, null, 0.25)} historyKey="gs-a" />
       </NextIntlClientProvider>,
     );
     for (const iface of ["wlan1", "wlan2", "wlan3"]) {
@@ -80,5 +85,55 @@ describe("RadioAdaptersView", () => {
     expect(wlan1.textContent).toContain("-51 dBm");
     expect(screen.getByRole("group", { name: "wlan3" }).textContent).toContain("Unverified");
     expect(screen.getByText("Gain ×4.0 over the best single adapter")).toBeTruthy();
+  });
+
+  it("keeps a bounded per-chain RSSI history per iface and draws it", () => {
+    const view = (adapters: ReturnType<typeof normalizeRadioAdapters>) => (
+      <NextIntlClientProvider locale="en" messages={messages}>
+        <RadioAdaptersView adapters={adapters} summary={diversitySummary(adapters)} historyKey="gs-b" />
+      </NextIntlClientProvider>
+    );
+    const first = normalizeRadioAdapters(WIRE.slice(0, 2));
+    const { rerender } = render(view(first));
+    // Re-rendering the same reading never double-counts it.
+    rerender(view(first));
+    for (let i = 0; i < RSSI_HISTORY_CAPACITY + 10; i += 1) {
+      act(() => {
+        rerender(view(normalizeRadioAdapters(WIRE.slice(0, 2))));
+      });
+    }
+    const hist = useAdapterRssiHistoryStore.getState().byNode["gs-b"];
+    expect(hist.wlan1).toHaveLength(2);
+    expect(hist.wlan2).toHaveLength(1);
+    expect(hist.wlan1[0].length).toBe(RSSI_HISTORY_CAPACITY);
+    const spark = screen.getByRole("img", { name: "wlan1 RSSI A history" });
+    expect(spark.querySelector("polyline")).not.toBeNull();
+  });
+});
+
+describe("useRadioAdapters", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  it("stops polling an agent that answers 404 until the agent changes", async () => {
+    const fetchMock = vi.fn(async () => new Response("not found", { status: 404 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const { rerender, unmount } = renderHook(({ url }) => useRadioAdapters(url, "k"), {
+      initialProps: { url: "http://192.168.1.50:8080" },
+    });
+    await act(async () => {});
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      vi.advanceTimersByTime(20_000);
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    rerender({ url: "http://192.168.1.51:8080" });
+    await act(async () => {});
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    unmount();
   });
 });

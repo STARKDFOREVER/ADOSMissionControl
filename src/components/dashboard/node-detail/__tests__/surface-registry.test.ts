@@ -112,6 +112,23 @@ describe("node-detail surface registry (createContributionRegistry instance)", (
     ]);
   });
 
+  it("a ground station's device-group plugin lands after its peripherals, whatever its order", () => {
+    const ids = resolveSurfaces(forProfile("ground-station"), [
+      {
+        spec: { id: "ext", label: "ext", labelKey: "ext", render: () => null },
+        profile: ["ground-station"],
+        group: DEVICE_GROUP,
+        order: 5,
+      },
+    ]).map((s) => s.id);
+    expect(ids.slice(ids.indexOf("display"), ids.indexOf("ext") + 1)).toEqual([
+      "display",
+      "physicalUi",
+      "peripherals",
+      "ext",
+    ]);
+  });
+
   it("a plugin surface joins the end of a group with no ordered surfaces", () => {
     const ids = resolveSurfaces(forProfile("ground-station"), [
       {

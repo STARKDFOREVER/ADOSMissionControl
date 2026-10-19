@@ -63,3 +63,16 @@ function generateMockLogs(): LogEntry[] {
 }
 
 export const MOCK_LOGS: LogEntry[] = generateMockLogs();
+
+// The focused demo node's own log lines, when it is not a drone. Set through
+// `setMockAgentOverride`; the polled feed and the live tail both read it.
+let logOverride: LogEntry[] | null = null;
+
+export function setMockLogOverride(logs: LogEntry[] | null): void {
+  logOverride = logs;
+}
+
+/** The log timeline the demo agent serves right now. */
+export function currentMockLogs(): LogEntry[] {
+  return logOverride ?? MOCK_LOGS;
+}

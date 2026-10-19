@@ -18,7 +18,7 @@ import { CloudModeLimitedNotice } from "@/components/command/shared/CloudModeLim
 import type { SensorsStatus } from "@/lib/api/agent/sensors";
 import { cn } from "@/lib/utils";
 import { useNodeSensors } from "./use-node-sensors";
-import { LEVEL_TEXT, formatHz, rateLevel, sigmaMs } from "./sensor-format";
+import { LEVEL_TEXT, formatHz, gnssWithoutFix, rateLevel, sigmaMs } from "./sensor-format";
 import { ReadingCard, ReadingEmpty, ReadingRow } from "./reading-card";
 
 export interface SensorsTabProps {
@@ -41,7 +41,7 @@ export function SensorsTab({ nodeDeviceId }: SensorsTabProps) {
       {!reachable ? (
         <CloudModeLimitedNotice feature="sensors" />
       ) : sensors === null ? (
-        <p className="text-sm text-text-tertiary">{error ? t("readFailed") : t("loading")}</p>
+        <p className="text-sm text-text-tertiary">{error ? t(`readFailed.${error}`) : t("loading")}</p>
       ) : !sensors.present ? (
         <ReadingEmpty title={t("notFitted")} body={t("notFittedBody")} />
       ) : (
@@ -121,10 +121,14 @@ function SensorTable({ sensors }: { sensors: SensorsStatus }) {
                 <td className="px-3 py-1.5 text-text-primary">{s.id}</td>
                 <td className="px-3 py-1.5 text-text-secondary">{s.kind}</td>
                 <td className="px-3 py-1.5 text-text-secondary">{s.role || "-"}</td>
-                <td className={cn("px-3 py-1.5", LEVEL_TEXT[rateLevel(s.rate_hz, s.expected_hz)])}>
-                  {formatHz(s.rate_hz)}
-                  <span className="text-text-tertiary"> ({formatHz(s.expected_hz)})</span>
-                </td>
+                {gnssWithoutFix(s, sensors.gnss) ? (
+                  <td className={cn("px-3 py-1.5", LEVEL_TEXT.idle)}>{t("noFix")}</td>
+                ) : (
+                  <td className={cn("px-3 py-1.5", LEVEL_TEXT[rateLevel(s.rate_hz, s.expected_hz)])}>
+                    {formatHz(s.rate_hz)}
+                    <span className="text-text-tertiary"> ({formatHz(s.expected_hz)})</span>
+                  </td>
+                )}
                 <td className="px-3 py-1.5 text-text-secondary">
                   {s.age_ms === null ? "-" : t("ageMs", { ms: Math.round(s.age_ms) })}
                 </td>

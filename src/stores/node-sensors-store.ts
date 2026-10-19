@@ -12,6 +12,7 @@
 
 import { create } from "zustand";
 import type { BatteryHealth } from "@/lib/agent/schemas/battery";
+import { GroundStationApiError } from "@/lib/api/ground-station/request";
 import type {
   CaptureSessionSummary,
   ClockStatus,
@@ -30,13 +31,17 @@ export interface NodeSensorsReadings {
   sessions: CaptureSessionSummary[] | null | undefined;
 }
 
+export type NodeSensorsError = "refused" | "unreachable";
+
 interface NodeSensorsState extends NodeSensorsReadings {
   /** The node the readings describe; null before the first load. */
   nodeId: string | null;
   /** Epoch ms of the last completed load; null before the first one. */
   fetchedAt: number | null;
-  /** The first failure of the last load, for the operator; null when clean. */
-  error: string | null;
+  /** Why the last load lost a route, as an operator-facing kind: the node
+   * answered with an error (`refused`) or did not answer (`unreachable`).
+   * Null when every route answered. */
+  error: NodeSensorsError | null;
   /** Read every route of `api` for `nodeId` and replace the slice. */
   load: (nodeId: string, api: NodeSensorsApi) => Promise<void>;
   /** Replace the slice wholesale (demo seed, tests). */
@@ -56,6 +61,11 @@ function settled<T>(r: PromiseSettledResult<T>): T | null {
   return r.status === "fulfilled" ? r.value : null;
 }
 
+/** Bumped by every load and every wholesale write; a load whose token is no
+ * longer current lost a race (the operator switched nodes, or the slice was
+ * replaced) and drops its answer. */
+let loadSeq = 0;
+
 export const useNodeSensorsStore = create<NodeSensorsState>()((set) => ({
   ...EMPTY,
   nodeId: null,
@@ -63,6 +73,7 @@ export const useNodeSensorsStore = create<NodeSensorsState>()((set) => ({
   error: null,
 
   load: async (nodeId, api) => {
+    const token = ++loadSeq;
     const results = await Promise.allSettled([
       api.getSensors(),
       api.getClock(),
@@ -71,8 +82,7 @@ export const useNodeSensorsStore = create<NodeSensorsState>()((set) => ({
       api.listCaptureSessions(),
     ] as const);
     const [sensors, clock, storage, battery, sessions] = results;
-    // Every write is tagged with its node, so a late answer from a node the
-    // operator left reads as unread under the new one, never as its data.
+    if (token !== loadSeq) return;
     const failed = results.find((r) => r.status === "rejected");
     set({
       nodeId,
@@ -82,12 +92,22 @@ export const useNodeSensorsStore = create<NodeSensorsState>()((set) => ({
       battery: settled(battery),
       sessions: sessions.status === "fulfilled" ? sessions.value : undefined,
       fetchedAt: Date.now(),
-      error: failed?.status === "rejected" ? String(failed.reason) : null,
+      error:
+        failed?.status !== "rejected"
+          ? null
+          : failed.reason instanceof GroundStationApiError
+            ? "refused"
+            : "unreachable",
     });
   },
 
-  setReadings: (nodeId, readings) =>
-    set({ ...readings, nodeId, fetchedAt: Date.now(), error: null }),
+  setReadings: (nodeId, readings) => {
+    loadSeq += 1;
+    set({ ...readings, nodeId, fetchedAt: Date.now(), error: null });
+  },
 
-  clear: () => set({ ...EMPTY, nodeId: null, fetchedAt: null, error: null }),
+  clear: () => {
+    loadSeq += 1;
+    set({ ...EMPTY, nodeId: null, fetchedAt: null, error: null });
+  },
 }));

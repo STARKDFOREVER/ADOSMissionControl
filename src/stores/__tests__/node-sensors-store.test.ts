@@ -38,7 +38,39 @@ describe("node-sensors store load", () => {
     expect(s.storage).toBeNull();
     // 404 on the extension's route: not installed, which is a reading.
     expect(s.sessions).toBeNull();
-    expect(s.error).not.toBeNull();
+    expect(s.error).toBe("refused");
+  });
+
+  it("drops a late answer from a node the operator has left", async () => {
+    // The old node's sensor read is held open until the new node's load lands.
+    let releaseOld: () => void = () => {};
+    const oldGate = new Promise<void>((resolve) => {
+      releaseOld = resolve;
+    });
+    const fakeApi = (rigId: string, gate: Promise<void>) =>
+      ({
+        getSensors: async () => {
+          await gate;
+          return { ...DEMO_VISOR_SENSORS, rig_id: rigId };
+        },
+        getClock: async () => DEMO_VISOR_CLOCK,
+        getStorage: async () => null,
+        getBattery: async () => null,
+        listCaptureSessions: async () => null,
+      }) as unknown as NodeSensorsApi;
+    const store = useNodeSensorsStore.getState();
+    const oldLoad = store.load("visor-1", fakeApi("old-rig", oldGate));
+    await store.load("visor-2", fakeApi("new-rig", Promise.resolve()));
+    releaseOld();
+    await oldLoad;
+    expect(useNodeSensorsStore.getState().nodeId).toBe("visor-2");
+    expect(useNodeSensorsStore.getState().sensors?.rig_id).toBe("new-rig");
+  });
+
+  it("reports an unanswered read as unreachable, never raw error text", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => Promise.reject(new TypeError("Failed to fetch"))));
+    await useNodeSensorsStore.getState().load("visor-1", new NodeSensorsApi(BASE));
+    expect(useNodeSensorsStore.getState().error).toBe("unreachable");
   });
 
   it("lists capture sessions newest first through the plugin passthrough", async () => {

@@ -106,4 +106,8 @@ export interface ElrsModule {
   snrDb: number | null;
   txPowerMw: number | null;
   rfMode: string | null;
+  /** The ELRS regulatory domain the module reports, verbatim (`ISM2G4`,
+   * `CE_LBT`, `FCC915`, `EU868`, `IN866`, `AU915`, `AU433`, `EU433`, ...).
+   * Null when unknown. */
+  domain: string | null;
 }

@@ -53,6 +53,9 @@ const INITIAL = {
   applying: false,
 } satisfies Partial<LoraStoreState>;
 
+/** One region-table read at a time across the 1 s status poll. */
+let regionsInFlight = false;
+
 export const useLoraStore = create<LoraStoreState>((set, get) => ({
   ...INITIAL,
 
@@ -63,6 +66,9 @@ export const useLoraStore = create<LoraStoreState>((set, get) => ({
       const status = await api.getLora();
       if (get().loraFor !== target) return;
       set({ status, error: null, fetchedAt: Date.now() });
+      // The region row drives the advisory chips, so read the table once per
+      // node as soon as the lane is known to exist.
+      if (status.present && get().regions === null) void get().loadRegions(api);
     } catch (err) {
       if (get().loraFor !== target) return;
       set({ error: errorMessage(err).message });
@@ -86,6 +92,8 @@ export const useLoraStore = create<LoraStoreState>((set, get) => ({
 
   loadRegions: async (api) => {
     const target = api.baseUrl;
+    if (regionsInFlight) return;
+    regionsInFlight = true;
     try {
       const { regions } = await api.getLoraRegions();
       if (get().loraFor !== target) return;
@@ -93,6 +101,8 @@ export const useLoraStore = create<LoraStoreState>((set, get) => ({
     } catch (err) {
       if (get().loraFor !== target) return;
       set({ error: errorMessage(err).message });
+    } finally {
+      regionsInFlight = false;
     }
   },
 

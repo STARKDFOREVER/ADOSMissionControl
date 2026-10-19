@@ -28,7 +28,7 @@ describe("RcElrsLinkTab modules", () => {
     renderTab({
       state: "link_ok",
       modules: [
-        { id: "m0", port: "/dev/ttyACM1", role: "pilot", connected: true, link: { rssi_dbm: [-60, -62], lq: 100, snr_db: 8, tx_power_mw: 250, rf_mode: "500Hz" } },
+        { id: "m0", port: "/dev/ttyACM1", role: "pilot", connected: true, domain: "ISM2G4", link: { rssi_dbm: [-60, -62], lq: 100, snr_db: 8, tx_power_mw: 250, rf_mode: "500Hz" } },
         { id: "m1", port: "/dev/ttyACM2", role: "autonomy", connected: false, link: { rssi_dbm: [], lq: null, snr_db: null, tx_power_mw: null, rf_mode: null } },
       ],
     });

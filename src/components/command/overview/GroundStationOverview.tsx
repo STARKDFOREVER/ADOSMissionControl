@@ -34,6 +34,9 @@ import { OverviewGrid, OverviewTile } from "./OverviewGrid";
 import { NodeReachBlock } from "../shared/NodeReachBlock";
 import { usePairingStore } from "@/stores/pairing-store";
 import { deviceIdFromNodeId } from "@/lib/agent/node-id";
+import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
+import { useLoraStore } from "@/stores/ground-station/lora-store";
+import { GroundStationLoraChip } from "../nodes/ground-station/lora/LoraOverviewChip";
 
 /** Cadence of the summary poll; the cards age out after a few misses. */
 const GS_SUMMARY_POLL_MS = 3000;
@@ -72,6 +75,8 @@ export function GroundStationOverview({ name }: { name?: string }) {
   const loadRole = useGroundStationStore((s) => s.loadRole);
   const loadMesh = useGroundStationStore((s) => s.loadMesh);
   const loadNetwork = useGroundStationStore((s) => s.loadNetwork);
+  const loadLora = useLoraStore((s) => s.load);
+  const loraAdvertised = useAgentCapabilitiesStore((s) => s.lora === true);
   useGroundStationPoll(agentUrl, apiKey, GS_SUMMARY_POLL_MS, async (api) => {
     try {
       const gs = await api.getStatus();
@@ -90,6 +95,8 @@ export function GroundStationOverview({ name }: { name?: string }) {
     await loadRole(api);
     await loadMesh(api);
     await loadNetwork(api);
+    // The LoRa chip's governor state, only on a node that advertises the lane.
+    if (loraAdvertised) await loadLora(api);
   });
 
   // Uplink health (ok / degraded / down) and the failover log arrive only on
@@ -131,6 +138,11 @@ export function GroundStationOverview({ name }: { name?: string }) {
   return (
     <div className="p-4 space-y-4">
       <NodeBrandHeader profile="ground-station" title={title} />
+      {loraAdvertised ? (
+        <div className="flex flex-wrap gap-2">
+          <GroundStationLoraChip agentUrl={agentUrl} apiKey={apiKey} />
+        </div>
+      ) : null}
       <StaleBanner />
       <OverviewGrid>
         <OverviewTile span="half">

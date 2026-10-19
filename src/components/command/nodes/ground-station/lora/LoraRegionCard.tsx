@@ -14,7 +14,12 @@ import { Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { LoraStatus, LoraUpdate } from "@/lib/api/ground-station-api";
 import { Chip, LaneCard, fmtNum } from "../lane-ui";
-import { AIRBORNE_RESTRICTED, formatCountdown, parseBand } from "./lora-format";
+import {
+  AIRBORNE_RESTRICTED,
+  formatCountdown,
+  parseBand,
+  type LoraMismatch,
+} from "./lora-format";
 import { LoraChannelForm } from "./LoraChannelForm";
 
 const SOURCE_KEY: Record<string, string> = {
@@ -31,6 +36,8 @@ interface LoraRegionCardProps {
   writeLock: string | null;
   applying: boolean;
   onApply: (body: LoraUpdate) => void;
+  /** Advisory mismatches (Meshtastic preset, country setting, ELRS domain). */
+  mismatches: readonly LoraMismatch[];
 }
 
 export function LoraRegionCard({
@@ -42,6 +49,7 @@ export function LoraRegionCard({
   writeLock,
   applying,
   onApply,
+  mismatches,
 }: LoraRegionCardProps) {
   const t = useTranslations("groundStationLanes.lora");
   const region = status.region;
@@ -54,6 +62,20 @@ export function LoraRegionCard({
   const rulesEmpty = (status.governor?.rules.length ?? 0) === 0;
   const sourceKey = region ? SOURCE_KEY[region.source] : undefined;
   const tooltip = region ? [region.citation, bandText].filter(Boolean).join(" · ") : undefined;
+  const advisories: string[] = [];
+  if (!moduleCovers && band && moduleBand) {
+    advisories.push(
+      t("region.moduleBandChip", { module: status.module_band ?? "", lo: band[0].toFixed(1), hi: band[1].toFixed(1) }),
+    );
+  }
+  if (region && Object.hasOwn(AIRBORNE_RESTRICTED, region.code)) {
+    advisories.push(t("region.airborneChip", { code: region.code }));
+  }
+  for (const m of mismatches) {
+    if (m.kind === "meshtastic") advisories.push(t("region.meshtasticChip", { preset: m.preset, code: m.code }));
+    else if (m.kind === "country") advisories.push(t("region.countryChip", { country: m.country, code: m.code }));
+    else advisories.push(t("region.elrsChip", { module: m.module, domain: m.domain, code: m.code, expected: m.expected }));
+  }
 
   return (
     <LaneCard
@@ -124,21 +146,14 @@ export function LoraRegionCard({
         ) : null}
       </div>
 
-      {(!moduleCovers && band && moduleBand) || (region && Object.hasOwn(AIRBORNE_RESTRICTED, region.code)) ? (
-        <div className="mt-2 flex flex-wrap gap-2">
-          {!moduleCovers && band && moduleBand ? (
-            <Chip tone="warning">
-              {t("region.moduleBandChip", {
-                module: status.module_band ?? "",
-                lo: band[0].toFixed(1),
-                hi: band[1].toFixed(1),
-              })}
-            </Chip>
-          ) : null}
-          {region && Object.hasOwn(AIRBORNE_RESTRICTED, region.code) ? (
-            <Chip tone="warning">{t("region.airborneChip", { code: region.code })}</Chip>
-          ) : null}
-        </div>
+      {advisories.length > 0 ? (
+        <ul className="mt-2 flex flex-wrap gap-2" aria-label={t("region.advisories")}>
+          {advisories.map((text) => (
+            <li key={text}>
+              <Chip tone="warning">{text}</Chip>
+            </li>
+          ))}
+        </ul>
       ) : null}
 
       <div className="mt-3">

@@ -10,12 +10,13 @@
 
 import { useState } from "react";
 import type {
+  ElrsModule,
   LoraBeacon,
   LoraRegionPlan,
   LoraStatus,
   LoraUpdate,
 } from "@/lib/api/ground-station-api";
-import { remainingMs } from "./lora-format";
+import { loraMismatches, remainingMs } from "./lora-format";
 import { LoraBlockedBanner } from "./LoraBlockedBanner";
 import { LoraRegionCard } from "./LoraRegionCard";
 import { LoraGovernorMeters } from "./LoraGovernorMeters";
@@ -39,6 +40,10 @@ export interface LoraLaneViewProps {
   onOpenRegions?: () => void;
   /** Opens the node's country (regulatory region) setting, when reachable. */
   onOpenCountrySetting?: () => void;
+  /** The node's country setting (`network.regulatory.region`), when known. */
+  countryRegion?: string | null;
+  /** This node's ELRS modules, for the ELRS-domain advisory. */
+  elrsModules?: readonly ElrsModule[];
 }
 
 export function LoraLaneView({
@@ -52,10 +57,14 @@ export function LoraLaneView({
   onApply,
   onOpenRegions,
   onOpenCountrySetting,
+  countryRegion = null,
+  elrsModules = [],
 }: LoraLaneViewProps) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const remaining = remainingMs(status.governor?.next_tx_allowed_ms ?? 0, fetchedAt, now);
+  const plan = regions?.find((r) => r.code === status.region?.code) ?? null;
+  const mismatches = loraMismatches(status, plan, countryRegion, elrsModules);
 
   const openPicker = () => {
     setPickerOpen(true);
@@ -80,6 +89,7 @@ export function LoraLaneView({
         writeLock={writeLock}
         applying={applying}
         onApply={onApply}
+        mismatches={mismatches}
       />
       <LoraGovernorMeters status={status} now={now} />
       <LoraBeaconsTable beacons={beacons} now={now} />

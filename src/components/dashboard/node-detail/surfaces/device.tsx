@@ -3,7 +3,8 @@
  * @description The DEVICE band every node with a physical box shares: its
  * local display, front-panel buttons and peripherals. A ground station and a
  * Visor both carry one, so both profiles list these same surfaces; the agent
- * serves the same display / button / peripheral routes on either.
+ * serves the same display / button / peripheral routes on either. They carry
+ * no `order`: a profile that wants extension pages interleaved assigns it.
  * @license GPL-3.0-only
  */
 
@@ -28,21 +29,18 @@ export const DEVICE_SURFACES: SurfaceSpec[] = [
     id: "display",
     labelKey: "command.groundStation.tabs.display",
     group: DEVICE_GROUP,
-    order: 30,
     render: (ctx) => <DisplayTab nodeDeviceId={surfaceNodeDeviceId(ctx)} />,
   },
   {
     id: "physicalUi",
     labelKey: "dronePanel.buttons",
     group: DEVICE_GROUP,
-    order: 40,
     render: (ctx) => <PhysicalUiTab nodeDeviceId={surfaceNodeDeviceId(ctx)} />,
   },
   {
     id: "peripherals",
     labelKey: "command.groundStation.tabs.peripherals",
     group: DEVICE_GROUP,
-    order: 50,
     render: (ctx) => <PeripheralsTab nodeDeviceId={surfaceNodeDeviceId(ctx)} />,
   },
 ];

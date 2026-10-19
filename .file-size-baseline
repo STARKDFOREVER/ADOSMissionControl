@@ -6,7 +6,7 @@
 1039 convex/cmdPairing.ts
 701 convex/cmdPlugins.ts
 603 convex/lib/heartbeatFields.ts
-548 src/components/command/AgentFeedTile.tsx
+547 src/components/command/AgentFeedTile.tsx
 519 src/components/command/settings/WifiClientSection.tsx
 515 src/components/dashboard/drone-plugins/DronePluginCard.tsx
 621 src/components/hardware/radio/RadioPanel.tsx
@@ -25,7 +25,6 @@
 578 src/lib/mission/mission-expand.ts
 1008 src/lib/motor-layouts.ts
 524 src/lib/patterns/survey-generator.ts
-517 src/lib/plugins/contracts.generated.ts
 548 src/lib/protocol/__tests__/ftp.test.ts
 594 src/lib/protocol/firmware/ap-periph-manifest.ts
 557 src/lib/protocol/firmware/flash-manager.ts

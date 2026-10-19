@@ -25,16 +25,25 @@ import { useToast } from "@/components/ui/toast";
 import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useClockTick } from "@/lib/agent/freshness";
 import { isDemoMode } from "@/lib/utils";
-import { groundStationApiFromAgent, type LoraUpdate } from "@/lib/api/ground-station-api";
+import {
+  groundStationApiFromAgent,
+  type ElrsModule,
+  type LoraUpdate,
+} from "@/lib/api/ground-station-api";
 import { AgentArmedRefusal } from "@/lib/agent/agent-client/transport";
 import { useClockStore } from "@/stores/clock-store";
 import { useLoraStore } from "@/stores/ground-station/lora-store";
+import {
+  selectDeviceCapabilities,
+  useAgentCapabilitiesStore,
+} from "@/stores/agent-capabilities-store";
 import { useGroundStationPoll } from "./use-gs-poll";
 import { NotFitted } from "./lane-ui";
 import { LoraLaneView } from "./lora/LoraLaneView";
 
 const STATUS_POLL_MS = 1000;
 const BEACONS_POLL_MS = 5000;
+const NO_MODULES: readonly ElrsModule[] = [];
 
 export interface LoraTabProps {
   /** The node this tab is rendered for. */
@@ -64,6 +73,14 @@ export function LoraTab({ nodeDeviceId }: LoraTabProps) {
   const [countryOpen, setCountryOpen] = useState(false);
   useClockTick();
   const now = useClockStore((s) => s.now);
+  // The node's own capability slice: its country setting (the same reading
+  // the operating-region panel shows) and its ELRS modules, for the
+  // advisory chips under the region line.
+  const radio = useAgentCapabilitiesStore((s) => selectDeviceCapabilities(s, nodeDeviceId)?.radio ?? null);
+  const elrsModules = useAgentCapabilitiesStore(
+    (s) => selectDeviceCapabilities(s, nodeDeviceId)?.crsf?.modules ?? NO_MODULES,
+  );
+  const countryRegion = radio?.pinnedRegion ?? radio?.regDomain ?? null;
 
   useGroundStationPoll(agentUrl, apiKey, STATUS_POLL_MS, load);
   useGroundStationPoll(agentUrl, apiKey, BEACONS_POLL_MS, loadBeacons);
@@ -113,6 +130,8 @@ export function LoraTab({ nodeDeviceId }: LoraTabProps) {
         onApply={(b) => void onApply(b)}
         onOpenRegions={onOpenRegions}
         onOpenCountrySetting={nodeDeviceId ? () => setCountryOpen(true) : undefined}
+        countryRegion={countryRegion}
+        elrsModules={elrsModules}
       />
     );
   }

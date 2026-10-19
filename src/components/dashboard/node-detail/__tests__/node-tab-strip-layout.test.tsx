@@ -61,4 +61,24 @@ describe("NodeTabStrip layout", () => {
       );
     }
   });
+
+  it("scrolls an overflowing strip sideways on a vertical wheel instead of clipping it", () => {
+    render(
+      <NodeTabStrip
+        surfaces={SURFACES}
+        pluginIds={[]}
+        visibleTab="overview"
+        onSelect={() => {}}
+        bareDeviceId="node-1"
+        nodeProfile={undefined}
+      />,
+    );
+    const strip = screen.getByRole("tablist");
+    Object.defineProperty(strip, "scrollWidth", { configurable: true, value: 900 });
+    Object.defineProperty(strip, "clientWidth", { configurable: true, value: 300 });
+    const wheel = new WheelEvent("wheel", { deltaY: 120, cancelable: true, bubbles: true });
+    strip.dispatchEvent(wheel);
+    expect(strip.scrollLeft).toBe(120);
+    expect(wheel.defaultPrevented).toBe(true);
+  });
 });

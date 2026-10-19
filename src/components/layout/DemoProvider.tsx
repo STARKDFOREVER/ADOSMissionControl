@@ -151,7 +151,7 @@ export function DemoProvider() {
       engine?.stop();
       // Drop the demo profile override so a future real connection's mock
       // client (should one ever be constructed) reverts to its own defaults.
-      setMockAgentOverride({ status: null, services: null, resources: null });
+      setMockAgentOverride({ status: null, services: null, resources: null, logs: null });
       useAgentConnectionStore.getState().disconnect();
       // `disconnect()` already clears the agent system store, but call
       // it again explicitly so a future refactor of the connection store

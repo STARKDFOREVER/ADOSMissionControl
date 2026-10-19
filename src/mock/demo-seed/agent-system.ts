@@ -223,11 +223,12 @@ export function seedFocusedAgentSystem(now: number): void {
   const status = demoAgentStatus(agent, now);
   const resources = demoResources();
   const services = demoServices(agent);
+  const logs = demoLogs(agent, now);
   useAgentSystemStore.setState({
     status,
     resources,
     services,
-    logs: demoLogs(agent, now),
+    logs,
     lastUpdatedAt: now,
     stale: false,
   });
@@ -235,7 +236,14 @@ export function seedFocusedAgentSystem(now: number): void {
   // (which also writes the singleton agent-system store) returns this node's
   // data instead of the drone-flavored "CM4 · FC connected" default — otherwise
   // the poll and this seed race and the workstation / GS flicker a false status.
-  setMockAgentOverride({ status, services, resources });
+  // A non-flying node's logs ride the override too, so a log refresh never
+  // swaps in the drone flight-controller lines; a drone keeps the default set.
+  setMockAgentOverride({
+    status,
+    services,
+    resources,
+    logs: (agent.profile ?? "drone") === "drone" ? null : logs,
+  });
 }
 
 /**
@@ -291,9 +299,11 @@ export function seedFocusedCapabilities(): void {
   // capability store gates the Radio + RC/ELRS Link tabs on (radioPresent /
   // crsfPresent). Leaner than a drone's caps (no NPU / vision).
   if (agent.profile === "ground-station") {
+    // Each demo ground station reports its own role, so the receiver hides
+    // its Radio tab while the direct station shows the multi-adapter view.
     useAgentCapabilitiesStore
       .getState()
-      .setCapabilities(getMockGroundStationCapabilities(), devId);
+      .setCapabilities({ ...getMockGroundStationCapabilities(), role: agent.role ?? "receiver" }, devId);
     return;
   }
   if (agent.profile === "visor") {

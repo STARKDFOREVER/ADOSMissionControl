@@ -17,11 +17,17 @@ import type {
   SensorsStatus,
   StorageStatus,
 } from "@/lib/api/agent/sensors";
-import { formatBytes } from "@/lib/tile-math";
 import { formatDurationSeconds } from "@/lib/i18n/format";
 import { cn } from "@/lib/utils";
 import { ReadingCard, ReadingRow } from "./reading-card";
-import { LEVEL_TEXT, formatHz, rateLevel, sigmaMs } from "./sensor-format";
+import {
+  LEVEL_TEXT,
+  formatBinaryBytes,
+  formatHz,
+  gnssWithoutFix,
+  rateLevel,
+  sigmaMs,
+} from "./sensor-format";
 
 /** `undefined` = not read yet; the card says so rather than "absent". */
 type Reading<T> = T | null | undefined;
@@ -87,7 +93,7 @@ export function StorageCard({ storage }: { storage: Reading<StorageStatus> }) {
         <>
           <ReadingRow
             label={t("free")}
-            value={t("freeOf", { free: formatBytes(vol.free_bytes), total: formatBytes(vol.total_bytes) })}
+            value={t("freeOf", { free: formatBinaryBytes(vol.free_bytes), total: formatBinaryBytes(vol.total_bytes) })}
           />
           {cap && (
             <>
@@ -174,9 +180,13 @@ export function RigCard({ sensors }: { sensors: Reading<SensorsStatus> }) {
           {sensors.sensors.map((s) => (
             <span key={s.id} className="text-text-secondary">
               {s.id} <span className="text-text-tertiary">{s.role}</span>{" "}
-              <span className={LEVEL_TEXT[rateLevel(s.rate_hz, s.expected_hz)]}>
-                {formatHz(s.rate_hz)} Hz
-              </span>
+              {gnssWithoutFix(s, sensors.gnss) ? (
+                <span className={LEVEL_TEXT.idle}>{t("noFix")}</span>
+              ) : (
+                <span className={LEVEL_TEXT[rateLevel(s.rate_hz, s.expected_hz)]}>
+                  {formatHz(s.rate_hz)} Hz
+                </span>
+              )}
             </span>
           ))}
         </div>
@@ -205,7 +215,7 @@ export function LastSessionCard({
           <p className="truncate font-mono text-xs text-text-primary">{last.session_id}</p>
           <ReadingRow
             label={t("length")}
-            value={`${formatDurationSeconds(last.duration_s)} · ${formatBytes(last.size_bytes)}`}
+            value={`${formatDurationSeconds(last.duration_s)} · ${formatBinaryBytes(last.size_bytes)}`}
           />
           <ReadingRow
             label={t("rooms")}

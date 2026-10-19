@@ -136,6 +136,7 @@ export const MOCK_GS_ELRS_MODULES: ElrsModule[] = [
     snrDb: 8,
     txPowerMw: 250,
     rfMode: "500Hz",
+    domain: "ISM2G4",
   },
   {
     id: "m1",
@@ -147,5 +148,8 @@ export const MOCK_GS_ELRS_MODULES: ElrsModule[] = [
     snrDb: 5,
     txPowerMw: 100,
     rfMode: "250Hz",
+    // A 900 MHz module still on its factory FCC domain, so the LoRa tab's
+    // ELRS-domain advisory has something to say under region IN.
+    domain: "FCC915",
   },
 ];

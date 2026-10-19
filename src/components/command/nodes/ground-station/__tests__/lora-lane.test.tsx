@@ -11,8 +11,9 @@ import { describe, it, expect, afterEach, vi } from "vitest";
 import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import messages from "../../../../../../locales/en.json";
-import type { LoraStatus } from "@/lib/api/ground-station/types";
+import type { ElrsModule, LoraRegionPlan, LoraStatus } from "@/lib/api/ground-station/types";
 import { LoraLaneView } from "../lora/LoraLaneView";
+import { loraMismatches } from "../lora/lora-format";
 import { LoraTab } from "../LoraTab";
 import { useLoraStore } from "@/stores/ground-station/lora-store";
 
@@ -125,6 +126,72 @@ describe("LoRa blocked banner", () => {
     const banner = screen.getByRole("alert");
     expect(banner.textContent).toContain("TX paused");
     expect(banner.textContent).toContain("07:42");
+  });
+});
+
+const IN_ROW: LoraRegionPlan = {
+  code: "IN",
+  name: "India",
+  plan_id: "IN865",
+  band_mhz: [865, 867],
+  rules: ["duty_cycle", "max_power"],
+  supported_by_module: true,
+  elrs_domains: { "2g4": "ISM2G4", "900": "IN866" },
+};
+
+function mod(id: string, domain: string | null): ElrsModule {
+  return { id, port: null, role: "pilot", connected: true, rssiDbm: [], lq: null, snrDb: null, txPowerMw: null, rfMode: null, domain };
+}
+
+describe("LoRa region advisories", () => {
+  it("flags an ELRS module whose domain differs from the region's expected domain for its band", () => {
+    const out = loraMismatches(makeStatus(), IN_ROW, null, [mod("m0", "ISM2G4"), mod("m1", "FCC915"), mod("m2", null)]);
+    expect(out).toEqual([{ kind: "elrs", module: "m1", domain: "FCC915", expected: "IN866", code: "IN" }]);
+  });
+
+  it("makes no ELRS claim when the region expects nothing for that band", () => {
+    const row = { ...IN_ROW, elrs_domains: { "2g4": "ISM2G4", "900": null } };
+    expect(loraMismatches(makeStatus(), row, null, [mod("m1", "FCC915")])).toEqual([]);
+    expect(loraMismatches(makeStatus(), { ...IN_ROW, elrs_domains: null }, null, [mod("m1", "FCC915")])).toEqual([]);
+    // A 2.4 GHz EU module under a region expecting ISM2G4 is flagged.
+    expect(loraMismatches(makeStatus(), IN_ROW, null, [mod("m0", "CE_LBT")])[0]).toMatchObject({ expected: "ISM2G4" });
+  });
+
+  it("flags a Meshtastic preset other than the region, only when the bridge is enabled", () => {
+    const mesh = { enabled: true, connected: true, port: "/dev/ttyACM2", region_preset: "EU_868" };
+    expect(loraMismatches(makeStatus({ meshtastic: mesh }), IN_ROW, null, [])).toEqual([
+      { kind: "meshtastic", preset: "EU_868", code: "IN" },
+    ]);
+    expect(loraMismatches(makeStatus({ meshtastic: { ...mesh, enabled: false } }), IN_ROW, null, [])).toEqual([]);
+    expect(loraMismatches(makeStatus({ meshtastic: { ...mesh, region_preset: "IN" } }), IN_ROW, null, [])).toEqual([]);
+  });
+
+  it("flags an explicit LoRa region that differs from the country setting", () => {
+    const explicit = makeStatus();
+    explicit.region = { ...explicit.region!, source: "lora.region" };
+    expect(loraMismatches(explicit, IN_ROW, "us", [])).toEqual([{ kind: "country", country: "US", code: "IN" }]);
+    // Following the country setting never disagrees with it.
+    expect(loraMismatches(makeStatus(), IN_ROW, "US", [])).toEqual([]);
+  });
+
+  it("renders the advisory chips under the region line", () => {
+    render(
+      <NextIntlClientProvider locale="en" messages={messages}>
+        <LoraLaneView
+          status={makeStatus()}
+          regions={[IN_ROW]}
+          beacons={[]}
+          now={NOW}
+          fetchedAt={NOW}
+          writeLock={null}
+          applying={false}
+          onApply={() => {}}
+          elrsModules={[mod("m1", "FCC915")]}
+        />
+      </NextIntlClientProvider>,
+    );
+    const list = screen.getByRole("list", { name: "Region advisories" });
+    expect(list.textContent).toContain("ELRS module m1 is FCC915, region IN expects IN866");
   });
 });
 

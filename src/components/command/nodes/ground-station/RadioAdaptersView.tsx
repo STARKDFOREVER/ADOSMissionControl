@@ -9,6 +9,7 @@
  * @license GPL-3.0-only
  */
 
+import { useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { Antenna, Layers } from "lucide-react";
 import {
@@ -16,7 +17,10 @@ import {
   type DiversitySummary,
   type RadioAdapter,
 } from "@/lib/api/ground-station-api";
+import type { RingBuffer } from "@/lib/ring-buffer";
+import { useAdapterRssiHistoryStore } from "@/stores/ground-station/adapter-rssi-history-store";
 import { Chip, LaneCard, StatRow, fmtNum, type ChipTone } from "./lane-ui";
+import { RssiSparkline } from "./RssiSparkline";
 
 const ROLE_TONE: Record<string, ChipTone> = {
   rxtx: "accent",
@@ -27,7 +31,13 @@ const ROLE_TONE: Record<string, ChipTone> = {
 
 const pct = (v: number | null) => (v === null ? fmtNum(null) : `${v.toFixed(2)} %`);
 
-function AdapterCard({ adapter }: { adapter: RadioAdapter }) {
+interface AdapterCardProps {
+  adapter: RadioAdapter;
+  rings: RingBuffer<number>[] | undefined;
+  rev: number;
+}
+
+function AdapterCard({ adapter, rings, rev }: AdapterCardProps) {
   const t = useTranslations("hardware.radio.adapters");
   const loss = adapterLossPct(adapter);
   return (
@@ -50,13 +60,21 @@ function AdapterCard({ adapter }: { adapter: RadioAdapter }) {
         {adapter.rssi_dbm.length === 0 ? (
           <StatRow label={t("rssi")} value={fmtNum(null)} />
         ) : (
-          adapter.rssi_dbm.map((v, i) => (
-            <StatRow
-              key={i}
-              label={t("rssiChain", { chain: String.fromCharCode(65 + i) })}
-              value={`${fmtNum(v)} dBm`}
-            />
-          ))
+          adapter.rssi_dbm.map((v, i) => {
+            const chainLabel = t("rssiChain", { chain: String.fromCharCode(65 + i) });
+            return (
+              <StatRow
+                key={i}
+                label={chainLabel}
+                value={
+                  <span className="inline-flex items-center gap-2">
+                    <RssiSparkline ring={rings?.[i]} rev={rev} label={t("rssiHistory", { iface: adapter.iface, chain: chainLabel })} />
+                    {`${fmtNum(v)} dBm`}
+                  </span>
+                }
+              />
+            );
+          })
         )}
         <StatRow label={t("packets")} value={fmtNum(adapter.packets)} />
         <StatRow label={t("lost")} value={pct(loss)} />
@@ -69,10 +87,19 @@ function AdapterCard({ adapter }: { adapter: RadioAdapter }) {
 interface RadioAdaptersViewProps {
   adapters: readonly RadioAdapter[];
   summary: DiversitySummary;
+  /** Keys the RSSI history (the node the adapters belong to). */
+  historyKey: string;
 }
 
-export function RadioAdaptersView({ adapters, summary }: RadioAdaptersViewProps) {
+export function RadioAdaptersView({ adapters, summary, historyKey }: RadioAdaptersViewProps) {
   const t = useTranslations("hardware.radio.adapters");
+  const record = useAdapterRssiHistoryStore((s) => s.record);
+  const history = useAdapterRssiHistoryStore((s) => s.byNode[historyKey]);
+  const rev = useAdapterRssiHistoryStore((s) => s.rev);
+  // Each new adapters reading appends one sample per chain to its ring.
+  useEffect(() => {
+    record(historyKey, adapters);
+  }, [record, historyKey, adapters]);
   return (
     <div className="flex flex-col gap-3">
       <LaneCard title={t("diversity.title")} icon={Layers}>
@@ -91,7 +118,7 @@ export function RadioAdaptersView({ adapters, summary }: RadioAdaptersViewProps)
         <p className="mb-3 text-xs text-text-tertiary">{t("description")}</p>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {adapters.map((a) => (
-            <AdapterCard key={a.iface} adapter={a} />
+            <AdapterCard key={a.iface} adapter={a} rings={history?.[a.iface]} rev={rev} />
           ))}
         </div>
       </LaneCard>

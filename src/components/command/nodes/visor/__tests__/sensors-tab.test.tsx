@@ -38,7 +38,7 @@ describe("rateLevel", () => {
     expect(rateLevel(18, 20)).toBe("ok");
     expect(rateLevel(17.9, 20)).toBe("warn");
     expect(rateLevel(9.9, 20)).toBe("bad");
-    expect(rateLevel(0, 0)).toBe("bad");
+    expect(rateLevel(0, 0)).toBe("idle");
     expect(rateLevel(3, 0)).toBe("ok");
   });
 
@@ -56,7 +56,8 @@ describe("Visor SensorsTab", () => {
     expect(rows).toHaveLength(DEMO_VISOR_SENSORS.sensors.length);
     const gnss = rows.find((r) => within(r).queryByText("gnss0"));
     expect(gnss).toBeDefined();
-    expect(within(gnss!).getByText(/^0\.0/).className).toContain("text-status-error");
+    // Indoors the receiver has no fix: neutral, never a red failing rate.
+    expect(within(gnss!).getByText("no fix").className).toContain("text-text-tertiary");
     const imu = rows.find((r) => within(r).queryByText("imu0"));
     expect(within(imu!).getByText(/^1000/).className).toContain("text-status-success");
     expect(screen.getByText("ados-sensorhub 0.1.0")).toBeTruthy();

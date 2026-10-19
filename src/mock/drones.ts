@@ -139,6 +139,19 @@ export const DEMO_GROUND_STATION = {
 } as const;
 
 /**
+ * A second demo ground station in the `direct` role (it transmits and owns
+ * its radio), so the multi-adapter Radio tab — three WFB adapters with
+ * receive diversity — and the GNSS / LoRa lanes are visible in the demo
+ * without patching the receiver above.
+ */
+export const DEMO_GROUND_STATION_DIRECT = {
+  deviceId: "groundstation-2",
+  name: "Ground Station Bravo",
+  board: "Ground Node",
+  role: "direct",
+} as const;
+
+/**
  * Map a mock firmware variant to the canonical FC firmware family + a short
  * airframe label, so every demo drone badges its firmware/airframe on the fleet
  * card (not just the companion-paired ones).

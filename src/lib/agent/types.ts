@@ -4,10 +4,10 @@
  * @license GPL-3.0-only
  */
 
-/**
- * Agent /api/version response. Capability flags are stable string keys
- * the GCS uses to gate features; an older agent simply omits the flag.
- */
+import type { NodeFlags } from "./node-flags";
+
+/** Agent /api/version response. Capability flags are stable string keys
+ * the GCS uses to gate features; an older agent simply omits the flag. */
 export interface AgentVersionInfo {
   api_version: string;
   agent_version: string;
@@ -443,7 +443,7 @@ export interface CameraUsbRecovery {
 }
 
 /** Response from `/api/status/full` (agent v0.3.19+). */
-export interface FullStatusResponse {
+export interface FullStatusResponse extends Pick<NodeFlags, "sim"> {
   version: string;
   /** Agent uptime in seconds. Absent when the agent did not report it. */
   uptime_seconds?: number;
@@ -482,8 +482,6 @@ export interface FullStatusResponse {
   npuTops?: number;
   /** The board's declaration that it carries NPU hardware. */
   hasAccelerator?: boolean;
-  /** True when the node runs against a simulator. Absent on older agents. */
-  sim?: boolean;
   /** Where perception runs: `"local"` | `"offload"` | `"hybrid"` | `"none"`. */
   perceptionTier?: string;
   /** The workstation perception is offloaded to, or null when it runs locally. */

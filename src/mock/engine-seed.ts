@@ -12,6 +12,7 @@ import {
   DEMO_DRONES,
   DEMO_WORKSTATION,
   DEMO_GROUND_STATION,
+  DEMO_GROUND_STATION_DIRECT,
   type DemoDroneConfig,
 } from "./drones";
 import { DEMO_VISOR } from "./demo-seed/visor";
@@ -75,19 +76,21 @@ export function seedDemoNodes(now: number): void {
     },
     "local",
   );
-  registry.upsertPresence(
-    resolveNodeId(DEMO_GROUND_STATION.deviceId),
-    {
-      deviceId: DEMO_GROUND_STATION.deviceId,
-      name: DEMO_GROUND_STATION.name,
-      profile: "ground-station",
-      role: DEMO_GROUND_STATION.role,
-      cloudPosture: "local",
-      cloudDeviceId: DEMO_GROUND_STATION.deviceId,
-      lastHeartbeat: now,
-    },
-    "local",
-  );
+  for (const gs of [DEMO_GROUND_STATION, DEMO_GROUND_STATION_DIRECT]) {
+    registry.upsertPresence(
+      resolveNodeId(gs.deviceId),
+      {
+        deviceId: gs.deviceId,
+        name: gs.name,
+        profile: "ground-station",
+        role: gs.role,
+        cloudPosture: "local",
+        cloudDeviceId: gs.deviceId,
+        lastHeartbeat: now,
+      },
+      "local",
+    );
+  }
 
   // The demo Visor: a handheld capture rig, presence only like the two above
   // (its sensor hub is not a MAVLink FC). Its sensor/clock/storage readings

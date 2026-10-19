@@ -1621,6 +1621,8 @@
     "surfaceErrorRetry": "Try again",
     "openCockpit": "Open cockpit",
     "nodeDetailTabs": "Node detail tabs",
+    "scrollTabsLeft": "Scroll tabs left",
+    "scrollTabsRight": "Scroll tabs right",
     "nodeNotFound": "Drone “{id}” not found",
     "retryConnect": "Retry",
     "simChip": "SIM",
@@ -4920,6 +4922,7 @@
         "notReported": "Not reported",
         "driver": "Driver",
         "rssiChain": "RSSI {chain}",
+        "rssiHistory": "{iface} {chain} history",
         "rssi": "RSSI",
         "packets": "Packets",
         "lost": "Lost",
@@ -7876,6 +7879,17 @@
       "error": "The ground station did not answer: {message}",
       "applied": "LoRa settings updated.",
       "armedRefused": "Region changes are locked while armed. The ground station refused the change.",
+      "overview": {
+        "duty": "LoRa {code} {used} %",
+        "ok": "LoRa {code}",
+        "paused": "LoRa paused {time}",
+        "blocked": "LoRa blocked: {reason}",
+        "reason": {
+          "region_unset": "region",
+          "module_band_mismatch": "module band",
+          "power_over_limit": "power"
+        }
+      },
       "notFitted": {
         "title": "No LoRa module fitted",
         "body": "This ground station reports no LoRa service. Fit a LoRa module and enable the LoRa lane to send and hear beacons."
@@ -7893,7 +7907,11 @@
         "change": "Change region",
         "noVerifiedPlan": "No verified band plan for {name} yet. Receiving only.",
         "moduleBandChip": "Module band {module} MHz does not cover {lo}–{hi} MHz",
-        "airborneChip": "Airborne restriction: check the {code} plan before flying"
+        "airborneChip": "Airborne restriction: check the {code} plan before flying",
+        "advisories": "Region advisories",
+        "meshtasticChip": "Meshtastic preset {preset} differs from region {code}",
+        "countryChip": "Country setting {country} differs from LoRa region {code}",
+        "elrsChip": "ELRS module {module} is {domain}, region {code} expects {expected}"
       },
       "module": {
         "label": "Module",
@@ -8281,7 +8299,10 @@
       "description": "Every rig sensor as the node reads it now: rate against the rate the rig expects, age of the last sample, sync sigma and the path it arrives on.",
       "clockSigma": "clock σ {ms} ms",
       "loading": "Reading the rig sensors…",
-      "readFailed": "The node did not answer the sensor read. Retrying.",
+      "readFailed": {
+        "refused": "The node answered the sensor read with an error. Retrying.",
+        "unreachable": "The node did not answer the sensor read. Retrying."
+      },
       "notFitted": "No sensor service on this node",
       "notFittedBody": "This node does not run the rig sensor service, so it has no sensors to show.",
       "rig": "Rig",
@@ -8318,7 +8339,8 @@
       },
       "ageMs": "{ms} ms",
       "gnssNone": "GNSS: no receiver on this rig.",
-      "gnssLine": "GNSS: fix {fix} · sats {sats} · HDOP {hdop} · RTK {rtk}"
+      "gnssLine": "GNSS: fix {fix} · sats {sats} · HDOP {hdop} · RTK {rtk}",
+      "noFix": "no fix"
     },
     "overview": {
       "fallbackTitle": "Visor",
@@ -8365,7 +8387,8 @@
         "uploading": "Uploading",
         "committed": "Uploaded",
         "failed": "Failed"
-      }
+      },
+      "noFix": "no fix"
     }
   }
 }

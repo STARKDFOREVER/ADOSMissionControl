@@ -11,7 +11,13 @@ import { demoTelemetryOverride } from "@/mock/demo-node-commands";
 import type { CommandCloudStatus } from "@/stores/command-fleet-store";
 import { useLocalNodesStore, type LocalNode } from "@/stores/local-nodes-store";
 import { nodeIdForDevice } from "@/lib/agent/node-id";
-import { DEMO_DRONES, DEMO_WORKSTATION, DEMO_GROUND_STATION, firmwareMeta } from "@/mock/drones";
+import {
+  DEMO_DRONES,
+  DEMO_WORKSTATION,
+  DEMO_GROUND_STATION,
+  DEMO_GROUND_STATION_DIRECT,
+  firmwareMeta,
+} from "@/mock/drones";
 import { DEMO_VISOR } from "./visor";
 
 export const AGENT_VERSION = "0.99.80";
@@ -74,6 +80,23 @@ export const DEMO_AGENTS: PairedDrone[] = [
     pairedAt: Date.now() - 48_000_000,
     profile: "ground-station",
     role: DEMO_GROUND_STATION.role,
+  },
+  {
+    _id: "demo-groundstation-2",
+    userId: "demo",
+    deviceId: DEMO_GROUND_STATION_DIRECT.deviceId,
+    name: DEMO_GROUND_STATION_DIRECT.name,
+    apiKey: "demo",
+    agentVersion: AGENT_VERSION,
+    board: DEMO_GROUND_STATION_DIRECT.board,
+    tier: 3,
+    os: "Linux",
+    lastIp: "127.0.0.1",
+    lastSeen: Date.now(),
+    fcConnected: false,
+    pairedAt: Date.now() - 47_000_000,
+    profile: "ground-station",
+    role: DEMO_GROUND_STATION_DIRECT.role,
   },
   {
     _id: "demo-visor-1",

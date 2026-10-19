@@ -5,7 +5,8 @@
 // - A file over LIMIT must be listed in .file-size-baseline and may not grow
 //   past its recorded count. Shrinking is always fine; --update lowers the
 //   recorded counts and drops files that fell under the limit.
-// - Generated directories (convex/_generated) are exempt.
+// - Generated directories (convex/_generated) and generated files
+//   (`*.generated.ts`) are exempt: their generator owns their size.
 //
 //   node scripts/check-file-size.mjs            # check, exit 1 on a violation
 //   node scripts/check-file-size.mjs --update   # lower the baseline
@@ -23,13 +24,17 @@ const ROOTS = ["src", "electron", "convex"];
 const LIMIT = 500;
 const SKIP_DIRS = new Set(["node_modules", "_generated", ".next", "dist", "out"]);
 const EXTS = [".ts", ".tsx"];
+const GENERATED_SUFFIXES = [".generated.ts", ".generated.tsx"];
 
 function walk(dir, out) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const full = join(dir, entry.name);
     if (entry.isDirectory()) {
       if (!SKIP_DIRS.has(entry.name)) walk(full, out);
-    } else if (EXTS.some((e) => entry.name.endsWith(e))) {
+    } else if (
+      EXTS.some((e) => entry.name.endsWith(e)) &&
+      !GENERATED_SUFFIXES.some((e) => entry.name.endsWith(e))
+    ) {
       out.push(full);
     }
   }

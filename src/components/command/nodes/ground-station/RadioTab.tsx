@@ -15,7 +15,6 @@
  * @license GPL-3.0-only
  */
 
-import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { PageIntro } from "@/components/hardware/PageIntro";
 import { HintChip } from "@/components/hardware/HintChip";
@@ -23,19 +22,14 @@ import { RadioPanel } from "@/components/hardware/radio/RadioPanel";
 import { VideoLinkPanel } from "@/components/hardware/VideoLinkPanel";
 import { CloudModeLimitedNotice } from "@/components/command/shared/CloudModeLimitedNotice";
 import { useNodeDirectAgent } from "@/components/command/settings/use-node-direct-agent";
-import {
-  diversitySummary,
-  type RadioAdaptersResponse,
-} from "@/lib/api/ground-station-api";
+import { diversitySummary } from "@/lib/api/ground-station-api";
 import {
   selectDeviceCapabilities,
   useAgentCapabilitiesStore,
 } from "@/stores/agent-capabilities-store";
 import { PhoneReceiversCard } from "./PhoneReceiversCard";
 import { RadioAdaptersView } from "./RadioAdaptersView";
-import { useGroundStationPoll } from "./use-gs-poll";
-
-const ADAPTERS_POLL_MS = 2000;
+import { useRadioAdapters } from "./use-radio-adapters";
 
 export interface RadioTabProps {
   /** The node this tab is rendered for. */
@@ -48,17 +42,7 @@ export function RadioTab({ nodeDeviceId }: RadioTabProps) {
   const agentUrl = direct?.agentUrl ?? null;
   const apiKey = direct?.apiKey ?? null;
   const radio = useAgentCapabilitiesStore((s) => selectDeviceCapabilities(s, nodeDeviceId)?.radio ?? null);
-  // The REST read, tagged with the origin it came from so a late answer for
-  // another node never renders here.
-  const [rest, setRest] = useState<{ from: string; data: RadioAdaptersResponse } | null>(null);
-
-  useGroundStationPoll(agentUrl, apiKey, ADAPTERS_POLL_MS, async (api) => {
-    const data = await api.getRadioAdapters();
-    setRest({ from: api.baseUrl, data });
-  });
-
-  const restOwned =
-    rest !== null && agentUrl !== null && rest.from === agentUrl.replace(/\/+$/, "") ? rest.data : null;
+  const restOwned = useRadioAdapters(agentUrl, apiKey);
   const adapters = restOwned?.adapters.length ? restOwned.adapters : (radio?.adapters ?? []);
   const summary = diversitySummary(adapters, restOwned?.diversity ?? null, radio?.lossPercent ?? null);
 
@@ -73,7 +57,9 @@ export function RadioTab({ nodeDeviceId }: RadioTabProps) {
         <CloudModeLimitedNotice feature="radio" />
       ) : (
         <>
-          {adapters.length > 1 ? <RadioAdaptersView adapters={adapters} summary={summary} /> : null}
+          {adapters.length > 1 ? (
+            <RadioAdaptersView adapters={adapters} summary={summary} historyKey={nodeDeviceId ?? direct.agentUrl} />
+          ) : null}
           <RadioPanel />
           <VideoLinkPanel />
           <PhoneReceiversCard agentUrl={direct.agentUrl} apiKey={direct.apiKey} />

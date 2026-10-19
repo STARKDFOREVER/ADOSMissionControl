@@ -49,7 +49,9 @@ export const VISOR_SURFACES: SurfaceSpec[] = [
     order: 10,
     render: (ctx) => <SensorsTab nodeDeviceId={surfaceNodeDeviceId(ctx)} />,
   },
-  ...DEVICE_SURFACES,
+  // Display, buttons, peripherals at orders 30/40/50, so the extension's
+  // Calibration (order 20) lands between Sensors and Display.
+  ...DEVICE_SURFACES.map((spec, i) => ({ ...spec, order: 30 + i * 10 })),
   {
     id: "logs",
     labelKey: "dronePanel.logs",

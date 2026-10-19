@@ -7,7 +7,7 @@
  */
 
 import type { CameraUsbRecovery } from "./types";
-
+import type { NodeFlags } from "./node-flags";
 // ── Agent Capabilities (from /api/status/full) ───────────
 
 export interface CameraCapability {
@@ -460,7 +460,7 @@ export interface ManagementLink {
   repairsInWindow?: number;
 }
 
-export interface AgentCapabilities {
+export interface AgentCapabilities extends NodeFlags {
   /** Board tier, absent when no board sidecar reported one. A boardless node
    *  (compute/workstation, or an unmatched board) has NO tier; 0 is not a
    *  tier and reads as a real, lowest-capability board. */
@@ -652,15 +652,6 @@ export interface AgentCapabilities {
    * run a detector on locally. Undefined on agents that predate the field;
    * a consumer falls back to `compute.npu_available || compute.gpu_available`. */
   hasAccelerator?: boolean;
-  /** True when the node runs against a simulator (`simulation.enabled` in the
-   * agent config). Undefined on agents that predate the field. */
-  sim?: boolean;
-  /** True when the node runs a GNSS service with a fitted receiver (the
-   * agent's `gnss` capability flag). Undefined on agents that predate it. */
-  gnss?: boolean;
-  /** True when the node runs a LoRa lane with a fitted radio (the agent's
-   * `lora` capability flag). Undefined on agents that predate it. */
-  lora?: boolean;
   /** The perception execution tier the agent resolved for this node:
    *   - "local"  — the model runs on the node's own NPU (on-edge).
    *   - "offload"— the node streams frames to a workstation that runs it.

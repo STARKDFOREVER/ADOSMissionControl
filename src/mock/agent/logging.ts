@@ -27,7 +27,7 @@ import type {
   StatsResponse,
   TailParams,
 } from "@/lib/agent/agent-client/logging";
-import { MOCK_LOGS } from "./logs";
+import { currentMockLogs } from "./logs";
 
 /** Demo-mode radio/network event timeline, replayed when the Radio /
  * Network Health panel queries `kind=events` by the radio/network kinds.
@@ -113,7 +113,7 @@ function mockRadioNetworkEvents(): EventsRow[] {
 }
 
 function toRows(): LoggingRow[] {
-  return MOCK_LOGS.map((e, i) => {
+  return currentMockLogs().map((e, i) => {
     const tsMs = Date.parse(e.timestamp);
     return {
       ts: e.timestamp,
@@ -127,11 +127,11 @@ function toRows(): LoggingRow[] {
   });
 }
 
-const ROWS = toRows();
 
 /** An interval-backed tail, so the LogViewer's tail wiring exercises the same
  * handler contract in demo mode. */
 function mockTail(replay: number, handlers: LogTailHandlers): LogTail {
+  const ROWS = toRows();
   let idx = 0;
   let closed = false;
   // Replay the tail of the timeline immediately, then drip new lines.
@@ -180,7 +180,7 @@ export class MockLoggingService {
         meta: { source: "logd", v: 1, ts: new Date().toISOString(), db_lag_ms: 0 },
       };
     }
-    let rows = ROWS;
+    let rows = toRows();
     if (params.level) {
       const order = ["debug", "info", "warning", "error"];
       const min = order.indexOf(params.level.toLowerCase());
@@ -249,7 +249,7 @@ export class MockLoggingService {
         ended: null,
         kind: "boot",
         reason: "power on",
-        log_count: ROWS.length,
+        log_count: toRows().length,
         event_count: 4,
         duration_ms: null,
       },
@@ -277,7 +277,7 @@ export class MockLoggingService {
     source: "logd";
   }> {
     const format = params.format ?? "jsonl";
-    const body = ROWS.map((r) => JSON.stringify(r)).join("\n");
+    const body = toRows().map((r) => JSON.stringify(r)).join("\n");
     const bytes = new TextEncoder().encode(body);
     const stream = new ReadableStream<Uint8Array>({
       start(controller) {
@@ -289,6 +289,7 @@ export class MockLoggingService {
   }
 
   async stats(): Promise<StatsResponse> {
+    const ROWS = toRows();
     return {
       db: {
         size_bytes: 18_400_000,
