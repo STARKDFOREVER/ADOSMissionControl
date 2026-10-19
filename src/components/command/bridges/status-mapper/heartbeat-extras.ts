@@ -68,6 +68,10 @@ export interface HeartbeatExtras {
   /** The workstation the drone offloads perception to (host / device id), null
    * when it runs locally, undefined when the heartbeat omits the field. */
   perceptionOffloadTarget: string | null | undefined;
+  /** Node flags (`sim`, `gnss`, `lora`) the agent reports as booleans, as on
+   * the LAN `/api/status/full`. Only booleans are carried, so a heartbeat from
+   * an older agent leaves the store's prior value in place. */
+  nodeFlags: { sim?: boolean; gnss?: boolean; lora?: boolean };
 }
 
 const FAILOVER_STATES = ["local", "cloud_relay", "failed"] as const;
@@ -342,6 +346,14 @@ export function buildHeartbeatExtras(
         return raw;
       }
       return null;
+    })(),
+    nodeFlags: (() => {
+      const out: { sim?: boolean; gnss?: boolean; lora?: boolean } = {};
+      for (const key of ["sim", "gnss", "lora"] as const) {
+        const raw = cloudStatus[key];
+        if (typeof raw === "boolean") out[key] = raw;
+      }
+      return out;
     })(),
     // Camera-recovery block: validated through the shared parser. The
     // store keeps the prior value on a sparse tick that omits it.

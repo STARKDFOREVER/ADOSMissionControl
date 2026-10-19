@@ -390,6 +390,10 @@ export const pushStatusArgs = {
       relayRole: v.optional(v.union(v.string(), v.null())),
       fcCommandDownGated: v.optional(v.union(v.boolean(), v.null())),
     })),
+    // Node lane flags (matches schema.ts cmd_droneStatus).
+    gnss: v.optional(v.boolean()),
+    lora: v.optional(v.boolean()),
+    sim: v.optional(v.boolean()),
     // Local SPI LCD surface state (matches schema.ts cmd_droneStatus).
     lcdActivePage: v.optional(v.string()),
     lcdTouchCalibrated: v.optional(v.boolean()),

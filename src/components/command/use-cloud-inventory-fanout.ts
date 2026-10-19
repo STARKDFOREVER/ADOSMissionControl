@@ -175,6 +175,7 @@ export function applyCloudCapabilities(
       // clamps the tier; null target = runs locally, undefined = keep prior).
       payload.perceptionTier = extras.perceptionTier;
       payload.perceptionOffloadTarget = extras.perceptionOffloadTarget;
+      Object.assign(payload, extras.nodeFlags);
       useAgentCapabilitiesStore
         .getState()
         .setCapabilities(payload, cloudDeviceId);
@@ -338,6 +339,8 @@ export function applyCloudCapabilities(
       perceptionOffloadTarget: extras.perceptionOffloadTarget,
       ...(extras.radioRaw !== undefined ? { radio: extras.radioRaw } : {}),
       ...(extras.crsfRaw !== undefined ? { crsf: extras.crsfRaw } : {}),
+      // Node flags gate the GNSS / LoRa tabs; an omitted flag keeps the prior.
+      ...extras.nodeFlags,
     } as Record<string, unknown>, cloudDeviceId);
   }
 }

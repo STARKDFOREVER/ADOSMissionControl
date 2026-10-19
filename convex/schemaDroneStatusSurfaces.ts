@@ -196,6 +196,11 @@ export const droneStatusSurfaceFields = {
     relayRole: v.optional(v.union(v.string(), v.null())),
     fcCommandDownGated: v.optional(v.union(v.boolean(), v.null())),
   })),
+  // Node lane flags, the same booleans `/api/status/full` carries on the
+  // LAN: a working GNSS lane, an enabled LoRa lane, and simulation mode.
+  gnss: v.optional(v.boolean()),
+  lora: v.optional(v.boolean()),
+  sim: v.optional(v.boolean()),
 // Local SPI LCD surface state. Reported by the agent's OLED/LCD
   // service when a panel is attached and the renderer is active.
   // All fields are optional so heartbeats from agents without a
