@@ -50,6 +50,30 @@ export const AIRBORNE_RESTRICTED: Record<string, true> = { RU: true, GB: true, N
  * sub-GHz (`900` key) domain. */
 const ELRS_2G4_DOMAINS: Record<string, true> = { ISM2G4: true, CE_LBT: true };
 
+/** EU member states plus the EEA (IS, LI, NO), whose country setting resolves
+ * to the shared `EU` plan. */
+const EU_EEA: Record<string, true> = Object.fromEntries(
+  ["AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR", "HU", "IE", "IT", "LV",
+    "LT", "LU", "MT", "NL", "PL", "PT", "RO", "SK", "SI", "ES", "SE", "IS", "LI", "NO"].map((c) => [c, true]),
+);
+
+/**
+ * The LoRa plan code a country setting resolves to in the region table: the
+ * row named by the country itself, else `EU` for an EU/EEA member when the
+ * table has an `EU` row. Null when the table does not resolve it (or is not
+ * loaded), in which case no comparison is made.
+ */
+export function countryPlanCode(
+  country: string,
+  regions: readonly LoraRegionPlan[] | null,
+): string | null {
+  if (!regions) return null;
+  const c = country.toUpperCase();
+  if (regions.some((r) => r.code.toUpperCase() === c)) return c;
+  if (Object.hasOwn(EU_EEA, c) && regions.some((r) => r.code.toUpperCase() === "EU")) return "EU";
+  return null;
+}
+
 /** An amber advisory under the region line. Never blocks; the agent's own
  * `blocked_reason` is the blocking form. */
 export type LoraMismatch =
@@ -61,8 +85,8 @@ export type LoraMismatch =
  * Advisories for the active region:
  * - the Meshtastic bridge preset is not the preset the region maps to (an
  *   enabled bridge, both presets known, compared exactly);
- * - the region was set explicitly (`lora.region`) and differs from the node's
- *   country setting;
+ * - the region was set explicitly (`lora.region`) and is not the plan the
+ *   node's country setting resolves to (an unresolvable country: no chip);
  * - an ELRS module reports a domain other than the one the region row expects
  *   for that module's band. A null module domain or a null expectation means
  *   no claim, so no chip.
@@ -71,6 +95,7 @@ export function loraMismatches(
   status: LoraStatus,
   plan: LoraRegionPlan | null,
   countryRegion: string | null,
+  regions: readonly LoraRegionPlan[] | null,
   modules: readonly ElrsModule[],
 ): LoraMismatch[] {
   const region = status.region;
@@ -82,9 +107,9 @@ export function loraMismatches(
   if (preset && expectedPreset && preset !== expectedPreset) {
     out.push({ kind: "meshtastic", preset, expected: expectedPreset });
   }
-  const country = countryRegion?.toUpperCase() ?? null;
-  if (region.source === "lora.region" && country && country !== code) {
-    out.push({ kind: "country", country, code });
+  const countryPlan = countryRegion ? countryPlanCode(countryRegion, regions) : null;
+  if (region.source === "lora.region" && countryRegion && countryPlan && countryPlan !== code) {
+    out.push({ kind: "country", country: countryRegion.toUpperCase(), code });
   }
   const expected = plan?.elrs_domains ?? null;
   if (expected) {

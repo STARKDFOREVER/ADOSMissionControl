@@ -20,6 +20,20 @@ import {
   demoReceiverRelays,
 } from "@/mock/ground-station-mesh";
 import { seedGroundStationLanes } from "./ground-station-lanes";
+import { INITIAL_MESH } from "@/stores/ground-station/initial-state";
+import { useDroneManager } from "@/stores/drone-manager";
+import { deviceIdFromNodeId } from "@/lib/agent/node-id";
+import { DEMO_GROUND_STATION_DIRECT } from "@/mock/drones";
+import type { GroundStationRole } from "@/lib/api/ground-station/types";
+
+/** The role of the demo ground station in focus: the direct-role station when
+ * it is selected, else the receiver. The demo shares one mesh client and one
+ * ground-station store, so the seed follows the focused station. */
+function focusedDemoRole(): GroundStationRole {
+  const sel = useDroneManager.getState().selectedDroneId;
+  const dev = sel ? (deviceIdFromNodeId(sel) ?? sel) : null;
+  return dev === DEMO_GROUND_STATION_DIRECT.deviceId ? DEMO_GROUND_STATION_DIRECT.role : DEMO_GS_ROLE;
+}
 
 /** Phone receivers waiting for approval on the demo ground station. The expiry
  * is a far-future constant: the demo has no agent to lapse it. */
@@ -49,7 +63,9 @@ export const DEMO_PHONE_INVITES: readonly PhoneInvite[] = [
  * slices are tagged with that client's origin (`meshFor`) so the surface
  * reads them as this node's own. */
 export function seedGroundStationStore(): void {
-  demoGroundStationMesh.reset();
+  const role = focusedDemoRole();
+  const receiver = role === "receiver";
+  demoGroundStationMesh.reset(role);
   setDemoMeshApi(demoGroundStationMesh as unknown as GroundStationApi);
   seedGroundStationLanes();
   useGroundStationStore.setState({
@@ -151,12 +167,13 @@ export function seedGroundStationStore(): void {
       error: null,
       fetchedAt: Date.now(),
     },
-    // A mesh receiver: it combines the streams its relays forward, so Mesh &
-    // RX shows the relay list, combined-stream stats and the pairing window.
+    // The focused station's role: the receiver combines the streams its
+    // relays forward (relay list, combined stats, pairing window); the direct
+    // station carries its own link and has none of those.
     role: {
       info: {
-        current: DEMO_GS_ROLE,
-        configured: DEMO_GS_ROLE,
+        current: role,
+        configured: role,
         supported: ["direct", "relay", "receiver"],
         mesh_capable: true,
       },
@@ -167,25 +184,29 @@ export function seedGroundStationStore(): void {
     },
     // batman-adv mesh: neighbors, routes, and the elected cloud gateway for the
     // Mesh tab's neighbor / gateway tables + health card.
-    mesh: {
-      health: { ...DEMO_MESH_HEALTH },
-      neighbors: demoMeshNeighbors(Date.now()),
-      routes: DEMO_MESH_ROUTES.map((r) => ({ ...r })),
-      gateways: DEMO_MESH_GATEWAYS.map((g) => ({ ...g })),
-      selectedGateway: DEMO_MESH_HEALTH.selected_gateway,
-      lastTransientEvent: null,
-      wsState: "connected",
-      wsDisconnectedAt: null,
-      loading: false,
-      error: null,
-      fetchedAt: Date.now(),
-    },
+    // A direct station joins no mesh, so it reads as one with nothing heard.
+    mesh: receiver
+      ? {
+          health: { ...DEMO_MESH_HEALTH },
+          neighbors: demoMeshNeighbors(Date.now()),
+          routes: DEMO_MESH_ROUTES.map((r) => ({ ...r })),
+          gateways: DEMO_MESH_GATEWAYS.map((g) => ({ ...g })),
+          selectedGateway: DEMO_MESH_HEALTH.selected_gateway,
+          lastTransientEvent: null,
+          wsState: "connected",
+          wsDisconnectedAt: null,
+          loading: false,
+          error: null,
+          fetchedAt: Date.now(),
+        }
+      : { ...INITIAL_MESH, fetchedAt: Date.now() },
     // Distributed-RX receiver state: the relays feeding this node and the
     // combined stream, with the pairing window closed until the operator
     // opens it.
     distributedRx: {
-      receiverRelays: demoReceiverRelays(Date.now()),
-      combined: { ...DEMO_RECEIVER_COMBINED },
+      // Only a receiver combines relayed streams; a direct station has none.
+      receiverRelays: receiver ? demoReceiverRelays(Date.now()) : [],
+      combined: receiver ? { ...DEMO_RECEIVER_COMBINED } : null,
       relayStatus: null,
       pairingWindowOpen: false,
       pairingWindowExpiresAt: null,

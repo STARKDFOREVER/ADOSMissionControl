@@ -56,6 +56,13 @@ const INITIAL = {
 /** One region-table read at a time across the 1 s status poll. */
 let regionsInFlight = false;
 
+/** After a failed region-table read, the status poll does not ask again for
+ * this long (an explicit open of the region picker still does). */
+export const LORA_REGIONS_RETRY_MS = 30_000;
+
+/** The node whose last region-table read failed, and when. */
+let regionsFailure: { target: string; at: number } | null = null;
+
 export const useLoraStore = create<LoraStoreState>((set, get) => ({
   ...INITIAL,
 
@@ -68,7 +75,12 @@ export const useLoraStore = create<LoraStoreState>((set, get) => ({
       set({ status, error: null, fetchedAt: Date.now() });
       // The region row drives the advisory chips, so read the table once per
       // node as soon as the lane is known to exist.
-      if (status.present && get().regions === null) void get().loadRegions(api);
+      if (status.present && get().regions === null) {
+        const failed = regionsFailure?.target === target ? regionsFailure.at : null;
+        if (failed === null || Date.now() - failed >= LORA_REGIONS_RETRY_MS) {
+          void get().loadRegions(api);
+        }
+      }
     } catch (err) {
       if (get().loraFor !== target) return;
       set({ error: errorMessage(err).message });
@@ -97,8 +109,10 @@ export const useLoraStore = create<LoraStoreState>((set, get) => ({
     try {
       const { regions } = await api.getLoraRegions();
       if (get().loraFor !== target) return;
+      regionsFailure = null;
       set({ regions });
     } catch (err) {
+      regionsFailure = { target, at: Date.now() };
       if (get().loraFor !== target) return;
       set({ error: errorMessage(err).message });
     } finally {

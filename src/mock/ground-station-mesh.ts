@@ -140,9 +140,9 @@ interface DemoMeshState {
   approvals: Record<string, number>;
 }
 
-function initialState(): DemoMeshState {
+function initialState(role: GroundStationRole): DemoMeshState {
   return {
-    role: DEMO_GS_ROLE,
+    role,
     pinnedGateway: null,
     revoked: [],
     window: null,
@@ -158,11 +158,12 @@ function notInRole(what: string, role: GroundStationRole): Error {
 
 export class DemoGroundStationMesh implements DemoMeshMethods {
   readonly baseUrl = DEMO_MESH_BASE_URL;
-  private state: DemoMeshState = initialState();
+  private state: DemoMeshState = initialState(DEMO_GS_ROLE);
 
-  /** Back to the boot state: receiver, closed window, three relays. */
-  reset(): void {
-    this.state = initialState();
+  /** Back to the boot state: closed window, three relays, in `role` (the
+   * focused demo station's role; the receiver by default). */
+  reset(role: GroundStationRole = DEMO_GS_ROLE): void {
+    this.state = initialState(role);
   }
 
   /** The window, or null once its deadline has passed. */

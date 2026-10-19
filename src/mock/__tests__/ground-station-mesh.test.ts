@@ -28,7 +28,9 @@ import {
   demoGroundStationMesh,
   demoReceiverRelays,
 } from "@/mock/ground-station-mesh";
-import { DEMO_GROUND_STATION } from "@/mock/drones";
+import { DEMO_GROUND_STATION, DEMO_GROUND_STATION_DIRECT } from "@/mock/drones";
+import { useDroneManager } from "@/stores/drone-manager";
+import { nodeIdForDevice } from "@/lib/agent/node-id";
 
 const RELAY_COUNT = demoReceiverRelays(0).length;
 
@@ -163,5 +165,22 @@ describe("store actions against the demo mesh client", () => {
     seedGroundStationStore();
     expect((await demoGroundStationMesh.getRole()).current).toBe("receiver");
     expect(useGroundStationStore.getState().role.info?.current).toBe("receiver");
+  });
+});
+
+describe("demo direct-role ground station", () => {
+  afterEach(() => useDroneManager.setState({ selectedDroneId: null }));
+
+  it("seeds the mesh client and slices as direct: no mesh, relays or combined stream", async () => {
+    useDroneManager.setState({ selectedDroneId: nodeIdForDevice(DEMO_GROUND_STATION_DIRECT.deviceId) });
+    seedGroundStationStore();
+    const s = useGroundStationStore.getState();
+    expect(s.role.info?.current).toBe("direct");
+    expect((await demoGroundStationMesh.getRole()).current).toBe("direct");
+    expect(s.mesh.health).toBeNull();
+    expect(s.mesh.neighbors).toEqual([]);
+    expect(s.distributedRx.receiverRelays).toEqual([]);
+    expect(s.distributedRx.combined).toBeNull();
+    await expect(demoGroundStationMesh.getMeshHealth()).rejects.toThrow(/direct/);
   });
 });

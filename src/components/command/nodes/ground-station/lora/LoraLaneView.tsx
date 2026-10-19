@@ -64,7 +64,7 @@ export function LoraLaneView({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const remaining = remainingMs(status.governor?.next_tx_allowed_ms ?? 0, fetchedAt, now);
   const plan = regions?.find((r) => r.code === status.region?.code) ?? null;
-  const mismatches = loraMismatches(status, plan, countryRegion, elrsModules);
+  const mismatches = loraMismatches(status, plan, countryRegion, regions ?? null, elrsModules);
 
   const openPicker = () => {
     setPickerOpen(true);

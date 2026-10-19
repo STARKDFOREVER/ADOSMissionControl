@@ -13,7 +13,7 @@ import { NextIntlClientProvider } from "next-intl";
 import messages from "../../../../../../locales/en.json";
 import type { ElrsModule, LoraRegionPlan, LoraStatus } from "@/lib/api/ground-station/types";
 import { LoraLaneView } from "../lora/LoraLaneView";
-import { loraMismatches } from "../lora/lora-format";
+import { countryPlanCode, loraMismatches } from "../lora/lora-format";
 import { LoraTab } from "../LoraTab";
 import { useLoraStore } from "@/stores/ground-station/lora-store";
 
@@ -146,44 +146,59 @@ function mod(id: string, domain: string | null): ElrsModule {
 
 describe("LoRa region advisories", () => {
   it("flags an ELRS module whose domain differs from the region's expected domain for its band", () => {
-    const out = loraMismatches(makeStatus(), IN_ROW, null, [mod("m0", "ISM2G4"), mod("m1", "FCC915"), mod("m2", null)]);
+    const out = loraMismatches(makeStatus(), IN_ROW, null, null, [mod("m0", "ISM2G4"), mod("m1", "FCC915"), mod("m2", null)]);
     expect(out).toEqual([{ kind: "elrs", module: "m1", domain: "FCC915", expected: "IN866", code: "IN" }]);
   });
 
   it("makes no ELRS claim when the region expects nothing for that band", () => {
     const row = { ...IN_ROW, elrs_domains: { "2g4": "ISM2G4", "900": null } };
-    expect(loraMismatches(makeStatus(), row, null, [mod("m1", "FCC915")])).toEqual([]);
-    expect(loraMismatches(makeStatus(), { ...IN_ROW, elrs_domains: null }, null, [mod("m1", "FCC915")])).toEqual([]);
+    expect(loraMismatches(makeStatus(), row, null, null, [mod("m1", "FCC915")])).toEqual([]);
+    expect(loraMismatches(makeStatus(), { ...IN_ROW, elrs_domains: null }, null, null, [mod("m1", "FCC915")])).toEqual([]);
     // A 2.4 GHz EU module under a region expecting ISM2G4 is flagged.
-    expect(loraMismatches(makeStatus(), IN_ROW, null, [mod("m0", "CE_LBT")])[0]).toMatchObject({ expected: "ISM2G4" });
+    expect(loraMismatches(makeStatus(), IN_ROW, null, null, [mod("m0", "CE_LBT")])[0]).toMatchObject({ expected: "ISM2G4" });
   });
 
   it("flags a Meshtastic preset other than the region's preset, exactly, only when the bridge is enabled", () => {
     const mesh = { enabled: true, connected: true, port: "/dev/ttyACM2", region_preset: "EU_868" };
-    expect(loraMismatches(makeStatus({ meshtastic: mesh }), IN_ROW, null, [])).toEqual([
+    expect(loraMismatches(makeStatus({ meshtastic: mesh }), IN_ROW, null, null, [])).toEqual([
       { kind: "meshtastic", preset: "EU_868", expected: "IN" },
     ]);
-    expect(loraMismatches(makeStatus({ meshtastic: { ...mesh, enabled: false } }), IN_ROW, null, [])).toEqual([]);
-    expect(loraMismatches(makeStatus({ meshtastic: { ...mesh, region_preset: "IN" } }), IN_ROW, null, [])).toEqual([]);
+    expect(loraMismatches(makeStatus({ meshtastic: { ...mesh, enabled: false } }), IN_ROW, null, null, [])).toEqual([]);
+    expect(loraMismatches(makeStatus({ meshtastic: { ...mesh, region_preset: "IN" } }), IN_ROW, null, null, [])).toEqual([]);
     // Exact equality: an AU region maps to ANZ, and no prefix rule applies.
     const au = makeStatus({ meshtastic: { ...mesh, region_preset: "ANZ" } });
     au.region = { ...au.region!, code: "AU", meshtastic_preset: "ANZ" };
-    expect(loraMismatches(au, null, null, [])).toEqual([]);
+    expect(loraMismatches(au, null, null, null, [])).toEqual([]);
     const auWrong = makeStatus({ meshtastic: { ...mesh, region_preset: "AU_915" } });
     auWrong.region = { ...auWrong.region!, code: "AU", meshtastic_preset: "ANZ" };
-    expect(loraMismatches(auWrong, null, null, [])).toEqual([{ kind: "meshtastic", preset: "AU_915", expected: "ANZ" }]);
+    expect(loraMismatches(auWrong, null, null, null, [])).toEqual([{ kind: "meshtastic", preset: "AU_915", expected: "ANZ" }]);
     // No expected preset (region without one, or an older agent): no chip.
     const none = makeStatus({ meshtastic: mesh });
     none.region = { ...none.region!, meshtastic_preset: null };
-    expect(loraMismatches(none, IN_ROW, null, [])).toEqual([]);
+    expect(loraMismatches(none, IN_ROW, null, null, [])).toEqual([]);
   });
 
   it("flags an explicit LoRa region that differs from the country setting", () => {
     const explicit = makeStatus();
     explicit.region = { ...explicit.region!, source: "lora.region" };
-    expect(loraMismatches(explicit, IN_ROW, "us", [])).toEqual([{ kind: "country", country: "US", code: "IN" }]);
+    const table = [IN_ROW, { ...IN_ROW, code: "US" }, { ...IN_ROW, code: "EU" }];
+    expect(loraMismatches(explicit, IN_ROW, "us", table, [])).toEqual([{ kind: "country", country: "US", code: "IN" }]);
     // Following the country setting never disagrees with it.
-    expect(loraMismatches(makeStatus(), IN_ROW, "US", [])).toEqual([]);
+    expect(loraMismatches(makeStatus(), IN_ROW, "US", table, [])).toEqual([]);
+  });
+
+  it("compares the plan a country resolves to, not the raw country code", () => {
+    const table = [IN_ROW, { ...IN_ROW, code: "EU", plan_id: "EU868" }];
+    const euExplicit = makeStatus();
+    euExplicit.region = { ...euExplicit.region!, code: "EU", source: "lora.region" };
+    // Germany resolves to the EU plan: no chip.
+    expect(loraMismatches(euExplicit, null, "DE", table, [])).toEqual([]);
+    // India resolves to IN, which is not the explicit EU region: chip.
+    expect(loraMismatches(euExplicit, null, "IN", table, [])).toEqual([{ kind: "country", country: "IN", code: "EU" }]);
+    // A country the table cannot resolve, or no table yet: no comparison.
+    expect(loraMismatches(euExplicit, null, "BR", table, [])).toEqual([]);
+    expect(loraMismatches(euExplicit, null, "IN", null, [])).toEqual([]);
+    expect(countryPlanCode("fr", table)).toBe("EU");
   });
 
   it("renders the advisory chips under the region line", () => {
