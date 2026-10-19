@@ -38,6 +38,7 @@ function makeStatus(over: Partial<LoraStatus> = {}): LoraStatus {
       source: "network.regulatory.region",
       band_mhz: [865.0, 867.0],
       citation: "G.S.R. 853(E), 2021",
+      meshtastic_preset: "IN",
     },
     channel: { freq_mhz: 866.0, bw_khz: 125, sf: 9, erp_mw: 25, max_erp_mw: 25 },
     node_id: 17,
@@ -157,13 +158,24 @@ describe("LoRa region advisories", () => {
     expect(loraMismatches(makeStatus(), IN_ROW, null, [mod("m0", "CE_LBT")])[0]).toMatchObject({ expected: "ISM2G4" });
   });
 
-  it("flags a Meshtastic preset other than the region, only when the bridge is enabled", () => {
+  it("flags a Meshtastic preset other than the region's preset, exactly, only when the bridge is enabled", () => {
     const mesh = { enabled: true, connected: true, port: "/dev/ttyACM2", region_preset: "EU_868" };
     expect(loraMismatches(makeStatus({ meshtastic: mesh }), IN_ROW, null, [])).toEqual([
-      { kind: "meshtastic", preset: "EU_868", code: "IN" },
+      { kind: "meshtastic", preset: "EU_868", expected: "IN" },
     ]);
     expect(loraMismatches(makeStatus({ meshtastic: { ...mesh, enabled: false } }), IN_ROW, null, [])).toEqual([]);
     expect(loraMismatches(makeStatus({ meshtastic: { ...mesh, region_preset: "IN" } }), IN_ROW, null, [])).toEqual([]);
+    // Exact equality: an AU region maps to ANZ, and no prefix rule applies.
+    const au = makeStatus({ meshtastic: { ...mesh, region_preset: "ANZ" } });
+    au.region = { ...au.region!, code: "AU", meshtastic_preset: "ANZ" };
+    expect(loraMismatches(au, null, null, [])).toEqual([]);
+    const auWrong = makeStatus({ meshtastic: { ...mesh, region_preset: "AU_915" } });
+    auWrong.region = { ...auWrong.region!, code: "AU", meshtastic_preset: "ANZ" };
+    expect(loraMismatches(auWrong, null, null, [])).toEqual([{ kind: "meshtastic", preset: "AU_915", expected: "ANZ" }]);
+    // No expected preset (region without one, or an older agent): no chip.
+    const none = makeStatus({ meshtastic: mesh });
+    none.region = { ...none.region!, meshtastic_preset: null };
+    expect(loraMismatches(none, IN_ROW, null, [])).toEqual([]);
   });
 
   it("flags an explicit LoRa region that differs from the country setting", () => {

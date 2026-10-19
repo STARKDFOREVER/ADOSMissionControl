@@ -80,6 +80,7 @@ export const DEMO_LORA: LoraStatus = {
     source: "network.regulatory.region",
     band_mhz: [865.0, 867.0],
     citation: "G.S.R. 853(E), 2021",
+    meshtastic_preset: "IN",
   },
   channel: { freq_mhz: 866.0, bw_khz: 125, sf: 9, erp_mw: 25, max_erp_mw: 25 },
   node_id: 17,
@@ -116,14 +117,14 @@ export const DEMO_LORA: LoraStatus = {
  * and a research-only row with no verified rules. `elrs_domains` is null for
  * a band where the demo makes no claim. */
 export const DEMO_LORA_REGIONS: LoraRegionPlan[] = [
-  { code: "IN", name: "India", plan_id: "IN865", band_mhz: [865.0, 867.0], rules: ["duty_cycle", "max_power"], supported_by_module: true, elrs_domains: { "2g4": "ISM2G4", "900": "IN866" } },
-  { code: "EU", name: "European Union (ETSI)", plan_id: "EU868", band_mhz: [863.0, 870.0], rules: ["duty_cycle", "max_power", "lbt"], supported_by_module: true, elrs_domains: { "2g4": "CE_LBT", "900": "EU868" } },
-  { code: "US", name: "United States (FCC)", plan_id: "US915", band_mhz: [902.0, 928.0], rules: ["dwell_time", "max_power"], supported_by_module: true, elrs_domains: { "2g4": "ISM2G4", "900": "FCC915" } },
-  { code: "AU", name: "Australia", plan_id: "AU915", band_mhz: [915.0, 928.0], rules: ["max_power"], supported_by_module: true, elrs_domains: { "2g4": "ISM2G4", "900": "AU915" } },
-  { code: "JP", name: "Japan", plan_id: "AS923-1-JP", band_mhz: [920.5, 923.5], rules: ["lbt", "dwell_time", "max_power"], supported_by_module: false, elrs_domains: { "2g4": null, "900": null } },
-  { code: "KR", name: "South Korea", plan_id: "KR920", band_mhz: [920.9, 923.3], rules: ["lbt", "dwell_time", "max_power"], supported_by_module: false, elrs_domains: { "2g4": null, "900": null } },
-  { code: "TW", name: "Taiwan", plan_id: "AS923-1-TW", band_mhz: [920.0, 925.0], rules: ["dwell_time", "max_power"], supported_by_module: false, elrs_domains: { "2g4": null, "900": null } },
-  { code: "CN", name: "China", plan_id: "CN470", band_mhz: [470.0, 510.0], rules: [], supported_by_module: false, elrs_domains: null },
+  { code: "IN", name: "India", plan_id: "IN865", band_mhz: [865.0, 867.0], rules: ["duty_cycle", "max_power"], supported_by_module: true, elrs_domains: { "2g4": "ISM2G4", "900": "IN866" }, meshtastic_preset: "IN" },
+  { code: "EU", name: "European Union (ETSI)", plan_id: "EU868", band_mhz: [863.0, 870.0], rules: ["duty_cycle", "max_power", "lbt"], supported_by_module: true, elrs_domains: { "2g4": "CE_LBT", "900": "EU868" }, meshtastic_preset: "EU_868" },
+  { code: "US", name: "United States (FCC)", plan_id: "US915", band_mhz: [902.0, 928.0], rules: ["dwell_time", "max_power"], supported_by_module: true, elrs_domains: { "2g4": "ISM2G4", "900": "FCC915" }, meshtastic_preset: "US" },
+  { code: "AU", name: "Australia", plan_id: "AU915", band_mhz: [915.0, 928.0], rules: ["max_power"], supported_by_module: true, elrs_domains: { "2g4": "ISM2G4", "900": "AU915" }, meshtastic_preset: "ANZ" },
+  { code: "JP", name: "Japan", plan_id: "AS923-1-JP", band_mhz: [920.5, 923.5], rules: ["lbt", "dwell_time", "max_power"], supported_by_module: false, elrs_domains: { "2g4": null, "900": null }, meshtastic_preset: "JP" },
+  { code: "KR", name: "South Korea", plan_id: "KR920", band_mhz: [920.9, 923.3], rules: ["lbt", "dwell_time", "max_power"], supported_by_module: false, elrs_domains: { "2g4": null, "900": null }, meshtastic_preset: "KR" },
+  { code: "TW", name: "Taiwan", plan_id: "AS923-1-TW", band_mhz: [920.0, 925.0], rules: ["dwell_time", "max_power"], supported_by_module: false, elrs_domains: { "2g4": null, "900": null }, meshtastic_preset: "TW" },
+  { code: "CN", name: "China", plan_id: "CN470", band_mhz: [470.0, 510.0], rules: [], supported_by_module: false, elrs_domains: null, meshtastic_preset: "CN" },
 ];
 
 function demoBeacons(now: number): LoraBeacon[] {

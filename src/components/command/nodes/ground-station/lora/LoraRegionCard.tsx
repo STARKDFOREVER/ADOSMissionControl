@@ -72,7 +72,7 @@ export function LoraRegionCard({
     advisories.push(t("region.airborneChip", { code: region.code }));
   }
   for (const m of mismatches) {
-    if (m.kind === "meshtastic") advisories.push(t("region.meshtasticChip", { preset: m.preset, code: m.code }));
+    if (m.kind === "meshtastic") advisories.push(t("region.meshtasticChip", { preset: m.preset, expected: m.expected }));
     else if (m.kind === "country") advisories.push(t("region.countryChip", { country: m.country, code: m.code }));
     else advisories.push(t("region.elrsChip", { module: m.module, domain: m.domain, code: m.code, expected: m.expected }));
   }

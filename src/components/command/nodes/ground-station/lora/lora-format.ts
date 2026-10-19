@@ -53,14 +53,14 @@ const ELRS_2G4_DOMAINS: Record<string, true> = { ISM2G4: true, CE_LBT: true };
 /** An amber advisory under the region line. Never blocks; the agent's own
  * `blocked_reason` is the blocking form. */
 export type LoraMismatch =
-  | { kind: "meshtastic"; preset: string; code: string }
+  | { kind: "meshtastic"; preset: string; expected: string }
   | { kind: "country"; country: string; code: string }
   | { kind: "elrs"; module: string; domain: string; expected: string; code: string };
 
 /**
  * Advisories for the active region:
- * - the Meshtastic bridge preset is not the region (an enabled bridge whose
- *   preset is neither the code nor a `<code>_<band>` preset);
+ * - the Meshtastic bridge preset is not the preset the region maps to (an
+ *   enabled bridge, both presets known, compared exactly);
  * - the region was set explicitly (`lora.region`) and differs from the node's
  *   country setting;
  * - an ELRS module reports a domain other than the one the region row expects
@@ -78,9 +78,9 @@ export function loraMismatches(
   const code = region.code.toUpperCase();
   const out: LoraMismatch[] = [];
   const preset = status.meshtastic?.enabled ? status.meshtastic.region_preset : null;
-  if (preset) {
-    const p = preset.toUpperCase();
-    if (p !== code && !p.startsWith(`${code}_`)) out.push({ kind: "meshtastic", preset, code });
+  const expectedPreset = region.meshtastic_preset ?? null;
+  if (preset && expectedPreset && preset !== expectedPreset) {
+    out.push({ kind: "meshtastic", preset, expected: expectedPreset });
   }
   const country = countryRegion?.toUpperCase() ?? null;
   if (region.source === "lora.region" && country && country !== code) {

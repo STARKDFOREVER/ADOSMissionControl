@@ -7909,7 +7909,7 @@
         "moduleBandChip": "Module band {module} MHz does not cover {lo}–{hi} MHz",
         "airborneChip": "Airborne restriction: check the {code} plan before flying",
         "advisories": "Region advisories",
-        "meshtasticChip": "Meshtastic preset {preset} differs from region {code}",
+        "meshtasticChip": "Meshtastic preset {preset} differs from the region's preset {expected}",
         "countryChip": "Country setting {country} differs from LoRa region {code}",
         "elrsChip": "ELRS module {module} is {domain}, region {code} expects {expected}"
       },

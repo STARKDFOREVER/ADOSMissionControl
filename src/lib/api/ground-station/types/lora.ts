@@ -28,6 +28,9 @@ export interface LoraRegion {
   source: LoraRegionSource | string;
   band_mhz: [number, number];
   citation: string | null;
+  /** The Meshtastic region preset this region maps to (`IN`, `EU_868`, `US`,
+   * `ANZ`, ...), or null when the region has none. Absent on older agents. */
+  meshtastic_preset?: string | null;
 }
 
 export interface LoraChannel {
@@ -127,6 +130,8 @@ export interface LoraRegionPlan {
    * `EU433`). Null for a band (or the whole field, on an older agent) when
    * the region has no expected domain. */
   elrs_domains?: { "2g4": string | null; "900": string | null } | null;
+  /** The Meshtastic region preset for this region, or null when none. */
+  meshtastic_preset?: string | null;
 }
 
 export interface LoraRegionsResponse {
