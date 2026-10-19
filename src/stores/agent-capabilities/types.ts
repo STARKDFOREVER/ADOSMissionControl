@@ -19,6 +19,7 @@ import type {
   NavigationCapability,
 } from "@/lib/agent/feature-types";
 import type { RadioState, CrsfState } from "@/lib/api/ground-station/types";
+import type { NodeProfile } from "@/lib/nodes/node-profile";
 
 /**
  * Manual-connection URL block the agent advertises so an operator can dial
@@ -32,9 +33,6 @@ export interface ManualConnectionUrls {
   videoViewer: string | null;
   videoWhep: string | null;
 }
-
-/** Node deployment category. Drives Command-tab panel selection. */
-export type AgentProfile = "drone" | "ground-station" | "workstation";
 
 /** How the agent's systems services are running. "native" means the
  * long-running / safety-critical services are the compiled binary;
@@ -69,11 +67,10 @@ export interface AgentCapabilitiesState {
   /** How the agent landed on its current profile. Undefined for legacy
    * heartbeats. See AgentCapabilities.profileSource for the value set. */
   profileSource?: string;
-  /** Node deployment category. "drone" or "ground-station" today,
-   * "workstation" in the future. Defaults to "drone" when the
-   * heartbeat omits the field (older agents). Drives Command-tab
-   * panel selection and tab visibility per node. */
-  profile: AgentProfile;
+  /** Node deployment category. Defaults to "drone" when the heartbeat omits
+   * the field (older agents); a profile this build does not know reads as
+   * "unknown". Drives Command-tab panel selection and tab visibility. */
+  profile: NodeProfile;
   /** Ground-station role when applicable. Null on drones and
    * compute nodes, undefined on agents that predate the field. */
   role?: AgentRole;

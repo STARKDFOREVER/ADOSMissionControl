@@ -3,7 +3,7 @@
 /**
  * @module nodes/NodeRow
  * @description One profile-aware expanded sidebar row (~48-52px) rendering any
- * node — drone, flight-controller, ground-station, or workstation — from the
+ * node — drone, flight-controller, ground-station, workstation, or visor — from the
  * same merged node view-model. Type is the glyph (on a profile-tint tile);
  * health is an independent ring around that tile; the two are never conflated.
  * A workstation row cannot render a flight badge by construction. Rendered by
@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
 import {
   type EffProfile,
+  agentEffProfile,
   groundRoleKey,
   NODE_ACCENT_VAR,
   swatchVar,
@@ -37,15 +38,6 @@ import { resolveFeatureDot } from "@/lib/nodes/node-feature-dots";
 import { useNodeControlAuthorityNotice } from "@/hooks/use-node-control-authority";
 import { useTranslations } from "next-intl";
 
-/** Map a merged fleet entry to the presentation profile discriminator. A paired
- * node in the sidebar always carries an agent, so a `drone`-profile entry is a
- * `drone` here; the bare-`flight-controller` case is a node-detail concern. */
-export function effProfileForNode(node: FleetNodeEntry): EffProfile {
-  if (node.profile === "ground-station") return "ground-station";
-  if (node.profile === "workstation") return "workstation";
-  return "drone";
-}
-
 /** Health only, from the verified lastSeen freshness signal (never a
  * fabricated reading). `stale` maps to the 4th `serious` step so a degraded but
  * not-dead node is distinguishable from both healthy and offline. */
@@ -57,12 +49,12 @@ export function nodeStatusLevel(node: FleetNodeEntry): StatusLevel {
 /** The nodeConsole `type.*` translation key for a profile. */
 export function profileTypeKey(
   p: EffProfile,
-): "drone" | "flightController" | "groundStation" | "workstation" {
+): "drone" | "flightController" | "groundStation" | "workstation" | "visor" | "unknown" {
   return p === "flight-controller"
     ? "flightController"
     : p === "ground-station"
       ? "groundStation"
-      : p; // "drone" | "workstation"
+      : p; // "drone" | "workstation" | "visor" | "unknown"
 }
 
 /**
@@ -150,7 +142,9 @@ interface NodeRowProps {
 export const NodeRow = memo(function NodeRow({ node, selected, onSelect, onContext }: NodeRowProps) {
   useClockTick();
   const t = useTranslations("nodeConsole");
-  const effProfile = effProfileForNode(node);
+  // A paired node in the sidebar always carries an agent, so a `drone`-profile
+  // entry is a `drone` here; the bare flight controller is a node-detail concern.
+  const effProfile = agentEffProfile(node.profile);
   const status = nodeStatusLevel(node);
   const typeLabel = t(`type.${profileTypeKey(effProfile)}`);
 

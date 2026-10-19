@@ -56,6 +56,7 @@ export const nodeProfileValidator = v.union(
   v.literal("ground-station"),
   v.literal("workstation"),
   v.literal("compute"),
+  v.literal("visor"),
 );
 
 /**

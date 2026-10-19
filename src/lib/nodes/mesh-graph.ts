@@ -29,7 +29,7 @@ import type {
   NodeBearerChip,
   NodeBearerKind,
 } from "@/lib/nodes/node-bearer";
-import type { NodeProfile } from "@/stores/node-registry";
+import type { NodeProfile } from "@/lib/nodes/node-profile";
 import type { CommandAgentLiveness } from "@/lib/nodes/presence";
 
 /** The single well-known id of the sink every reach path converges on. */

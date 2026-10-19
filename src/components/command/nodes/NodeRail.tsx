@@ -16,12 +16,13 @@ import {
   NODE_ACCENT_VAR,
   swatchVar,
   tintStyle,
+  agentEffProfile,
 } from "@/lib/nodes/node-profile";
 import { NodeGlyph } from "./node-glyph";
 import { StatusDot } from "@/components/ui/status-dot";
 import { useNodePersonalizationStore } from "@/stores/node-personalization-store";
 import { resolveFeatureDot } from "@/lib/nodes/node-feature-dots";
-import { STATUS_BORDER, effProfileForNode, nodeStatusLevel } from "./NodeRow";
+import { STATUS_BORDER, nodeStatusLevel } from "./NodeRow";
 
 interface NodeRailProps {
   node: FleetNodeEntry;
@@ -40,7 +41,7 @@ export function NodeRail({
   onContext,
 }: NodeRailProps) {
   const t = useTranslations("nodeConsole");
-  const effProfile = effProfileForNode(node);
+  const effProfile = agentEffProfile(node.profile);
   const status = nodeStatusLevel(node);
   // Personalization overlay (pure presentation) keyed by the stable deviceId.
   const personalization = useNodePersonalizationStore(

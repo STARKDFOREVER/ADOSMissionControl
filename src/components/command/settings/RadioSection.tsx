@@ -25,7 +25,7 @@
 import { useTranslations } from "next-intl";
 import { RadioTower } from "lucide-react";
 
-import type { NodeProfile } from "@/components/dashboard/node-detail/surface-types";
+import type { NodeProfile } from "@/lib/nodes/node-profile";
 import {
   selectDeviceCapabilities,
   useAgentCapabilitiesStore,

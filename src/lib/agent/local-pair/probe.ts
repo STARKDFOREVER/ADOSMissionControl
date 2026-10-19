@@ -7,6 +7,7 @@
  */
 
 import { isDemoMode } from "@/lib/utils";
+import { parseNodeProfile } from "@/lib/nodes/node-profile";
 import type { ProbeResult } from "./types";
 import { PairClientError } from "./errors";
 import { withTimeoutSignal } from "../agent-client/timeout";
@@ -106,7 +107,6 @@ export async function probeAgent(
   if (!deviceId) {
     throw new PairClientError("missingDeviceIdError", "Probe response missing device_id");
   }
-  const profile = (body.profile as string) || "drone";
   const role = (body.role as string | undefined) ?? null;
   const ipv4 =
     typeof body.ipv4 === "string" && body.ipv4.length > 0
@@ -128,7 +128,7 @@ export async function probeAgent(
     ownerId: (body.owner_id as string | undefined) ?? undefined,
     pairedAt: (body.paired_at as number | undefined) ?? undefined,
     mdnsHost: String(body.mdns_host ?? ""),
-    profile: profile as ProbeResult["profile"],
+    profile: parseNodeProfile(body.profile),
     role: role as ProbeResult["role"],
     hostname: host,
     ipv4,

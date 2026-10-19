@@ -16,8 +16,7 @@ import type {
 } from "@/stores/agent-capabilities/types";
 import type { FirmwareType } from "@/lib/protocol/types/enums";
 import type { RelayReach } from "@/lib/nodes/relay-reach";
-
-export type NodeProfile = "drone" | "ground-station" | "workstation" | "compute";
+import type { NodeProfile } from "@/lib/nodes/node-profile";
 
 /** Everything a surface's `when` / `render` may need, derived once per
  * render from the selected node + the focused agent's capabilities. */

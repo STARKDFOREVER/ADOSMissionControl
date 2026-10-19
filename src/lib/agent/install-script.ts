@@ -12,11 +12,15 @@
  * @license GPL-3.0-only
  */
 
+import type { KnownNodeProfile } from "@/lib/nodes/node-profile";
+
 export const AGENT_INSTALL_SCRIPT_URL =
   "https://raw.githubusercontent.com/altnautica/ADOSDroneAgent/main/scripts/install.sh";
 
 export interface AgentInstallOptions {
-  profile?: "drone" | "ground-station";
+  /** The installer normalizes the `ground-station` spelling; every other
+   * profile passes through as spelled. */
+  profile?: KnownNodeProfile;
   pairCode?: string;
   channel?: "stable" | "edge";
   version?: string;

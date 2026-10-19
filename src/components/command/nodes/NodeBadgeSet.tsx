@@ -118,6 +118,15 @@ export function nodeBadges(
       }
       break;
     }
+    case "visor":
+    case "unknown": {
+      // A Visor's sensor hub is not a vehicle, and an unrecognised profile has
+      // no known shape: neither earns flight badges, so tier is all they show.
+      if (node.tier != null) {
+        badges.push({ key: "tier", label: `T${node.tier}`, variant: "neutral" });
+      }
+      break;
+    }
     case "flight-controller": {
       const flavor = fcFlavorLabel(node.fcFirmware, node.fcVariant, node.frameType);
       if (flavor) badges.push({ key: "flavor", label: flavor, variant: "info" });

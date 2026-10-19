@@ -46,13 +46,6 @@ export interface SelectFleetDronesInput {
   now: number;
 }
 
-/** Narrow an arbitrary string to the FleetDrone profile union. */
-function asProfile(
-  p: NodeEntry["presence"]["profile"],
-): FleetDrone["profile"] {
-  return p === "ground-station" || p === "workstation" ? p : "drone";
-}
-
 /** Narrow the ground-station role to the FleetDrone role union. */
 function asRole(r: NodeEntry["presence"]["role"]): FleetDrone["role"] {
   return r === "direct" || r === "relay" || r === "receiver" ? r : undefined;
@@ -115,7 +108,7 @@ export function nodeEntryToFleetDrone(
   const lastHeartbeat = freshestHeartbeat(entry, status);
   const online = isOnline(entry, status, now);
 
-  const profile = asProfile(presence.profile);
+  const profile = presence.profile;
   const role = asRole(presence.role);
 
   // Arm state is real only from a live FC heartbeat. A lost link, an FC that

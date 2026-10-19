@@ -26,10 +26,11 @@ import {
 import { useDroneManager, type ManagedDrone } from "@/stores/drone-manager";
 import { useNodeRegistryStore, type NodeEntry } from "@/stores/node-registry";
 import { nodeIdForDevice } from "@/lib/agent/node-id";
+import type { NodeProfile } from "@/lib/nodes/node-profile";
 
 export interface FleetNodeEntry extends PairedDrone {
   /** Wire-contract profile of this node. */
-  profile: "drone" | "ground-station" | "workstation";
+  profile: NodeProfile;
   /** Ground-station role when applicable. */
   role?: "direct" | "relay" | "receiver" | null;
   /** True when this entry is browser-local (LAN-paired). False when

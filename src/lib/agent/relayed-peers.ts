@@ -76,8 +76,8 @@ export interface RelayedEnrollment {
    * identity (its `profile` field). Distinct from `funneledStatus`, which is
    * only present for a relay-only drone. */
   agentIdentityKnown: boolean;
-  /** The peer's real reported profile ("drone" | "ground-station" |
-   * "workstation"), when the ground station knows it. Undefined until an
+  /** The peer's real reported wire profile, when the ground station knows
+   * it; the caller parses it with `parseNodeProfile`. Undefined until an
    * identity snapshot lands. */
   realProfile?: string;
   /** The peer's real reported name, when the ground station knows it.

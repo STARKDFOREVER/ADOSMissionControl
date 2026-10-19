@@ -13,16 +13,11 @@
  */
 
 import type {
-  AgentProfile,
   AgentRole,
   ManualConnectionUrls,
   WfbFailoverState,
 } from "./types";
-
-// Module-scoped set of unknown profile strings we've already warned
-// about. Prevents the heartbeat-rate console spam when a future agent
-// advertises a profile the GCS doesn't know yet.
-const _seenUnknownProfiles = new Set<string>();
+import { parseNodeProfile, type NodeProfile } from "@/lib/nodes/node-profile";
 
 /** Extract setup-wizard state. Accepts snake_case or camelCase. */
 export function deriveSetupState(caps: unknown): string | undefined {
@@ -41,36 +36,15 @@ export function deriveProfileSource(caps: unknown): string | undefined {
 }
 
 /**
- * Clamp the wire-level profile string onto the known set. Forward-compat:
- * an unknown profile clamps to "drone" and warns once per unique value to
- * avoid heartbeat-rate console spam.
+ * Read the wire-level profile (`profile` or `node_profile`, either spelling).
+ * An absent field is a legacy agent and reads as "drone"; a profile this build
+ * does not know reads as "unknown" rather than being clamped onto a known one.
  */
-export function deriveProfile(caps: unknown): AgentProfile {
-  const rawProfile =
+export function deriveProfile(caps: unknown): NodeProfile {
+  return parseNodeProfile(
     (caps as { profile?: unknown }).profile ??
-    (caps as { node_profile?: unknown }).node_profile;
-  // The agent heartbeat may send the ground-station profile in either the
-  // hyphenated wire form or the underscored Python-symbol form; normalize
-  // both to the canonical hyphenated value so the badge and tab gating fire.
-  if (rawProfile === "ground-station" || rawProfile === "ground_station") {
-    return "ground-station";
-  }
-  if (rawProfile === "workstation") {
-    return rawProfile;
-  }
-  if (
-    typeof rawProfile === "string" &&
-    rawProfile !== "drone" &&
-    typeof console !== "undefined" &&
-    !_seenUnknownProfiles.has(rawProfile)
-  ) {
-    _seenUnknownProfiles.add(rawProfile);
-    console.warn(
-      "[agent-capabilities-store] unknown profile %s clamped to drone",
-      rawProfile,
-    );
-  }
-  return "drone";
+      (caps as { node_profile?: unknown }).node_profile,
+  );
 }
 
 /**

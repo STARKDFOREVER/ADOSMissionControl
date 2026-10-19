@@ -19,11 +19,6 @@ import {
   useNodeRegistryStore,
   resolveNodeId,
 } from "@/stores/node-registry";
-import type { NodeProfile } from "@/stores/node-registry";
-
-function asProfile(p: string | undefined): NodeProfile {
-  return p === "ground-station" || p === "workstation" ? p : "drone";
-}
 
 export function LocalDroneBridge() {
   // nodeId set this bridge currently owns local presence for, so we can drop
@@ -51,7 +46,7 @@ export function LocalDroneBridge() {
         {
           deviceId: node.deviceId,
           name: node.name || `Agent ${node.deviceId.slice(0, 8)}`,
-          profile: asProfile(node.profile),
+          profile: node.profile,
           role: node.role ?? null,
           // A LAN-paired node is reached over the LAN; its posture is local
           // unless the cloud bridge later overrides it with an authoritative

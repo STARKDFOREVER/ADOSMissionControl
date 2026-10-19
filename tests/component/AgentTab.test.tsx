@@ -73,10 +73,8 @@ vi.mock("@/components/drone-detail/cameras/CameraManagerTab", () => ({
 }));
 
 import { AgentTab } from "@/components/dashboard/node-detail/agent/AgentTab";
-import type {
-  NodeProfile,
-  SurfaceContext,
-} from "@/components/dashboard/node-detail/surface-types";
+import type { SurfaceContext } from "@/components/dashboard/node-detail/surface-types";
+import type { NodeProfile } from "@/lib/nodes/node-profile";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useLocalNodesStore } from "@/stores/local-nodes-store";
 import { usePairingStore } from "@/stores/pairing-store";

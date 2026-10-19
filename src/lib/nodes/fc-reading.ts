@@ -17,6 +17,7 @@
 import { isFcReachable } from "@/lib/agent/mavlink-link";
 import { nodeLiveness, type CommandAgentLiveness, type NodePresence } from "./presence";
 import type { CommandCloudStatus } from "@/stores/command-fleet-store";
+import type { NodeProfile } from "@/lib/nodes/node-profile";
 
 /** How much a node's last-pushed reading is worth right now. */
 export type ReadingFreshness = "fresh" | "stale" | "none";
@@ -40,7 +41,7 @@ export interface FcReading {
 /** The node facts an FC reading is judged from. A board summary fits. */
 export interface FcReadingInput {
   liveness: CommandAgentLiveness;
-  profile: "drone" | "ground-station" | "workstation";
+  profile: NodeProfile;
   system: { fcReachable: boolean };
 }
 

@@ -14,11 +14,15 @@ import { NodeRail } from "@/components/command/nodes/NodeRail";
 import { NodeContextMenu } from "@/components/command/nodes/NodeContextMenu";
 import { ReconnectingDrones } from "./ReconnectingDrones";
 
-/** Non-flight nodes sink below the drones (compute, then ground). */
+/** Non-flight nodes sink below the drones (Visor, compute, then ground); a
+ * profile this build does not know sinks to the bottom. */
 const PROFILE_RANK: Record<FleetNodeEntry["profile"], number> = {
   drone: 0,
-  workstation: 1,
-  "ground-station": 2,
+  visor: 1,
+  workstation: 2,
+  compute: 2,
+  "ground-station": 3,
+  unknown: 4,
 };
 
 interface DroneListPanelProps {

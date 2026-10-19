@@ -22,10 +22,8 @@ import {
   SETTINGS_NAV_ITEMS,
   type SettingsPageContext,
 } from "@/components/command/settings/settings-nav";
-import type {
-  NodeProfile,
-  SurfaceContext,
-} from "@/components/dashboard/node-detail/surface-types";
+import type { SurfaceContext } from "@/components/dashboard/node-detail/surface-types";
+import type { NodeProfile } from "@/lib/nodes/node-profile";
 
 /** A companion-backed node with every optional capability present, so every
  *  gate that CAN open is open and the resolved sidebar is the complete list. */

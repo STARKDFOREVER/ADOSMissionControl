@@ -37,7 +37,7 @@ import {
   Wrench,
 } from "lucide-react";
 
-import type { NodeProfile } from "@/components/dashboard/node-detail/surface-types";
+import type { NodeProfile } from "@/lib/nodes/node-profile";
 import type { RelayReach } from "@/lib/nodes/relay-reach";
 import { RegulatoryRegionPanel } from "@/components/command/system/RegulatoryRegionPanel";
 import { configMayAdvertise } from "./use-node-config";

@@ -1,18 +1,92 @@
 import type { CSSProperties } from "react";
+import { PROFILES, type AgentProfileId } from "@/lib/plugins/contracts.generated";
+
+/** An agent profile id in the GCS spelling: the agent's `ground_station` is
+ * hyphenated here; every other id is spelled as the agent spells it. */
+type GcsProfileSpelling<P extends AgentProfileId> = P extends "ground_station"
+  ? "ground-station"
+  : P;
+
+/** Every profile an agent can run (the agent's canonical `PROFILES` list), in
+ * the GCS spelling. */
+export type KnownNodeProfile = GcsProfileSpelling<AgentProfileId>;
+
+/**
+ * The GCS node profile. `"unknown"` is a profile this build does not know — a
+ * newer agent — and is never coerced onto a known one: it renders with a
+ * neutral glyph and only the Agent surface. Drives node grouping, tab
+ * selection and plugin targeting.
+ */
+export type NodeProfile = KnownNodeProfile | "unknown";
+
+function gcsProfileSpelling(id: AgentProfileId): KnownNodeProfile {
+  return id === "ground_station" ? "ground-station" : id;
+}
+
+/** Every profile an agent can run, in the GCS spelling, in canonical order. */
+export const KNOWN_NODE_PROFILES: readonly KnownNodeProfile[] = PROFILES.map(gcsProfileSpelling);
+
+/** Both spellings of every agent profile id → its GCS spelling. */
+const WIRE_PROFILES: Readonly<Record<string, KnownNodeProfile>> = Object.fromEntries(
+  PROFILES.flatMap((id) => [
+    [id, gcsProfileSpelling(id)],
+    [gcsProfileSpelling(id), gcsProfileSpelling(id)],
+  ]),
+);
+
+// Unknown profile strings already warned about, so a newer agent does not
+// spam the console at heartbeat rate.
+const seenUnknownProfiles = new Set<string>();
+
+/**
+ * Parse a wire profile (either spelling) into a {@link NodeProfile}. A missing
+ * field is a legacy agent that predates profiles and reads as `"drone"`; any
+ * other unrecognised value reads as `"unknown"` and warns once per value.
+ */
+export function parseNodeProfile(raw: unknown): NodeProfile {
+  if (raw === undefined || raw === null || raw === "") return "drone";
+  if (typeof raw === "string" && Object.hasOwn(WIRE_PROFILES, raw)) {
+    return WIRE_PROFILES[raw];
+  }
+  const key = String(raw);
+  if (typeof console !== "undefined" && !seenUnknownProfiles.has(key)) {
+    seenUnknownProfiles.add(key);
+    console.warn("[node-profile] unknown agent profile %s", key);
+  }
+  return "unknown";
+}
 
 /**
  * The effective, view-model node profile used to shape every context-aware
  * surface (hero, overview, sidebar row, fleet card). It is derived from the
  * real `drone.profile` plus liveness — a flight-controller is a `drone` node
  * with no paired agent, surfaced here as its own kind rather than a degraded
- * drone. The tab registry still keys on the real `drone.profile`; this is a
- * presentation discriminator only.
+ * drone, and a compute node presents as a workstation. The tab registry still
+ * keys on the real `drone.profile`; this is a presentation discriminator only.
  */
 export type EffProfile =
   | "drone"
   | "flight-controller"
   | "ground-station"
-  | "workstation";
+  | "workstation"
+  | "visor"
+  | "unknown";
+
+/** The presentation profile for a node with a companion agent (not a bare
+ * flight controller). */
+export function agentEffProfile(profile: NodeProfile | undefined): EffProfile {
+  switch (profile) {
+    case "ground-station":
+    case "workstation":
+    case "visor":
+    case "unknown":
+      return profile;
+    case "compute":
+      return "workstation";
+    default:
+      return "drone";
+  }
+}
 
 /** A ground station's role as every node surface labels it. */
 export type GroundRoleKey = "direct" | "relay" | "receiver" | "unknown";
@@ -35,6 +109,8 @@ export const NODE_ACCENT_VAR: Record<EffProfile, string> = {
   "flight-controller": "--node-accent-fc",
   "ground-station": "--node-accent-gs",
   workstation: "--node-accent-work",
+  visor: "--node-accent-visor",
+  unknown: "--node-accent-unknown",
 };
 
 /** The curated, theme-safe personalization swatches (their CSS var suffixes). */

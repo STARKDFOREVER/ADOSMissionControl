@@ -17,19 +17,19 @@
 
 // Exempt from 300 LOC soft rule: mock config data file.
 
-export type MockConfigProfile = "drone" | "ground-station" | "workstation";
+import type { NodeProfile } from "@/lib/nodes/node-profile";
 
 type ConfigObject = Record<string, unknown>;
 
 /** The agent stores the profile with an underscore (`ground_station`); the
  * GCS's NodeProfile is hyphenated. The mock document carries the agent form. */
-function agentProfileValue(profile: MockConfigProfile): string {
+function agentProfileValue(profile: NodeProfile): string {
   return profile === "ground-station" ? "ground_station" : profile;
 }
 
 /** Build the demo config tree for a profile. Generic values only (no real
  * infrastructure hostnames) since this ships in the public repo. */
-function buildConfig(profile: MockConfigProfile): ConfigObject {
+function buildConfig(profile: NodeProfile): ConfigObject {
   return {
     agent: { profile: agentProfileValue(profile), board_override: "" },
     logging: { level: "info" },
@@ -142,7 +142,7 @@ let mockConfig: ConfigObject = buildConfig("drone");
 /** Point the demo config at the focused node's profile so the identity page
  * reads the right profile. Only `agent.profile` changes; the operator's edits
  * to every other block survive a node switch. */
-export function setMockConfigProfile(profile: MockConfigProfile): void {
+export function setMockConfigProfile(profile: NodeProfile): void {
   const agent = mockConfig.agent as ConfigObject | undefined;
   const stored = agentProfileValue(profile);
   if (agent && agent.profile !== stored) agent.profile = stored;

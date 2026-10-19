@@ -17,6 +17,7 @@
  */
 
 import { type PairedNodeProfile } from "@/lib/plugins/types";
+import { KNOWN_NODE_PROFILES } from "@/lib/nodes/node-profile";
 import {
   parseParameterContributions,
   type ParsedParameterContribution,
@@ -50,12 +51,7 @@ function readId(entry: Record<string, unknown>): string | undefined {
   return str(entry.id) ?? str(entry.key);
 }
 
-const NODE_PROFILES: ReadonlySet<string> = new Set([
-  "drone",
-  "ground-station",
-  "workstation",
-  "compute",
-]);
+const NODE_PROFILES: ReadonlySet<string> = new Set(KNOWN_NODE_PROFILES);
 
 /** Parse a `profile:` list into the recognized node-profile values, dropping
  * unknown and duplicate entries. Returns undefined when none remain. */

@@ -4,6 +4,7 @@
  */
 
 import type { GcsCapability } from "./capabilities";
+import type { KnownNodeProfile, NodeProfile } from "@/lib/nodes/node-profile";
 
 export type PluginHalf = "agent" | "gcs";
 
@@ -173,21 +174,16 @@ export interface PluginInstallSummary {
   halves: PluginHalf[];
 }
 
-/** Node profiles a plugin agent half can target. Mirrors the agent-side
- * `target_profiles` vocabulary. Older manifests that omit
- * `agent.target_profiles` default to `["drone"]` during agent-side parsing,
- * so a missing field on the GCS-side wire shape is also treated as
+/** Node profiles a plugin agent half can target: every profile an agent can
+ * run. Mirrors the agent-side `target_profiles` vocabulary. Older manifests
+ * that omit `agent.target_profiles` default to `["drone"]` during agent-side
+ * parsing, so a missing field on the GCS-side wire shape is also treated as
  * drone-only. */
-export type PluginTargetProfile =
-  | "drone"
-  | "ground-station"
-  | "workstation"
-  | "compute";
+export type PluginTargetProfile = KnownNodeProfile;
 
-/** The resolved profile of a paired node. One vocabulary with
- * {@link PluginTargetProfile} across the stack — a node runs one of these
- * profiles and a plugin declares which of them it targets. */
-export type PairedNodeProfile = PluginTargetProfile;
+/** The resolved profile of a paired node. A node this build cannot classify
+ * (`"unknown"`) matches no plugin target. */
+export type PairedNodeProfile = NodeProfile;
 
 /** The tab-strip band a plugin `node.surface` joins. */
 export const NODE_SURFACE_GROUPS = [
@@ -239,7 +235,7 @@ export function pluginMatchesProfile(
   targetProfiles: ReadonlyArray<PluginTargetProfile> | undefined | null,
   nodeProfile: PairedNodeProfile,
 ): boolean {
-  const list: ReadonlyArray<PluginTargetProfile> =
+  const list: ReadonlyArray<NodeProfile> =
     targetProfiles && targetProfiles.length > 0 ? targetProfiles : ["drone"];
   return list.includes(nodeProfile);
 }

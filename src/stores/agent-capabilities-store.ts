@@ -23,7 +23,6 @@ export type {
   AgentCapabilitiesState,
   AgentCapabilitiesStore,
   AgentCapabilitySnapshot,
-  AgentProfile,
   AgentRole,
   CapabilityPresence,
   ManualConnectionUrls,

@@ -86,6 +86,9 @@
   --node-accent-fc: #22d3ee;
   --node-accent-gs: #a78bfa;
   --node-accent-work: #2dd4bf;
+  --node-accent-visor: #f9a8d4;
+  /* A profile this build does not know: the neutral text hue, no identity. */
+  --node-accent-unknown: var(--alt-text-tertiary);
 
   /* Personalization swatches (user-chosen tile identity). These tint the tile
      wash + accent rule only; the semantic status dots/badges keep their own

@@ -43,11 +43,10 @@ import {
   Unplug,
 } from "lucide-react";
 import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
-import { NODE_SWATCHES, type NodeSwatch } from "@/lib/nodes/node-profile";
+import { agentEffProfile, NODE_SWATCHES, type NodeSwatch } from "@/lib/nodes/node-profile";
 import { useNodePersonalizationStore } from "@/stores/node-personalization-store";
 import { useToast } from "@/components/ui/toast";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { effProfileForNode } from "./NodeRow";
 import { NodeDotEditor } from "./NodeDotEditor";
 import {
   Divider,
@@ -88,7 +87,7 @@ export function NodeContextMenu({
   const t = useTranslations("nodeConsole");
   const { toast } = useToast();
   const deviceId = node.deviceId;
-  const effProfile = effProfileForNode(node);
+  const effProfile = agentEffProfile(node.profile);
   const cockpitEligible =
     (effProfile === "drone" || effProfile === "flight-controller") &&
     isFcReachable({

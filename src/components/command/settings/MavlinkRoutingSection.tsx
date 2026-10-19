@@ -24,7 +24,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Route } from "lucide-react";
 
-import type { NodeProfile } from "@/components/dashboard/node-detail/surface-types";
+import type { NodeProfile } from "@/lib/nodes/node-profile";
 import type {
   SigningCapability,
   SigningCounters,

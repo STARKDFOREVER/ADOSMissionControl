@@ -22,13 +22,12 @@ import { CornerDownRight, Wifi } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
-import { NODE_ACCENT_VAR, swatchVar, tintStyle } from "@/lib/nodes/node-profile";
+import { agentEffProfile, NODE_ACCENT_VAR, swatchVar, tintStyle } from "@/lib/nodes/node-profile";
 import { useNodePersonalizationStore } from "@/stores/node-personalization-store";
 import { NodeGlyph } from "@/components/command/nodes/node-glyph";
 import { NodeBadgeSet } from "@/components/command/nodes/NodeBadgeSet";
 import {
   STATUS_BORDER,
-  effProfileForNode,
   nodeStatusLevel,
   nodeSubtitle,
   nodeSubtitleLabels,
@@ -47,7 +46,7 @@ export function NodeIdentityCell({
   onOpen: (node: FleetNodeEntry) => void;
 }) {
   const t = useTranslations("nodeConsole");
-  const effProfile = effProfileForNode(node);
+  const effProfile = agentEffProfile(node.profile);
   const status = nodeStatusLevel(node);
   const typeLabel = t(`type.${profileTypeKey(effProfile)}`);
 

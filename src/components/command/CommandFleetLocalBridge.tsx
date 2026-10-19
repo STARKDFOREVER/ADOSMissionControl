@@ -182,7 +182,7 @@ export function CommandFleetLocalBridge({
         // skip the drone /api/status/full poll — it returned a boardless
         // status the drone schema rejected and churned the fleet grid on
         // every tick.
-        if (live.profile === "workstation") {
+        if (live.profile === "workstation" || live.profile === "compute") {
           if (probeReachable) {
             useLocalNodesStore.getState().touchLastSeen(deviceId);
           }

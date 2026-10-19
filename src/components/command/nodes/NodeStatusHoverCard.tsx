@@ -9,7 +9,8 @@
  *   - drone            → flight-controller link + onboard-computer (SBC) status,
  *                        or an "add a companion" hint on an FC-only drone.
  *   - ground-station   → role + host metrics + services + WFB peer.
- *   - workstation      → compute host metrics + services + cores/RAM.
+ *   - workstation, visor, or a profile this build does not know
+ *                      → host metrics + services + cores/RAM.
  * It never fabricates flight data on a non-drone node, and it reads only the
  * per-node cloud status (never the ground-station / compute singleton stores,
  * which reflect only the *selected* node) so a hovered row can't show another
@@ -33,7 +34,7 @@ import {
   mspFcLabel,
 } from "@/lib/agent/mavlink-link";
 import { fcFlavorLabel } from "@/lib/protocol/fc-firmware-label";
-import { groundRoleKey } from "@/lib/nodes/node-profile";
+import { agentEffProfile, groundRoleKey } from "@/lib/nodes/node-profile";
 import {
   useNodeDisplayName,
   useReachedViaName,
@@ -44,13 +45,12 @@ import {
   useAgentCapabilitiesStore,
 } from "@/stores/agent-capabilities-store";
 
-type EffProfile = "drone" | "ground-station" | "workstation";
-
-function effProfile(node: FleetNodeEntry): EffProfile {
-  if (node.profile === "ground-station") return "ground-station";
-  if (node.profile === "workstation") return "workstation";
-  return "drone";
-}
+/** The hover-card label for each host-only profile. */
+const HOST_LABEL = {
+  workstation: "Compute node",
+  visor: "Visor",
+  unknown: "Agent node",
+} as const;
 
 function fmtPct(v?: number | null): string {
   return v != null ? `${Math.round(v)}%` : "—";
@@ -139,15 +139,15 @@ function fcLinkState(status: {
 
 export function NodeStatusHoverCard({ node }: { node: FleetNodeEntry }) {
   const status = useCommandFleetStore((s) => s.cloudStatuses[node.deviceId]);
-  const profile = effProfile(node);
+  const profile = agentEffProfile(node.profile);
   const live = droneLiveness(node);
 
   const typeLabel =
     profile === "ground-station"
       ? "Ground station"
-      : profile === "workstation"
-        ? "Compute node"
-        : "Drone";
+      : profile === "drone" || profile === "flight-controller"
+        ? "Drone"
+        : HOST_LABEL[profile];
 
   // Offline: an honest single line, never a fabricated fresh reading (no fabricated reading).
   if (live === "offline") {
@@ -192,8 +192,9 @@ export function NodeStatusHoverCard({ node }: { node: FleetNodeEntry }) {
         />
       )}
 
-      {profile === "workstation" && (
-        <WorkstationBody
+      {(profile === "workstation" || profile === "visor" || profile === "unknown") && (
+        <HostBody
+          label={HOST_LABEL[profile]}
           node={node}
           status={status}
           running={running}
@@ -393,13 +394,17 @@ function GroundStationBody({
   );
 }
 
-function WorkstationBody({
+/** A node without flight or radio identity of its own (workstation, Visor, or
+ * an unrecognised profile): board, host metrics, services. */
+function HostBody({
+  label,
   node,
   status,
   running,
   total,
   hasHostMetrics,
 }: {
+  label: string;
   node: FleetNodeEntry;
   status: CommandCloudStatus | undefined;
   running: number;
@@ -412,9 +417,9 @@ function WorkstationBody({
   return (
     <section className="space-y-2">
       <div>
-        <SectionLabel>Compute node</SectionLabel>
+        <SectionLabel>{label}</SectionLabel>
         <p className="text-[11px] text-text-primary">
-          {node.board ?? "Workstation"}
+          {node.board ?? label}
           {node.tier != null ? ` · Tier ${node.tier}` : ""}
         </p>
       </div>

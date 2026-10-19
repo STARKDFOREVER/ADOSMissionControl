@@ -28,11 +28,11 @@ import {
   type CommandAgentLiveness,
 } from "@/lib/nodes/presence";
 import type { RadioState } from "@/lib/api/ground-station/types";
+import type { NodeProfile } from "@/lib/nodes/node-profile";
 import { countRunning } from "@/lib/agent/service-state";
 
 export type { CommandAgentLiveness } from "@/lib/nodes/presence";
 
-export type CommandAgentProfile = "drone" | "ground-station" | "workstation";
 export type CommandAgentRole = "direct" | "relay" | "receiver" | null;
 export type CommandAgentVideoState =
   | "live"
@@ -51,7 +51,7 @@ export interface CommandAgentSummary {
     version?: string;
     lastIp?: string;
   };
-  profile: CommandAgentProfile;
+  profile: NodeProfile;
   role: CommandAgentRole;
   radio: RadioState | null;
   liveness: CommandAgentLiveness;
@@ -167,7 +167,7 @@ export function useCommandAgentFleet(
       // Shared with the per-node command gates, so an offline row's dark cells
       // and its disabled controls always agree — match droneLiveness.
       const liveness: CommandAgentLiveness = nodeLiveness(drone, status);
-      const profile: CommandAgentProfile = drone.profile ?? "drone";
+      const profile = drone.profile ?? "drone";
       const radio = status?.radio ? normalizeRadio(status.radio) : null;
       // A ground station has no camera of its own — its video is the downlink
       // it receives over the WFB radio, so it can only be flowing while that

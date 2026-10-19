@@ -229,7 +229,9 @@
       "drone": "Drone",
       "flightController": "Flight controller",
       "groundStation": "Ground station",
-      "workstation": "Workstation"
+      "workstation": "Workstation",
+      "visor": "Visor",
+      "unknown": "Agent node"
     },
     "hero": {
       "online": "Online",
@@ -1812,7 +1814,8 @@
       "optionGroundStation": "Ground station",
       "optionWorkstation": "Workstation",
       "optionAuto": "Auto (resolved at boot)",
-      "optionCompute": "Compute node"
+      "optionCompute": "Compute node",
+      "optionVisor": "Visor"
     },
     "network": {
       "title": "Network",
@@ -2501,7 +2504,9 @@
       "profileLabel": {
         "drone": "ડ્રોન",
         "groundStation": "ગ્રાઉન્ડ સ્ટેશન",
-        "compute": "કમ્પ્યુટ"
+        "compute": "કમ્પ્યુટ",
+        "visor": "Visor",
+        "unknown": "Agent node"
       },
       "bindState": {
         "binding": "binding…",

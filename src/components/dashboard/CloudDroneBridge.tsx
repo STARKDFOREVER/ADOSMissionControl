@@ -28,7 +28,8 @@ import {
   useNodeRegistryStore,
   resolveNodeId,
 } from "@/stores/node-registry";
-import type { NodeProfile, NodeRole } from "@/stores/node-registry";
+import type { NodeRole } from "@/stores/node-registry";
+import { parseNodeProfile } from "@/lib/nodes/node-profile";
 
 function pickString(value: unknown): string | undefined {
   return typeof value === "string" && value.length > 0 ? value : undefined;
@@ -167,11 +168,7 @@ export function CloudDroneBridge() {
 
       current.add(deviceId);
 
-      const profileRaw = (drone as { profile?: unknown }).profile;
-      const profile: NodeProfile =
-        profileRaw === "ground-station" || profileRaw === "workstation"
-          ? profileRaw
-          : "drone";
+      const profile = parseNodeProfile((drone as { profile?: unknown }).profile);
       const roleRaw = (drone as { role?: unknown }).role;
       const role: NodeRole =
         roleRaw === "direct" || roleRaw === "relay" || roleRaw === "receiver"

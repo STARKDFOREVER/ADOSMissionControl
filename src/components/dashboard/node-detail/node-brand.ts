@@ -13,7 +13,11 @@
 import { useTranslations } from "next-intl";
 import type { LucideIcon } from "lucide-react";
 import type { SurfaceContext } from "./surface-types";
-import { type EffProfile, NODE_ACCENT_VAR } from "@/lib/nodes/node-profile";
+import {
+  type EffProfile,
+  NODE_ACCENT_VAR,
+  agentEffProfile,
+} from "@/lib/nodes/node-profile";
 import { nodeGlyph } from "@/components/command/nodes/node-glyph";
 import type { StatusLevel } from "@/lib/status-level";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
@@ -27,9 +31,8 @@ export type { EffProfile };
 
 /** A `drone`-profile node with no paired agent IS a bare flight controller. */
 export function effectiveNodeProfile(ctx: SurfaceContext): EffProfile {
-  const p = ctx.drone.profile ?? "drone";
-  if (p === "ground-station") return "ground-station";
-  if (p === "workstation") return "workstation";
+  const p = agentEffProfile(ctx.drone.profile);
+  if (p !== "drone") return p;
   return ctx.agentIdentityKnown ? "drone" : "flight-controller";
 }
 
@@ -51,7 +54,7 @@ function profileKey(p: EffProfile): string {
     ? "flightController"
     : p === "ground-station"
       ? "groundStation"
-      : p; // "drone" | "workstation"
+      : p; // "drone" | "workstation" | "visor" | "unknown"
 }
 
 export function useNodeBrand(args: {
@@ -90,7 +93,7 @@ export function useNodeBrand(args: {
       statusLevel = "offline";
     }
   } else {
-    // drone / ground-station / workstation: the node's agent connection.
+    // Every agent-backed profile: the node's agent connection.
     if (connected) {
       statusLine = t("hero.online");
       statusLevel = "good";

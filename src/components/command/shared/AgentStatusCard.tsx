@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import { formatDurationSeconds } from "@/lib/i18n/format";
 import type { AgentStatus } from "@/lib/agent/types";
 import type { AgentCapabilities } from "@/lib/agent/feature-types";
-import type { AgentProfile } from "@/stores/agent-capabilities-store";
+import type { NodeProfile } from "@/lib/nodes/node-profile";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
@@ -39,16 +39,16 @@ const RADIO_STACK_DEGRADED: ReadonlySet<RadioStackState> = new Set([
 
 interface AgentStatusCardProps {
   status: AgentStatus;
-  /** Node profile. When "workstation" the card drops the FC/MAVLink link
+  /** Node profile. A workstation or compute node drops the FC/MAVLink link
    * section and the SBC "tier" line and instead surfaces chip + GPU + cores +
-   * memory — a workstation has no flight controller and is not tiered. Drone /
-   * ground-station (or absent) render the full FC-bearing card unchanged. */
-  profile?: AgentProfile;
+   * memory — it has no flight controller and is not tiered. Every other
+   * profile (or absent) renders the full FC-bearing card. */
+  profile?: NodeProfile;
 }
 
 export function AgentStatusCard({ status, profile }: AgentStatusCardProps) {
   const t = useTranslations("agent");
-  const isWorkstation = profile === "workstation";
+  const isWorkstation = profile === "workstation" || profile === "compute";
   // Read dynamic values directly from system store — the status prop may be stale
   // due to cross-store Zustand update batching issues
   const resources = useAgentSystemStore((s) => s.resources);

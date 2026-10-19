@@ -18,7 +18,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Signal } from "lucide-react";
 
-import type { NodeProfile } from "@/components/dashboard/node-detail/surface-types";
+import type { NodeProfile } from "@/lib/nodes/node-profile";
 import { groundStationApiFromAgent } from "@/lib/api/ground-station-api";
 import type { ModemDetailStatus, ModemView } from "@/lib/api/ground-station/types";
 import { Toggle } from "@/components/ui/toggle";

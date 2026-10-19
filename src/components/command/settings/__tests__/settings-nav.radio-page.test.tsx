@@ -22,7 +22,7 @@ import {
   SETTINGS_NAV_ITEMS,
   type SettingsPageContext,
 } from "../settings-nav";
-import type { NodeProfile } from "@/components/dashboard/node-detail/surface-types";
+import type { NodeProfile } from "@/lib/nodes/node-profile";
 
 function ctxFor(profile: NodeProfile): SettingsPageContext {
   return {

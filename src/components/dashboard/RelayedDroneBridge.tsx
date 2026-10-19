@@ -43,6 +43,7 @@ import {
 } from "@/lib/agent/relayed-status-client";
 import { fetchFleetSlots } from "@/lib/agent/fleet-slots-client";
 import { useFleetSlotsStore } from "@/stores/ground-station/fleet-slots-store";
+import { parseNodeProfile } from "@/lib/nodes/node-profile";
 
 /** How often each directly-paired ground station is polled for the compact
  * status its relayed drones pushed over the aux lane. Well under the route's
@@ -174,10 +175,9 @@ export function RelayedDroneBridge() {
       nextNodeIds.add(e.nodeId);
       // The registry skips an upsert that changes nothing, so a self-triggered
       // re-run does not churn it.
-      const relayedProfile: "drone" | "ground-station" | "workstation" =
-        e.realProfile === "ground-station" || e.realProfile === "workstation"
-          ? e.realProfile
-          : "drone";
+      // A peer the ground station has no identity snapshot for yet reads as a
+      // drone (the relayed peer of a ground station is an aircraft).
+      const relayedProfile = parseNodeProfile(e.realProfile);
       registry.upsertPresence(
         e.nodeId,
         {

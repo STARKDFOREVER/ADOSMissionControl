@@ -56,6 +56,7 @@ import {
   persistedNodesIfChanged,
   type PersistedLocalNodes,
 } from "./local-nodes-storage";
+import type { NodeProfile } from "@/lib/nodes/node-profile";
 
 /** Persisted schema version. */
 const STORE_VERSION = 6;
@@ -103,7 +104,7 @@ export interface LocalNode {
   /** API key returned by ``/api/pairing/claim`` for this browser. */
   apiKey: string;
   /** Wire-contract profile from ``/api/pairing/info``. */
-  profile: "drone" | "ground-station" | "workstation";
+  profile: NodeProfile;
   /** Ground-station role when applicable. */
   role?: "direct" | "relay" | "receiver" | null;
   /** Board name from the agent (e.g. "Raspberry Pi 4B"). */

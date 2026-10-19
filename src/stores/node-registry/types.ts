@@ -20,6 +20,7 @@ import type {
   BatteryData,
   GpsData,
 } from "@/lib/types/telemetry";
+import type { NodeProfile } from "@/lib/nodes/node-profile";
 
 /**
  * Which transport a presence observation arrived on. A node can be seen on
@@ -34,11 +35,6 @@ import type {
  * takes display precedence — the row upgrades in place rather than duplicating.
  */
 export type PresenceSource = "local" | "cloud" | "relayed";
-
-/**
- * The wire-contract node profile. Drives node grouping and panel selection.
- */
-export type NodeProfile = "drone" | "ground-station" | "workstation";
 
 /**
  * Ground-station role when the profile is "ground-station". Null / undefined

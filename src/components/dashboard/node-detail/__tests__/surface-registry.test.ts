@@ -5,9 +5,11 @@ import { describe, expect, it } from "vitest";
 
 import { resolveSurfaces } from "@/components/dashboard/node-detail/surfaces";
 import type {
-  NodeProfile,
+  ProfileSurfaceContribution,
   SurfaceContext,
 } from "@/components/dashboard/node-detail/surface-types";
+import { DEVICE_GROUP, STATUS_GROUP } from "@/components/dashboard/node-detail/surface-groups";
+import type { NodeProfile } from "@/lib/nodes/node-profile";
 
 /** A minimal SurfaceContext; overrides tune the profile / gate inputs. */
 function ctx(over: Partial<SurfaceContext>): SurfaceContext {
@@ -55,20 +57,42 @@ describe("node-detail surface registry (createContributionRegistry instance)", (
       "drone",
       "ground-station",
       "workstation",
+      "compute",
+      "visor",
+      "unknown",
     ] as const) {
       const ids = resolveSurfaces(forProfile(profile), []).map((s) => s.id);
       expect(ids[ids.length - 1]).toBe("agent");
     }
   });
 
-  it("an unknown / future profile falls back to just the Agent page", () => {
-    // A profile outside the built-in set (a future wire-contract profile) has
-    // nothing registered, so it resolves to just the Agent page.
-    const ids = resolveSurfaces(
-      ctx({ drone: { profile: "satellite" } as unknown as SurfaceContext["drone"] }),
-      [],
-    ).map((s) => s.id);
-    expect(ids).toEqual(["agent"]);
+  it("an unknown profile resolves to just the Agent page", () => {
+    // The profile parser maps any profile this build does not know to
+    // "unknown", which registers nothing, so only the Agent page remains.
+    expect(resolveSurfaces(forProfile("unknown"), []).map((s) => s.id)).toEqual(["agent"]);
+  });
+
+  it("a Visor shows the host shell in order: overview, logs, agent", () => {
+    expect(resolveSurfaces(forProfile("visor"), []).map((s) => s.id)).toEqual([
+      "overview",
+      "logs",
+      "agent",
+    ]);
+  });
+
+  it("merges a Visor's extension surfaces into the host shell by group and order", () => {
+    const spec = (id: string, group: string, order: number): ProfileSurfaceContribution => ({
+      spec: { id, label: id, labelKey: id, render: () => null },
+      profile: ["visor"],
+      group,
+      order,
+    });
+    const ids = resolveSurfaces(forProfile("visor"), [
+      spec("sessions", STATUS_GROUP, 30),
+      spec("capture", STATUS_GROUP, 20),
+      spec("calibration", DEVICE_GROUP, 20),
+    ]).map((s) => s.id);
+    expect(ids).toEqual(["overview", "capture", "sessions", "logs", "calibration", "agent"]);
   });
 
   it("a compute node shows the workstation surfaces, not just the Agent page", () => {

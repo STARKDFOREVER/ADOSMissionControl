@@ -6,6 +6,7 @@
 import type { PositionData, BatteryData, GpsData } from './telemetry';
 import type { CameraUsbRecovery } from '@/lib/agent/types';
 import type { UnifiedFlightMode } from '@/lib/protocol/types/enums';
+import type { NodeProfile } from "@/lib/nodes/node-profile";
 
 // ── Drone State ──────────────────────────────────────────────
 
@@ -100,11 +101,10 @@ export interface FleetDrone extends DroneInfo {
    * "default", "override", "user", or undefined for legacy
    * heartbeats that predate this field. */
   profileSource?: "detected" | "tiebreaker" | "default" | "override" | "user";
-  /** Wire-contract node profile. "drone" or "ground-station" today,
-   * "workstation" in the future. Drives node grouping in the
-   * Command-tab sidebar and panel selection in the right pane.
-   * Defaults to "drone" for legacy heartbeats. */
-  profile?: "drone" | "ground-station" | "workstation";
+  /** Node profile. Drives node grouping in the Command-tab sidebar and
+   * panel selection in the right pane. Defaults to "drone" for legacy
+   * heartbeats; an unrecognised profile reads as "unknown". */
+  profile?: NodeProfile;
   /** Ground-station role when applicable. Undefined / null on drones. */
   role?: "direct" | "relay" | "receiver" | null;
   /** Direct LAN MAVLink WebSocket URL the agent advertises in its

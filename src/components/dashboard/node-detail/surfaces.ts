@@ -28,8 +28,8 @@
  */
 
 import { createContributionRegistry } from "@/lib/plugins/registries/contribution-registry";
+import type { NodeProfile } from "@/lib/nodes/node-profile";
 import type {
-  NodeProfile,
   ProfileSurfaceContribution,
   SurfaceContext,
   SurfaceSpec,
@@ -112,9 +112,12 @@ export function registerBuiltinSurfaces(): void {
 registerBuiltinSurfaces();
 
 /** The profile whose built-in surface list a node shows. The compute profile
- * has no list of its own and shows the workstation's. */
+ * has no list of its own and shows the workstation's. A Visor shows the same
+ * host shell (Overview on its host panels, Logs, Agent); its capture,
+ * sessions and calibration pages arrive as extension surfaces. */
 const BUILTIN_PROFILE: Partial<Record<NodeProfile, NodeProfile>> = {
   compute: "workstation",
+  visor: "workstation",
 };
 
 /** The ordered, capability/role-filtered surface list for the selected node.
@@ -128,7 +131,7 @@ export function resolveSurfaces(
   ctx: SurfaceContext,
   plugins: ReadonlyArray<ProfileSurfaceContribution>,
 ): SurfaceSpec[] {
-  const profile = (ctx.drone.profile ?? "drone") as NodeProfile;
+  const profile = ctx.drone.profile ?? "drone";
   const builtinProfile = BUILTIN_PROFILE[profile] ?? profile;
   const matched = useSurfaceRegistry
     .getState()

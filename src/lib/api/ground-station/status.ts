@@ -29,7 +29,7 @@ export function normaliseGroundStationStatus(body: unknown): GroundStationStatus
     profile:
       b.profile === "ground-station" || b.profile === "ground_station"
         ? "ground_station"
-        : b.profile === "drone" || b.profile === "auto"
+        : b.profile === "visor" || b.profile === "drone" || b.profile === "auto"
           ? b.profile
           : "unconfigured",
     uplink_active: null,

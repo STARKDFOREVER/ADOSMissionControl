@@ -7,6 +7,7 @@
  */
 
 import { create } from "zustand";
+import type { NodeProfile } from "@/lib/nodes/node-profile";
 
 /**
  * A cloud-paired drone as mirrored from `cmdDrones.listMyDrones`.
@@ -36,7 +37,7 @@ export interface PairedDrone {
   pairedAt: number;
   /** Wire-contract node profile synced from the agent's heartbeat
    * onto cmd_drones. "drone" by default for legacy rows. */
-  profile?: "drone" | "ground-station" | "workstation";
+  profile?: NodeProfile;
   /** Ground-station role when applicable; null on drones. */
   role?: "direct" | "relay" | "receiver" | null;
 }

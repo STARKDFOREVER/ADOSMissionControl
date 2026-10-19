@@ -18,7 +18,7 @@ vi.mock("next-intl", () => ({ useTranslations: () => (k: string) => k }));
 
 import { NAV_SECTIONS } from "@/components/dashboard/node-detail/agent/agent-nav-sections";
 import { SETTINGS_NAV_ITEMS, type SettingsPageContext } from "../settings-nav";
-import type { NodeProfile } from "@/components/dashboard/node-detail/surface-types";
+import type { NodeProfile } from "@/lib/nodes/node-profile";
 
 function ctxFor(profile: NodeProfile): SettingsPageContext {
   return {

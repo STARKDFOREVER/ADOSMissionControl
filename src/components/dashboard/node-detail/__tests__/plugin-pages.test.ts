@@ -16,10 +16,10 @@ import { STATUS_GROUP } from "@/components/dashboard/node-detail/surface-groups"
 import {
   pluginPageId,
   type AgentNavContribution,
-  type NodeProfile,
   type ProfileSurfaceContribution,
   type SurfaceContext,
 } from "@/components/dashboard/node-detail/surface-types";
+import type { NodeProfile } from "@/lib/nodes/node-profile";
 import type { SettingsPageContext } from "@/components/command/settings/settings-nav";
 import { projectNodePluginPages } from "@/hooks/use-node-plugin-pages";
 

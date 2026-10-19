@@ -40,7 +40,6 @@ export type {
   NodeFcGps,
   NodeFcPosition,
   NodePresence,
-  NodeProfile,
   NodeRole,
   NodeTransport,
   PresenceSource,

@@ -310,7 +310,7 @@ export interface CloudChoiceStatus {
 }
 
 export interface ProfileSuggestion {
-  detected: "drone" | "ground_station" | "unconfigured";
+  detected: "drone" | "ground_station" | "visor" | "unconfigured";
   ground_role_hint: "direct" | "relay" | "receiver";
   ground_score: number;
   air_score: number;

@@ -3,8 +3,9 @@
  * @description Mirrors the Convex per-user fleet (`cmdDronesApi.listMyDrones`)
  * into the local pairing Zustand store, with each drone's `lastSeen` taken
  * from the separate liveness query. Dedupes by `deviceId` (keeps
- * the newest `pairedAt`) and sanitises the `profile` / `role` fields
- * against an allow-list so a malformed Convex row can't crash the UI.
+ * the newest `pairedAt`), parses the `profile` (an unrecognised one reads as
+ * "unknown") and sanitises `role` against an allow-list so a malformed Convex
+ * row can't crash the UI.
  * Mounted once, from `AgentBridges`; signing out clears the mirrored fleet.
  * @license GPL-3.0-only
  */
@@ -14,12 +15,8 @@ import { cmdDronesApi } from "@/lib/community-api-drones";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import { usePairingStore, type PairedDrone } from "@/stores/pairing-store";
 import { useAuthStore } from "@/stores/auth-store";
+import { parseNodeProfile } from "@/lib/nodes/node-profile";
 
-const VALID_PROFILES = new Set([
-  "drone",
-  "ground-station",
-  "workstation",
-]);
 const VALID_ROLES = new Set(["direct", "relay", "receiver"]);
 
 /**
@@ -65,12 +62,8 @@ export function useFleetSync() {
     }
     usePairingStore.getState().setPairedDrones(
       Array.from(deduped.values()).map((d) => {
-        const rawProfile = (d as { profile?: unknown }).profile;
+        const profile = parseNodeProfile((d as { profile?: unknown }).profile);
         const rawRole = (d as { role?: unknown }).role;
-        const profile =
-          typeof rawProfile === "string" && VALID_PROFILES.has(rawProfile)
-            ? (rawProfile as PairedDrone["profile"])
-            : undefined;
         const role =
           typeof rawRole === "string" && VALID_ROLES.has(rawRole)
             ? (rawRole as PairedDrone["role"])

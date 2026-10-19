@@ -54,6 +54,7 @@ export function ProfilePage({ config }: Pick<PageProps, "config">) {
     { value: "ground_station", label: t("profile.optionGroundStation") },
     { value: "workstation", label: t("profile.optionWorkstation") },
     { value: "compute", label: t("profile.optionCompute") },
+    { value: "visor", label: t("profile.optionVisor") },
   ];
   return (
     <Section title={t("profile.title")}>

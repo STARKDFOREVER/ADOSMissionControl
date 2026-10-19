@@ -38,13 +38,18 @@ interface ProbeResultCardProps {
   onCancel: () => void;
 }
 
-function profileLabel(profile: string, t: (k: string) => string): string {
+function profileLabel(profile: ProbeResult["profile"], t: (k: string) => string): string {
   switch (profile) {
     case "ground-station":
       return t("profileLabel.groundStation");
     case "workstation":
+    case "compute":
       return t("profileLabel.compute");
-    default:
+    case "visor":
+      return t("profileLabel.visor");
+    case "unknown":
+      return t("profileLabel.unknown");
+    case "drone":
       return t("profileLabel.drone");
   }
 }

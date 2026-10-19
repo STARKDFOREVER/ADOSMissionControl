@@ -54,7 +54,7 @@ describe("agent-capabilities-store profile + role normaliser", () => {
     expect(useAgentCapabilitiesStore.getState().profile).toBe("workstation");
   });
 
-  it("clamps unknown profile strings to drone", () => {
+  it("keeps an unrecognised profile as unknown instead of clamping it to drone", () => {
     // Suppress the console.warn dev-tooling hint for this test.
     const originalWarn = console.warn;
     console.warn = () => {};
@@ -63,10 +63,18 @@ describe("agent-capabilities-store profile + role normaliser", () => {
         ...baseCaps(),
         profile: "future-thing",
       });
-      expect(useAgentCapabilitiesStore.getState().profile).toBe("drone");
+      expect(useAgentCapabilitiesStore.getState().profile).toBe("unknown");
     } finally {
       console.warn = originalWarn;
     }
+  });
+
+  it("accepts profile=visor", () => {
+    useAgentCapabilitiesStore.getState().setCapabilities({
+      ...baseCaps(),
+      profile: "visor",
+    });
+    expect(useAgentCapabilitiesStore.getState().profile).toBe("visor");
   });
 
   it("accepts each valid ground-station role", () => {

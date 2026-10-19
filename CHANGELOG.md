@@ -10,6 +10,17 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 - **SIM chip** on the node header when the agent reports `sim: true` (its
   simulation mode flag). Demo mode shows it on Delta-04.
+- **Visor nodes.** A node running the agent's `visor` profile shows with a
+  scan-line glyph and its own accent, the host Overview, Logs and Agent pages,
+  and any extension pages that target it. Plugins and their Convex install rows
+  accept `visor` as a target profile.
+
+### Changed
+
+- A node reporting a profile Mission Control does not know is shown as an
+  unknown node with a neutral glyph and only the Agent page, instead of being
+  treated as a drone. Compute nodes keep their own profile and present as
+  workstations.
 
 ## [0.60.0] - 2026-10-11
 

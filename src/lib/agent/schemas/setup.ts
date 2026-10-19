@@ -65,7 +65,7 @@ export const CloudChoiceStatusSchema = z
 
 export const ProfileSuggestionSchema = z
   .object({
-    detected: z.enum(["drone", "ground_station", "unconfigured"]),
+    detected: z.enum(["drone", "ground_station", "visor", "unconfigured"]),
     ground_role_hint: z.enum(["direct", "relay", "receiver"]),
     ground_score: NumberLike,
     air_score: NumberLike,

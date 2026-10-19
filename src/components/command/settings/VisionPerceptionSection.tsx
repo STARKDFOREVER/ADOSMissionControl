@@ -17,7 +17,7 @@ import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { Layers } from "lucide-react";
 
-import type { NodeProfile } from "@/components/dashboard/node-detail/surface-types";
+import type { NodeProfile } from "@/lib/nodes/node-profile";
 import { resolveVisionClient } from "@/lib/vision/resolve-vision-client";
 import { ModelPicker } from "@/components/vision/ModelPicker";
 import { InfoNote, Section } from "./Section";

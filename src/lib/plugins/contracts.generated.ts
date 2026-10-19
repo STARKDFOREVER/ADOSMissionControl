@@ -515,3 +515,6 @@ export const SIDECAR_CATALOG: Record<string, ContractMeta> = {
     description: "A pending plugin display action fired by a touch zone or button, for the plugin host to deliver.",
   },
 };
+
+export const PROFILES = ["drone", "ground_station", "workstation", "compute", "visor"] as const;
+export type AgentProfileId = (typeof PROFILES)[number];

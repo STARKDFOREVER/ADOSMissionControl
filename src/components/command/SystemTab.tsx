@@ -4,9 +4,9 @@
  * @module SystemTab
  * @description Unified system view composing Hardware, Services, and Fleet
  * Network sub-panels. Profile-aware: a drone or ground-station node renders the
- * full FC / radio / regulatory / mesh panel set, while a workstation or compute
- * node (a headless box) drops those nonsensical panels and keeps the host
- * metrics, services and access cards.
+ * full FC / radio / regulatory / mesh panel set, while a workstation, compute
+ * or Visor node (no WFB radio, no fleet mesh) drops those panels and keeps the
+ * host metrics, services and access cards.
  * @license GPL-3.0-only
  */
 
@@ -23,14 +23,13 @@ import { RegulatoryRegionPanel } from "./system/RegulatoryRegionPanel";
 import { DashboardAccessPinCard } from "./system/DashboardAccessPinCard";
 import { PluginHardwarePanels } from "./system/PluginHardwarePanels";
 import { ComputeMetricsCard } from "./shared/ComputeMetricsCard";
-import type { NodeProfile } from "@/components/dashboard/node-detail/surface-types";
+import type { NodeProfile } from "@/lib/nodes/node-profile";
 import type { RelayReach } from "@/lib/nodes/relay-reach";
 
 interface SystemTabProps {
   /** The selected node's profile, from the surface render context. A
-   * workstation or compute node has no flight controller, radio link,
-   * regulatory region, or fleet mesh, so those panels are hidden. Defaults to
-   * "drone". */
+   * workstation, compute or Visor node has no radio link, regulatory region,
+   * or fleet mesh, so those panels are hidden. Defaults to "drone". */
   profile?: NodeProfile;
   /** The node this page is rendered for. Handed to the panels that WRITE the
    * node's config so the write resolves its transport from this node rather
@@ -50,8 +49,8 @@ export function SystemTab({
   const blocked = agentGateFallback(gate);
   if (blocked) return blocked;
 
-  // Headless workstation / compute node: only host-relevant panels.
-  if (profile === "workstation" || profile === "compute") {
+  // Workstation / compute / Visor: only host-relevant panels.
+  if (profile === "workstation" || profile === "compute" || profile === "visor") {
     return (
       <div className="p-4 space-y-4 max-w-5xl overflow-y-auto">
         <ConfigErrorPanel />

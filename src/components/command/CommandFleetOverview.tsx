@@ -14,6 +14,7 @@ import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
 import { useCommandFleetStore, type CommandCloudStatus } from "@/stores/command-fleet-store";
 import { useClockTick } from "@/lib/agent/freshness";
 import { nodeLastSeen, livenessFromTimestamp } from "@/lib/nodes/presence";
+import { agentEffProfile } from "@/lib/nodes/node-profile";
 import { useCommandAgentFleet } from "@/hooks/use-command-agent-fleet";
 import { StatTile } from "@/components/command/shared/StatTile";
 import { AgentFeedTile } from "./AgentFeedTile";
@@ -80,7 +81,7 @@ export function CommandFleetOverview({
     if (filter === "live") return agents.filter((agent) => agent.liveness === "live");
     if (filter === "video") return agents.filter((agent) => agent.video.whepUrl);
     if (filter === "offline") return agents.filter((agent) => agent.liveness !== "live");
-    if (filter === "workstation") return agents.filter((agent) => agent.profile === "workstation");
+    if (filter === "workstation") return agents.filter((agent) => agentEffProfile(agent.profile) === "workstation");
     return agents;
   }, [agents, filter]);
 
@@ -100,7 +101,7 @@ export function CommandFleetOverview({
       (agent) => Boolean(agent.video.whepUrl) || agent.video.active,
     ),
     hasFcNodes: agents.some((agent) => agent.system.fcReachable),
-    workstationCount: agents.filter((agent) => agent.profile === "workstation").length,
+    workstationCount: agents.filter((agent) => agentEffProfile(agent.profile) === "workstation").length,
   }), [agents]);
 
   function toggleSet(setter: (next: Set<string>) => void, current: Set<string>, id: string) {

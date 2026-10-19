@@ -49,7 +49,7 @@ export const droneTables = {
     // Wire-contract node profile and role. Synced from cmd_droneStatus
     // heartbeats so listMyDrones consumers (fleet cards, node sidebar)
     // can render profile pills without joining the status row. Profile
-    // is "drone" | "ground-station" | "workstation"; role applies
+    // is "drone" | "ground-station" | "workstation" | "compute" | "visor"; role applies
     // to ground stations only.
     profile: v.optional(v.string()),
     role: v.optional(v.string()),

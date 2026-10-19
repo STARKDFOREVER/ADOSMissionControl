@@ -235,11 +235,11 @@ export function inferCapabilities(
   const board = status.board;
   if (!board) return null;
 
-  // A workstation (Mac / Win / Linux box) runs a GPU, not a tiered SBC NPU, and
-  // is not on the board "tier" ladder; surface that it is GPU-capable. The live
-  // GPU identity + utilisation come from the compute-status poll (compute
-  // store), not from the heartbeat board.
-  const isWorkstation = profile === "workstation";
+  // A workstation or compute node (Mac / Win / Linux box) runs a GPU, not a
+  // tiered SBC NPU, and is not on the board "tier" ladder; surface that it is
+  // GPU-capable. The live GPU identity + utilisation come from the
+  // compute-status poll (compute store), not from the heartbeat board.
+  const isWorkstation = profile === "workstation" || profile === "compute";
   const extras = heartbeatExtras ?? {};
 
   // The agent's declaration is the only source of NPU capability: it reads

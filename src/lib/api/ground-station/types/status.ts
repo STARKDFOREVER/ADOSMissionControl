@@ -13,8 +13,11 @@ export interface GroundStationLinkHealth {
   channel: number | null;
 }
 
+/** The agent profile the ground-station status route reports, in the agent's
+ * underscore spelling. The Visor shares the display/buttons/screens routes. */
 export type GroundStationProfile =
   | "ground_station"
+  | "visor"
   | "drone"
   | "auto"
   | "unconfigured";

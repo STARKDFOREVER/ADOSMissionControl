@@ -4,7 +4,9 @@ import { createElement } from "react";
 import {
   Plane,
   CircuitBoard,
+  CircleDashed,
   Radio,
+  ScanLine,
   Server,
   Car,
   Ship,
@@ -33,8 +35,9 @@ function airframeGlyph(frameType?: string): LucideIcon {
   }
 }
 
-/** One canonical glyph per node profile + airframe. Ground/compute use their
- * profile glyph; a drone uses its airframe glyph. Resolved at call time (not a
+/** One canonical glyph per node profile + airframe. Ground/compute/visor use
+ * their profile glyph, a profile this build does not know gets a neutral
+ * glyph, and a drone uses its airframe glyph. Resolved at call time (not a
  * module-load const) so importing this module does not eagerly touch the icon
  * bindings. */
 export function nodeGlyph(profile: EffProfile, frameType?: string): LucideIcon {
@@ -43,6 +46,10 @@ export function nodeGlyph(profile: EffProfile, frameType?: string): LucideIcon {
       return Radio;
     case "workstation":
       return Server;
+    case "visor":
+      return ScanLine;
+    case "unknown":
+      return CircleDashed;
     case "flight-controller":
       // FC-only: use the airframe glyph when known, else the neutral board glyph.
       return frameType ? airframeGlyph(frameType) : CircuitBoard;

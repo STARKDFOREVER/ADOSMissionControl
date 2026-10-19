@@ -148,6 +148,8 @@ export const DEFAULT_DOTS: Record<EffProfile, SignalKey[]> = {
   "flight-controller": ["link", "fc"],
   "ground-station": ["link"],
   workstation: ["link"],
+  visor: ["link"],
+  unknown: ["link"],
 };
 
 /**
@@ -160,6 +162,9 @@ export const SIGNAL_ALLOWLIST: Record<EffProfile, SignalKey[]> = {
   "flight-controller": ["link", "fc"],
   "ground-station": ["link"],
   workstation: ["link"],
+  // The Visor's sensor hub is a flight controller on the MAVLink lane.
+  visor: ["link", "fc"],
+  unknown: ["link"],
 };
 
 /** The allowlist of pinnable signals for a profile. */

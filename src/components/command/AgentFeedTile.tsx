@@ -51,8 +51,9 @@ import type { StatusLevel } from "@/lib/status-level";
 import { StatusDot } from "@/components/ui/status-dot";
 import { Badge } from "@/components/ui/badge";
 import { NodeGlyph } from "@/components/command/nodes/node-glyph";
+import { profileTypeKey } from "@/components/command/nodes/NodeRow";
 import { linkStateReach } from "@/components/hardware/radio/labels";
-import { profileTint, type EffProfile } from "@/lib/nodes/node-profile";
+import { agentEffProfile, profileTint, type EffProfile } from "@/lib/nodes/node-profile";
 import { useDeviceControlAuthority, useControlAuthorityNotice } from "@/hooks/use-node-control-authority";
 
 interface AgentFeedTileProps {
@@ -84,8 +85,8 @@ function fixed(value: number | null, digits = 0, suffix = ""): string {
  * camera pipeline) is a bare flight controller, surfaced as its own kind.
  */
 function tileEffProfile(agent: CommandAgentSummary): EffProfile {
-  if (agent.profile === "ground-station") return "ground-station";
-  if (agent.profile === "workstation") return "workstation";
+  const profile = agentEffProfile(agent.profile);
+  if (profile !== "drone") return profile;
   const noCompanion =
     agent.system.cpuPercent == null &&
     agent.system.memoryPercent == null &&
@@ -219,9 +220,7 @@ function TileBadges({
       ? t("profileGround")
       : effProfile === "drone"
         ? t("profileDrone")
-        : effProfile === "workstation"
-          ? tNode("type.workstation")
-          : tNode("type.flightController");
+        : tNode(`type.${profileTypeKey(effProfile)}`);
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
@@ -532,7 +531,7 @@ function ConsoleAgentFeedTile({
             </>
           )}
 
-          {effProfile === "workstation" && (
+          {(effProfile === "workstation" || effProfile === "visor" || effProfile === "unknown") && (
             <>
               <StatTile icon={<Cpu size={12} />} label={t("cpu")} value={pct(agent.system.cpuPercent)} />
               <StatTile icon={<Radio size={12} />} label={t("mem")} value={pct(agent.system.memoryPercent)} />

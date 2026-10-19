@@ -6,6 +6,8 @@
  * @license GPL-3.0-only
  */
 
+import type { NodeProfile } from "@/lib/nodes/node-profile";
+
 export interface AgentBindState {
   state?: string | null;
   phase?: string | null;
@@ -42,7 +44,7 @@ export interface ProbeResult {
   ownerId?: string;
   pairedAt?: number;
   mdnsHost: string;
-  profile: "drone" | "ground-station" | "workstation";
+  profile: NodeProfile;
   role?: "direct" | "relay" | "receiver" | null;
   /** The normalised base URL the GCS should keep talking to. */
   hostname: string;
