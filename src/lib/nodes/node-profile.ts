@@ -88,6 +88,16 @@ export function agentEffProfile(profile: NodeProfile | undefined): EffProfile {
   }
 }
 
+/**
+ * Whether a node shows flight-controller surfaces (FC reading, FC link,
+ * hardware/FC panels). A drone always does. A Visor does while its hub is
+ * reachable as a MAVLink flight controller (the stage-A sensor hub); a Visor
+ * without one is a host node. Every FC-bearing surface asks this one rule.
+ */
+export function showsFcSurfaces(profile: NodeProfile, fcReachable: boolean): boolean {
+  return profile === "drone" || (profile === "visor" && fcReachable);
+}
+
 /** A ground station's role as every node surface labels it. */
 export type GroundRoleKey = "direct" | "relay" | "receiver" | "unknown";
 

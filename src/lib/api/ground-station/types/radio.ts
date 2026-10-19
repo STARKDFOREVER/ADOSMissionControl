@@ -8,6 +8,8 @@
  * @license GPL-3.0-only
  */
 
+import type { RadioAdapter } from "./radio-adapters";
+
 // Coarse link state. "absent" is this app's own sentinel for a node that
 // reports no radio at all; the rest are the radio's own vocabulary.
 //
@@ -221,6 +223,9 @@ export interface RadioState {
   recommendedTierIdx: number | null;
   recommendedTierName: string | null;
   recommendedBitrateKbps: number | null;
+  // Every WFB adapter on a multi-adapter node (sidecar v2), in the agent's
+  // own snake_case shape. Empty on single-adapter nodes and older agents.
+  adapters: RadioAdapter[];
 }
 
 /** Response shape from PUT /api/wfb/tx-power. */

@@ -17,7 +17,7 @@
 import { isFcReachable } from "@/lib/agent/mavlink-link";
 import { nodeLiveness, type CommandAgentLiveness, type NodePresence } from "./presence";
 import type { CommandCloudStatus } from "@/stores/command-fleet-store";
-import type { NodeProfile } from "@/lib/nodes/node-profile";
+import { showsFcSurfaces, type NodeProfile } from "@/lib/nodes/node-profile";
 
 /** How much a node's last-pushed reading is worth right now. */
 export type ReadingFreshness = "fresh" | "stale" | "none";
@@ -47,7 +47,9 @@ export interface FcReadingInput {
 
 /** Resolve a node's FC reading from its liveness, profile and FC reachability. */
 export function fcReading(summary: FcReadingInput): FcReading {
-  if (summary.profile !== "drone") {
+  // A Visor whose hub/FC is not reachable is a host node, not a broken
+  // flight node: same rule as every other FC-bearing surface.
+  if (!showsFcSurfaces(summary.profile, summary.system.fcReachable)) {
     return { freshness: "none", absentKey: "fc.notFlightNode" };
   }
   const freshness = readingFreshness(summary.liveness);

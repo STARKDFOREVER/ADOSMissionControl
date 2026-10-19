@@ -92,6 +92,8 @@ function ctx(): SurfaceContext {
     radioPresent: "absent",
     visionPresent: "absent",
     crsfPresent: "absent",
+    gnssPresent: "absent",
+    loraPresent: "absent",
     role: "drone",
     capabilitiesKnown: true,
     showLockedTabs: false,

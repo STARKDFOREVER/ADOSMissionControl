@@ -26,6 +26,8 @@ function ctx(over: Partial<SurfaceContext>): SurfaceContext {
     radioPresent: "absent",
     visionPresent: "absent",
     crsfPresent: "absent",
+    gnssPresent: "absent",
+    loraPresent: "absent",
     role: "drone" as SurfaceContext["role"],
     capabilitiesKnown: true,
     showLockedTabs: false,
@@ -72,15 +74,19 @@ describe("node-detail surface registry (createContributionRegistry instance)", (
     expect(resolveSurfaces(forProfile("unknown"), []).map((s) => s.id)).toEqual(["agent"]);
   });
 
-  it("a Visor shows the host shell in order: overview, logs, agent", () => {
+  it("a Visor without its capture extension shows the core surfaces in order", () => {
     expect(resolveSurfaces(forProfile("visor"), []).map((s) => s.id)).toEqual([
       "overview",
+      "sensors",
+      "display",
+      "physicalUi",
+      "peripherals",
       "logs",
       "agent",
     ]);
   });
 
-  it("merges a Visor's extension surfaces into the host shell by group and order", () => {
+  it("merges a Visor's extension surfaces into the core list by group and order", () => {
     const spec = (id: string, group: string, order: number): ProfileSurfaceContribution => ({
       spec: { id, label: id, labelKey: id, render: () => null },
       profile: ["visor"],
@@ -92,7 +98,53 @@ describe("node-detail surface registry (createContributionRegistry instance)", (
       spec("capture", STATUS_GROUP, 20),
       spec("calibration", DEVICE_GROUP, 20),
     ]).map((s) => s.id);
-    expect(ids).toEqual(["overview", "capture", "sessions", "logs", "calibration", "agent"]);
+    expect(ids).toEqual([
+      "overview",
+      "capture",
+      "sessions",
+      "sensors",
+      "calibration",
+      "display",
+      "physicalUi",
+      "peripherals",
+      "logs",
+      "agent",
+    ]);
+  });
+
+  it("a plugin surface joins the end of a group with no ordered surfaces", () => {
+    const ids = resolveSurfaces(forProfile("ground-station"), [
+      {
+        spec: { id: "ext", label: "ext", labelKey: "ext", render: () => null },
+        profile: ["ground-station"],
+        group: STATUS_GROUP,
+        order: 5,
+      },
+    ]).map((s) => s.id);
+    expect(ids.slice(0, 4)).toEqual(["overview", "cockpit", "carriedDrones", "ext"]);
+  });
+
+  it("shows the ground station's GNSS and LoRa tabs only on a proven capability", () => {
+    const gs = (gnss: SurfaceContext["gnssPresent"], lora: SurfaceContext["loraPresent"]) =>
+      resolveSurfaces(
+        ctx({
+          drone: { profile: "ground-station" } as SurfaceContext["drone"],
+          role: "direct",
+          gnssPresent: gnss,
+          loraPresent: lora,
+        }),
+        [],
+      ).map((s) => s.id);
+    expect(gs("unknown", "absent")).not.toContain("gnss");
+    expect(gs("unknown", "absent")).not.toContain("lora");
+    const both = gs("present", "present");
+    expect(both.slice(both.indexOf("radio"), both.indexOf("mesh") + 1)).toEqual([
+      "radio",
+      "network",
+      "gnss",
+      "lora",
+      "mesh",
+    ]);
   });
 
   it("a compute node shows the workstation surfaces, not just the Agent page", () => {

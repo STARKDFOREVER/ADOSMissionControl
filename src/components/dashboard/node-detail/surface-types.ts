@@ -58,6 +58,12 @@ export interface SurfaceContext {
    * ELRS TX, so the tab appears on both profiles but only when a lane is
    * advertised. A node with no RC lane never shows it. */
   crsfPresent: CapabilityPresence;
+  /** Whether the node advertises a GNSS service (capability flag `gnss`).
+   * Gates the ground station's GNSS tab. */
+  gnssPresent: CapabilityPresence;
+  /** Whether the node advertises a LoRa lane (capability flag `lora`). Gates
+   * the ground station's LoRa tab. */
+  loraPresent: CapabilityPresence;
   role: AgentRole;
   /** False until this node has reported its capabilities at least once. A
    * surface that must not disappear mid-use reads this to hold its previous
@@ -104,6 +110,12 @@ export interface SurfaceSpec {
    * Adjacent surfaces with the same group string must sit next to each other in
    * the profile's list — grouping does not reorder. */
   group?: string;
+  /** Position hint within the surface's group, on the same scale as a plugin
+   * surface's manifest `order`. A plugin surface joining the group lands
+   * before the first surface whose order is greater than its own; a group
+   * with no ordered surface takes plugins at its end. Built-in lists keep
+   * their authored order regardless. */
+  order?: number;
   /** Availability gate (capability / role / connection). Absent = always. */
   when?: (ctx: SurfaceContext) => boolean;
   /** Body renderer. Returns an existing surface component. */

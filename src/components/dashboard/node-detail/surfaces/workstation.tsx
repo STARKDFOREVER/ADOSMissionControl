@@ -1,6 +1,6 @@
 /**
  * @module node-detail/surfaces/workstation
- * @description Surfaces for a workstation (and compute and Visor) node: the
+ * @description Surfaces for a workstation (and compute) node: the
  * host Overview, Logs, and the Agent page. These nodes are a core shell; the
  * pages that give them a purpose come from the extensions installed on them,
  * whose node surfaces follow the Overview.

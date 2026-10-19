@@ -39,6 +39,8 @@ function ctxFor(profile: NodeProfile): SurfaceContext {
     radioPresent: "present",
     visionPresent: "present",
     crsfPresent: "present",
+    gnssPresent: "absent",
+    loraPresent: "absent",
     role: null,
     capabilitiesKnown: true,
     showLockedTabs: false,

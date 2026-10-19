@@ -37,6 +37,7 @@ import type {
 import { DRONE_SURFACES } from "./surfaces/drone";
 import { GROUND_STATION_SURFACES } from "./surfaces/ground-station";
 import { WORKSTATION_SURFACES } from "./surfaces/workstation";
+import { VISOR_SURFACES } from "./surfaces/visor";
 import { AGENT_SURFACE } from "./agent/agent-surface";
 
 /**
@@ -76,6 +77,7 @@ const PROFILE_ENTRIES: ReadonlyArray<readonly [NodeProfile, SurfaceSpec[]]> = [
   ["drone", DRONE_SURFACES],
   ["ground-station", GROUND_STATION_SURFACES],
   ["workstation", WORKSTATION_SURFACES],
+  ["visor", VISOR_SURFACES],
 ];
 
 /** Wrap a built-in profile surface as a contribution. `when` is lifted from
@@ -112,21 +114,18 @@ export function registerBuiltinSurfaces(): void {
 registerBuiltinSurfaces();
 
 /** The profile whose built-in surface list a node shows. The compute profile
- * has no list of its own and shows the workstation's. A Visor shows the same
- * host shell (Overview on its host panels, Logs, Agent); its capture,
- * sessions and calibration pages arrive as extension surfaces. */
+ * has no list of its own and shows the workstation's. */
 const BUILTIN_PROFILE: Partial<Record<NodeProfile, NodeProfile>> = {
   compute: "workstation",
-  visor: "workstation",
 };
 
 /** The ordered, capability/role-filtered surface list for the selected node.
  * An unknown / future profile registered nothing so it gets just the Agent
  * page.
- *
  * Plugin surfaces (`plugins`) for this node's profile are merged in by
- * `order`: each lands at the end of the run of surfaces sharing its `group`,
- * or, with no such run, just before the Agent surface. */
+ * `order`: each joins the run of surfaces sharing its `group`, before the
+ * first one whose `order` is greater than its own (else at the run's end),
+ * or, with no such run, lands just before the Agent surface. */
 export function resolveSurfaces(
   ctx: SurfaceContext,
   plugins: ReadonlyArray<ProfileSurfaceContribution>,
@@ -143,13 +142,30 @@ export function resolveSurfaces(
     .filter((p) => p.profile.includes(profile))
     .sort((a, b) => a.order - b.order || a.spec.id.localeCompare(b.spec.id));
   for (const plugin of mine) {
-    const spec: SurfaceSpec = plugin.group ? { ...plugin.spec, group: plugin.group } : plugin.spec;
-    const runEnd = plugin.group
-      ? surfaces.findLastIndex((s) => s.group === plugin.group)
-      : -1;
-    const agentAt = surfaces.findIndex((s) => s.id === AGENT_SURFACE.id);
-    const at = runEnd >= 0 ? runEnd + 1 : agentAt >= 0 ? agentAt : surfaces.length;
-    surfaces.splice(at, 0, spec);
+    const spec: SurfaceSpec = {
+      ...plugin.spec,
+      ...(plugin.group ? { group: plugin.group } : {}),
+      order: plugin.order,
+    };
+    surfaces.splice(pluginInsertAt(surfaces, plugin.group, plugin.order), 0, spec);
   }
   return surfaces;
+}
+
+/** Where a plugin surface of `group` with `order` joins the resolved list. */
+function pluginInsertAt(
+  surfaces: ReadonlyArray<SurfaceSpec>,
+  group: string | undefined,
+  order: number,
+): number {
+  if (group) {
+    const later = surfaces.findIndex(
+      (s) => s.group === group && s.order !== undefined && s.order > order,
+    );
+    if (later >= 0) return later;
+    const runEnd = surfaces.findLastIndex((s) => s.group === group);
+    if (runEnd >= 0) return runEnd + 1;
+  }
+  const agentAt = surfaces.findIndex((s) => s.id === AGENT_SURFACE.id);
+  return agentAt >= 0 ? agentAt : surfaces.length;
 }

@@ -423,8 +423,11 @@ export function normalizeCapabilities(raw: unknown): AgentCapabilities {
   const hasAcceleratorRaw = (data as Record<string, unknown>).hasAccelerator;
   const hasAccelerator =
     typeof hasAcceleratorRaw === "boolean" ? hasAcceleratorRaw : undefined;
-  const simRaw = (data as Record<string, unknown>).sim;
-  const sim = typeof simRaw === "boolean" ? simRaw : undefined;
+  // Plain boolean flags; an absent or non-boolean value reads as unreported.
+  const flag = (key: string): boolean | undefined => {
+    const v = (data as Record<string, unknown>)[key];
+    return typeof v === "boolean" ? v : undefined;
+  };
 
   const canBusesRaw = (data as Record<string, unknown>).canBuses;
   let canBuses: AgentCapabilities["canBuses"] | undefined;
@@ -487,6 +490,8 @@ export function normalizeCapabilities(raw: unknown): AgentCapabilities {
     perceptionOffloadTarget,
     npuTops: topLevelNpuTops,
     hasAccelerator,
-    sim,
+    sim: flag("sim"),
+    gnss: flag("gnss"),
+    lora: flag("lora"),
   };
 }

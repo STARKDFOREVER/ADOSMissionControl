@@ -6,11 +6,14 @@
  * Network sub-panels. Profile-aware: a drone or ground-station node renders the
  * full FC / radio / regulatory / mesh panel set, while a workstation, compute
  * or Visor node (no WFB radio, no fleet mesh) drops those panels and keeps the
- * host metrics, services and access cards.
+ * host metrics, services and access cards. A Visor whose hub answers as a
+ * MAVLink flight controller also keeps the hardware / FC panel.
  * @license GPL-3.0-only
  */
 
 import { useSurfaceGate } from "@/hooks/use-surface-gate";
+import { isFcReachable } from "@/lib/agent/mavlink-link";
+import { useAgentSystemStore } from "@/stores/agent-system-store";
 import { agentGateFallback } from "./shared/agent-gate-fallback";
 import { ConfigErrorPanel } from "./system/ConfigErrorPanel";
 import { HardwareStatusPanel } from "./system/HardwareStatusPanel";
@@ -23,7 +26,7 @@ import { RegulatoryRegionPanel } from "./system/RegulatoryRegionPanel";
 import { DashboardAccessPinCard } from "./system/DashboardAccessPinCard";
 import { PluginHardwarePanels } from "./system/PluginHardwarePanels";
 import { ComputeMetricsCard } from "./shared/ComputeMetricsCard";
-import type { NodeProfile } from "@/lib/nodes/node-profile";
+import { showsFcSurfaces, type NodeProfile } from "@/lib/nodes/node-profile";
 import type { RelayReach } from "@/lib/nodes/relay-reach";
 
 interface SystemTabProps {
@@ -45,6 +48,12 @@ export function SystemTab({
   relayReach = null,
 }: SystemTabProps) {
   const gate = useSurfaceGate("agent-online");
+  const status = useAgentSystemStore((s) => s.status);
+  const fcReachable = isFcReachable({
+    fcConnected: status?.fc_connected,
+    fcVariant: status?.fc_variant,
+    transportOpen: status?.transport_open,
+  });
 
   const blocked = agentGateFallback(gate);
   if (blocked) return blocked;
@@ -54,6 +63,7 @@ export function SystemTab({
     return (
       <div className="p-4 space-y-4 max-w-5xl overflow-y-auto">
         <ConfigErrorPanel />
+        {showsFcSurfaces(profile, fcReachable) && <HardwareStatusPanel />}
         <ComputeMetricsCard />
         <MemoryPanel />
         <ServicesPanel />

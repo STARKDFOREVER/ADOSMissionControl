@@ -34,6 +34,8 @@ function gs(role: AgentRole): SurfaceContext {
     radioPresent: "absent",
     visionPresent: "absent",
     crsfPresent: "absent",
+    gnssPresent: "absent",
+    loraPresent: "absent",
     role,
     capabilitiesKnown: true,
     showLockedTabs: false,

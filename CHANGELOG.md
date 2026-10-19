@@ -11,9 +11,20 @@ the project follows [Semantic Versioning](https://semver.org/).
 - **SIM chip** on the node header when the agent reports `sim: true` (its
   simulation mode flag). Demo mode shows it on Delta-04.
 - **Visor nodes.** A node running the agent's `visor` profile shows with a
-  scan-line glyph and its own accent, the host Overview, Logs and Agent pages,
-  and any extension pages that target it. Plugins and their Convex install rows
-  accept `visor` as a target profile.
+  scan-line glyph and its own accent. Its Overview reads the agent's health,
+  battery gauge, capture storage, session clock, a rig summary and the last
+  capture session; a Sensors tab lists every rig sensor with its live rate
+  against the expected rate, sample age, sync sigma and source, plus the
+  sensor hub and flight controller behind them. Display, buttons and
+  peripherals are the same tabs the ground station uses. Extension pages that
+  target the Visor join by their manifest order. Plugins and their Convex
+  install rows accept `visor` as a target profile. Demo mode includes a Visor.
+- **Ground-station GNSS and LoRa tabs**, shown when the node advertises the
+  `gnss` / `lora` capability: receiver fix, RTK base survey/fixed control,
+  heading and PPS lock; the LoRa beacon lane with its regional band plan,
+  region picker, per-rule duty governor meters and a blocked banner that names
+  the reason and the fix. The Radio tab shows every WFB adapter with a
+  diversity summary, and the RC / ELRS tab shows every ELRS module.
 
 ### Changed
 
@@ -21,6 +32,11 @@ the project follows [Semantic Versioning](https://semver.org/).
   unknown node with a neutral glyph and only the Agent page, instead of being
   treated as a drone. Compute nodes keep their own profile and present as
   workstations.
+- A Visor whose sensor hub answers as a MAVLink flight controller is treated
+  as a flight node by every FC surface (FC reading, status card, hardware
+  panel); without one it is a host node.
+- The display, buttons and peripherals tabs moved to a profile-neutral
+  `nodes/device/` folder.
 
 ## [0.60.0] - 2026-10-11
 

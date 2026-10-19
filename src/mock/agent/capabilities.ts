@@ -16,71 +16,7 @@ import type {
 } from "@/lib/agent/feature-types";
 import type { CrsfState, RadioState } from "@/lib/api/ground-station/types";
 import { jitter } from "./utils";
-
-/** Demo air-side radio snapshot so the Radio / Network Health panel renders
- * its live indicators in `npm run demo`: a US-domain link locked on its home
- * channel (so it reads "pinned"), TX active with a ground decode, an
- * injection-capable adapter, and a healthy link-diagnosis verdict backed by a
- * flowing received-frame count (the honest received-side proof, no fabricated reading). The
- * normalizer fills any field omitted here. */
-const MOCK_RADIO: Partial<RadioState> = {
-  state: "connected",
-  iface: "wlan1",
-  driver: "rtl88x2eu",
-  channel: 149,
-  freqMhz: 5745,
-  homeChannel: 149,
-  band: "u-nii-3",
-  regDomain: "US",
-  monitorActive: true,
-  txActive: true,
-  peerLink: "linked",
-  acquireState: "locked",
-  channelLocked: true,
-  adapterChipset: "RTL8812EU",
-  adapterInjectionOk: true,
-  // The demo link decodes on the ground, so the radio's transmit-proof
-  // verdict is an explicit false (proven), not an absent reading.
-  rfUnverified: false,
-  rssiDbm: -44,
-  snrDb: 32,
-  bitrateKbps: 18500,
-  fecRecovered: 1240,
-  fecLost: 9,
-  lossPercent: 0.4,
-  // A healthy link-diagnosis verdict, proven by a flowing received-frame count.
-  linkDiag: "healthy",
-  packetsAll: 152340,
-  validRxPacketsPerS: 312,
-  decryptErrors: 0,
-  paired: true,
-};
-
-/** Demo CRSF / ExpressLRS control-lane snapshot so the RC / ELRS Link tab
- * renders a populated, honest lane in `npm run demo`: a healthy 900 MHz link
- * transmitting handset RC channels through a relay role, with the transmit
- * proven (rfUnverified false) and the RC command path open (fcCommandDownGated
- * false — an RC lane's sticks reach the FC). Read loosely off the caps payload
- * by the normalizer (camelCase), like the radio block. */
-const MOCK_CRSF: Partial<CrsfState> = {
-  state: "link_ok",
-  rssiDbm: -62,
-  lqUplink: 98,
-  lqDownlink: 95,
-  snrDb: 9,
-  band: "900 MHz",
-  packetRateHz: 150,
-  txPowerMw: 250,
-  txFramesPerS: 150,
-  rxFramesPerS: 50,
-  rfUnverified: false,
-  flyable: true,
-  mode: "crsf_rc",
-  fcCommandDownGated: false,
-  channelSource: "hid",
-  pic: "claimed",
-  relayRole: "relay",
-};
+import { MOCK_CRSF, MOCK_GS_ADAPTERS, MOCK_GS_ELRS_MODULES, MOCK_RADIO } from "./radio";
 
 type MockNavigationMode =
   | "off"
@@ -422,8 +358,8 @@ export function getMockGroundStationCapabilities(): AgentCapabilities & {
   role: string;
 } {
   return {
-    radio: MOCK_RADIO,
-    crsf: MOCK_CRSF,
+    radio: { ...MOCK_RADIO, adapters: MOCK_GS_ADAPTERS },
+    crsf: { ...MOCK_CRSF, modules: MOCK_GS_ELRS_MODULES },
     radioStackState: "ok",
     // profile / role are read loosely off the payload by deriveProfile /
     // deriveRole (not declared AgentCapabilities fields), so the capability
@@ -497,5 +433,30 @@ export function getMockGroundStationCapabilities(): AgentCapabilities & {
       registry_url: "",
     },
     runtimeMode: "native",
+    // The demo box has a GNSS receiver and a LoRa radio fitted, so its GNSS
+    // and LoRa tabs appear.
+    gnss: true,
+    lora: true,
+  };
+}
+
+/**
+ * Mock capability snapshot for the demo Visor: no WFB radio, no RC lane, no
+ * vision engine; a GNSS receiver on its hub but no LoRa radio. The profile is
+ * set so the capability store reads it as a Visor.
+ */
+export function getMockVisorCapabilities(): AgentCapabilities & { profile: string } {
+  const gs = getMockGroundStationCapabilities();
+  return {
+    tier: 4,
+    cameras: [],
+    videoStreams: [],
+    compute: { ...gs.compute, npu_available: true, npu_runtime: "rknn", npu_tops: 6 },
+    vision: gs.vision,
+    models: gs.models,
+    runtimeMode: "native",
+    profile: "visor",
+    gnss: true,
+    lora: false,
   };
 }

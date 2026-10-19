@@ -18,6 +18,8 @@ function ctx(over: Partial<SurfaceContext>): SurfaceContext {
     radioPresent: "absent",
     visionPresent: "absent",
     crsfPresent: "absent",
+    gnssPresent: "absent",
+    loraPresent: "absent",
     role: "drone" as SurfaceContext["role"],
     capabilitiesKnown: true,
     showLockedTabs: true,

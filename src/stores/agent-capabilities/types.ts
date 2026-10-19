@@ -225,6 +225,12 @@ export interface AgentCapabilitiesState {
   /** True when the node runs against a simulator. Undefined on agents that
    * predate the field. */
   sim?: AgentCapabilities["sim"];
+  /** True when the node advertises a GNSS service. Undefined on agents that
+   * predate the flag (read as unknown, never absent). */
+  gnss?: AgentCapabilities["gnss"];
+  /** True when the node advertises a LoRa lane. Undefined on agents that
+   * predate the flag. */
+  lora?: AgentCapabilities["lora"];
   /** True once we've received at least one capabilities payload. */
   loaded: boolean;
   /**

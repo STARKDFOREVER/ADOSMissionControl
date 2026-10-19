@@ -655,6 +655,12 @@ export interface AgentCapabilities {
   /** True when the node runs against a simulator (`simulation.enabled` in the
    * agent config). Undefined on agents that predate the field. */
   sim?: boolean;
+  /** True when the node runs a GNSS service with a fitted receiver (the
+   * agent's `gnss` capability flag). Undefined on agents that predate it. */
+  gnss?: boolean;
+  /** True when the node runs a LoRa lane with a fitted radio (the agent's
+   * `lora` capability flag). Undefined on agents that predate it. */
+  lora?: boolean;
   /** The perception execution tier the agent resolved for this node:
    *   - "local"  — the model runs on the node's own NPU (on-edge).
    *   - "offload"— the node streams frames to a workstation that runs it.

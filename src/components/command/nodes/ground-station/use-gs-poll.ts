@@ -2,7 +2,7 @@
 
 /**
  * @module ground-station/use-gs-poll
- * @description The one polling loop every ground-station tab uses.
+ * @description The one polling loop every node-hardware tab uses.
  *
  * A fixed `setInterval` queues overlapping requests onto an agent that is
  * already slow, which is exactly the load that made it slow. This re-arms a
@@ -24,18 +24,18 @@ import {
   type GroundStationApi,
 } from "@/lib/api/ground-station-api";
 
-export function useGroundStationPoll(
+/**
+ * Poll a node through the client `resolveApi` builds from its connection.
+ * `resolveApi` returns null in demo mode and with no agent URL, which makes
+ * the poll a no-op so the demo-seeded store renders untouched. It must be a
+ * stable (module-level) function.
+ */
+export function useAgentPoll<Api>(
   agentUrl: string | null,
   apiKey: string | null,
   baseMs: number,
-  run: (api: GroundStationApi) => Promise<void>,
-  /** Builds the client from the connection. The Mesh & RX surface passes
-   * `meshApiFromAgent`, which serves the in-memory demo mesh client in demo.
-   * Must be a stable (module-level) function. */
-  resolveApi: (
-    agentUrl: string | null,
-    apiKey: string | null,
-  ) => GroundStationApi | null = groundStationApiFromAgent,
+  run: (api: Api) => Promise<void>,
+  resolveApi: (agentUrl: string | null, apiKey: string | null) => Api | null,
 ): void {
   const runRef = useRef(run);
   useEffect(() => {
@@ -44,7 +44,6 @@ export function useGroundStationPoll(
 
   useEffect(() => {
     const api = resolveApi(agentUrl, apiKey);
-    // `groundStationApiFromAgent` is null in demo mode and with no agent URL.
     // Gating on the CLIENT rather than the raw URL is what stops a demo
     // session fetching the non-HTTP `mock://demo` forever.
     if (!api) return;
@@ -70,4 +69,20 @@ export function useGroundStationPoll(
       clearTimeout(timer);
     };
   }, [agentUrl, apiKey, baseMs, resolveApi]);
+}
+
+export function useGroundStationPoll(
+  agentUrl: string | null,
+  apiKey: string | null,
+  baseMs: number,
+  run: (api: GroundStationApi) => Promise<void>,
+  /** Builds the client from the connection. The Mesh & RX surface passes
+   * `meshApiFromAgent`, which serves the in-memory demo mesh client in demo.
+   * Must be a stable (module-level) function. */
+  resolveApi: (
+    agentUrl: string | null,
+    apiKey: string | null,
+  ) => GroundStationApi | null = groundStationApiFromAgent,
+): void {
+  useAgentPoll(agentUrl, apiKey, baseMs, run, resolveApi);
 }

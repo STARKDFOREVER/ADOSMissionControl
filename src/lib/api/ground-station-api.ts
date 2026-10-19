@@ -7,8 +7,8 @@
 // Exempt from 300 LOC soft rule: barrel re-export aggregator over per-domain HTTP modules
 import { isDemoMode } from "@/lib/utils";
 import type {
-  ApUpdate, DisplayUpdate, EthernetConfigUpdate, GroundStationRole,
-  MeshConfigUpdate, MeshEvent, MeshGatewayPreferenceUpdate, ModemUpdate,
+  ApUpdate, DisplayUpdate, EthernetConfigUpdate, GnssBaseBody, GroundStationRole,
+  LoraUpdate, MeshConfigUpdate, MeshEvent, MeshGatewayPreferenceUpdate, ModemUpdate,
   OledUpdate, PairJoinRequest, PicEvent, ScreensUpdate, UplinkEvent,
 } from "./ground-station/types";
 export type * from "./ground-station/types";
@@ -22,9 +22,19 @@ import * as p from "./ground-station/peripherals";
 import * as pic from "./ground-station/pic";
 import * as mesh from "./ground-station/mesh";
 import * as fleet from "./ground-station/fleet";
+import * as gnss from "./ground-station/gnss";
+import * as lora from "./ground-station/lora";
+import * as adapters from "./ground-station/radio-adapters";
 
 export { GroundStationApiError };
 export type { FleetHeroSlot, FleetHeroResult } from "./ground-station/fleet";
+export { gnssBaseBody, type GnssBaseDraft } from "./ground-station/gnss";
+export {
+  adapterLossPct,
+  diversitySummary,
+  normalizeRadioAdapters,
+  type DiversitySummary,
+} from "./ground-station/radio-adapters";
 
 export class GroundStationApi {
   private ctx: RequestContext;
@@ -100,6 +110,13 @@ export class GroundStationApi {
   requestJoin = (req: PairJoinRequest) => mesh.requestJoin(this.ctx, req);
   subscribeMeshEvents = (onEvent: (e: MeshEvent) => void, onState?: (state: "connected" | "reconnecting" | "closed") => void) => mesh.subscribeMeshEvents(this.ctx, onEvent, onState);
   setFleetHero = (deviceId: string) => fleet.setFleetHero(this.ctx, deviceId);
+  getGnss = () => gnss.getGnss(this.ctx);
+  setGnssBase = (body: GnssBaseBody) => gnss.setGnssBase(this.ctx, body);
+  getLora = () => lora.getLora(this.ctx);
+  getLoraRegions = () => lora.getLoraRegions(this.ctx);
+  setLora = (body: LoraUpdate) => lora.setLora(this.ctx, body);
+  getLoraBeacons = () => lora.getLoraBeacons(this.ctx);
+  getRadioAdapters = () => adapters.getRadioAdapters(this.ctx);
 }
 
 /** Build a GroundStationApi client from the current agent connection, if any. */

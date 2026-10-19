@@ -12,6 +12,7 @@ import type { CommandCloudStatus } from "@/stores/command-fleet-store";
 import { useLocalNodesStore, type LocalNode } from "@/stores/local-nodes-store";
 import { nodeIdForDevice } from "@/lib/agent/node-id";
 import { DEMO_DRONES, DEMO_WORKSTATION, DEMO_GROUND_STATION, firmwareMeta } from "@/mock/drones";
+import { DEMO_VISOR } from "./visor";
 
 export const AGENT_VERSION = "0.99.80";
 
@@ -73,6 +74,22 @@ export const DEMO_AGENTS: PairedDrone[] = [
     pairedAt: Date.now() - 48_000_000,
     profile: "ground-station",
     role: DEMO_GROUND_STATION.role,
+  },
+  {
+    _id: "demo-visor-1",
+    userId: "demo",
+    deviceId: DEMO_VISOR.deviceId,
+    name: DEMO_VISOR.name,
+    apiKey: "demo",
+    agentVersion: AGENT_VERSION,
+    board: DEMO_VISOR.board,
+    tier: 4,
+    os: "Linux",
+    lastIp: "127.0.0.1",
+    lastSeen: Date.now(),
+    fcConnected: false,
+    pairedAt: Date.now() - 36_000_000,
+    profile: "visor",
   },
 ];
 
@@ -192,6 +209,23 @@ export function buildDemoStatus(
       services: [
         { name: "ados-control", status: "running" },
         { name: "ados-plugin-host", status: "running" },
+      ],
+    };
+  }
+  if (agent.profile === "visor") {
+    return {
+      ...base,
+      ...hostMetrics,
+      boardSoc: "rk3588",
+      fcConnected: false,
+      fcPort: "",
+      fcBaud: 0,
+      mavlinkWsPort: 0,
+      services: [
+        { name: "ados-control", status: "running" },
+        { name: "ados-sensorhub", status: "running" },
+        { name: "ados-clock", status: "running" },
+        { name: "ados-vision", status: "running" },
       ],
     };
   }

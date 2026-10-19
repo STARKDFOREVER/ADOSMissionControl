@@ -55,6 +55,7 @@ function makeCrsf(over: Partial<CrsfState> = {}): CrsfState {
     channelSource: "hid",
     pic: "ground",
     relayRole: null,
+    modules: [],
     ...over,
   };
 }

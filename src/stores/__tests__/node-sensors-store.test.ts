@@ -1,0 +1,68 @@
+/**
+ * @license GPL-3.0-only
+ */
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { NodeSensorsApi } from "@/lib/api/agent/sensors";
+import { useNodeSensorsStore } from "@/stores/node-sensors-store";
+import { DEMO_VISOR_CLOCK, DEMO_VISOR_SENSORS } from "@/mock/demo-seed/visor";
+
+const BASE = "http://192.168.1.50:8080";
+
+function respond(routes: Record<string, { status: number; body: unknown }>) {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL) => {
+      const path = new URL(String(input)).pathname;
+      const r = routes[path] ?? { status: 404, body: { error: "not found" } };
+      return new Response(JSON.stringify(r.body), { status: r.status });
+    }),
+  );
+}
+
+beforeEach(() => useNodeSensorsStore.getState().clear());
+afterEach(() => vi.unstubAllGlobals());
+
+describe("node-sensors store load", () => {
+  it("keeps every route that answered and reads an absent capture extension as null", async () => {
+    respond({
+      "/api/v1/sensors": { status: 200, body: DEMO_VISOR_SENSORS },
+      "/api/v1/clock": { status: 200, body: DEMO_VISOR_CLOCK },
+      "/api/v1/storage": { status: 500, body: { error: "boom" } },
+    });
+    await useNodeSensorsStore.getState().load("visor-1", new NodeSensorsApi(BASE, "k"));
+    const s = useNodeSensorsStore.getState();
+    expect(s.nodeId).toBe("visor-1");
+    expect(s.sensors?.rig_id).toBe("visor-pro-01");
+    expect(s.clock?.timebase).toBe("hub_freerun");
+    expect(s.storage).toBeNull();
+    // 404 on the extension's route: not installed, which is a reading.
+    expect(s.sessions).toBeNull();
+    expect(s.error).not.toBeNull();
+  });
+
+  it("lists capture sessions newest first through the plugin passthrough", async () => {
+    const session = (id: string, at: string) => ({ session_id: id, started_at_utc: at });
+    respond({
+      "/api/plugins/com.altnautica.world-engine/x/atlas/sessions": {
+        status: 200,
+        body: { sessions: [session("a", "2026-10-18T10:00:00Z"), session("b", "2026-10-19T10:00:00Z")] },
+      },
+    });
+    const list = await new NodeSensorsApi(BASE).listCaptureSessions();
+    expect(list?.map((x) => x.session_id)).toEqual(["b", "a"]);
+  });
+
+  it("sends a rig document as the PUT body", async () => {
+    const fetchMock = vi.fn(async () =>
+      new Response(JSON.stringify({ ok: true, rig_id: "r", calib_version: "c" }), { status: 200 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const rig = { rig_id: "r", calib_version: "c", sensors: [] };
+    await new NodeSensorsApi(BASE, "k").putRig(rig);
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe(`${BASE}/api/v1/sensors/rig`);
+    expect(init.method).toBe("PUT");
+    expect(JSON.parse(String(init.body))).toEqual(rig);
+  });
+});

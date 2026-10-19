@@ -14,6 +14,7 @@ import {
   DEMO_GROUND_STATION,
   type DemoDroneConfig,
 } from "./drones";
+import { DEMO_VISOR } from "./demo-seed/visor";
 import { useDroneMetadataStore } from "@/stores/drone-metadata-store";
 import {
   useNodeRegistryStore,
@@ -83,6 +84,22 @@ export function seedDemoNodes(now: number): void {
       role: DEMO_GROUND_STATION.role,
       cloudPosture: "local",
       cloudDeviceId: DEMO_GROUND_STATION.deviceId,
+      lastHeartbeat: now,
+    },
+    "local",
+  );
+
+  // The demo Visor: a handheld capture rig, presence only like the two above
+  // (its sensor hub is not a MAVLink FC). Its sensor/clock/storage readings
+  // are seeded in DemoProvider.
+  registry.upsertPresence(
+    resolveNodeId(DEMO_VISOR.deviceId),
+    {
+      deviceId: DEMO_VISOR.deviceId,
+      name: DEMO_VISOR.name,
+      profile: "visor",
+      cloudPosture: "local",
+      cloudDeviceId: DEMO_VISOR.deviceId,
       lastHeartbeat: now,
     },
     "local",

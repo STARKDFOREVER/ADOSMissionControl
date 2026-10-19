@@ -166,6 +166,7 @@ describe("agent-capabilities-store radio", () => {
         pairedAt: null,
         publicKeyFingerprint: null,
         autoPairEnabled: false,
+        adapters: [],
       },
     });
     useAgentCapabilitiesStore.getState().clear();

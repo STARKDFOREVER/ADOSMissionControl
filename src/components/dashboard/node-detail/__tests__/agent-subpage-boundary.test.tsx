@@ -81,6 +81,8 @@ function ctxFor(droneId: string): SurfaceContext {
     radioPresent: "absent",
     visionPresent: "absent",
     crsfPresent: "absent",
+    gnssPresent: "absent",
+    loraPresent: "absent",
     role: null,
     capabilitiesKnown: true,
     showLockedTabs: false,

@@ -13,13 +13,14 @@ import { cn } from "@/lib/utils";
 import { formatDurationSeconds } from "@/lib/i18n/format";
 import type { AgentStatus } from "@/lib/agent/types";
 import type { AgentCapabilities } from "@/lib/agent/feature-types";
-import type { NodeProfile } from "@/lib/nodes/node-profile";
+import { showsFcSurfaces, type NodeProfile } from "@/lib/nodes/node-profile";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useFreshness } from "@/lib/agent/freshness";
 import {
   deriveMavlinkLink,
+  isFcReachable,
   fcLinkRemediation,
   heartbeatAgeLabel,
   mspFcLabel,
@@ -39,16 +40,27 @@ const RADIO_STACK_DEGRADED: ReadonlySet<RadioStackState> = new Set([
 
 interface AgentStatusCardProps {
   status: AgentStatus;
-  /** Node profile. A workstation or compute node drops the FC/MAVLink link
-   * section and the SBC "tier" line and instead surfaces chip + GPU + cores +
-   * memory — it has no flight controller and is not tiered. Every other
-   * profile (or absent) renders the full FC-bearing card. */
+  /** Node profile. A workstation or compute node — and a Visor with no
+   * reachable hub/FC — drops the FC/MAVLink link section and the SBC "tier"
+   * line and instead surfaces chip + GPU + cores + memory. Every other profile
+   * (or absent) renders the full FC-bearing card. */
   profile?: NodeProfile;
 }
 
 export function AgentStatusCard({ status, profile }: AgentStatusCardProps) {
   const t = useTranslations("agent");
-  const isWorkstation = profile === "workstation" || profile === "compute";
+  const isWorkstation =
+    profile === "workstation" ||
+    profile === "compute" ||
+    (profile === "visor" &&
+      !showsFcSurfaces(
+        profile,
+        isFcReachable({
+          fcConnected: status.fc_connected,
+          fcVariant: status.fc_variant,
+          transportOpen: status.transport_open,
+        }),
+      ));
   // Read dynamic values directly from system store — the status prop may be stale
   // due to cross-store Zustand update batching issues
   const resources = useAgentSystemStore((s) => s.resources);

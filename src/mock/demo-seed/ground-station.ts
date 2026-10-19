@@ -19,6 +19,7 @@ import {
   demoMeshNeighbors,
   demoReceiverRelays,
 } from "@/mock/ground-station-mesh";
+import { seedGroundStationLanes } from "./ground-station-lanes";
 
 /** Phone receivers waiting for approval on the demo ground station. The expiry
  * is a far-future constant: the demo has no agent to lapse it. */
@@ -50,6 +51,7 @@ export const DEMO_PHONE_INVITES: readonly PhoneInvite[] = [
 export function seedGroundStationStore(): void {
   demoGroundStationMesh.reset();
   setDemoMeshApi(demoGroundStationMesh as unknown as GroundStationApi);
+  seedGroundStationLanes();
   useGroundStationStore.setState({
     meshFor: DEMO_MESH_BASE_URL,
     status: {

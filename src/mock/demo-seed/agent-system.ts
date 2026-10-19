@@ -14,7 +14,12 @@ import type { AgentStatus, ServiceInfo, SystemResources, LogEntry } from "@/lib/
 import { DEMO_WORKSTATION } from "@/mock/drones";
 import { setMockAgentOverride } from "@/mock/agent/client";
 import { setMockConfigProfile } from "@/mock/agent/config";
-import { getMockCapabilities, getMockGroundStationCapabilities, type MockPerceptionOverride } from "@/mock/agent/capabilities";
+import {
+  getMockCapabilities,
+  getMockGroundStationCapabilities,
+  getMockVisorCapabilities,
+  type MockPerceptionOverride,
+} from "@/mock/agent/capabilities";
 import { VISION_OFF_DEMO_DRONE } from "@/mock/mock-detections";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 
@@ -51,6 +56,19 @@ function demoBoard(agent: PairedDrone): AgentStatus["board"] {
       hw_video_codecs: ["h264_v4l2m2m"],
     };
   }
+  if (agent.profile === "visor") {
+    return {
+      name: agent.name,
+      model: "ROCK 5B+",
+      tier: 4,
+      ram_mb: 16_384,
+      cpu_cores: 8,
+      vendor: "Radxa",
+      soc: "rk3588",
+      arch: "aarch64",
+      hw_video_codecs: ["h264_rkmpp"],
+    };
+  }
   return {
     name: agent.name,
     model: "Reference Companion",
@@ -71,6 +89,13 @@ function demoServices(agent: PairedDrone): ServiceInfo[] {
           ["ados-control", "running"],
           ["ados-plugin-host", "running"],
         ]
+      : agent.profile === "visor"
+        ? [
+            ["ados-control", "running"],
+            ["ados-sensorhub", "running"],
+            ["ados-clock", "running"],
+            ["ados-vision", "running"],
+          ]
       : agent.profile === "ground-station"
         ? [
             ["ados-control", "running"],
@@ -117,12 +142,16 @@ function demoLogs(agent: PairedDrone, now: number): LogEntry[] {
   const svc =
     agent.profile === "workstation"
       ? "ados-plugin-host"
+      : agent.profile === "visor"
+        ? "ados-sensorhub"
       : agent.profile === "ground-station"
         ? "ados-wfb-receiver"
         : "ados-mavlink";
   const line =
     agent.profile === "workstation"
       ? "plugin host ready, 0 extensions running"
+      : agent.profile === "visor"
+        ? "hub connected, imu 1000 Hz, clock locked sigma 0.40 ms"
       : agent.profile === "ground-station"
         ? "RX link locked -58 dBm ch149, relay mesh 2 peers"
         : "MAVLink heartbeat healthy, 3D fix 16 sats";
@@ -265,6 +294,10 @@ export function seedFocusedCapabilities(): void {
     useAgentCapabilitiesStore
       .getState()
       .setCapabilities(getMockGroundStationCapabilities(), devId);
+    return;
+  }
+  if (agent.profile === "visor") {
+    useAgentCapabilitiesStore.getState().setCapabilities(getMockVisorCapabilities(), devId);
     return;
   }
   const perception = demoPerceptionFor(agent);

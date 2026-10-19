@@ -311,6 +311,7 @@ describe("normalizeCrsf full-block fidelity across both casings", () => {
       channelSource: "joystick",
       pic: "ground",
       relayRole: "origin",
+      modules: [],
     });
   });
 
@@ -353,6 +354,7 @@ describe("normalizeCrsf full-block fidelity across both casings", () => {
       channelSource: "api",
       pic: null, // dropped by the projection
       relayRole: null,
+      modules: [],
     });
   });
 });

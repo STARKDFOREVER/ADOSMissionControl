@@ -231,7 +231,7 @@
       "groundStation": "Ground station",
       "workstation": "Workstation",
       "visor": "Visor",
-      "unknown": "Agent node"
+      "unknown": "Agent-Knoten"
     },
     "hero": {
       "online": "Online",
@@ -2506,7 +2506,7 @@
         "groundStation": "Bodenstation",
         "compute": "Compute",
         "visor": "Visor",
-        "unknown": "Agent node"
+        "unknown": "Agent-Knoten"
       },
       "bindState": {
         "binding": "binding…",
@@ -2563,7 +2563,9 @@
         "peripherals": "Peripheriegeräte",
         "mesh": "Mesh",
         "distributedRx": "Verteilter Empfang",
-        "meshAndRx": "Mesh & RX"
+        "meshAndRx": "Mesh & RX",
+        "gnss": "GNSS",
+        "lora": "LoRa"
       },
       "groups": {
         "status": "Status",
@@ -2591,7 +2593,10 @@
         "peripherals": "Peripheral rescan and per-peripheral actions route through the agent's REST surface, which is only reachable on the same LAN. The list below comes from the cloud heartbeat and is read-only.",
         "mesh": "batman-adv mesh topology (neighbours, routes, gateways) is local to the ground station and never relayed through the cloud. Connect on LAN to inspect mesh health.",
         "distributedRx": "Distributed receive fragment counters and pairing controls are local to the ground station and never relayed through the cloud. Connect on LAN for the live view.",
-        "radio": "Radio link stats and TX power route through this ground station's own REST surface, which is only reachable over a direct connection to it. Connect to this node on the LAN to view or change its radio."
+        "radio": "Radio link stats and TX power route through this ground station's own REST surface, which is only reachable over a direct connection to it. Connect to this node on the LAN to view or change its radio.",
+        "gnss": "The GNSS lane and RTK base are read and set through this ground station's own REST surface, which is only reachable over a direct connection to it. Connect to this node on the LAN to view or change them.",
+        "lora": "The LoRa lane, its duty governor and region are read and set through this ground station's own REST surface, which is only reachable over a direct connection to it. Connect to this node on the LAN to view or change them.",
+        "sensors": "Rig sensors, the session clock and capture storage are read straight from the node. Open this node on its local network to see them."
       }
     },
     "nodeReach": {
@@ -5179,7 +5184,37 @@
       "packetsAllHint": "Total RF frames the receiver has seen, whether or not they decoded. A rising count with rising decrypt errors means frames arrive but cannot be decoded.",
       "decryptErrors": "Decrypt errors",
       "decryptErrorsHint": "Frames that reached the receiver but failed FEC decode or decryption. A climbing count usually points at a key or link-id mismatch between the two ends.",
-      "txPowerMeasured": "Measured: {value}"
+      "txPowerMeasured": "Measured: {value}",
+      "adapters": {
+        "title": "Radio adapters",
+        "description": "Every WFB adapter on this ground station. Receive adapters feed the diversity combiner.",
+        "diversity": {
+          "title": "Receive diversity",
+          "rxAdapters": "Receive adapters",
+          "combined": "Combined loss",
+          "best": "Best single adapter loss",
+          "gain": "Gain ×{ratio} over the best single adapter",
+          "gainNone": "Gain not measurable yet"
+        },
+        "role": {
+          "rxtx": "RX+TX",
+          "rx": "RX",
+          "tx": "TX",
+          "mesh": "Mesh",
+          "unknown": "Role unknown"
+        },
+        "txBadge": "TX",
+        "antenna": "Antenna",
+        "notReported": "Not reported",
+        "driver": "Driver",
+        "rssiChain": "RSSI {chain}",
+        "rssi": "RSSI",
+        "packets": "Packets",
+        "lost": "Lost",
+        "fecRec": "FEC recovered",
+        "verified": "Verified",
+        "unverified": "Unverified"
+      }
     },
     "videoLink": {
       "title": "Video Link",
@@ -5215,7 +5250,8 @@
       "moreItems": " and {count} more"
     },
     "physicalUiPage": {
-      "description": "Live-Vorschau des OLED-Displays und der vier Fronttasten der Bodenstation. Hier können Sie auch Bluetooth-Peripheriegeräte koppeln."
+      "description": "Live-Vorschau des OLED-Displays und der vier Fronttasten der Bodenstation. Hier können Sie auch Bluetooth-Peripheriegeräte koppeln.",
+      "neutralDescription": "Live preview of the node's front-panel display and buttons. Pair Bluetooth peripherals here too."
     },
     "demoReadOnly": "Demo mode is read-only: this change is not sent to the sample fleet.",
     "wifiScan": {
@@ -7818,7 +7854,26 @@
       "title": "Node not answering",
       "body": "Last reading {age}. The lane state is unknown until the node reports again."
     },
-    "staleBanner": "Last reading {age}. The node is not answering, so these values are not current."
+    "staleBanner": "Last reading {age}. The node is not answering, so these values are not current.",
+    "modules": {
+      "title": "ELRS modules",
+      "description": "Every ExpressLRS transmitter module on this node, one card each.",
+      "role": {
+        "pilot": "Pilot",
+        "autonomy": "Autonomy",
+        "unknown": "Role not reported"
+      },
+      "connected": "Connected",
+      "disconnected": "Disconnected",
+      "connectionUnknown": "Connection unknown",
+      "port": "Port",
+      "lq": "Link quality",
+      "rssiChain": "RSSI {chain}",
+      "rssi": "RSSI",
+      "snr": "SNR",
+      "txPower": "TX power",
+      "rfMode": "RF mode"
+    }
   },
   "nodeDetail": {
     "groups": {
@@ -7977,5 +8032,340 @@
     "titleUnknown": "Arm state unknown",
     "body": "You are about to write {count, plural, one {# parameter} other {# parameters}} to the flight controller while it is armed. The changes take effect immediately and may affect in-flight behavior.",
     "bodyUnknown": "You are about to write {count, plural, one {# parameter} other {# parameters}} to the flight controller, which has not reported whether it is armed. Treat it as armed: the changes take effect immediately and may affect in-flight behavior."
+  },
+  "groundStationLanes": {
+    "demoReadOnly": "Demo mode is read-only: this change is not sent to the sample ground station.",
+    "gnss": {
+      "title": "GNSS",
+      "description": "Ground-station GNSS receivers, the RTK base that sends corrections to the drones, and the moving-baseline heading.",
+      "hint": "RTK base",
+      "loading": "Reading the GNSS lane…",
+      "error": "The ground station did not answer: {message}",
+      "notFitted": {
+        "title": "No GNSS receiver fitted",
+        "body": "This ground station reports no GNSS service. Fit a GNSS receiver and enable the GNSS lane to run an RTK base or a heading."
+      },
+      "receivers": {
+        "title": "Receivers",
+        "none": "No receiver is reporting.",
+        "fix": "Fix",
+        "sats": "Satellites",
+        "hdop": "HDOP",
+        "position": "Position",
+        "hEll": "Height (ellipsoid)",
+        "hMsl": "Height (MSL)",
+        "ppsLocked": "PPS locked",
+        "ppsUnlocked": "PPS not locked"
+      },
+      "fix": {
+        "none": "No fix",
+        "fix2d": "2D",
+        "fix3d": "3D",
+        "dgps": "DGPS",
+        "rtkFloat": "RTK float",
+        "rtkFixed": "RTK fixed"
+      },
+      "base": {
+        "title": "RTK base",
+        "none": "No base station state reported.",
+        "mode": "Mode",
+        "modeControl": "Base mode",
+        "modeLabel": {
+          "off": "Off",
+          "survey": "Survey-in",
+          "fixed": "Fixed position"
+        },
+        "state": {
+          "off": "Off",
+          "surveying": "Surveying",
+          "fixed": "Fixed",
+          "failed": "Failed"
+        },
+        "surveyTime": "Survey-in",
+        "surveyProgress": "{elapsed} s / min {min} s",
+        "accuracyLabel": "Accuracy",
+        "accuracy": "{accuracy} m / target {target} m",
+        "fixedAt": "Base position",
+        "minDur": "Minimum duration",
+        "targetAccuracy": "Target accuracy",
+        "lat": "Latitude",
+        "lon": "Longitude",
+        "hEll": "Height (ellipsoid)",
+        "apply": "Apply",
+        "startSurvey": "Start survey",
+        "invalid": "Enter a complete, in-range value for this mode.",
+        "applied": "Base mode updated.",
+        "armedRefused": "The ground station refused the base change while the vehicle is armed."
+      },
+      "corrections": {
+        "title": "Corrections out",
+        "msgsPerS": "Messages",
+        "msgsPerSValue": "{rate}/s",
+        "bytes": "Sent",
+        "targets": "Targets",
+        "none": "No RTCM corrections are being sent."
+      },
+      "heading": {
+        "title": "Heading (moving baseline)",
+        "notAvailable": "Not available: this receiver setup has no moving-baseline heading.",
+        "deg": "Heading",
+        "accuracy": "Accuracy",
+        "baseline": "Baseline"
+      }
+    },
+    "lora": {
+      "title": "LoRa",
+      "description": "Low-duty position beacons and fleet mesh. Every transmission passes the duty governor built from the active region's band plan.",
+      "hint": "Duty governor",
+      "loading": "Reading the LoRa lane…",
+      "error": "The ground station did not answer: {message}",
+      "applied": "LoRa settings updated.",
+      "armedRefused": "Region changes are locked while armed. The ground station refused the change.",
+      "notFitted": {
+        "title": "No LoRa module fitted",
+        "body": "This ground station reports no LoRa service. Fit a LoRa module and enable the LoRa lane to send and hear beacons."
+      },
+      "region": {
+        "title": "Region",
+        "none": "No region",
+        "from": "from:",
+        "source": {
+          "loraRegion": "LoRa setting",
+          "countrySetting": "country setting"
+        },
+        "citation": "Rule source: {citation}",
+        "band": "{lo}–{hi} MHz",
+        "change": "Change region",
+        "noVerifiedPlan": "No verified band plan for {name} yet. Receiving only.",
+        "moduleBandChip": "Module band {module} MHz does not cover {lo}–{hi} MHz",
+        "airborneChip": "Airborne restriction: check the {code} plan before flying"
+      },
+      "module": {
+        "label": "Module",
+        "ok": "OK",
+        "mismatch": "Band mismatch",
+        "transport": "Transport"
+      },
+      "channel": {
+        "freq": "ch {freq} MHz",
+        "bw": "BW {bw}",
+        "sf": "SF {sf}",
+        "erp": "{erp} of {max} mW ERP",
+        "settings": "Channel and power",
+        "freqLabel": "Frequency",
+        "erpLabel": "ERP",
+        "sfLabel": "Spreading factor",
+        "apply": "Apply channel",
+        "invalid": "Enter a frequency, an ERP and a spreading factor from 7 to 12."
+      },
+      "tx": {
+        "label": "TX",
+        "allowed": "Allowed",
+        "blocked": "Blocked",
+        "nextNow": "next TX now",
+        "nextIn": "next TX in {time}"
+      },
+      "governor": {
+        "title": "Governor",
+        "none": "The active plan declares no transmit rules.",
+        "kind": {
+          "duty_cycle": "Duty cycle",
+          "dwell_time": "Dwell time",
+          "lbt": "Listen before talk",
+          "max_power": "Maximum power"
+        },
+        "unknownKind": "Rule {kind}",
+        "subBand": "Sub-band {band}",
+        "dutyAirtime": "{airtime} / {budget} s per {window} s",
+        "dutyUsed": "{used} % of {limit} %",
+        "dwell": "{last} / {limit} ms per {per} s",
+        "power": "{configured} / {limit} mW",
+        "lbt": "threshold {threshold} dBm · listen {listen} µs · last {rssi} dBm",
+        "busyCount": "busy {count}",
+        "ok": "OK",
+        "exhausted": "Exhausted",
+        "over": "Over limit",
+        "clear": "Clear",
+        "busy": "Busy"
+      },
+      "refusals": {
+        "title": "Refusals",
+        "rule": "Rule",
+        "count": "Refused",
+        "total": "Frames sent {frames} · refused {refused}",
+        "last": "Last refusal",
+        "lastNone": "None",
+        "lastValue": "{rule}, {age}",
+        "rule_name": {
+          "duty_cycle": "Duty cycle",
+          "dwell_time": "Dwell time",
+          "lbt": "Listen before talk",
+          "max_power": "Power",
+          "region_unset": "Region"
+        }
+      },
+      "blocked": {
+        "title": "TX blocked",
+        "paused": "TX paused",
+        "reason": {
+          "region_unset": "No usable LoRa region: none is set, the country setting does not map to a supported plan, or the plan has no verified limits. Receiving still works.",
+          "module_band_mismatch": "The fitted module ({module} MHz) cannot meet the {plan} plan ({lo}–{hi} MHz). Fit a module for that band or choose another region.",
+          "duty_exhausted": "The duty-cycle limit for this window is reached. Beacons resume automatically.",
+          "dwell_time": "The dwell-time limit on this channel is reached. Transmission resumes automatically.",
+          "lbt_busy": "Listen before talk found the channel busy. Retrying.",
+          "power_over_limit": "The configured power is above the region's limit and no lower step fits."
+        },
+        "reasonUnknown": "Transmit refused by the ground station: {reason}",
+        "countdown": "Next transmission in {time}.",
+        "action": {
+          "setRegion": "Set region",
+          "countrySetting": "Open country setting",
+          "changeRegion": "Change region",
+          "powerSettings": "Open power settings"
+        }
+      },
+      "rx": {
+        "title": "Receive",
+        "frames": "Frames",
+        "crc": "CRC errors"
+      },
+      "beacons": {
+        "title": "Beacons heard",
+        "none": "No beacons heard yet.",
+        "node": "Node",
+        "nodeId": "#{id}",
+        "age": "Last",
+        "ageValue": "{s} s",
+        "position": "Lat / Lon",
+        "alt": "Alt",
+        "battery": "Batt",
+        "mode": "Mode",
+        "rssi": "RSSI",
+        "snr": "SNR"
+      },
+      "meshtastic": {
+        "title": "Meshtastic bridge",
+        "disabled": "Disabled",
+        "connected": "Connected",
+        "disconnected": "Not connected",
+        "port": "Port",
+        "preset": "Region preset"
+      },
+      "countrySetting": {
+        "title": "Country setting"
+      },
+      "picker": {
+        "title": "Change LoRa region",
+        "search": "Search regions",
+        "follow": "Follow country setting",
+        "rulesNotVerified": "not verified",
+        "moduleOk": "Module can tune this plan",
+        "moduleNo": "Module cannot meet this plan",
+        "moduleNoShort": "module",
+        "responsibility": "You are responsible for using the region where the station operates.",
+        "apply": "Apply region",
+        "armed": "Region changes are locked while armed.",
+        "loading": "Loading the region table…",
+        "empty": "The ground station reported no region table.",
+        "confirmTitle": "Change the LoRa region?",
+        "confirmBody": "The LoRa region changes from {from} to {to}. The governor switches to the new plan's rules immediately.",
+        "followLabel": "the country setting",
+        "noneLabel": "no region"
+      }
+    }
+  },
+  "visor": {
+    "sensors": {
+      "tabLabel": "Sensors",
+      "title": "Sensors",
+      "description": "Every rig sensor as the node reads it now: rate against the rate the rig expects, age of the last sample, sync sigma and the path it arrives on.",
+      "clockSigma": "clock σ {ms} ms",
+      "loading": "Reading the rig sensors…",
+      "readFailed": "The node did not answer the sensor read. Retrying.",
+      "notFitted": "No sensor service on this node",
+      "notFittedBody": "This node does not run the rig sensor service, so it has no sensors to show.",
+      "rig": "Rig",
+      "rigId": "Rig id",
+      "calibVersion": "Calibration",
+      "uncalibrated": "not calibrated",
+      "none": "none",
+      "hub": "Sensor hub",
+      "hubNone": "No sensor hub configured.",
+      "fc": "Flight controller",
+      "fcNone": "No flight controller configured.",
+      "link": "Link",
+      "connected": "connected",
+      "disconnected": "disconnected",
+      "firmware": "Firmware",
+      "board": "Board",
+      "transport": "Transport",
+      "errors": "Errors",
+      "errorCounts": "{crc} CRC · {dropped} dropped",
+      "autopilot": "Autopilot",
+      "highresImu": "High-rate IMU",
+      "yes": "yes",
+      "no": "no",
+      "noSensors": "No sensors in the rig",
+      "noSensorsBody": "The rig file lists no sensors. Store a rig file on the node to define them.",
+      "col": {
+        "id": "Id",
+        "kind": "Kind",
+        "role": "Role",
+        "rate": "Rate Hz (expected)",
+        "age": "Last sample",
+        "sigma": "σ ms",
+        "source": "Source"
+      },
+      "ageMs": "{ms} ms",
+      "gnssNone": "GNSS: no receiver on this rig.",
+      "gnssLine": "GNSS: fix {fix} · sats {sats} · HDOP {hdop} · RTK {rtk}"
+    },
+    "overview": {
+      "fallbackTitle": "Visor",
+      "waitingForStatus": "Waiting for agent status…",
+      "notRead": "Not read yet.",
+      "battery": "Battery",
+      "batteryNone": "No battery gauge on this node.",
+      "charge": "Charge",
+      "voltage": "Voltage",
+      "toReserve": "To reserve",
+      "storage": "Capture storage",
+      "storageNone": "No capture storage on this node.",
+      "storageState": {
+        "ok": "OK",
+        "near_full": "Near full",
+        "full": "Full"
+      },
+      "free": "Free",
+      "freeOf": "{free} of {total}",
+      "budget": "Capture budget",
+      "sessions": "Sessions",
+      "sessionsUploaded": "{uploaded} of {total} uploaded",
+      "clock": "Session clock",
+      "clockNone": "No session clock on this node.",
+      "locked": "Locked",
+      "unlocked": "Not locked",
+      "timebase": "Timebase",
+      "sigma": "Sync σ",
+      "unmeasured": "unmeasured",
+      "rig": "Rig",
+      "rigNone": "No rig sensor service on this node.",
+      "rigEmpty": "The rig lists no sensors.",
+      "uncalibrated": "not calibrated",
+      "lastSession": "Last session",
+      "captureNotInstalled": "The capture extension is not running on this node.",
+      "noSessions": "No capture sessions yet.",
+      "length": "Length",
+      "rooms": "Rooms",
+      "roomsFloors": "{rooms} rooms · floor {floors}",
+      "upload": "Upload",
+      "uploadState": {
+        "idle": "Not uploaded",
+        "queued": "Queued",
+        "uploading": "Uploading",
+        "committed": "Uploaded",
+        "failed": "Failed"
+      }
+    }
   }
 }

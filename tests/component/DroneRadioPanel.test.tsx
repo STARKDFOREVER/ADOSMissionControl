@@ -127,6 +127,7 @@ function radioWithState(state: RadioState["state"]): RadioState {
     pairedAt: null,
     publicKeyFingerprint: null,
     autoPairEnabled: false,
+    adapters: [],
   };
 }
 
@@ -212,6 +213,7 @@ describe("DroneRadioPanel", () => {
         pairedAt: "2026-05-08T12:00:00Z",
         publicKeyFingerprint: "deadbeefcafefeed",
         autoPairEnabled: false,
+        adapters: [],
     });
     renderWithIntl(<DroneRadioPanel droneId="drone-1" nodeDeviceId={NODE} />);
     // Air-side badge from the new droneRadio i18n namespace
@@ -289,6 +291,7 @@ describe("DroneRadioPanel", () => {
         pairedAt: null,
         publicKeyFingerprint: null,
         autoPairEnabled: false,
+        adapters: [],
     });
     renderWithIntl(<DroneRadioPanel droneId="drone-1" nodeDeviceId={NODE} />);
     expect(

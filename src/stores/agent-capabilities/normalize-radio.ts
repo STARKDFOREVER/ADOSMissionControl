@@ -22,6 +22,7 @@ import type {
   RadioState,
   RadioTopology,
 } from "@/lib/api/ground-station/types";
+import { normalizeRadioAdapters } from "@/lib/api/ground-station/radio-adapters";
 
 // Recognized literal values for the radio link state and the power
 // topology. Unknown values fall back to safe defaults so the UI never
@@ -247,5 +248,7 @@ export function normalizeRadio(raw: unknown): RadioState | null {
     recommendedTierName:
       typeof r.recommendedTierName === "string" ? r.recommendedTierName : null,
     recommendedBitrateKbps: num(r.recommendedBitrateKbps),
+    // Per-adapter view on multi-adapter nodes (sidecar v2). Empty when absent.
+    adapters: normalizeRadioAdapters(r.adapters),
   };
 }

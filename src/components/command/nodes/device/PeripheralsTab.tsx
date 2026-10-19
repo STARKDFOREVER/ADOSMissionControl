@@ -20,7 +20,7 @@ import { useNodeDirectAgent } from "@/components/command/settings/use-node-direc
 import { useGroundStationStore } from "@/stores/ground-station-store";
 import { CloudModeLimitedNotice } from "@/components/command/shared/CloudModeLimitedNotice";
 import { PluginHardwarePanels } from "@/components/command/system/PluginHardwarePanels";
-import { useGroundStationPoll } from "./use-gs-poll";
+import { useGroundStationPoll } from "../ground-station/use-gs-poll";
 
 const POLL_INTERVAL_MS = 5000;
 const RESCAN_TIMEOUT_MS = 10_000;

@@ -89,6 +89,8 @@ const INITIAL_STATE: AgentCapabilitiesState = {
   npuTops: undefined,
   hasAccelerator: undefined,
   sim: undefined,
+  gnss: undefined,
+  lora: undefined,
   loaded: false,
   receivedAt: null,
   focusedDeviceId: null,
@@ -411,6 +413,8 @@ export const useAgentCapabilitiesStore = create<AgentCapabilitiesStore>(
             ? prior.hasAccelerator
             : normalized.hasAccelerator,
         sim: normalized.sim === undefined ? prior.sim : normalized.sim,
+        gnss: normalized.gnss === undefined ? prior.gnss : normalized.gnss,
+        lora: normalized.lora === undefined ? prior.lora : normalized.lora,
         loaded: true,
         receivedAt: Date.now(),
         };

@@ -24,7 +24,10 @@ export type CloudLimitedFeature =
   | "peripherals"
   | "mesh"
   | "distributedRx"
-  | "radio";
+  | "radio"
+  | "sensors"
+  | "gnss"
+  | "lora";
 
 interface CloudModeLimitedNoticeProps {
   feature: CloudLimitedFeature;

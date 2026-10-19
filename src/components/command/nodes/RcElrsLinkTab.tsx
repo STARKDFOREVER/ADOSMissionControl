@@ -7,7 +7,7 @@
  * host an agent-relay ELRS TX). Reads the per-node `crsf` snapshot from the
  * capability store and renders the lane state, link statistics, transmit power
  * / band, control mode, channel source, pilot-in-command authority, and relay
- * role.
+ * role. A multi-module node also gets one card per ELRS module.
  *
  * Honesty is the whole point of this surface (see the truthful-status-surface
  * discipline): a transmitting-but-unconfirmed lane reads `rf_unverified` as
@@ -34,6 +34,7 @@ import type {
   CrsfLinkState,
   CrsfState,
 } from "@/lib/api/ground-station/types";
+import { ElrsModulesCard } from "./ElrsModulesCard";
 
 const EMPTY = "…";
 
@@ -335,6 +336,7 @@ export function RcElrsLinkTab({
           <span>{t("rfComplianceNote")}</span>
         </p>
       </section>
+      {crsf.modules.length > 0 ? <ElrsModulesCard modules={crsf.modules} stale={stale} /> : null}
     </div>
   );
 }

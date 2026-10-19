@@ -44,6 +44,8 @@ function ctxFor(
     radioPresent: "present",
     visionPresent: "present",
     crsfPresent: "present",
+    gnssPresent: "absent",
+    loraPresent: "absent",
     role: "drone" as SurfaceContext["role"],
     capabilitiesKnown: true,
     showLockedTabs: false,

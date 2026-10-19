@@ -5,9 +5,9 @@
  * A **Status** band — overview, the received-video cockpit and the drones this
  * box carries. A
  * **Link** band — the ground radio, IP networking, the mesh and its
- * distributed-receive data plane, and the RC/ELRS control lane. A **Device**
- * band — the physical box: display, buttons, peripherals. Then Logs and the
- * Agent page.
+ * distributed-receive data plane, GNSS and the LoRa lane when fitted, and the
+ * RC/ELRS control lane. A **Device** band — the physical box: display,
+ * buttons, peripherals (shared with the Visor). Then Logs and the Agent page.
  *
  * Mesh and Distributed RX used to be two role-gated tabs polling `/role`
  * separately and each rendering a role picker, both hidden unless the node
@@ -27,7 +27,8 @@
 import dynamic from "next/dynamic";
 import type { SurfaceSpec } from "../surface-types";
 import { surfaceNodeDeviceId } from "../surface-types";
-import { STATUS_GROUP, LINK_GROUP, DEVICE_GROUP } from "../surface-groups";
+import { STATUS_GROUP, LINK_GROUP } from "../surface-groups";
+import { DEVICE_SURFACES } from "./device";
 import { AGENT_SURFACE } from "../agent/agent-surface";
 import { DashboardPinUnlockCard } from "@/components/command/nodes/ground-station/DashboardPinUnlockCard";
 
@@ -57,18 +58,11 @@ const MeshTab = dynamic(() =>
 const RcElrsLinkTab = dynamic(() =>
   import("@/components/command/nodes/RcElrsLinkTab").then((m) => m.RcElrsLinkTab),
 );
-const DisplayTab = dynamic(() =>
-  import("@/components/command/nodes/ground-station/DisplayTab").then((m) => m.DisplayTab),
+const GnssTab = dynamic(() =>
+  import("@/components/command/nodes/ground-station/GnssTab").then((m) => m.GnssTab),
 );
-const PhysicalUiTab = dynamic(() =>
-  import("@/components/command/nodes/ground-station/PhysicalUiTab").then(
-    (m) => m.PhysicalUiTab,
-  ),
-);
-const PeripheralsTab = dynamic(() =>
-  import("@/components/command/nodes/ground-station/PeripheralsTab").then(
-    (m) => m.PeripheralsTab,
-  ),
+const LoraTab = dynamic(() =>
+  import("@/components/command/nodes/ground-station/LoraTab").then((m) => m.LoraTab),
 );
 const LogsTab = dynamic(() =>
   import("@/components/drone-detail/LogsTab").then((m) => m.LogsTab),
@@ -118,6 +112,23 @@ export const GROUND_STATION_SURFACES: SurfaceSpec[] = [
     render: (ctx) => <NetworkTab nodeDeviceId={surfaceNodeDeviceId(ctx)} />,
   },
   {
+    // Fix, RTK base and PPS time from the box's own receiver. Shown only on a
+    // proven `gnss` capability: a box with no receiver never gets the tab.
+    id: "gnss",
+    labelKey: "command.groundStation.tabs.gnss",
+    group: LINK_GROUP,
+    when: (ctx) => ctx.gnssPresent === "present",
+    render: (ctx) => <GnssTab nodeDeviceId={surfaceNodeDeviceId(ctx)} />,
+  },
+  {
+    // The low-duty LoRa beacon lane and its regional duty governor.
+    id: "lora",
+    labelKey: "command.groundStation.tabs.lora",
+    group: LINK_GROUP,
+    when: (ctx) => ctx.loraPresent === "present",
+    render: (ctx) => <LoraTab nodeDeviceId={surfaceNodeDeviceId(ctx)} />,
+  },
+  {
     // Mesh control plane + distributed-RX data plane, and the node's one role
     // picker. Always present: a `direct` or `unset` node reaches the picker
     // here, which is the whole point.
@@ -135,24 +146,7 @@ export const GROUND_STATION_SURFACES: SurfaceSpec[] = [
     when: (ctx) => ctx.crsfPresent === "present",
     render: (ctx) => <RcElrsLinkTab nodeDeviceId={surfaceNodeDeviceId(ctx)} />,
   },
-  {
-    id: "display",
-    labelKey: "command.groundStation.tabs.display",
-    group: DEVICE_GROUP,
-    render: (ctx) => <DisplayTab nodeDeviceId={surfaceNodeDeviceId(ctx)} />,
-  },
-  {
-    id: "physicalUi",
-    labelKey: "dronePanel.buttons",
-    group: DEVICE_GROUP,
-    render: (ctx) => <PhysicalUiTab nodeDeviceId={surfaceNodeDeviceId(ctx)} />,
-  },
-  {
-    id: "peripherals",
-    labelKey: "command.groundStation.tabs.peripherals",
-    group: DEVICE_GROUP,
-    render: (ctx) => <PeripheralsTab nodeDeviceId={surfaceNodeDeviceId(ctx)} />,
-  },
+  ...DEVICE_SURFACES,
   {
     id: "logs",
     labelKey: "dronePanel.logs",

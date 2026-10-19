@@ -16,6 +16,7 @@
 import type {
   CrsfLinkState,
   CrsfState,
+  ElrsModule,
 } from "@/lib/api/ground-station/types";
 
 // The ados-crsf service's own coarse-state vocabulary. An unknown value (or an
@@ -98,5 +99,42 @@ export function normalizeCrsf(raw: unknown): CrsfState | null {
     // PIC arbiter, LAN-sidecar only (the heartbeat projection drops it).
     pic: str(r.pic),
     relayRole: str(r.relayRole ?? r.relay_role),
+    modules: normalizeElrsModules(r.modules),
   };
+}
+
+/**
+ * Normalize the multi-module `modules[]` list. Each entry carries its link
+ * statistics nested under `link` on the wire (`{id, port, role, connected,
+ * link: {rssi_dbm, lq, snr_db, tx_power_mw, rf_mode}}`); a flat entry in
+ * either casing is accepted too. An entry without an id is dropped.
+ */
+export function normalizeElrsModules(raw: unknown): ElrsModule[] {
+  if (!Array.isArray(raw)) return [];
+  const num = (v: unknown): number | null =>
+    typeof v === "number" && Number.isFinite(v) ? v : null;
+  const str = (v: unknown): string | null =>
+    typeof v === "string" && v.length > 0 ? v : null;
+  const out: ElrsModule[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const m = item as Record<string, unknown>;
+    const id = str(m.id);
+    if (!id) continue;
+    const link =
+      m.link && typeof m.link === "object" ? (m.link as Record<string, unknown>) : m;
+    const rssi = link.rssi_dbm ?? link.rssiDbm;
+    out.push({
+      id,
+      port: str(m.port),
+      role: str(m.role),
+      connected: typeof m.connected === "boolean" ? m.connected : null,
+      rssiDbm: Array.isArray(rssi) ? rssi.filter((v): v is number => num(v) !== null) : [],
+      lq: num(link.lq),
+      snrDb: num(link.snr_db ?? link.snrDb),
+      txPowerMw: num(link.tx_power_mw ?? link.txPowerMw),
+      rfMode: str(link.rf_mode ?? link.rfMode),
+    });
+  }
+  return out;
 }

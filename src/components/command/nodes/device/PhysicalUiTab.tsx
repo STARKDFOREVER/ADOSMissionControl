@@ -4,7 +4,8 @@
  * @module PhysicalUiTab
  * @description Command-tab home for the physical-UI surface (OLED
  * live card, Buttons, Screens — buttons and screens are read-only
- * in this build). Renders the physical-UI surface for a ground-station node.
+ * in this build). Shared by every node with a front panel (ground station,
+ * Visor).
  * @license GPL-3.0-only
  */
 
@@ -125,7 +126,7 @@ export function PhysicalUiTab({ nodeDeviceId }: PhysicalUiTabProps) {
       <div className="flex flex-col">
         <PageIntro
           title={t("physicalUi")}
-          description="Live preview of the OLED screen and four front buttons on the ground station box. Pair Bluetooth peripherals here too."
+          description={t("physicalUiPage.neutralDescription")}
         />
         <CloudModeLimitedNotice feature="physicalUi" />
       </div>
@@ -136,7 +137,7 @@ export function PhysicalUiTab({ nodeDeviceId }: PhysicalUiTabProps) {
     <div className="flex flex-col">
       <PageIntro
         title={t("physicalUi")}
-        description="Live preview of the OLED screen and four front buttons on the ground station box. Pair Bluetooth peripherals here too."
+        description={t("physicalUiPage.neutralDescription")}
       />
       <div className="flex flex-col gap-4">
       {/* SPI LCD card + live thumbnail. Both hidden when no /dev/fb1

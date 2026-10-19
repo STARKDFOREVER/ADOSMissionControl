@@ -84,4 +84,26 @@ export interface CrsfState {
   // Relay role when this node relays control to another drone. Null when not
   // relaying / not reported.
   relayRole: string | null;
+  // Every ELRS transmitter module on a multi-module node (sidecar v2
+  // `modules[]`). Empty when the node runs a single lane or predates it.
+  modules: ElrsModule[];
+}
+
+/** Recognized module roles; any other role string is shown verbatim. */
+export type ElrsModuleRole = "pilot" | "autonomy";
+
+/** One ELRS transmitter module, normalized to camelCase from either the
+ * nested wire shape (`link: {rssi_dbm, lq, ...}`) or a flat one. Unmeasured
+ * values are null, never a fabricated zero. */
+export interface ElrsModule {
+  id: string;
+  port: string | null;
+  role: string | null;
+  connected: boolean | null;
+  /** One reading per antenna chain; empty when unmeasured. */
+  rssiDbm: number[];
+  lq: number | null;
+  snrDb: number | null;
+  txPowerMw: number | null;
+  rfMode: string | null;
 }

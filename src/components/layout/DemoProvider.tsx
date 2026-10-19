@@ -22,6 +22,8 @@ import { setMockAgentOverride } from "@/mock/agent/client";
 import { clearDemoLanNodes } from "@/lib/demo/demo-residue";
 import { DEMO_AGENTS, buildDemoStatus, seedDemoLanNodes } from "@/mock/demo-seed/fleet";
 import { seedGroundStationStore } from "@/mock/demo-seed/ground-station";
+import { seedVisorReadings } from "@/mock/demo-seed/visor";
+import { useNodeSensorsStore } from "@/stores/node-sensors-store";
 import { seedFocusedAgentSystem, seedFocusedCapabilities } from "@/mock/demo-seed/agent-system";
 import { getDemoMcpPlugins } from "@/mock/mock-mcp-plugins";
 import { useMcpPluginStore } from "@/lib/plugins/mcp-plugin-tools";
@@ -67,6 +69,7 @@ export function DemoProvider() {
   // ground-station overview then stays populated whenever opened.
   useEffect(() => {
     seedGroundStationStore();
+    seedVisorReadings();
     seedFocusedAgentSystem(Date.now());
     seedFocusedCapabilities();
   }, [selectedDroneId]);
@@ -109,6 +112,7 @@ export function DemoProvider() {
     // Seed the profile-specific stores the ground-station overview reads (the
     // singleton agent-system store stays drone-flavored).
     seedGroundStationStore();
+    seedVisorReadings();
     seedFocusedAgentSystem(Date.now());
     seedFocusedCapabilities();
     useMcpPluginStore.setState({ plugins: getDemoMcpPlugins(), status: "ready" });
@@ -166,6 +170,7 @@ export function DemoProvider() {
       useNodeRegistryStore.getState().clear();
       // Reset the profile-specific stores so demo leaves no residue in real mode.
       useGroundStationStore.getState().resetAll();
+      useNodeSensorsStore.getState().clear();
       useMcpPluginStore.setState({ plugins: [], status: "idle" });
       delete window.__adosDemo;
     };

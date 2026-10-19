@@ -248,7 +248,8 @@ describe("demo ground-station capabilities", () => {
         <RcElrsLinkTab crsf={crsf} />
       </NextIntlClientProvider>,
     );
-    // The transmit power reads through to the stat row (not the empty "…").
-    expect(screen.getByText("250 mW")).toBeInTheDocument();
+    // The transmit power reads through to the stat row (not the empty "…");
+    // the demo pilot module card repeats the same 250 mW below it.
+    expect(screen.getAllByText("250 mW")).toHaveLength(2);
   });
 });

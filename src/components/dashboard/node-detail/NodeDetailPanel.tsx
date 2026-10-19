@@ -103,6 +103,8 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
   const radioPresent = capabilityPresence(caps, (c) => c.radio !== null);
   const crsfPresent = capabilityPresence(caps, (c) => c.crsf !== null);
   const visionPresent = capabilityPresence(caps, (c) => c.visionAvailable === true);
+  const gnssPresent = capabilityPresence(caps, (c) => c.gnss === true);
+  const loraPresent = capabilityPresence(caps, (c) => c.lora === true);
 
   // The node's bare agent device id. `droneId` is the selection id
   // (`node:<deviceId>`); every per-node store and install table below is keyed
@@ -181,6 +183,8 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
     radioPresent,
     visionPresent,
     crsfPresent,
+    gnssPresent,
+    loraPresent,
     role: caps?.role ?? drone.role ?? null,
     capabilitiesKnown: caps !== null,
     showLockedTabs: !showAgentTabs,
