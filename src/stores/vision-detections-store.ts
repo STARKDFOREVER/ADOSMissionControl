@@ -52,11 +52,6 @@ const MAX_STREAMS_PER_DRONE = 32;
  * pinning a stream stale. */
 const OFFSET_WINDOW_CAP = 32;
 
-/** A frame whose `tsMs` is this far behind the stream's last frame comes from
- * a restarted agent (its monotonic clock began again near zero), not from a
- * backlog: the stream's clock offset is learned afresh. */
-const CLOCK_RESTART_MS = 60_000;
-
 /** Whether `next` was taken before `current` on the same stream. */
 function isOlderFrame(
   next: Pick<VisionDetectionBatch, "tsMs" | "frameId">,
@@ -192,20 +187,61 @@ export function streamKey(modelId: string, cameraId: string): string {
   return `${modelId}::${cameraId}`;
 }
 
+/** What a stream's clock-restart check needs: the first `tsMs` seen since its
+ * clock offset was last learned (the start of its observed span) and the
+ * connection epoch it was learned on. */
+interface StreamClock {
+  firstTsMs: number;
+  epoch: number;
+}
+
+type FeedMaps = Pick<
+  VisionDetectionsState,
+  "batches" | "streams" | "rateWindows" | "offsetWindows" | "streamClocks"
+>;
+
 /** A drone's feed maps with its entry removed. */
-function withoutDrone(
-  state: Pick<VisionDetectionsState, "batches" | "streams" | "rateWindows" | "offsetWindows">,
-  droneId: string,
-): Pick<VisionDetectionsState, "batches" | "streams" | "rateWindows" | "offsetWindows"> {
-  const batches = { ...state.batches };
-  delete batches[droneId];
-  const streams = { ...state.streams };
-  delete streams[droneId];
-  const rateWindows = { ...state.rateWindows };
-  delete rateWindows[droneId];
-  const offsetWindows = { ...state.offsetWindows };
-  delete offsetWindows[droneId];
-  return { batches, streams, rateWindows, offsetWindows };
+function withoutDrone(state: FeedMaps, droneId: string): FeedMaps {
+  const out: FeedMaps = {
+    batches: { ...state.batches },
+    streams: { ...state.streams },
+    rateWindows: { ...state.rateWindows },
+    offsetWindows: { ...state.offsetWindows },
+    streamClocks: { ...state.streamClocks },
+  };
+  for (const map of Object.values(out)) delete map[droneId];
+  return out;
+}
+
+/** Whether a drone has any feed state left. Reads the feed maps by name: the
+ * store state passed in also carries non-feed records keyed by drone. */
+function hasFeed(state: FeedMaps, droneId: string): boolean {
+  return (
+    droneId in state.batches ||
+    droneId in state.streams ||
+    droneId in state.rateWindows ||
+    droneId in state.offsetWindows ||
+    droneId in state.streamClocks
+  );
+}
+
+/** Whether `batch` comes from a restarted agent: its host-monotonic `tsMs`
+ * went backwards and the jump cannot be a late frame of the same run, because
+ * it arrived on a new connection, after the stream went stale, or from before
+ * the start of the stream's observed span. */
+function isClockRestart(
+  batch: Pick<VisionDetectionBatch, "tsMs">,
+  current: VisionDetectionBatch,
+  clock: StreamClock,
+  epoch: number,
+  now: number,
+): boolean {
+  if (batch.tsMs >= current.tsMs) return false;
+  return (
+    clock.epoch !== epoch ||
+    now - current.receivedAt > DETECTION_STALE_MS ||
+    batch.tsMs < clock.firstTsMs
+  );
 }
 
 interface VisionDetectionsState {
@@ -225,6 +261,11 @@ interface VisionDetectionsState {
   /** Per-stream (receipt − tsMs) window, keyed `droneId -> streamKey`. Not
    * part of the reactive render path. */
   offsetWindows: Record<string, Record<string, RingBuffer<number>>>;
+  /** Per-stream span start + connection epoch, keyed `droneId -> streamKey`,
+   * for telling an agent restart from a late frame. Not reactive. */
+  streamClocks: Record<string, Record<string, StreamClock>>;
+  /** Per-drone connection epoch, bumped by {@link markReconnect}. */
+  connectionEpochs: Record<string, number>;
   /** Drones whose agent reported its vision engine unreachable
    * (`available:false` on the detection poll or the detection socket's close
    * reason), so a surface can say "vision not running" instead of reading an
@@ -242,6 +283,9 @@ interface VisionDetectionsState {
    * drops the drone's batches (there is no live feed) and flags it; `true`
    * clears the flag. */
   setVisionAvailable: (droneId: string, available: boolean) => void;
+  /** Record that a drone's detection connection dropped: the next batch on
+   * it comes over a new connection, so a backward frame time is a restart. */
+  markReconnect: (droneId: string) => void;
   /** Receipt timestamps (epoch ms, oldest first) of a drone's recent batches,
    * for computing live throughput over a rolling window. Empty when no feed. */
   receiptTimes: (droneId: string) => number[];
@@ -259,13 +303,20 @@ export const useVisionDetectionsStore = create<VisionDetectionsState>(
     streams: {},
     rateWindows: {},
     offsetWindows: {},
+    streamClocks: {},
+    connectionEpochs: {},
     visionUnavailable: {},
     setBatch: (droneId, batch) =>
       set((state) => {
         const now = Date.now();
         const key = streamKey(batch.modelId, batch.cameraId);
         const current = state.streams[droneId]?.[key];
-        const restarted = current !== undefined && current.tsMs - batch.tsMs > CLOCK_RESTART_MS;
+        const epoch = state.connectionEpochs[droneId] ?? 0;
+        const clock = state.streamClocks[droneId]?.[key];
+        const restarted =
+          current !== undefined &&
+          clock !== undefined &&
+          isClockRestart(batch, current, clock, epoch, now);
         // Out-of-order delivery: never let an older frame replace a newer one
         // that is still on screen. A restarted agent's frames are new, not old.
         if (
@@ -280,10 +331,19 @@ export const useVisionDetectionsStore = create<VisionDetectionsState>(
         let offsetWindows = state.offsetWindows;
         let droneOffsets = offsetWindows[droneId];
         let offsets = droneOffsets?.[key];
-        if (!offsets || restarted) {
+        let streamClocks = state.streamClocks;
+        if (!offsets || !clock || restarted) {
           offsets = new RingBuffer<number>(OFFSET_WINDOW_CAP);
           droneOffsets = { ...droneOffsets, [key]: offsets };
           offsetWindows = { ...offsetWindows, [droneId]: droneOffsets };
+          streamClocks = {
+            ...streamClocks,
+            [droneId]: { ...streamClocks[droneId], [key]: { firstTsMs: batch.tsMs, epoch } },
+          };
+        } else {
+          // Learned on an earlier connection and still the same run: carry
+          // the span over to this connection.
+          clock.epoch = epoch;
         }
         offsets.push(now - batch.tsMs);
         const offset = Math.min(...offsets.toArray());
@@ -317,6 +377,7 @@ export const useVisionDetectionsStore = create<VisionDetectionsState>(
           },
           rateWindows,
           offsetWindows,
+          streamClocks,
           visionUnavailable,
         };
       }),
@@ -331,13 +392,7 @@ export const useVisionDetectionsStore = create<VisionDetectionsState>(
         // The relay lane repeats the report every poll: an already-flagged
         // drone with no feed left is a no-op, not a fresh render.
         const flagged = droneId in state.visionUnavailable;
-        if (
-          flagged &&
-          !(droneId in state.batches) &&
-          !(droneId in state.streams) &&
-          !(droneId in state.rateWindows) &&
-          !(droneId in state.offsetWindows)
-        ) {
+        if (flagged && !hasFeed(state, droneId)) {
           return state;
         }
         const visionUnavailable = flagged
@@ -345,6 +400,13 @@ export const useVisionDetectionsStore = create<VisionDetectionsState>(
           : { ...state.visionUnavailable, [droneId]: true as const };
         return { ...withoutDrone(state, droneId), visionUnavailable };
       }),
+    markReconnect: (droneId) =>
+      set((state) => ({
+        connectionEpochs: {
+          ...state.connectionEpochs,
+          [droneId]: (state.connectionEpochs[droneId] ?? 0) + 1,
+        },
+      })),
     receiptTimes: (droneId) => get().rateWindows[droneId]?.toArray() ?? [],
     streamsForDrone: (droneId) => {
       const byKey = get().streams[droneId];
@@ -353,13 +415,7 @@ export const useVisionDetectionsStore = create<VisionDetectionsState>(
     },
     clearBatch: (droneId) =>
       set((state) => {
-        if (
-          !(droneId in state.batches) &&
-          !(droneId in state.streams) &&
-          !(droneId in state.rateWindows) &&
-          !(droneId in state.offsetWindows) &&
-          !(droneId in state.visionUnavailable)
-        ) {
+        if (!hasFeed(state, droneId) && !(droneId in state.visionUnavailable)) {
           return state;
         }
         const visionUnavailable = { ...state.visionUnavailable };
@@ -367,6 +423,14 @@ export const useVisionDetectionsStore = create<VisionDetectionsState>(
         return { ...withoutDrone(state, droneId), visionUnavailable };
       }),
     clear: () =>
-      set({ batches: {}, streams: {}, rateWindows: {}, offsetWindows: {}, visionUnavailable: {} }),
+      set({
+        batches: {},
+        streams: {},
+        rateWindows: {},
+        offsetWindows: {},
+        streamClocks: {},
+        connectionEpochs: {},
+        visionUnavailable: {},
+      }),
   }),
 );

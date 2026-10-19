@@ -87,8 +87,10 @@ describe("vision-detections-store ordering and age", () => {
 
   it("drops a late batch taken before the one its stream is showing", () => {
     const s = useVisionDetectionsStore.getState();
+    s.setBatch(DRONE, batch({ frameId: 3, tsMs: 9_900 }));
     s.setBatch(DRONE, batch({ frameId: 5, tsMs: 9_990 }));
     vi.setSystemTime(10_050);
+    // Same connection, still fresh, inside the stream's span: a late frame.
     s.setBatch(DRONE, batch({ frameId: 4, tsMs: 9_950 }));
     const st = useVisionDetectionsStore.getState();
     expect(st.batches[DRONE].frameId).toBe(5);
@@ -135,6 +137,62 @@ describe("vision-detections-store ordering and age", () => {
     const st = useVisionDetectionsStore.getState().batches[DRONE];
     expect(st.frameId).toBe(1);
     expect(st.receivedAt).toBe(1_760_000_000_100);
+  });
+
+  it("detects a restart within a minute of boot by the jump outrunning the stream's span", () => {
+    vi.setSystemTime(1_760_000_000_000);
+    const s = useVisionDetectionsStore.getState();
+    // The agent booted 30 s ago; the stream has run since 30 000.
+    s.setBatch(DRONE, batch({ frameId: 1, tsMs: 30_000 }));
+    vi.setSystemTime(1_760_000_000_500);
+    s.setBatch(DRONE, batch({ frameId: 2, tsMs: 30_500 }));
+    // Restarted: 1 500 is before anything this run ever sent.
+    vi.setSystemTime(1_760_000_000_600);
+    s.setBatch(DRONE, batch({ frameId: 1, tsMs: 1_500 }));
+    const st = useVisionDetectionsStore.getState().batches[DRONE];
+    expect(st.tsMs).toBe(1_500);
+    expect(st.receivedAt).toBe(1_760_000_000_600);
+  });
+
+  it("detects a restart that lands inside the old span when it arrives on a new connection", () => {
+    vi.setSystemTime(1_760_000_000_000);
+    const s = useVisionDetectionsStore.getState();
+    s.setBatch(DRONE, batch({ frameId: 1, tsMs: 10_000 }));
+    vi.setSystemTime(1_760_000_040_000);
+    s.setBatch(DRONE, batch({ frameId: 2, tsMs: 50_000 }));
+    // The socket drops, the agent restarts and has been up 20 s on redial.
+    s.markReconnect(DRONE);
+    vi.setSystemTime(1_760_000_040_200);
+    s.setBatch(DRONE, batch({ frameId: 1, tsMs: 20_000 }));
+    const st = useVisionDetectionsStore.getState().batches[DRONE];
+    expect(st.tsMs).toBe(20_000);
+    expect(st.receivedAt).toBe(1_760_000_040_200);
+  });
+
+  it("detects a restart that lands inside the old span after the stream went stale", () => {
+    vi.setSystemTime(1_760_000_000_000);
+    const s = useVisionDetectionsStore.getState();
+    s.setBatch(DRONE, batch({ frameId: 1, tsMs: 10_000 }));
+    vi.setSystemTime(1_760_000_040_000);
+    s.setBatch(DRONE, batch({ frameId: 2, tsMs: 50_000 }));
+    // Same connection, but the feed went quiet past the stale window.
+    vi.setSystemTime(1_760_000_040_000 + DETECTION_STALE_MS + 1_000);
+    s.setBatch(DRONE, batch({ frameId: 1, tsMs: 20_000 }));
+    const st = useVisionDetectionsStore.getState().batches[DRONE];
+    expect(st.tsMs).toBe(20_000);
+    expect(Date.now() - st.receivedAt).toBe(0);
+  });
+
+  it("keeps the span across a reconnect when the agent did not restart", () => {
+    vi.setSystemTime(1_760_000_000_000);
+    const s = useVisionDetectionsStore.getState();
+    s.setBatch(DRONE, batch({ frameId: 1, tsMs: 10_000 }));
+    s.markReconnect(DRONE);
+    vi.setSystemTime(1_760_000_000_100);
+    s.setBatch(DRONE, batch({ frameId: 2, tsMs: 10_100 }));
+    // A late frame on the new connection, inside the span, while fresh.
+    s.setBatch(DRONE, batch({ frameId: 3, tsMs: 10_050 }));
+    expect(useVisionDetectionsStore.getState().batches[DRONE].frameId).toBe(2);
   });
 });
 

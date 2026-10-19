@@ -273,7 +273,8 @@ export function connectVisionDetections(
     return { close: () => {} };
   }
 
-  const { setBatch, clearBatch, setVisionAvailable } = useVisionDetectionsStore.getState();
+  const { setBatch, clearBatch, setVisionAvailable, markReconnect } =
+    useVisionDetectionsStore.getState();
 
   const unsubscribe = subscribeWebSocket<WireDetectionBatch>({
     ctx: { baseUrl: agentUrl, apiKey },
@@ -288,8 +289,11 @@ export function connectVisionDetections(
     },
     // An agent whose engine socket cannot be reached closes the stream with
     // `{"available":false,...}` as the close reason, so "vision is off" never
-    // reads as "nothing detected". Any other close is a plain redial.
+    // reads as "nothing detected". Any other close is a plain redial. Every
+    // close ends this connection: a backward frame time on the next one is an
+    // agent restart, not a late frame.
     onClose: (_code, reason) => {
+      markReconnect(droneId);
       let parsed: unknown;
       try {
         parsed = JSON.parse(reason);
