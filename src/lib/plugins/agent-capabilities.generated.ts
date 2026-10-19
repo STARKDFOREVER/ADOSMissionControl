@@ -93,6 +93,20 @@ export const AGENT_CAPABILITY_CATALOG: Record<string, CapabilityMeta> = {
     risk: "low",
     risk_reason: "Read-only on existing telemetry topics.",
   },
+  "sensor.stream.read": {
+    label: "Read the sensor bus (IMU, GNSS, triggers, clock)",
+    description: "Lets the plugin subscribe to the agent's sensor bus: timestamped IMU batches, raw GNSS receiver bytes, camera trigger records, barometer, magnetometer and clock samples, plus the clock state file. Used by capture and odometry plugins that need every sample on the host timebase.",
+    category: "data_network",
+    risk: "medium",
+    risk_reason: "High-rate raw sensor data, including the receiver's position stream. Enforced by the generated unit's mount namespace: without this grant the sensor bus socket and the clock file are not bound into the plugin's hidden run directory, so a connect fails with ENOENT.",
+  },
+  "capture.storage.write": {
+    label: "Write capture sessions to the capture storage volume",
+    description: "Lets the plugin read the capture-storage state and write capture session directories under the agent's capture root, and raise the capture-active marker that switches the flight controller to its capture sensor rates. The agent's storage janitor still owns the budget, admission and eviction.",
+    category: "data_network",
+    risk: "medium",
+    risk_reason: "Writes large files to the capture volume and changes the flight controller's stream rates while a session records. Enforced by the generated unit's mount namespace: without this grant the capture root, the capture-active directory and the storage state are not bound into the plugin's sandbox.",
+  },
   "telemetry.extend": {
     label: "Publish new telemetry fields to the GCS",
     description: "Lets the plugin add new fields to the telemetry stream that ships to the GCS. Used by sensor plugins that surface custom readings on the dashboard.",
@@ -197,6 +211,20 @@ export const AGENT_CAPABILITY_CATALOG: Record<string, CapabilityMeta> = {
     category: "data_network",
     risk: "medium",
     risk_reason: "Reconfigures which video sources the vehicle serves and restarts the video pipeline; a wrong source list can black out the operator's video.",
+  },
+  "video.whep.relay": {
+    label: "Relay live video playback sessions",
+    description: "Lets the plugin open and close WebRTC playback (WHEP) sessions on the agent's live camera streams on behalf of a viewer it serves: it hands the agent a viewer's SDP offer for a camera and relays the answer back. The agent only plays out streams it already publishes; the plugin cannot change them or reach the media server directly.",
+    category: "data_network",
+    risk: "medium",
+    risk_reason: "Gives the plugin the node's live camera video to hand to its own viewers, wherever it can reach them.",
+  },
+  "sensors.rig.write": {
+    label: "Store the sensor rig calibration",
+    description: "Lets the plugin store the rig document (sensor roles, intrinsics and extrinsics) the agent validates and the sensor hub fuses with, through the same validation the operator's rig write runs. An invalid document is refused and the stored one kept.",
+    category: "hardware",
+    risk: "medium",
+    risk_reason: "A wrong but valid calibration skews every fused sensor sample and capture until it is corrected.",
   },
   "mission.read": {
     label: "Read mission plans loaded on the agent",

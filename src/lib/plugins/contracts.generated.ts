@@ -7,7 +7,7 @@ export const CONTRACT_VERSIONS = {
   "framebus.ring": 1,
   "framebus.descriptor": 2,
   "tap.frame": 2,
-  "vision.detection": 2,
+  "vision.detection": 3,
   "state.v2": 4,
   "frame": 0,
   "mavlink.socket": 2,
@@ -24,7 +24,7 @@ export const CONTRACT_VERSIONS = {
 export const SIDECAR_VERSIONS = {
   "cloud-link": 1,
   "offload-link": 1,
-  "wfb-stats": 1,
+  "wfb-stats": 2,
   "hop-supervisor": 1,
   "peer-presence": 1,
   "mgmt-link": 1,
@@ -34,7 +34,9 @@ export const SIDECAR_VERSIONS = {
   "wfb_failover": 1,
   "wfb-pair-proof": 1,
   "bind-state": 1,
-  "crsf-stats": 1,
+  "crsf-stats": 2,
+  "lora": 1,
+  "lora-beacons": 1,
   "tunnel-config": 1,
   "relayed-status": 1,
   "linked-peers": 1,
@@ -126,11 +128,11 @@ export const CONTRACT_CATALOG: Record<string, ContractMeta> = {
     description: "Vision-tap frame header (ADVT magic) between the video pipeline and the vision engine. v2 adds ts_mono_ns, the host monotonic arrival time of the frame.",
   },
   "vision.detection": {
-    version: 2,
+    version: 3,
     wire: "msgpack",
     transport: "event-bus",
     status: "active",
-    description: "Self-describing detection/percept batches published on the vision.detection topic (v2 adds optional mask, keypoints, depth, world position, and an optional 2D box).",
+    description: "Self-describing detection/percept batches published on the vision.detection topic (v2 adds optional mask, keypoints, depth, world position, and an optional 2D box; v3 stamps ts_ms from the frame's host monotonic clock, not wall-clock).",
   },
   "state.v2": {
     version: 4,
@@ -207,7 +209,7 @@ export const CONTRACT_CATALOG: Record<string, ContractMeta> = {
     wire: "msgpack",
     transport: "unix-stream",
     status: "active",
-    description: "The sensor bus (seam J): length-prefixed msgpack frames {v, kind, src, payload} brokered by ados-clock on sensors.sock. clock/imu/gnss/trigger payloads are the capture contract ados.capture.v1 protobuf messages, with every t_ns on the host monotonic clock; baro, mag and sync are msgpack; rtcm is raw RTCM3 bytes toward the receivers.",
+    description: "The sensor bus (seam J): length-prefixed msgpack frames {v, kind, src, origin, payload} brokered by ados-clock on sensors.sock. clock/imu/gnss/trigger payloads are the capture contract ados.capture.v1 protobuf messages, with every t_ns on the host monotonic clock; baro, mag and sync are msgpack; rtcm is raw RTCM3 bytes toward the receivers.",
   },
 };
 
@@ -227,11 +229,11 @@ export const SIDECAR_CATALOG: Record<string, ContractMeta> = {
     description: "Drone perception offload-link state: a paired reachable workstation the drone is offloading to, feeding the perception-tier decision.",
   },
   "wfb-stats": {
-    version: 1,
+    version: 2,
     wire: "json",
     transport: "/run/ados/wfb-stats.json",
     status: "sidecar",
-    description: "WFB link statistics: RSSI, packet counters, and derived link state.",
+    description: "WFB link statistics: RSSI, packet counters, derived link state, and per-adapter receive counters with the diversity block.",
   },
   "hop-supervisor": {
     version: 1,
@@ -297,11 +299,25 @@ export const SIDECAR_CATALOG: Record<string, ContractMeta> = {
     description: "WFB bind-session sentinel and precheck result.",
   },
   "crsf-stats": {
-    version: 1,
+    version: 2,
     wire: "json",
     transport: "/run/ados/crsf-stats.json",
     status: "sidecar",
-    description: "CRSF RC-lane state and link statistics: lane state, RSSI/LQ/SNR, frame rates, and the received-side liveness verdict.",
+    description: "CRSF RC-lane state and link statistics: lane state, RSSI/LQ/SNR, frame rates, and the received-side liveness verdict. v2 adds modules[]: one entry per configured RC module with its role, port, link statistics and reported ELRS domain.",
+  },
+  "lora": {
+    version: 1,
+    wire: "json",
+    transport: "/run/ados/lora.json",
+    status: "sidecar",
+    description: "LoRa lane state: transport, module band, resolved region and plan, channel and power, the governor's per-rule state (duty, dwell, listen-before-talk, power), TX/RX counters and the Meshtastic bridge.",
+  },
+  "lora-beacons": {
+    version: 1,
+    wire: "json",
+    transport: "/run/ados/lora-beacons.json",
+    status: "sidecar",
+    description: "Beacons heard on the LoRa lane, newest first, capped at 100.",
   },
   "tunnel-config": {
     version: 1,
@@ -441,7 +457,7 @@ export const SIDECAR_CATALOG: Record<string, ContractMeta> = {
     wire: "json",
     transport: "/run/ados/mavlink-router.json",
     status: "sidecar",
-    description: "The router's learned routes (sysid, compid, endpoint) and per-endpoint rx/tx counters, rewritten on change.",
+    description: "The router's learned routes (sysid, compid, endpoint), per-endpoint rx/tx counters, and sensor_rates_hz (the flight-controller sensor streams currently requested, by sensor-bus stream id), rewritten on change and at least every 5 s.",
   },
   "link-feedback": {
     version: 1,
