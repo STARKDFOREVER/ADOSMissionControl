@@ -45,8 +45,8 @@ interface TerrainProfileChartProps {
 export function TerrainProfileChart({ waypoints }: TerrainProfileChartProps) {
   const t = useTranslations("terrain");
   const defaultFrame = usePlannerStore((s) => s.defaultFrame);
-  // Single shared producer — the chart, the along-leg validator, and the
-  // red-collision renderers all read the same profile.
+  // Ground sampled at every waypoint and at most 30 m apart along each leg;
+  // repeated points come from the shared elevation cache.
   const { profile: terrainProfile, status } = useTerrainProfile(waypoints);
   // The chart follows the mission's altitude frame by default; the cycle button
   // is an optional override for previewing the path in another frame. When the

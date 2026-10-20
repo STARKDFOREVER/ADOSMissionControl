@@ -51,6 +51,9 @@ the project follows [Semantic Versioning](https://semver.org/).
   narrow area gets one centred line, photo counts include the shot at each end
   of a line, corridors fly parallel lines along the whole path, and structure
   scans orbit the building outline at the scan distance.
+- Terrain heights are kept in the browser between sessions, and an area can be
+  downloaded for offline use. Terrain profiles sample the ground every 30 m
+  instead of five points per leg.
 
 ### Changed
 

@@ -7,7 +7,6 @@ vi.mock('@/lib/telemetry-utils', () => ({
 // We need to reset module state between tests because of the module-level cache
 let getElevation: typeof import('@/lib/terrain/terrain-provider').getElevation;
 let getElevations: typeof import('@/lib/terrain/terrain-provider').getElevations;
-let getElevationAlongPath: typeof import('@/lib/terrain/terrain-provider').getElevationAlongPath;
 
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
@@ -26,7 +25,6 @@ beforeEach(async () => {
   const mod = await import('@/lib/terrain/terrain-provider');
   getElevation = mod.getElevation;
   getElevations = mod.getElevations;
-  getElevationAlongPath = mod.getElevationAlongPath;
 });
 
 describe('getElevation', () => {
@@ -252,33 +250,5 @@ describe('getElevations', () => {
       { lat: lat2, lon: 77.5 },
     ]);
     expect(result).toEqual([0, 12]);
-  });
-});
-
-describe('getElevationAlongPath', () => {
-  it('returns correct number of points', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        results: Array.from({ length: 5 }, () => ({ elevation: 100 })),
-      }),
-    });
-    const start = { lat: uniqueLat(), lon: 77.5 };
-    const end = { lat: uniqueLat(), lon: 77.6 };
-    const result = await getElevationAlongPath(start, end, 5);
-    expect(result).toHaveLength(5);
-  });
-
-  it('defaults to 2 samples when samples < 2', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        results: [{ elevation: 100 }, { elevation: 200 }],
-      }),
-    });
-    const start = { lat: uniqueLat(), lon: 77.5 };
-    const end = { lat: uniqueLat(), lon: 77.6 };
-    const result = await getElevationAlongPath(start, end, 1);
-    expect(result).toHaveLength(2);
   });
 });

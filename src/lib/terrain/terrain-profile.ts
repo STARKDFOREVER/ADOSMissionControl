@@ -7,14 +7,15 @@
 import type { Waypoint } from "@/lib/types";
 import type { TerrainProfile, TerrainPoint, TerrainGap } from "./types";
 import { getElevations } from "./terrain-provider";
-import { haversineDistance, interpolateLatLon } from "@/lib/geo/distance";
+import { legSamplePoints } from "./ground-sampler";
 
 /**
  * Compute a terrain elevation profile along a waypoint path.
- * Samples elevation at each waypoint and at intermediate points between them.
+ * Samples elevation at each waypoint and at evenly spaced points between
+ * them, no two neighbours more than `spacingM` apart.
  *
  * @param waypoints Waypoint array to profile
- * @param samplesPerSegment Number of intermediate samples between each waypoint pair
+ * @param spacingM Largest gap between neighbouring samples on a leg, metres
  * @param signal Optional AbortSignal for cancellation
  * @returns TerrainProfile with elevation data along the path and the gaps where
  *   the lookup failed, or `null` when the elevation data is unavailable
@@ -23,41 +24,27 @@ import { haversineDistance, interpolateLatLon } from "@/lib/geo/distance";
  */
 export async function computeTerrainProfile(
   waypoints: Waypoint[],
-  samplesPerSegment = 10,
+  spacingM = 30,
   signal?: AbortSignal,
 ): Promise<TerrainProfile | null> {
   if (waypoints.length === 0) {
     return { points: [], gaps: [], minElevation: 0, maxElevation: 0 };
   }
 
-  // Build sample points: each waypoint + intermediate samples
-  const samplePoints: Array<{ lat: number; lon: number; cumDist: number }> = [];
+  // Build sample points: the first waypoint, then each leg's samples after its
+  // start (the leg's end is the next waypoint).
+  const first = waypoints[0];
+  const samplePoints: Array<{ lat: number; lon: number; cumDist: number }> = [
+    { lat: first.lat, lon: first.lon, cumDist: 0 },
+  ];
   let cumDist = 0;
-
-  for (let i = 0; i < waypoints.length; i++) {
-    const wp = waypoints[i];
-
-    if (i > 0) {
-      const prev = waypoints[i - 1];
-      const segDist = haversineDistance(prev.lat, prev.lon, wp.lat, wp.lon);
-
-      // Add intermediate samples
-      for (let s = 1; s <= samplesPerSegment; s++) {
-        const t = s / (samplesPerSegment + 1);
-        samplePoints.push({
-          ...interpolateLatLon(prev.lat, prev.lon, wp.lat, wp.lon, t),
-          cumDist: cumDist + segDist * t,
-        });
-      }
-
-      cumDist += segDist;
+  for (let i = 1; i < waypoints.length; i++) {
+    const leg = legSamplePoints(waypoints[i - 1], waypoints[i], spacingM);
+    for (let s = 1; s < leg.length; s++) {
+      samplePoints.push({ lat: leg[s].lat, lon: leg[s].lon, cumDist: cumDist + leg[s].distM });
     }
-
-    samplePoints.push({ lat: wp.lat, lon: wp.lon, cumDist });
+    cumDist += leg[leg.length - 1].distM;
   }
-
-  // Sort by cumulative distance (intermediate points were inserted before their end waypoint)
-  samplePoints.sort((a, b) => a.cumDist - b.cumDist);
 
   // Fetch elevations (null at any index whose lookup failed)
   const elevations = await getElevations(

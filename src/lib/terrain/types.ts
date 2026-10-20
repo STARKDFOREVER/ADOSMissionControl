@@ -12,19 +12,6 @@ export interface TerrainPoint {
   elevation: number;   // meters MSL
 }
 
-/**
- * One elevation sample along a path. `elevation` is `null` when the lookup
- * failed — distinct from a real 0 m sea-level reading, which is a valid value.
- */
-export interface PathElevationSample {
-  lat: number;
-  lon: number;
-  /** Meters from path start. */
-  distance: number;
-  /** Meters MSL, or `null` when the elevation is unknown. */
-  elevation: number | null;
-}
-
 /** A stretch of the path whose terrain lookup failed: unknown, never clear. */
 export interface TerrainGap {
   /** Distance (m) of the last known sample before the gap (or the first unknown one). */
