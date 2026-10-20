@@ -9,7 +9,8 @@ import { CAMERA_PROFILES } from "@/lib/patterns/gsd-calculator";
 export const PATTERN_TYPE_OPTIONS = [
   { value: "survey", label: "Survey grid", description: "Grid/lawnmower pattern for area coverage and mapping" },
   { value: "orbit", label: "Orbit", description: "Circular flight around a point of interest" },
-  { value: "corridor", label: "Corridor", description: "Linear corridor sweep along a path" },
+  { value: "corridor", label: "Corridor", description: "Lines flown along a path, covering its width" },
+  { value: "facade", label: "Facade", description: "Vertical rows in front of one wall" },
   { value: "perimeter", label: "Perimeter", description: "One closed loop around a boundary, optionally inset" },
   { value: "expandingSquare", label: "SAR: expanding square", description: "Search pattern expanding outward from a datum point" },
   { value: "sectorSearch", label: "SAR: sector search", description: "Pie-slice search radiating from a datum point" },
@@ -49,9 +50,9 @@ export interface SurveyPreset {
 }
 
 export const SURVEY_PRESETS: SurveyPreset[] = [
-  { label: "Photogrammetry Standard", sidelap: 80, frontlap: 70, altitude: 50, speed: 5, description: "Most common mapping preset" },
+  { label: "Photogrammetry Standard", sidelap: 70, frontlap: 80, altitude: 50, speed: 5, description: "Most common mapping preset" },
   { label: "High Detail", sidelap: 90, frontlap: 80, altitude: 30, speed: 3, description: "Dense 3D reconstruction" },
-  { label: "Quick Overview", sidelap: 60, frontlap: 50, altitude: 80, speed: 8, description: "Fast area coverage" },
+  { label: "Quick Overview", sidelap: 60, frontlap: 75, altitude: 80, speed: 8, description: "Fast area coverage" },
   { label: "Inspection", sidelap: 70, frontlap: 60, altitude: 30, speed: 2, description: "Close-range inspection" },
   { label: "Magnetic Survey", sidelap: 60, frontlap: 50, altitude: 50, speed: 5, tieLines: true, description: "Tie lines enabled for calibration" },
 ];

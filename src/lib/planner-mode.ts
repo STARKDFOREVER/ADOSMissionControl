@@ -36,10 +36,11 @@ export type DatumPattern =
   | "parallelTrack"
   | "structureScan"
   | "perimeter"
+  | "facade"
   | null;
 
-/** The map-drawing shape a `draw` mode produces. */
-export type DrawShape = "polygon" | "circle" | "measure";
+/** The map-drawing shape a `draw` mode produces. An open polyline completes at two or more points. */
+export type DrawShape = "polygon" | "polyline" | "circle" | "measure";
 
 /**
  * What a drawn shape is for. This tags the eventual destination of a completed
@@ -142,6 +143,7 @@ export function modeForTool(tool: PlannerTool): PlannerMode {
     case "roi":
       return { kind: "waypoint", tool };
     case "polygon":
+    case "polyline":
     case "circle":
     case "measure":
       return { kind: "draw", shape: tool, drawingFor: "free" };

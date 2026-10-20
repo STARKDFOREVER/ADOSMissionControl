@@ -117,7 +117,7 @@ export function formatDist(m: number): string {
   return m >= 1000 ? `${(m / 1000).toFixed(1)}km` : `${Math.round(m)}m`;
 }
 
-export const DRAWING_TOOLS: PlannerTool[] = ["polygon", "circle", "measure"];
+export const DRAWING_TOOLS: PlannerTool[] = ["polygon", "polyline", "circle", "measure"];
 export const PLACEMENT_TOOLS: PlannerTool[] = ["waypoint", "takeoff", "land", "loiter", "roi", "rally"];
 
 export const TOOL_CURSORS: Record<PlannerTool, string> = {
@@ -130,6 +130,7 @@ export const TOOL_CURSORS: Record<PlannerTool, string> = {
   rally: "crosshair",
   poi: "crosshair",
   polygon: "crosshair",
+  polyline: "crosshair",
   circle: "crosshair",
   measure: "help",
   datum: "crosshair",
@@ -200,6 +201,12 @@ export function mapBannerDescriptor(mode: PlannerMode): BannerDescriptor | null 
           return {
             message:
               "Click to place vertices. Right-click or click first vertex to close. Backspace to undo. Escape to cancel.",
+            tone: "accent",
+          };
+        case "polyline":
+          return {
+            message:
+              "Click to place points. Double-click, Enter or right-click to finish. Backspace to undo. Escape to cancel.",
             tone: "accent",
           };
         case "circle":

@@ -1,8 +1,8 @@
 /**
  * @module structure-scan-generator
- * @description Generates a multi-layer structure/facade scan pattern.
- * The drone orbits a structure at multiple altitude layers with the camera
- * pointed inward, creating a complete 3D capture of the structure.
+ * @description Generates a multi-layer structure scan: the structure outline
+ * offset outward by the scan distance, flown once per altitude layer with the
+ * camera pointed at the structure.
  *
  * Used for building inspection, cell tower inspection, bridge inspection, etc.
  *
@@ -10,29 +10,30 @@
  * @license GPL-3.0-only
  */
 
-import type { PatternResult, PatternStats } from "./types";
-import {
-  offsetPoint,
-  polygonCentroid,
-} from "@/lib/drawing/geo-utils";
-import { haversineDistance } from "@/lib/geo/distance";
+import type {
+  PatternAltitudeSettings, PatternCameraSettings, PatternCaptureSettings, PatternResult,
+} from "./types";
+import { assertPhotoCount, assertSpacing } from "./types";
+import { distXY, lerpXY, localFrameFor, navDistance, type XY } from "./local-geometry";
+import { convexHull, insetRing } from "./polygon-offset";
+import { CaptureLineEmitter } from "./capture-line";
 
-export interface StructureScanConfig {
+export interface StructureScanConfig extends PatternAltitudeSettings, PatternCameraSettings, PatternCaptureSettings {
   /** Structure boundary polygon vertices [lat, lon] */
   structurePolygon: [number, number][];
-  /** Bottom altitude of scan (meters above home) */
+  /** Bottom altitude of scan (meters above home, or above ground in the terrain modes) */
   bottomAlt: number;
-  /** Top altitude of scan (meters above home) */
+  /** Top altitude of scan (meters above home, or above ground in the terrain modes) */
   topAlt: number;
   /** Vertical spacing between scan layers (meters) */
   layerSpacing: number;
-  /** Minimum horizontal distance from the structure to fly, along every orbit leg (meters) */
+  /** Horizontal distance from the structure's walls to the flight path (meters) */
   scanDistance: number;
   /** Gimbal pitch angle pointing inward (degrees, negative = down) */
   gimbalPitch: number;
-  /** Points per orbit layer (more = smoother circle) */
+  /** Points per layer along the flight path; every corner of the path is kept as well */
   pointsPerLayer: number;
-  /** Camera trigger distance along orbit path (meters, 0 = disabled) */
+  /** Camera trigger distance along the path (meters, 0 = disabled) */
   cameraTriggerDistance: number;
   /** Flight speed (m/s) */
   speed: number;
@@ -44,205 +45,112 @@ export interface StructureScanConfig {
  * Generate a multi-layer structure scan pattern.
  *
  * Algorithm:
- * 1. Compute the area centroid of the structure polygon
- * 2. Size the orbit so the whole path keeps `scanDistance` clear of the
- *    structure (see {@link orbitRadiusClearing})
- * 3. For each altitude layer (from bottom to top or vice versa):
- *    a. Generate orbit points on that circle
- *    b. Each point has ROI set to structure centroid (camera looks inward)
- *    c. Insert camera trigger if configured
- * 4. Connect layers with transit waypoints
+ * 1. Offset the structure outline outward by `scanDistance` (its convex hull
+ *    when a concave outline cannot be offset that far)
+ * 2. Place points along that path: every corner, plus points spaced by
+ *    perimeter / `pointsPerLayer`, closing on the start point
+ * 3. For each altitude layer, fly the closed path; the camera trigger is armed
+ *    after the first point and disarmed before each climb to the next layer
+ * 4. The ROI at the structure centroid rides the first point, and every layer
+ *    starts by commanding the gimbal pitch
  */
 export function generateStructureScan(config: StructureScanConfig): PatternResult {
   const {
-    structurePolygon,
-    bottomAlt,
-    topAlt,
-    layerSpacing,
-    scanDistance,
-    gimbalPitch,
-    pointsPerLayer,
-    cameraTriggerDistance,
-    speed,
-    direction,
+    structurePolygon, bottomAlt, topAlt, layerSpacing, scanDistance, gimbalPitch,
+    pointsPerLayer, cameraTriggerDistance, speed, direction,
   } = config;
 
   if (structurePolygon.length < 3) {
-    return {
-      waypoints: [],
-      stats: { totalDistance: 0, estimatedTime: 0, photoCount: 0, coveredArea: 0, transectCount: 0 },
-    };
+    return { waypoints: [], stats: { totalDistance: 0, estimatedTime: 0, photoCount: 0, coveredArea: 0, transectCount: 0 } };
   }
+  assertSpacing(layerSpacing, "layer spacing");
+  if (cameraTriggerDistance > 0) assertSpacing(cameraTriggerDistance, "trigger distance");
 
-  const waypoints: PatternResult["waypoints"] = [];
+  const frame = localFrameFor(structurePolygon);
+  const ring = structurePolygon.map(([lat, lon]) => frame.toLocal(lat, lon));
+  const path = scanPath(ring, scanDistance, pointsPerLayer);
+  const center = frame.toGeo(areaCentroid(ring));
 
-  const center = areaCentroid(structurePolygon);
-  const orbitRadius = orbitRadiusClearing(structurePolygon, center, scanDistance, pointsPerLayer);
-
-  // Generate altitude layers
-  const numLayers = Math.max(1, Math.ceil((topAlt - bottomAlt) / layerSpacing) + 1);
   const altitudes: number[] = [];
-  for (let i = 0; i < numLayers; i++) {
-    const alt = bottomAlt + i * layerSpacing;
-    if (alt <= topAlt) altitudes.push(alt);
-  }
-  // Ensure top altitude is included
-  if (altitudes[altitudes.length - 1] !== topAlt) {
-    altitudes.push(topAlt);
-  }
-
+  for (let alt = bottomAlt; alt < topAlt - 1e-6; alt += layerSpacing) altitudes.push(alt);
+  altitudes.push(topAlt);
   if (direction === "top-down") altitudes.reverse();
 
-  // Generate orbit for each layer. The ROI at the structure centroid and the
-  // camera trigger ride the first orbit point: an action fires after the
-  // navigation point it follows, so the camera starts on the structure.
-  for (let layerIdx = 0; layerIdx < altitudes.length; layerIdx++) {
-    const alt = altitudes[layerIdx];
-
-    // Generate orbit points for this layer
-    // Alternate direction for efficiency (clockwise on even layers, CCW on odd)
-    const clockwise = layerIdx % 2 === 0;
-
-    for (let i = 0; i < pointsPerLayer; i++) {
-      const rawAngle = (360 / pointsPerLayer) * i;
-      const angle = clockwise ? rawAngle : 360 - rawAngle;
-      const pt = offsetPoint(center[0], center[1], angle, orbitRadius);
-
-      waypoints.push({
-        lat: pt[0],
-        lon: pt[1],
-        alt,
-        speed,
-        command: "WAYPOINT",
-      });
-
-      if (layerIdx === 0 && i === 0) {
-        waypoints.push({
-          lat: center[0],
-          lon: center[1],
-          alt: (bottomAlt + topAlt) / 2,
-          speed,
-          command: "ROI",
-        });
-        if (cameraTriggerDistance > 0) {
-          waypoints.push({
-            lat: center[0],
-            lon: center[1],
-            alt,
-            speed,
-            command: "DO_SET_CAM_TRIGG",
-            param1: cameraTriggerDistance,
-          });
+  const emitter = new CaptureLineEmitter(frame.toGeo);
+  altitudes.forEach((alt, layerIdx) => {
+    // Alternate the direction round the structure from layer to layer; every
+    // layer starts and ends on the same point, so the climb is vertical.
+    const layer = layerIdx % 2 === 0 ? path : [...path].reverse();
+    emitter.line(layer, {
+      altitude: alt, speed, triggerDistance: cameraTriggerDistance, turnStart: 0, turnEnd: 0,
+      hoverAndCapture: config.hoverAndCapture,
+      afterFirstNav: (p) => {
+        if (layerIdx === 0) {
+          emitter.rows.push({ lat: center[0], lon: center[1], alt: (bottomAlt + topAlt) / 2, speed, command: "ROI" });
         }
-      }
-      // Each layer starts by commanding the gimbal pitch (after the ROI on the
-      // first layer, so the ROI does not override it).
-      if (i === 0) {
-        waypoints.push({
-          lat: pt[0],
-          lon: pt[1],
-          alt,
-          speed,
-          command: "DO_MOUNT_CONTROL",
-          param1: gimbalPitch,
-        });
-      }
-    }
-  }
-
-  // Disable camera trigger at end
-  if (cameraTriggerDistance > 0) {
-    waypoints.push({
-      lat: center[0],
-      lon: center[1],
-      alt: altitudes[altitudes.length - 1],
-      speed,
-      command: "DO_SET_CAM_TRIGG",
-      param1: 0, // disable
+        // After the ROI, so the ROI does not override the pitch.
+        emitter.action(p, alt, speed, { command: "DO_MOUNT_CONTROL", param1: gimbalPitch });
+      },
     });
-  }
+  });
+  assertPhotoCount(emitter.photoCount);
 
-  const stats = computeStats(waypoints, speed, cameraTriggerDistance, altitudes.length);
-
+  const totalDistance = navDistance(emitter.rows);
   return {
-    waypoints,
-    stats,
+    waypoints: emitter.rows,
+    stats: {
+      totalDistance,
+      estimatedTime: speed > 0 ? totalDistance / speed : 0,
+      photoCount: emitter.photoCount,
+      // A facade scan covers no ground area; 0 keeps the area row hidden.
+      coveredArea: 0,
+      transectCount: altitudes.length,
+    },
   };
 }
 
-// ── Helpers ───────────────────────────────────────────────────
-
 /**
- * Orbit radius that keeps the flown path at least `standoff` metres outside
- * the structure. The structure lies inside the disk of radius `maxVertex`
- * (the farthest vertex) about `center`. The orbit is flown as straight chords
- * between `points` evenly spaced points, and a chord's closest approach to the
- * centre is `R·cos(π/points)`, so the radius is chosen to put every chord
- * `standoff` beyond that disk. An average vertex distance (the old sizing) put
- * the orbit inside elongated footprints.
+ * The closed flight path `distance` metres outside the structure outline:
+ * every corner, plus evenly spaced points so the path has about `points`
+ * points, ending back on its first point.
  */
-export function orbitRadiusClearing(
-  polygon: readonly [number, number][],
-  center: [number, number],
-  standoff: number,
-  points: number,
-): number {
-  let maxVertex = 0;
-  for (const [lat, lon] of polygon) {
-    maxVertex = Math.max(maxVertex, haversineDistance(center[0], center[1], lat, lon));
+export function scanPath(ring: readonly XY[], distance: number, points: number): XY[] {
+  const outline = insetRing(ring, -Math.max(0, distance)) ?? insetRing(convexHull(ring), -Math.max(0, distance)) ?? [...ring];
+  const closed = [...outline, outline[0]];
+  let perimeter = 0;
+  for (let i = 1; i < closed.length; i++) perimeter += distXY(closed[i - 1], closed[i]);
+  const step = perimeter / Math.max(3, points);
+  const out: XY[] = [];
+  for (let i = 1; i < closed.length; i++) {
+    const a = closed[i - 1];
+    const b = closed[i];
+    out.push(a);
+    const pieces = Math.max(1, Math.round(distXY(a, b) / step));
+    for (let k = 1; k < pieces; k++) out.push(lerpXY(a, b, k / pieces));
   }
-  const chordFactor = Math.cos(Math.PI / Math.max(3, points));
-  return (maxVertex + Math.max(0, standoff)) / chordFactor;
+  out.push(closed[0]);
+  return out;
 }
 
 /**
- * Area centroid of a small polygon, on a local flat projection. A plain vertex
- * average drifts toward whichever side was digitised with more points; the
- * area centroid does not. Falls back to the vertex average for a degenerate
- * (zero-area) ring.
+ * Area centroid of a local ring. A plain vertex average drifts toward
+ * whichever side was digitised with more points; the area centroid does not.
+ * Falls back to the vertex average for a degenerate (zero-area) ring.
  */
-function areaCentroid(polygon: readonly [number, number][]): [number, number] {
-  const [lat0, lon0] = polygonCentroid([...polygon]);
-  const cosLat = Math.cos((lat0 * Math.PI) / 180);
+function areaCentroid(ring: readonly XY[]): XY {
   let twiceArea = 0;
   let cx = 0;
   let cy = 0;
-  for (let i = 0; i < polygon.length; i++) {
-    const [aLat, aLon] = polygon[i];
-    const [bLat, bLon] = polygon[(i + 1) % polygon.length];
-    const ax = (aLon - lon0) * cosLat;
-    const ay = aLat - lat0;
-    const bx = (bLon - lon0) * cosLat;
-    const by = bLat - lat0;
+  for (let i = 0; i < ring.length; i++) {
+    const [ax, ay] = ring[i];
+    const [bx, by] = ring[(i + 1) % ring.length];
     const cross = ax * by - bx * ay;
     twiceArea += cross;
     cx += (ax + bx) * cross;
     cy += (ay + by) * cross;
   }
-  if (Math.abs(twiceArea) < 1e-18 || cosLat === 0) return [lat0, lon0];
-  return [lat0 + cy / (3 * twiceArea), lon0 + cx / (3 * twiceArea * cosLat)];
-}
-
-function computeStats(
-  waypoints: PatternResult["waypoints"],
-  speed: number,
-  triggerDistance: number,
-  layerCount: number,
-): PatternStats {
-  // Distance flown between the orbit points; the ROI, trigger and gimbal rows
-  // are actions, not places the aircraft goes.
-  const nav = waypoints.filter((w) => w.command === "WAYPOINT");
-  let totalDistance = 0;
-  for (let i = 1; i < nav.length; i++) {
-    totalDistance += haversineDistance(nav[i - 1].lat, nav[i - 1].lon, nav[i].lat, nav[i].lon);
+  if (Math.abs(twiceArea) < 1e-9) {
+    return [ring.reduce((s, p) => s + p[0], 0) / ring.length, ring.reduce((s, p) => s + p[1], 0) / ring.length];
   }
-
-  return {
-    totalDistance,
-    estimatedTime: speed > 0 ? totalDistance / speed : 0,
-    photoCount: triggerDistance > 0 ? Math.ceil(totalDistance / triggerDistance) : 0,
-    // A facade scan covers no ground area; 0 keeps the area row hidden.
-    coveredArea: 0,
-    transectCount: layerCount,
-  };
+  return [cx / (3 * twiceArea), cy / (3 * twiceArea)];
 }

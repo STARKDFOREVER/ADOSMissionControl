@@ -2957,7 +2957,6 @@
     "cameraProfile": "Camera Profile",
     "hideAdvanced": "Hide Advanced",
     "showAdvanced": "Show Advanced",
-    "gridAngle": "Grid Angle",
     "turnAroundDistance": "Turn-around Distance",
     "entryPoint": "Entry Point",
     "alternateTransects": "Alternate Transects",
@@ -2987,7 +2986,6 @@
     "maxLegs": "Max Legs",
     "startBearing": "Start Bearing",
     "searchRadius": "Search Radius",
-    "sweeps": "Sweeps",
     "clickMapSetStart": "Click map to set start point",
     "trackLength": "Track Length",
     "trackSpacing": "Track Spacing",
@@ -3663,7 +3661,8 @@
         "parallelTrack": "Parallel track",
         "structureScan": "Structure scan",
         "fixedWingLanding": "Fixed-wing landing",
-        "vtolLanding": "VTOL landing"
+        "vtolLanding": "VTOL landing",
+        "facade": "ಮುಂಭಾಗ"
       },
       "help": {
         "title": "Keyboard shortcuts",
@@ -3674,6 +3673,68 @@
           "edit": "Edit",
           "file": "File"
         }
+      }
+    },
+    "pattern": {
+      "gridAngleFromNorth": "ಗ್ರಿಡ್ ಕೋನ (ಉತ್ತರದಿಂದ)",
+      "legs": "ಲೆಗ್‌ಗಳು",
+      "windFromForecast": "ಸ್ಥಳದ ಮುನ್ಸೂಚನೆಯಿಂದ",
+      "hoverAndCapture": "ನಿಂತು ಚಿತ್ರ ತೆಗೆ",
+      "hoverHint": "ಪ್ರತಿ ಫೋಟೋ ಬಿಂದುವಿನಲ್ಲಿ 1 ಸೆ. ನಿಂತು ಒಂದು ಫೋಟೋ ತೆಗೆಯಿರಿ",
+      "altitude": {
+        "title": "ಎತ್ತರ",
+        "reference": "ಆಧಾರ",
+        "relative": "ಹೋಮ್‌ನಿಂದ ಮೇಲೆ",
+        "followTerrain": "ಭೂಮೇಲ್ಮೈ ಅನುಸರಿಸಿ",
+        "terrain": "ಭೂಮೇಲ್ಮೈ ಫ್ರೇಮ್",
+        "tolerance": "ಸಹಿಷ್ಣುತೆ",
+        "maxClimb": "ಗರಿಷ್ಠ ಏರಿಕೆ",
+        "maxDescent": "ಗರಿಷ್ಠ ಇಳಿಕೆ",
+        "terrainHint": "ಎತ್ತರಗಳು ಪ್ರತಿ ವೇಪಾಯಿಂಟ್ ಕೆಳಗಿನ ನೆಲದಿಂದ. ವಾಹನಕ್ಕೆ ಭೂಮೇಲ್ಮೈ ಡೇಟಾ ಬೇಕು.",
+        "followHint": "ಪ್ರತಿ ಲೆಗ್‌ನಲ್ಲಿ ನೆಲದಿಂದ ಎತ್ತರ ಉಳಿಸುವ ಸಮುದ್ರ ಮಟ್ಟದ ಎತ್ತರಗಳು.",
+        "sampling": "ಭೂಮೇಲ್ಮೈ ಮಾದರಿ ತೆಗೆಯಲಾಗುತ್ತಿದೆ…",
+        "unavailable": "ಇಲ್ಲಿ ಭೂಮೇಲ್ಮೈ ಲಭ್ಯವಿಲ್ಲ. ಹೋಮ್‌ನಿಂದ ಮೇಲೆ ಬಳಸಿ",
+        "applyBlocked": "ಅನ್ವಯಿಸಲು ಭೂಮೇಲ್ಮೈ ಬೇಕು",
+        "heightAboveGround": "ನೆಲದಿಂದ ಎತ್ತರ"
+      },
+      "camera": {
+        "custom": "ಕಸ್ಟಮ್ ಕ್ಯಾಮೆರಾ…",
+        "edit": "ಕ್ಯಾಮೆರಾ ತಿದ್ದಿ",
+        "delete": "ಕ್ಯಾಮೆರಾ ಅಳಿಸಿ",
+        "orientation": "ದಿಕ್ಕು",
+        "landscape": "ಅಡ್ಡ",
+        "portrait": "ಲಂಬ",
+        "tooFast": "ಕ್ಯಾಮೆರಾ ಅಷ್ಟು ವೇಗವಾಗಿ ಚಿತ್ರ ತೆಗೆಯಲಾರದು: {speed} m/s ಗೆ ನಿಧಾನಿಸಿ"
+      },
+      "customCamera": {
+        "title": "ಕಸ್ಟಮ್ ಕ್ಯಾಮೆರಾ",
+        "name": "ಹೆಸರು",
+        "sensorWidth": "ಸೆನ್ಸರ್ ಅಗಲ",
+        "sensorHeight": "ಸೆನ್ಸರ್ ಎತ್ತರ",
+        "imageWidth": "ಚಿತ್ರದ ಅಗಲ",
+        "imageHeight": "ಚಿತ್ರದ ಎತ್ತರ",
+        "focalLength": "ಫೋಕಲ್ ಉದ್ದ",
+        "minInterval": "ಕನಿಷ್ಠ ಟ್ರಿಗರ್ ಅಂತರ",
+        "save": "ಉಳಿಸಿ",
+        "cancel": "ರದ್ದುಮಾಡಿ",
+        "errorName": "ಬೇರೆ ಕ್ಯಾಮೆರಾ ಬಳಸದ ಹೆಸರು ನಮೂದಿಸಿ",
+        "errorSensor": "ಸೆನ್ಸರ್ ಅಗಲ ಮತ್ತು ಎತ್ತರ 0 ಕ್ಕಿಂತ ಹೆಚ್ಚಿರಬೇಕು",
+        "errorImage": "ಚಿತ್ರದ ಅಗಲ ಮತ್ತು ಎತ್ತರ 0 ಕ್ಕಿಂತ ಹೆಚ್ಚಿರಬೇಕು",
+        "errorFocal": "ಫೋಕಲ್ ಉದ್ದ 0 ಕ್ಕಿಂತ ಹೆಚ್ಚಿರಬೇಕು",
+        "errorInterval": "ಟ್ರಿಗರ್ ಅಂತರ ಋಣಾತ್ಮಕವಾಗಿರಬಾರದು"
+      },
+      "facade": {
+        "drawLine": "ಮುಂಭಾಗ ರೇಖೆ ಬರೆಯಿರಿ",
+        "drawHint": "ನಕ್ಷೆಯಲ್ಲಿ ಗೋಡೆಯ ತಳದ ಎರಡೂ ತುದಿಗಳನ್ನು ಕ್ಲಿಕ್ ಮಾಡಿ",
+        "lineSet": "ಮುಂಭಾಗ ರೇಖೆ: {length} m",
+        "side": "ಈ ಬದಿಯಲ್ಲಿ ಹಾರಿ",
+        "sideHint": "ಮೊದಲ ಬಿಂದುವಿನಿಂದ ಎರಡನೆಯದನ್ನು ನೋಡಿದಾಗ ರೇಖೆಯ ಬದಿ",
+        "left": "ಎಡ",
+        "right": "ಬಲ",
+        "distance": "ಮುಂಭಾಗದಿಂದ ದೂರ",
+        "bottomAlt": "ಕೆಳಗಿನ ಸಾಲು",
+        "topAlt": "ಮೇಲಿನ ಸಾಲು",
+        "rowSpacing": "ಸಾಲು ಅಂತರ"
       }
     }
   },

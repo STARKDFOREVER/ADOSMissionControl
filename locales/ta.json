@@ -2957,7 +2957,6 @@
     "cameraProfile": "Camera Profile",
     "hideAdvanced": "Advanced மறை",
     "showAdvanced": "Advanced காட்டு",
-    "gridAngle": "Grid Angle",
     "turnAroundDistance": "Turn-around Distance",
     "entryPoint": "Entry Point",
     "alternateTransects": "Alternate Transects",
@@ -2987,7 +2986,6 @@
     "maxLegs": "Max Legs",
     "startBearing": "Start Bearing",
     "searchRadius": "Search Radius",
-    "sweeps": "Sweeps",
     "clickMapSetStart": "Start point அமைக்க map-ஐ click செய்யவும்",
     "trackLength": "Track Length",
     "trackSpacing": "Track Spacing",
@@ -3663,7 +3661,8 @@
         "parallelTrack": "Parallel track",
         "structureScan": "Structure scan",
         "fixedWingLanding": "Fixed-wing landing",
-        "vtolLanding": "VTOL landing"
+        "vtolLanding": "VTOL landing",
+        "facade": "முகப்பு"
       },
       "help": {
         "title": "Keyboard shortcuts",
@@ -3674,6 +3673,68 @@
           "edit": "Edit",
           "file": "File"
         }
+      }
+    },
+    "pattern": {
+      "gridAngleFromNorth": "கட்டக் கோணம் (வடக்கிலிருந்து)",
+      "legs": "கால்கள்",
+      "windFromForecast": "தள முன்னறிவிப்பிலிருந்து",
+      "hoverAndCapture": "நின்று படம் எடு",
+      "hoverHint": "ஒவ்வொரு புகைப்படப் புள்ளியிலும் 1 வி. நின்று ஒரு படம் எடுக்கவும்",
+      "altitude": {
+        "title": "உயரம்",
+        "reference": "அடிப்படை",
+        "relative": "ஹோமிலிருந்து மேல்",
+        "followTerrain": "நிலப்பரப்பைப் பின்பற்று",
+        "terrain": "நிலப்பரப்பு சட்டகம்",
+        "tolerance": "சகிப்புத்தன்மை",
+        "maxClimb": "அதிகபட்ச ஏற்றம்",
+        "maxDescent": "அதிகபட்ச இறக்கம்",
+        "terrainHint": "உயரங்கள் ஒவ்வொரு வழிப்புள்ளிக்கும் கீழுள்ள தரையிலிருந்து. வாகனத்திற்கு நிலப்பரப்புத் தரவு தேவை.",
+        "followHint": "ஒவ்வொரு பகுதியிலும் தரையிலிருந்து உயரத்தைக் காக்கும் கடல் மட்ட உயரங்கள்.",
+        "sampling": "நிலப்பரப்பு மாதிரி எடுக்கப்படுகிறது…",
+        "unavailable": "இங்கு நிலப்பரப்பு கிடைக்கவில்லை. ஹோமிலிருந்து மேல் பயன்படுத்தவும்",
+        "applyBlocked": "பயன்படுத்த நிலப்பரப்பு தேவை",
+        "heightAboveGround": "தரையிலிருந்து உயரம்"
+      },
+      "camera": {
+        "custom": "தனிப்பயன் கேமரா…",
+        "edit": "கேமராவைத் திருத்து",
+        "delete": "கேமராவை நீக்கு",
+        "orientation": "திசை",
+        "landscape": "கிடைமட்டம்",
+        "portrait": "செங்குத்து",
+        "tooFast": "கேமரா அவ்வளவு வேகமாகப் படம் எடுக்க முடியாது: {speed} m/s ஆகக் குறைக்கவும்"
+      },
+      "customCamera": {
+        "title": "தனிப்பயன் கேமரா",
+        "name": "பெயர்",
+        "sensorWidth": "சென்சார் அகலம்",
+        "sensorHeight": "சென்சார் உயரம்",
+        "imageWidth": "பட அகலம்",
+        "imageHeight": "பட உயரம்",
+        "focalLength": "குவிய நீளம்",
+        "minInterval": "குறைந்தபட்ச தூண்டல் இடைவெளி",
+        "save": "சேமி",
+        "cancel": "ரத்துசெய்",
+        "errorName": "வேறு கேமரா பயன்படுத்தாத பெயரை உள்ளிடவும்",
+        "errorSensor": "சென்சார் அகலமும் உயரமும் 0-ஐ விட அதிகமாக இருக்க வேண்டும்",
+        "errorImage": "பட அகலமும் உயரமும் 0-ஐ விட அதிகமாக இருக்க வேண்டும்",
+        "errorFocal": "குவிய நீளம் 0-ஐ விட அதிகமாக இருக்க வேண்டும்",
+        "errorInterval": "தூண்டல் இடைவெளி எதிர்மறையாக இருக்கக்கூடாது"
+      },
+      "facade": {
+        "drawLine": "முகப்புக் கோடு வரை",
+        "drawHint": "வரைபடத்தில் சுவர் அடிப்பகுதியின் இரு முனைகளையும் கிளிக் செய்யவும்",
+        "lineSet": "முகப்புக் கோடு: {length} m",
+        "side": "இந்தப் பக்கம் பற",
+        "sideHint": "முதல் புள்ளியிலிருந்து இரண்டாவதைப் பார்க்கும்போது கோட்டின் பக்கம்",
+        "left": "இடது",
+        "right": "வலது",
+        "distance": "முகப்பிலிருந்து தூரம்",
+        "bottomAlt": "கீழ் வரிசை",
+        "topAlt": "மேல் வரிசை",
+        "rowSpacing": "வரிசை இடைவெளி"
       }
     }
   },

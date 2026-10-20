@@ -11,7 +11,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { PatternNumberRow } from "./PatternNumberRow";
 import { usePatternStore } from "@/stores/pattern-store";
-import type { CameraProfile } from "@/lib/patterns/gsd-calculator";
+import type { CameraOrientation, CameraProfile } from "@/lib/patterns/gsd-calculator";
 import {
   computeGSD,
   computeLineSpacing,
@@ -29,9 +29,11 @@ interface GsdSpeedControlsProps {
   sidelapPct: number;
   /** Target front overlap percentage, used to recompute trigger distance. */
   frontlapPct: number;
+  /** Camera mounting orientation (default landscape). */
+  orientation?: CameraOrientation;
 }
 
-export function GsdSpeedControls({ camera, sidelapPct, frontlapPct }: GsdSpeedControlsProps) {
+export function GsdSpeedControls({ camera, sidelapPct, frontlapPct, orientation = "landscape" }: GsdSpeedControlsProps) {
   const t = useTranslations("survey");
   const surveyConfig = usePatternStore((s) => s.surveyConfig);
   const updateSurveyConfig = usePatternStore((s) => s.updateSurveyConfig);
@@ -50,12 +52,12 @@ export function GsdSpeedControls({ camera, sidelapPct, frontlapPct }: GsdSpeedCo
       if (alt <= 0) return;
       updateSurveyConfig({
         altitude: alt,
-        lineSpacing: Math.round(computeLineSpacing(alt, camera, sidelapPct / 100) * 10) / 10,
+        lineSpacing: Math.round(computeLineSpacing(alt, camera, sidelapPct / 100, orientation) * 10) / 10,
         cameraTriggerDistance:
-          Math.round(computeTriggerDistance(alt, camera, frontlapPct / 100) * 10) / 10,
+          Math.round(computeTriggerDistance(alt, camera, frontlapPct / 100, orientation) * 10) / 10,
       } as Partial<typeof surveyConfig>);
     },
-    [camera, sidelapPct, frontlapPct, updateSurveyConfig],
+    [camera, sidelapPct, frontlapPct, orientation, updateSurveyConfig],
   );
 
   const blur = useMemo(() => {

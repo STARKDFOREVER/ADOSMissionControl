@@ -2957,7 +2957,6 @@
     "cameraProfile": "카메라 프로파일",
     "hideAdvanced": "고급 옵션 숨기기",
     "showAdvanced": "고급 옵션 표시",
-    "gridAngle": "그리드 각도",
     "turnAroundDistance": "회전 거리",
     "entryPoint": "진입점",
     "alternateTransects": "교대 횡단선",
@@ -2987,7 +2986,6 @@
     "maxLegs": "최대 구간 수",
     "startBearing": "시작 방위각",
     "searchRadius": "탐색 반경",
-    "sweeps": "스윕 횟수",
     "clickMapSetStart": "지도를 클릭하여 시작점 설정",
     "trackLength": "트랙 길이",
     "trackSpacing": "트랙 간격",
@@ -3663,7 +3661,8 @@
         "parallelTrack": "Parallel track",
         "structureScan": "Structure scan",
         "fixedWingLanding": "Fixed-wing landing",
-        "vtolLanding": "VTOL landing"
+        "vtolLanding": "VTOL landing",
+        "facade": "파사드"
       },
       "help": {
         "title": "Keyboard shortcuts",
@@ -3674,6 +3673,68 @@
           "edit": "Edit",
           "file": "File"
         }
+      }
+    },
+    "pattern": {
+      "gridAngleFromNorth": "그리드 각도(북쪽 기준)",
+      "legs": "구간",
+      "windFromForecast": "현장 예보 기준",
+      "hoverAndCapture": "정지 후 촬영",
+      "hoverHint": "각 촬영 지점에서 1초 정지하고 한 장 촬영합니다",
+      "altitude": {
+        "title": "고도",
+        "reference": "기준",
+        "relative": "홈 기준",
+        "followTerrain": "지형 추종",
+        "terrain": "지형 프레임",
+        "tolerance": "허용 오차",
+        "maxClimb": "최대 상승",
+        "maxDescent": "최대 하강",
+        "terrainHint": "고도는 각 웨이포인트 아래 지면 기준입니다. 기체에 지형 데이터가 필요합니다.",
+        "followHint": "모든 구간에서 지면 위 높이를 유지하는 해발 고도를 씁니다.",
+        "sampling": "지형 샘플링 중…",
+        "unavailable": "이곳의 지형을 사용할 수 없습니다. 홈 기준을 사용하세요",
+        "applyBlocked": "적용하려면 지형이 필요합니다",
+        "heightAboveGround": "지면 위 높이"
+      },
+      "camera": {
+        "custom": "사용자 카메라…",
+        "edit": "카메라 편집",
+        "delete": "카메라 삭제",
+        "orientation": "방향",
+        "landscape": "가로",
+        "portrait": "세로",
+        "tooFast": "카메라가 그렇게 빨리 촬영할 수 없습니다: {speed} m/s로 감속하세요"
+      },
+      "customCamera": {
+        "title": "사용자 카메라",
+        "name": "이름",
+        "sensorWidth": "센서 너비",
+        "sensorHeight": "센서 높이",
+        "imageWidth": "이미지 너비",
+        "imageHeight": "이미지 높이",
+        "focalLength": "초점 거리",
+        "minInterval": "최소 촬영 간격",
+        "save": "저장",
+        "cancel": "취소",
+        "errorName": "다른 카메라가 쓰지 않는 이름을 입력하세요",
+        "errorSensor": "센서 너비와 높이는 0보다 커야 합니다",
+        "errorImage": "이미지 너비와 높이는 0보다 커야 합니다",
+        "errorFocal": "초점 거리는 0보다 커야 합니다",
+        "errorInterval": "촬영 간격은 음수일 수 없습니다"
+      },
+      "facade": {
+        "drawLine": "파사드 선 그리기",
+        "drawHint": "지도에서 벽 바닥의 양 끝을 클릭하세요",
+        "lineSet": "파사드 선: {length} m",
+        "side": "비행 쪽",
+        "sideHint": "첫 점에서 두 번째 점을 바라볼 때 선의 쪽",
+        "left": "왼쪽",
+        "right": "오른쪽",
+        "distance": "파사드와의 거리",
+        "bottomAlt": "맨 아래 줄",
+        "topAlt": "맨 위 줄",
+        "rowSpacing": "줄 간격"
       }
     }
   },

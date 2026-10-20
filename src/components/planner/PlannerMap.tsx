@@ -12,13 +12,14 @@ import { memo, useEffect, useMemo, useState, useRef } from "react";
 import dynamic from "next/dynamic";
 import type { Waypoint, PlannerTool } from "@/lib/types";
 import type { RallyPoint } from "@/stores/rally-store";
-import type { DrawnPolygon, DrawnCircle } from "@/lib/drawing/types";
+import type { DrawnPolygon, DrawnCircle, DrawnPolyline } from "@/lib/drawing/types";
 import { bearing } from "@/lib/telemetry-utils";
 import { MAP_COLORS } from "@/lib/map-constants";
 import { useInitialPlannerView } from "@/hooks/use-initial-planner-view";
 import { DrawingManager } from "@/lib/drawing/drawing-manager";
 import { registerActiveDrawApi } from "@/lib/drawing/active-draw-api";
 import { useDrawingStore } from "@/stores/drawing-store";
+import { usePatternStore } from "@/stores/pattern-store";
 import { plannerHydrationSettled, usePlannerStore } from "@/stores/planner-store";
 import { useRallyStore } from "@/stores/rally-store";
 import { useSettingsStore } from "@/stores/settings-store";
@@ -91,7 +92,7 @@ interface PlannerMapProps {
   onWaypointClick: (id: string, additive?: boolean, range?: boolean) => void;
   onWaypointDragEnd: (id: string, lat: number, lon: number) => void;
   onWaypointRightClick: (id: string, x: number, y: number) => void;
-  onDrawingComplete?: (shape: DrawnPolygon | DrawnCircle) => void;
+  onDrawingComplete?: (shape: DrawnPolygon | DrawnCircle | DrawnPolyline) => void;
 }
 
 export function PlannerMap({
@@ -240,6 +241,14 @@ export function PlannerMap({
         });
         setDrawingMode(null); setActiveTool("select"); setActiveDrawingVertices([]);
       },
+      onPolylineComplete: (points) => {
+        // An open line has no drawn-shape store; it goes straight to its destination.
+        withPlannerHistory(() => {
+          const shape: DrawnPolyline = { id: randomId(), points };
+          onDrawingComplete?.(shape);
+        });
+        setDrawingMode(null); setActiveTool("select"); setActiveDrawingVertices([]);
+      },
       onCircleComplete: (center, radius) => {
         withPlannerHistory(() => {
           const id = randomId(); const shape: DrawnCircle = { id, center, radius };
@@ -259,6 +268,11 @@ export function PlannerMap({
     const manager = drawingManagerRef.current;
     if (!manager) return;
     if (activeTool === "polygon") { setDrawingMode("polygon"); manager.startPolygonDraw(); }
+    else if (activeTool === "polyline") {
+      // A facade is one wall: its base line is exactly two points.
+      setDrawingMode("polyline");
+      manager.startPolylineDraw(usePatternStore.getState().activePatternType === "facade" ? 2 : Infinity);
+    }
     else if (activeTool === "circle") { setDrawingMode("circle"); manager.startCircleDraw(); }
     else if (activeTool === "measure") { setDrawingMode("measure"); setMeasureLine(null); manager.startMeasure(); }
     else if (manager.getMode() !== null) { manager.cancelDraw(); setDrawingMode(null); setActiveDrawingVertices([]); }
@@ -278,8 +292,8 @@ export function PlannerMap({
       if (DRAWING_TOOLS.includes(activeTool)) {
         const manager = drawingManagerRef.current;
         if (manager && manager.getMode() !== null) {
-          if (activeTool === "polygon" && manager.getVertexCount() >= 3) {
-            manager.completePolygon();
+          if ((activeTool === "polygon" && manager.getVertexCount() >= 3) || (activeTool === "polyline" && manager.getVertexCount() >= 2)) {
+            manager.complete();
           } else {
             manager.cancelDraw();
             setDrawingMode(null);

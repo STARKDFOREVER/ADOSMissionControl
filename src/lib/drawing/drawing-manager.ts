@@ -22,6 +22,8 @@ const SNAP_TARGET_PX = 12;
 
 interface DrawingCallbacks {
   onPolygonComplete?: (vertices: [number, number][]) => void;
+  /** An open polyline finished with two or more points. */
+  onPolylineComplete?: (points: [number, number][]) => void;
   onCircleComplete?: (center: [number, number], radius: number) => void;
   onMeasureUpdate?: (
     points: [number, number][],
@@ -40,6 +42,8 @@ export class DrawingManager {
 
   // Polygon state
   private polygonVertices: [number, number][] = [];
+  /** A polyline draw completes on its own once it has this many points. */
+  private polylineMaxPoints = Infinity;
   private polygonMarkers: L.Marker[] = [];
   private polygonLine: L.Polyline | null = null;
   private polygonPreviewLine: L.Polyline | null = null;
@@ -129,21 +133,35 @@ export class DrawingManager {
     }
   }
 
-  // ── Polygon Drawing ──────────────────────────────────────────
+  // ── Polygon / polyline drawing ───────────────────────────────
 
   startPolygonDraw(): void {
+    this.startVertexDraw("polygon");
+  }
+
+  /**
+   * Draw an open polyline: completes on double-click or `complete()` once it
+   * has two points, or on its own when it reaches `maxPoints`.
+   */
+  startPolylineDraw(maxPoints = Infinity): void {
+    this.startVertexDraw("polyline");
+    this.polylineMaxPoints = Math.max(2, maxPoints);
+  }
+
+  private startVertexDraw(mode: "polygon" | "polyline"): void {
     this.cancelDraw();
     this.clearFinishedMeasure();
-    this.mode = "polygon";
+    this.mode = mode;
     this.polygonVertices = [];
+    this.polylineMaxPoints = Infinity;
 
     this.boundClick = (e: L.LeafletMouseEvent) => {
-      if (this.mode !== "polygon") return;
+      if (this.mode !== mode) return;
       this.addPolygonVertex(e.latlng.lat, e.latlng.lng);
     };
     this.boundDblClick = (e: L.LeafletMouseEvent) => {
       L.DomEvent.stop(e);
-      if (this.polygonVertices.length >= 3) this.completePolygon();
+      this.complete();
     };
     this.boundMouseMove = (e: L.LeafletMouseEvent) => {
       this.updatePolygonPreview(e.latlng.lat, e.latlng.lng);
@@ -157,11 +175,12 @@ export class DrawingManager {
 
   /**
    * Remove the most recent polygon vertex (the Backspace-while-drawing gesture).
-   * Only meaningful while drawing a polygon with at least one vertex; a no-op
-   * otherwise. Called by the planner keyboard dispatcher, not a document listener.
+   * Only meaningful while drawing a polygon or polyline with at least one
+   * vertex; a no-op otherwise. Called by the planner keyboard dispatcher, not a
+   * document listener.
    */
   popVertex(): void {
-    if (this.mode !== "polygon" || this.polygonVertices.length === 0) return;
+    if ((this.mode !== "polygon" && this.mode !== "polyline") || this.polygonVertices.length === 0) return;
     this.polygonVertices.pop();
     const lastMarker = this.polygonMarkers.pop();
     if (lastMarker) this.drawingGroup.removeLayer(lastMarker);
@@ -170,13 +189,18 @@ export class DrawingManager {
   }
 
   /**
-   * Complete the in-progress draw: finish the polygon when 3+ vertices exist, or
-   * finish a measurement. A no-op in any other state. Lets the keyboard
-   * dispatcher (e.g. Enter) finish a draw without the manager owning the key.
+   * Complete the in-progress draw: finish the polygon when 3+ vertices exist,
+   * the polyline when 2+ points exist, or a measurement. A no-op in any other
+   * state. Lets the keyboard dispatcher (e.g. Enter) finish a draw without the
+   * manager owning the key.
    */
   complete(): void {
     if (this.mode === "polygon") {
       if (this.polygonVertices.length >= 3) this.completePolygon();
+      return;
+    }
+    if (this.mode === "polyline") {
+      if (this.polygonVertices.length >= 2) this.completePolyline();
       return;
     }
     if (this.mode === "measure") {
@@ -185,8 +209,8 @@ export class DrawingManager {
   }
 
   private addPolygonVertex(lat: number, lon: number): void {
-    // Snap-to-close when clicking near the first vertex with 3+ vertices.
-    if (this.nearFirstVertex(lat, lon)) {
+    // Snap-to-close when clicking near the first vertex with 3+ vertices (polygons only).
+    if (this.mode === "polygon" && this.nearFirstVertex(lat, lon)) {
       this.completePolygon();
       return;
     }
@@ -200,6 +224,7 @@ export class DrawingManager {
     this.polygonMarkers.push(marker);
     this.updatePolygonShape();
     this.callbacks.onVerticesUpdate?.(this.polygonVertices);
+    if (this.mode === "polyline" && this.polygonVertices.length >= this.polylineMaxPoints) this.completePolyline();
   }
 
   private updatePolygonShape(): void {
@@ -213,7 +238,7 @@ export class DrawingManager {
         { color: DRAW_COLORS.stroke, weight: 2, opacity: 0.8 }
       ).addTo(this.drawingGroup);
     }
-    if (this.polygonVertices.length >= 3) {
+    if (this.mode === "polygon" && this.polygonVertices.length >= 3) {
       this.polygonFill = L.polygon(
         this.polygonVertices.map((v) => [v[0], v[1]] as L.LatLngTuple),
         { color: DRAW_COLORS.stroke, weight: 2, fillColor: DRAW_COLORS.fill, fillOpacity: 0.15, opacity: 0.8 }
@@ -238,7 +263,7 @@ export class DrawingManager {
 
     // Snap affordance: closing onto the first vertex takes priority, then snapping
     // onto a nearby existing vertex / waypoint.
-    const close = this.nearFirstVertex(lat, lon);
+    const close = this.mode === "polygon" ? this.nearFirstVertex(lat, lon) : null;
     if (close) { this.showSnapIndicator(close); return; }
     const snapped = this.snapToTarget(lat, lon);
     if (snapped) { this.showSnapIndicator(snapped); return; }
@@ -274,6 +299,24 @@ export class DrawingManager {
     this.map.doubleClickZoom.enable();
     this.callbacks.onPolygonComplete?.(vertices);
     // Delay clearing so React renders the store-driven polygon first
+    requestAnimationFrame(() => this.clearDrawingLayers());
+  }
+
+  /** Finish an open polyline with its points (trailing double-click duplicates dropped). */
+  completePolyline(): void {
+    while (this.polygonVertices.length > 2) {
+      const last = this.polygonVertices[this.polygonVertices.length - 1];
+      const prev = this.polygonVertices[this.polygonVertices.length - 2];
+      if (haversineDistance(last[0], last[1], prev[0], prev[1]) < 1) this.polygonVertices.pop();
+      else break;
+    }
+    if (this.polygonVertices.length < 2) return;
+    const points = [...this.polygonVertices];
+    this.removeSnapIndicator();
+    this.removeDrawingListeners();
+    this.mode = null;
+    this.map.doubleClickZoom.enable();
+    this.callbacks.onPolylineComplete?.(points);
     requestAnimationFrame(() => this.clearDrawingLayers());
   }
 

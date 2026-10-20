@@ -22,4 +22,9 @@ export interface MeasureLine {
   segmentDistances: number[]; // meters per segment
 }
 
-export type DrawingMode = "polygon" | "circle" | "measure" | null;
+export interface DrawnPolyline {
+  id: string;
+  points: [number, number][]; // [lat, lon], open (first and last differ)
+}
+
+export type DrawingMode = "polygon" | "polyline" | "circle" | "measure" | null;

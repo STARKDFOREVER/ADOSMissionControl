@@ -125,9 +125,9 @@ function buildRoute(
     const y = j * lineSpacing;
     const [x0, x1] = j % 2 === 0 ? [0, lineLength] : [lineLength, 0];
     rows.push({ ...fromLocalXY(x0, y), alt, command: "WAYPOINT" });
-    if (trigger > 0) rows.push({ ...fromLocalXY(x0, y), alt, command: "DO_SET_CAM_TRIGG", param1: trigger });
+    if (trigger > 0) rows.push({ ...fromLocalXY(x0, y), alt, command: "DO_SET_CAM_TRIGG", param1: trigger, param3: 1 });
     rows.push({ ...fromLocalXY(x1, y), alt, command: "WAYPOINT" });
-    if (trigger > 0) rows.push({ ...fromLocalXY(x1, y), alt, command: "DO_SET_CAM_TRIGG", param1: 0 });
+    if (trigger > 0) rows.push({ ...fromLocalXY(x1, y), alt, command: "DO_SET_CAM_TRIGG", param1: 0, param3: 1 });
   }
   return rows;
 }
@@ -139,9 +139,27 @@ describe("computeCoverageStats", () => {
   const stats = computeCoverageStats(route, CAM, alt);
 
   it("counts the images the trigger distance takes, not the route rows", () => {
-    // One capture at each arming point, then every 20 m (0..200 m): 11 per line.
-    expect(stats.imageCount).toBe(44);
+    // A shot at each arming point, every 20 m (0..200 m), and one at the
+    // disarming point: 12 per line.
+    expect(stats.imageCount).toBe(48);
     expect(stats.captureSpacingM).toBe(20);
+  });
+
+  it("uses the configured line spacing instead of the route estimate", () => {
+    // A triangle-like edge: every other hop between lines is slanted, 1.118 s
+    // long, so the route's median hop reads 1.059 s and falsely shows a gap.
+    const s = 40;
+    const rows: CaptureRouteRow[] = [];
+    for (let j = 0; j < 5; j++) {
+      const right = 400 - j * 0.5 * s;
+      const [x0, x1] = j % 2 === 0 ? [0, right] : [right, 0];
+      rows.push({ ...fromLocalXY(x0, j * s), alt, command: "WAYPOINT" });
+      rows.push({ ...fromLocalXY(x1, j * s), alt, command: "WAYPOINT" });
+    }
+    expect(detectCoverageGaps(rows, CAM, alt, 0.6).hasGap).toBe(true);
+    const configured = detectCoverageGaps(rows, CAM, alt, 0.6, { lineSpacingM: s });
+    expect(configured.hasGap).toBe(false);
+    expect(computeCoverageStats(rows, CAM, alt, { lineSpacingM: s }).overlapSidePct).toBeCloseTo(60, 6);
   });
 
   it("reports the footprint dimensions", () => {

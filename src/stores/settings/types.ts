@@ -27,6 +27,7 @@ import type {
   SeedOutcome,
   SuggestedBinding,
 } from "./keybindings-slice";
+import type { CameraProfile } from "@/lib/patterns/gsd-calculator";
 
 export interface SettingsStoreState {
   // display + general preferences
@@ -288,6 +289,14 @@ export interface SettingsStoreState {
     partial: CockpitWidgetPlacement,
   ) => void;
 
+  // mission planning
+  /** Camera profiles the operator added, listed after the built-ins. Names are unique. */
+  customCameras: CameraProfile[];
+  /** Add a custom camera; replaces one with the same name. */
+  addCustomCamera: (camera: CameraProfile) => void;
+  /** Replace the custom camera named `name` (the new profile may rename it). */
+  updateCustomCamera: (name: string, camera: CameraProfile) => void;
+  removeCustomCamera: (name: string) => void;
 }
 
 /**

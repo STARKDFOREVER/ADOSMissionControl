@@ -4,6 +4,7 @@ import {
   generateSectorSearch,
   generateParallelTrack,
 } from '@/lib/patterns/sar-generators';
+import { bearing } from '@/lib/drawing/geo-utils';
 
 describe('generateExpandingSquare', () => {
   it('generates expanding pattern with increasing leg lengths', () => {
@@ -36,33 +37,55 @@ describe('generateExpandingSquare', () => {
 });
 
 describe('generateSectorSearch', () => {
-  it('generates sector pattern with correct number of sweeps', () => {
-    const result = generateSectorSearch({
-      center: [12.97, 77.59],
-      radius: 200,
-      sweeps: 3,
-      altitude: 50,
-      speed: 5,
-      startBearing: 0,
-    });
-    // 1 start + 3 sweeps * 3 waypoints each (outbound, offset, return) = 10
-    expect(result.waypoints).toHaveLength(10);
-    expect(result.stats.totalDistance).toBeGreaterThan(0);
+  const sector = () => generateSectorSearch({
+    center: [12.97, 77.59],
+    radius: 200,
+    altitude: 50,
+    speed: 5,
+    startBearing: 0,
   });
 
-  it('returns to datum after each sweep', () => {
-    const result = generateSectorSearch({
-      center: [12.97, 77.59],
-      radius: 200,
-      sweeps: 2,
-      altitude: 50,
-      speed: 5,
-      startBearing: 0,
+  it('flies three triangles: nine legs of one radius each', () => {
+    const result = sector();
+    // 1 start + 3 triangles * 3 waypoints each (outbound, cross, back to datum) = 10
+    expect(result.waypoints).toHaveLength(10);
+    expect(result.stats.legCount).toBe(9);
+    expect(result.stats.totalDistance).toBeCloseTo(9 * 200, -1);
+  });
+
+  it('returns to datum after each triangle', () => {
+    const result = sector();
+    for (const i of [3, 6, 9]) {
+      expect(result.waypoints[i].lat).toBeCloseTo(12.97, 4);
+      expect(result.waypoints[i].lon).toBeCloseTo(77.59, 4);
+    }
+  });
+
+  it('turns 120° right at every corner and crosses the datum without a turn', () => {
+    const wps = sector().waypoints;
+    const headings: number[] = [];
+    for (let i = 1; i < wps.length; i++) {
+      headings.push(bearing(wps[i - 1].lat, wps[i - 1].lon, wps[i].lat, wps[i].lon));
+    }
+    const turn = (a: number, b: number) => ((((b - a) % 360) + 540) % 360) - 180;
+    // Outbound radials 000, 240, 120: the leg back into the datum carries on.
+    expect(headings[0]).toBeCloseTo(0, 0);
+    expect(headings[3]).toBeCloseTo(240, 0);
+    expect(headings[6]).toBeCloseTo(120, 0);
+    for (let i = 1; i < headings.length; i++) {
+      const expected = i % 3 === 0 ? 0 : 120;
+      expect(Math.abs(turn(headings[i - 1], headings[i]) - expected)).toBeLessThan(1);
+    }
+  });
+});
+
+describe('SAR leg counts', () => {
+  it('reports the legs of an expanding square', () => {
+    const result = generateExpandingSquare({
+      center: [12.97, 77.59], legSpacing: 50, maxLegs: 20, altitude: 50, speed: 5, startBearing: 0,
     });
-    // The last waypoint of each sweep should be the center
-    // Sweeps: WPs at index 3 and 6 should be back at center
-    expect(result.waypoints[3].lat).toBeCloseTo(12.97, 4);
-    expect(result.waypoints[3].lon).toBeCloseTo(77.59, 4);
+    expect(result.stats.legCount).toBe(20);
+    expect(result.stats.transectCount).toBe(0);
   });
 });
 

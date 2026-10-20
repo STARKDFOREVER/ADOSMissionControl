@@ -1,8 +1,9 @@
 /**
  * @module PatternEditor
- * @description Flight pattern editor (survey, orbit, corridor, perimeter, SAR,
- * structure scan, landings). Shows the active pattern's settings, a "Draw
- * area" shortcut for area patterns, readiness, generation stats, and the
+ * @description Flight pattern editor (survey, orbit, corridor, facade,
+ * perimeter, SAR, structure scan, landings). Shows the active pattern's
+ * settings, its altitude reference, a "Draw area" shortcut for area patterns,
+ * readiness (including terrain sampling), generation stats, and the
  * Generate / Apply / Clear actions. Survey mode integrates the GSD calculator.
  * @license GPL-3.0-only
  */
@@ -28,20 +29,16 @@ import {
   SarExpandingSquareConfig, SarSectorSearchConfig, SarParallelTrackConfig,
   StructureScanConfig,
 } from "./PatternConfigSections";
+import { FacadeConfig } from "./FacadeConfigSection";
 import { FixedWingLandingConfig } from "./FixedWingLandingConfigSection";
 import { VtolLandingConfig } from "./VtolLandingConfigSection";
 import { PerimeterConfig } from "./PerimeterConfigSection";
-import type { SurveyConfig as SurveyConfigType } from "@/lib/patterns/types";
+import { PatternAltitudeSection } from "./PatternAltitudeSection";
+import type { PatternAltitudeSettings, PatternResult, SurveyConfig as SurveyConfigType } from "@/lib/patterns/types";
 import type { PatternType } from "@/stores/pattern-store";
-import { CAMERA_PROFILES, computeLineSpacing, computeTriggerDistance } from "@/lib/patterns/gsd-calculator";
-
-/** Survey config plus the planner's UI-only overlap / camera helper fields. */
-type SurveyDeliverableConfig = Partial<SurveyConfigType> & {
-  _sidelap?: number;
-  _frontlap?: number;
-  _preset?: string;
-  _cameraName?: string;
-};
+import { isNavRow } from "@/lib/patterns/local-geometry";
+import { findCamera } from "@/lib/patterns/gsd-calculator";
+import { cameraSpacingUpdate } from "./pattern-camera";
 
 interface PatternEditorProps {
   onApply?: () => void;
@@ -55,8 +52,9 @@ const SURVEY_DELIVERABLE_PRESETS = [
 ] as const;
 
 /**
- * The shape "Draw area" arms for each area pattern. Corridor draws its path
- * with its own button; point-origin patterns (SAR, landings) use the datum tool.
+ * The shape "Draw area" arms for each area pattern. Corridor and facade draw
+ * their lines with their own buttons; point-origin patterns (SAR, landings)
+ * use the datum tool.
  */
 const DRAW_AREA_SHAPE: Partial<Record<NonNullable<PatternType>, "polygon" | "circle">> = {
   survey: "polygon",
@@ -65,18 +63,22 @@ const DRAW_AREA_SHAPE: Partial<Record<NonNullable<PatternType>, "polygon" | "cir
   orbit: "circle",
 };
 
+/** Patterns flown as search legs rather than transects. */
+const LEG_PATTERNS: ReadonlySet<PatternType> = new Set<PatternType>(["expandingSquare", "sectorSearch", "parallelTrack"]);
+
 const secondaryButton =
   "flex h-7 items-center justify-center gap-1.5 rounded-sm border border-border-default px-2 text-xs text-text-secondary transition-colors hover:bg-bg-tertiary hover:text-text-primary cursor-pointer focus-ring";
 
 export function PatternEditor({ onApply }: PatternEditorProps) {
   const t = useTranslations("planner");
   const tIns = useTranslations("planner.inspector.pattern");
-  const units = useSettingsStore((s) => s.units);
+  const tAlt = useTranslations("planner.pattern.altitude");
   const activeType = usePatternStore((s) => s.activePatternType);
   const surveyConfig = usePatternStore((s) => s.surveyConfig);
   const orbitConfig = usePatternStore((s) => s.orbitConfig);
   const structureScanConfig = usePatternStore((s) => s.structureScanConfig);
   const corridorConfig = usePatternStore((s) => s.corridorConfig);
+  const facadeConfig = usePatternStore((s) => s.facadeConfig);
   const perimeterConfig = usePatternStore((s) => s.perimeterConfig);
   const sarExpandingSquareConfig = usePatternStore((s) => s.sarExpandingSquareConfig);
   const sarSectorSearchConfig = usePatternStore((s) => s.sarSectorSearchConfig);
@@ -87,6 +89,7 @@ export function PatternEditor({ onApply }: PatternEditorProps) {
   const clear = usePatternStore((s) => s.clear);
   const patternResult = usePatternStore((s) => s.patternResult);
   const isGenerating = usePatternStore((s) => s.isGenerating);
+  const terrainStatus = usePatternStore((s) => s.terrainStatus);
   const error = usePatternStore((s) => s.error);
 
   const polygons = useDrawingStore((s) => s.polygons);
@@ -108,6 +111,7 @@ export function PatternEditor({ onApply }: PatternEditorProps) {
       case "structureScan": return !!(structureScanConfig.structurePolygon || polygons.length > 0);
       case "perimeter": return !!(perimeterConfig.polygon || polygons.length > 0);
       case "corridor": return !!corridorConfig.pathPoints;
+      case "facade": return !!facadeConfig.pathPoints;
       case "expandingSquare": return !!sarExpandingSquareConfig?.center;
       case "sectorSearch": return !!sarSectorSearchConfig?.center;
       case "parallelTrack": return !!sarParallelTrackConfig?.startPoint;
@@ -116,7 +120,7 @@ export function PatternEditor({ onApply }: PatternEditorProps) {
       default: return false;
     }
   }, [activeType, surveyConfig.polygon, polygons.length, orbitConfig.center, circles.length,
-    structureScanConfig.structurePolygon, perimeterConfig.polygon, corridorConfig.pathPoints,
+    structureScanConfig.structurePolygon, perimeterConfig.polygon, corridorConfig.pathPoints, facadeConfig.pathPoints,
     sarExpandingSquareConfig?.center, sarSectorSearchConfig?.center, sarParallelTrackConfig?.startPoint,
     fixedWingLandingConfig?.landingPoint, vtolLandingConfig?.landingPoint]);
 
@@ -126,6 +130,7 @@ export function PatternEditor({ onApply }: PatternEditorProps) {
     const cfg = activeType === "survey" ? surveyConfig
       : activeType === "orbit" ? orbitConfig
       : activeType === "corridor" ? corridorConfig
+      : activeType === "facade" ? facadeConfig
       : activeType === "perimeter" ? perimeterConfig
       : activeType === "expandingSquare" ? sarExpandingSquareConfig
       : activeType === "sectorSearch" ? sarSectorSearchConfig
@@ -134,7 +139,7 @@ export function PatternEditor({ onApply }: PatternEditorProps) {
       : activeType === "vtolLanding" ? vtolLandingConfig
       : structureScanConfig;
     return JSON.stringify(cfg);
-  }, [activeType, surveyConfig, orbitConfig, corridorConfig, perimeterConfig, structureScanConfig,
+  }, [activeType, surveyConfig, orbitConfig, corridorConfig, facadeConfig, perimeterConfig, structureScanConfig,
     sarExpandingSquareConfig, sarSectorSearchConfig, sarParallelTrackConfig,
     fixedWingLandingConfig, vtolLandingConfig]);
 
@@ -145,6 +150,24 @@ export function PatternEditor({ onApply }: PatternEditorProps) {
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeType, configKey, polygons.length, circles.length, generate]);
+
+  // The altitude reference of the patterns that offer one.
+  const altitudeSettings: PatternAltitudeSettings | null =
+    activeType === "survey" ? surveyConfig
+    : activeType === "corridor" ? corridorConfig
+    : activeType === "structureScan" ? structureScanConfig
+    : activeType === "facade" ? facadeConfig
+    : null;
+  const updateAltitude = useCallback((update: PatternAltitudeSettings) => {
+    const store = usePatternStore.getState();
+    switch (store.activePatternType) {
+      case "survey": store.updateSurveyConfig(update); break;
+      case "corridor": store.updateCorridorConfig(update); break;
+      case "structureScan": store.updateStructureScanConfig(update); break;
+      case "facade": store.updateFacadeConfig(update); break;
+      default: break;
+    }
+  }, []);
 
   const patternTypeOptions = PATTERN_TYPE_OPTIONS.map((o) => ({
     ...o,
@@ -172,9 +195,13 @@ export function PatternEditor({ onApply }: PatternEditorProps) {
   const missingGeometryHint =
     activeType === "survey" || activeType === "structureScan" || activeType === "perimeter" ? t("drawPolygonFirst") :
     activeType === "orbit" ? t("drawCircleFirst") :
-    activeType === "corridor" ? t("setPathPoints") :
+    activeType === "corridor" || activeType === "facade" ? t("setPathPoints") :
     activeType === "parallelTrack" ? t("setStartPoint") :
     activeType === "fixedWingLanding" || activeType === "vtolLanding" ? t("setLandingPoint") : t("setDatumPoint");
+  const sampling = terrainStatus === "sampling";
+  const terrainFailed = terrainStatus === "failed";
+  const readiness = sampling ? tAlt("sampling") : isGenerating ? t("generating") : hasGeometry ? t("ready") : missingGeometryHint;
+  const busy = isGenerating || sampling;
 
   return (
     <div className="flex flex-col gap-3">
@@ -194,6 +221,7 @@ export function PatternEditor({ onApply }: PatternEditorProps) {
         {activeType === "survey" && <SurveyDeliverablePresets />}
         {activeType === "orbit" && <OrbitConfig />}
         {activeType === "corridor" && <CorridorConfig />}
+        {activeType === "facade" && <FacadeConfig />}
         {activeType === "expandingSquare" && <SarExpandingSquareConfig />}
         {activeType === "sectorSearch" && <SarSectorSearchConfig />}
         {activeType === "parallelTrack" && <SarParallelTrackConfig />}
@@ -203,32 +231,34 @@ export function PatternEditor({ onApply }: PatternEditorProps) {
         {activeType === "vtolLanding" && <VtolLandingConfig />}
       </div>
 
+      {altitudeSettings && <PatternAltitudeSection settings={altitudeSettings} onChange={updateAltitude} />}
+
       {/* Readiness indicator */}
       <div className="flex items-center gap-1.5" role="status">
         <span className={cn(
           "h-1.5 w-1.5 shrink-0 rounded-full",
-          isGenerating ? "bg-text-secondary animate-pulse" : hasGeometry ? "bg-status-success" : "bg-status-warning",
+          busy ? "bg-text-secondary animate-pulse" : hasGeometry ? "bg-status-success" : "bg-status-warning",
         )} />
         <span className={cn(
           "text-[11px]",
-          isGenerating ? "text-text-secondary" : hasGeometry ? "text-status-success" : "text-status-warning",
+          busy ? "text-text-secondary" : hasGeometry ? "text-status-success" : "text-status-warning",
         )}>
-          {isGenerating ? t("generating") : hasGeometry ? t("ready") : missingGeometryHint}
+          {readiness}
         </span>
       </div>
 
-      {error && (
-        <div className="flex items-start gap-1.5">
+      {(error || terrainFailed) && (
+        <div className="flex items-start gap-1.5" role="alert">
           <AlertTriangle size={12} className="mt-0.5 shrink-0 text-status-error" />
-          <span className="text-[11px] text-status-error">{error}</span>
+          <span className="text-[11px] text-status-error">{error ?? tAlt("unavailable")}</span>
         </div>
       )}
 
       {/* Generate / Apply / Clear */}
       <div className="flex gap-1.5">
-        <button type="button" onClick={generate} disabled={isGenerating}
-          className={cn(secondaryButton, "flex-1", isGenerating && "opacity-50 cursor-wait")}>
-          <Play size={12} />{isGenerating ? t("generating") : tIns("generate")}
+        <button type="button" onClick={generate} disabled={busy}
+          className={cn(secondaryButton, "flex-1", busy && "opacity-50 cursor-wait")}>
+          <Play size={12} />{busy ? t("generating") : tIns("generate")}
         </button>
         {(polygons.length > 0 || circles.length > 0) && (
           <button type="button" onClick={() => useDrawingStore.getState().clearAll()}
@@ -245,30 +275,46 @@ export function PatternEditor({ onApply }: PatternEditorProps) {
       {patternResult && onApply && (
         <button type="button" onClick={onApply}
           className={cn(secondaryButton, "h-8 w-full font-semibold text-text-primary")}>
-          <Check size={12} />{tIns("apply", { count: patternResult.waypoints.length })}
+          <Check size={12} />{tIns("apply", { count: patternResult.waypoints.filter(isNavRow).length })}
+        </button>
+      )}
+      {!patternResult && onApply && (sampling || terrainFailed) && (
+        <button type="button" aria-disabled="true" title={sampling ? tAlt("sampling") : tAlt("unavailable")}
+          className={cn(secondaryButton, "h-8 w-full cursor-not-allowed font-semibold opacity-50 hover:bg-transparent")}>
+          <Check size={12} />{tAlt("applyBlocked")}
         </button>
       )}
 
-      {patternResult && (
-        <div className="flex flex-col border-t border-border-default pt-2">
-          <span className="mb-1 font-body text-[11px] font-semibold text-text-tertiary">{tIns("stats")}</span>
-          <StatRow label={tIns("distance")} value={formatDistance(patternResult.stats.totalDistance, units)} />
-          <StatRow label={tIns("time")}
-            value={`${Math.floor(patternResult.stats.estimatedTime / 60)}m ${Math.round(patternResult.stats.estimatedTime % 60)}s`} />
-          <StatRow label={tIns("waypoints")} value={String(patternResult.waypoints.length)} />
-          {patternResult.stats.photoCount > 0 && (
-            <StatRow label={tIns("photos")} value={String(patternResult.stats.photoCount)} />
-          )}
-          {patternResult.stats.coveredArea > 0 && (
-            <StatRow label={tIns("area")} value={formatArea(patternResult.stats.coveredArea, units)} />
-          )}
-          {patternResult.stats.transectCount > 0 && (
-            <StatRow label={tIns("transects")} value={String(patternResult.stats.transectCount)} />
-          )}
-        </div>
-      )}
+      {patternResult && <PatternStatsPanel result={patternResult} legs={LEG_PATTERNS.has(activeType)} />}
 
       <PluginMissionTemplates />
+    </div>
+  );
+}
+
+/** Minutes and seconds of a duration, from the rounded total so it never reads "1m 60s". */
+export function formatPatternTime(seconds: number): string {
+  const total = Math.round(seconds);
+  return `${Math.floor(total / 60)}m ${total % 60}s`;
+}
+
+function PatternStatsPanel({ result, legs }: { result: PatternResult; legs: boolean }) {
+  const tIns = useTranslations("planner.inspector.pattern");
+  const tp = useTranslations("planner.pattern");
+  const units = useSettingsStore((s) => s.units);
+  const { stats } = result;
+  // Navigation waypoints only: the camera, ROI and gimbal rows ride them.
+  const navCount = result.waypoints.filter(isNavRow).length;
+  return (
+    <div className="flex flex-col border-t border-border-default pt-2">
+      <span className="mb-1 font-body text-[11px] font-semibold text-text-tertiary">{tIns("stats")}</span>
+      <StatRow label={tIns("distance")} value={formatDistance(stats.totalDistance, units)} />
+      <StatRow label={tIns("time")} value={formatPatternTime(stats.estimatedTime)} />
+      <StatRow label={tIns("waypoints")} value={String(navCount)} />
+      {stats.photoCount > 0 && <StatRow label={tIns("photos")} value={String(stats.photoCount)} />}
+      {stats.coveredArea > 0 && <StatRow label={tIns("area")} value={formatArea(stats.coveredArea, units)} />}
+      {legs && stats.legCount !== undefined && <StatRow label={tp("legs")} value={String(stats.legCount)} />}
+      {stats.transectCount > 0 && <StatRow label={tIns("transects")} value={String(stats.transectCount)} />}
     </div>
   );
 }
@@ -286,20 +332,18 @@ export function SurveyDeliverablePresets() {
   const t = useTranslations("planner");
   const apply = useCallback((sideOverlap: number, frontOverlap: number) => {
     const store = usePatternStore.getState();
-    const cfg = store.surveyConfig as SurveyDeliverableConfig;
-    const camera = cfg._cameraName ? CAMERA_PROFILES.find((c) => c.name === cfg._cameraName) : undefined;
-    const update: SurveyDeliverableConfig = { _sidelap: sideOverlap, _frontlap: frontOverlap, _preset: "" };
+    const cfg = store.surveyConfig;
+    const camera = findCamera(cfg._cameraName, useSettingsStore.getState().customCameras);
+    const update: Partial<SurveyConfigType> & { _preset?: string } = { _sidelap: sideOverlap, _frontlap: frontOverlap, _preset: "" };
     // A preset only changes the deliverable if it recomputes the grid geometry
     // the generator actually reads. Side overlap drives line spacing, front
     // overlap drives the camera trigger distance — exactly as the manual overlap
     // controls do. With no camera selected we set only the overlap fields (no
     // fabricated spacing).
     if (camera) {
-      const alt = cfg.altitude ?? 50;
-      update.lineSpacing = Math.round(computeLineSpacing(alt, camera, sideOverlap / 100) * 10) / 10;
-      update.cameraTriggerDistance = Math.round(computeTriggerDistance(alt, camera, frontOverlap / 100) * 10) / 10;
+      Object.assign(update, cameraSpacingUpdate("survey", camera, cfg.altitude ?? 50, sideOverlap, frontOverlap, cfg._orientation));
     }
-    store.updateSurveyConfig(update as Partial<SurveyConfigType>);
+    store.updateSurveyConfig(update);
   }, []);
   const labelId = useId();
   // Label above, buttons across the full width: three presets don't fit beside

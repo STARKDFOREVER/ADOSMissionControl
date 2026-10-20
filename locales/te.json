@@ -2957,7 +2957,6 @@
     "cameraProfile": "కెమెరా ప్రొఫైల్",
     "hideAdvanced": "అధునాతనం దాచు",
     "showAdvanced": "అధునాతనం చూపించు",
-    "gridAngle": "గ్రిడ్ కోణం",
     "turnAroundDistance": "టర్న్-అరౌండ్ దూరం",
     "entryPoint": "ప్రవేశ బిందువు",
     "alternateTransects": "ప్రత్యామ్నాయ ట్రాన్సెక్ట్‌లు",
@@ -2987,7 +2986,6 @@
     "maxLegs": "గరిష్ట లెగ్‌లు",
     "startBearing": "ప్రారంభ బేరింగ్",
     "searchRadius": "శోధన వ్యాసార్ధం",
-    "sweeps": "స్వీప్‌లు",
     "clickMapSetStart": "ప్రారంభ బిందువు సెట్ చేయడానికి మ్యాప్‌పై క్లిక్ చేయండి",
     "trackLength": "ట్రాక్ పొడవు",
     "trackSpacing": "ట్రాక్ అంతరం",
@@ -3663,7 +3661,8 @@
         "parallelTrack": "Parallel track",
         "structureScan": "Structure scan",
         "fixedWingLanding": "Fixed-wing landing",
-        "vtolLanding": "VTOL landing"
+        "vtolLanding": "VTOL landing",
+        "facade": "ముఖభాగం"
       },
       "help": {
         "title": "Keyboard shortcuts",
@@ -3674,6 +3673,68 @@
           "edit": "Edit",
           "file": "File"
         }
+      }
+    },
+    "pattern": {
+      "gridAngleFromNorth": "గ్రిడ్ కోణం (ఉత్తరం నుండి)",
+      "legs": "లెగ్‌లు",
+      "windFromForecast": "స్థల సూచన నుండి",
+      "hoverAndCapture": "ఆగి ఫోటో తీయి",
+      "hoverHint": "ప్రతి ఫోటో బిందువు వద్ద 1 సె. ఆగి ఒక ఫోటో తీయండి",
+      "altitude": {
+        "title": "ఎత్తు",
+        "reference": "ఆధారం",
+        "relative": "హోమ్ పైన",
+        "followTerrain": "భూభాగాన్ని అనుసరించు",
+        "terrain": "భూభాగ ఫ్రేమ్",
+        "tolerance": "సహనం",
+        "maxClimb": "గరిష్ఠ ఆరోహణ",
+        "maxDescent": "గరిష్ఠ అవరోహణ",
+        "terrainHint": "ఎత్తులు ప్రతి వేపాయింట్ కింది నేల నుండి. వాహనానికి భూభాగ డేటా అవసరం.",
+        "followHint": "ప్రతి లెగ్‌లో నేల నుండి ఎత్తును నిలిపే సముద్ర మట్టం ఎత్తులు.",
+        "sampling": "భూభాగం నమూనా తీస్తోంది…",
+        "unavailable": "ఇక్కడ భూభాగం అందుబాటులో లేదు. హోమ్ పైన వాడండి",
+        "applyBlocked": "వర్తింపజేయడానికి భూభాగం అవసరం",
+        "heightAboveGround": "నేల నుండి ఎత్తు"
+      },
+      "camera": {
+        "custom": "అనుకూల కెమెరా…",
+        "edit": "కెమెరా సవరించు",
+        "delete": "కెమెరా తొలగించు",
+        "orientation": "దిశ",
+        "landscape": "అడ్డం",
+        "portrait": "నిలువు",
+        "tooFast": "కెమెరా అంత వేగంగా ఫోటో తీయలేదు: {speed} m/s కు తగ్గించండి"
+      },
+      "customCamera": {
+        "title": "అనుకూల కెమెరా",
+        "name": "పేరు",
+        "sensorWidth": "సెన్సార్ వెడల్పు",
+        "sensorHeight": "సెన్సార్ ఎత్తు",
+        "imageWidth": "చిత్ర వెడల్పు",
+        "imageHeight": "చిత్ర ఎత్తు",
+        "focalLength": "ఫోకల్ పొడవు",
+        "minInterval": "కనిష్ఠ ట్రిగ్గర్ విరామం",
+        "save": "సేవ్ చేయి",
+        "cancel": "రద్దు చేయి",
+        "errorName": "వేరే కెమెరా వాడని పేరు ఇవ్వండి",
+        "errorSensor": "సెన్సార్ వెడల్పు మరియు ఎత్తు 0 కంటే ఎక్కువ ఉండాలి",
+        "errorImage": "చిత్ర వెడల్పు మరియు ఎత్తు 0 కంటే ఎక్కువ ఉండాలి",
+        "errorFocal": "ఫోకల్ పొడవు 0 కంటే ఎక్కువ ఉండాలి",
+        "errorInterval": "ట్రిగ్గర్ విరామం ప్రతికూలంగా ఉండకూడదు"
+      },
+      "facade": {
+        "drawLine": "ముఖభాగ రేఖ గీయి",
+        "drawHint": "మ్యాప్‌పై గోడ అడుగు భాగం రెండు చివరలను క్లిక్ చేయండి",
+        "lineSet": "ముఖభాగ రేఖ: {length} m",
+        "side": "ఈ వైపు ఎగురు",
+        "sideHint": "మొదటి బిందువు నుండి రెండోదాని వైపు చూసినప్పుడు రేఖ వైపు",
+        "left": "ఎడమ",
+        "right": "కుడి",
+        "distance": "ముఖభాగం నుండి దూరం",
+        "bottomAlt": "కింది వరుస",
+        "topAlt": "పై వరుస",
+        "rowSpacing": "వరుసల మధ్య దూరం"
       }
     }
   },

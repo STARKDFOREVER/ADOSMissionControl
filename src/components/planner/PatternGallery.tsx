@@ -12,7 +12,7 @@ import { useState, type ComponentType } from "react";
 import { useTranslations } from "next-intl";
 import {
   Grid3x3, Orbit, Spline, Square, SquareDashed, Radar, Rows3, Building2,
-  PlaneLanding, ArrowDownToLine,
+  PlaneLanding, ArrowDownToLine, BrickWall,
 } from "lucide-react";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { TemplatesPanel } from "./TemplatesPanel";
@@ -26,6 +26,7 @@ const PATTERN_ICONS: Record<string, ComponentType<{ size?: number }>> = {
   survey: Grid3x3,
   orbit: Orbit,
   corridor: Spline,
+  facade: BrickWall,
   perimeter: Square,
   expandingSquare: SquareDashed,
   sectorSearch: Radar,

@@ -335,5 +335,9 @@ export function migrateSettings(
     // opt-in IndexedDB caching flag has nothing left to switch.
     delete state.offlineTileCaching;
   }
+  if (version < 55) {
+    // v55: operator-added camera profiles for the planner's camera patterns.
+    if (!Array.isArray(state.customCameras)) state.customCameras = [];
+  }
   return state as Partial<SettingsStoreState>;
 }

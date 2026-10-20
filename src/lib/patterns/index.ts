@@ -11,6 +11,7 @@ export { generatePerimeter } from "./perimeter-generator";
 export { generateCorridor } from "./corridor-generator";
 export { generateExpandingSquare, generateSectorSearch, generateParallelTrack } from "./sar-generators";
 export { generateStructureScan } from "./structure-scan-generator";
+export { generateFacade } from "./facade-generator";
 export { generateFixedWingLanding } from "./landing-generator";
 export { generateVtolLanding } from "./vtol-landing-generator";
 export * from "./types";

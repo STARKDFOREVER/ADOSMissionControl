@@ -89,7 +89,7 @@ describe("applied patterns validate and sequence their actions after their waypo
     expect(items[2].y).toBe(Math.round(CENTER[1] * 1e7));
   });
 
-  it("structure scan: ROI and camera start ride the first orbit point, camera stops at the end", () => {
+  it("structure scan: ROI, gimbal and camera start ride the first point; the camera is off on every climb", () => {
     const rows = generateStructureScan({
       structurePolygon: [
         [CENTER[0], CENTER[1]], [CENTER[0], CENTER[1] + 0.0002],
@@ -101,14 +101,15 @@ describe("applied patterns validate and sequence their actions after their waypo
     expect(blockingCodes(rows)).toEqual([]);
 
     const items = uploaded(rows);
-    expect(items.slice(0, 4).map((it) => it.command)).toEqual([
-      cmdMap.TAKEOFF, cmdMap.WAYPOINT, cmdMap.ROI, cmdMap.DO_SET_CAM_TRIGG,
+    expect(items.slice(0, 5).map((it) => it.command)).toEqual([
+      cmdMap.TAKEOFF, cmdMap.WAYPOINT, cmdMap.ROI, cmdMap.DO_MOUNT_CONTROL, cmdMap.DO_SET_CAM_TRIGG,
     ]);
     const legs = cameraOnPerLeg(items);
-    // Off on the climb-out, on around every layer, off on the way home.
+    // Off on the climb-out, on around every layer, off on the two climbs
+    // between the 15, 30 and 45 m layers, off on the way home.
     expect(legs[0]).toBe(false);
-    expect(legs.slice(1, -1).every(Boolean)).toBe(true);
     expect(legs[legs.length - 1]).toBe(false);
+    expect(legs.filter((on) => !on)).toHaveLength(4);
   });
 
   it("structure scan: each layer commands the gimbal pitch with DO_MOUNT_CONTROL, not a waypoint param", () => {
@@ -136,7 +137,7 @@ describe("applied patterns validate and sequence their actions after their waypo
   it("camera survey: the camera runs along every transect and never across a turnaround", () => {
     const rows = generateSurvey({
       polygon: [[12.970, 77.590], [12.970, 77.594], [12.974, 77.594], [12.974, 77.590]],
-      gridAngle: 0, lineSpacing: 80, turnAroundDistance: 10, entryLocation: "topLeft",
+      gridAngle: 90, lineSpacing: 80, turnAroundDistance: 10, entryLocation: "topLeft",
       flyAlternateTransects: false, cameraTriggerDistance: 20, altitude: 50, speed: 5,
     }).waypoints;
     expect(blockingCodes(rows)).toEqual([]);

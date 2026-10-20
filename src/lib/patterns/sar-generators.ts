@@ -31,7 +31,6 @@ export interface ExpandingSquareConfig {
 export interface SectorSearchConfig {
   center: [number, number]; // [lat, lon] — datum point
   radius: number; // meters — search radius from datum
-  sweeps: number; // number of pie-slice sweeps (typically 3)
   altitude: number;
   speed: number;
   startBearing: number; // degrees from north
@@ -110,7 +109,7 @@ export function generateExpandingSquare(config: ExpandingSquareConfig): PatternR
     }
   }
 
-  const stats = computeStats(waypoints, speed, 0);
+  const stats = computeStats(waypoints, speed);
 
   return {
     waypoints,
@@ -121,17 +120,16 @@ export function generateExpandingSquare(config: ExpandingSquareConfig): PatternR
 // ── Sector Search ─────────────────────────────────────────────
 
 /**
- * Generate a sector search pattern.
- * The aircraft flies outward from datum, turns, flies back through datum,
- * and repeats at angular offsets. Creates a pie-slice coverage pattern.
- *
- * Standard sector search: 3 sweeps at 120° spacing covers the area around datum.
+ * Generate a sector (VS) search pattern: three equilateral triangles about the
+ * datum, nine legs each one radius long, every turn 120° right. The outbound
+ * radials run at start, start − 120° and start − 240°, so the leg back over the
+ * datum carries straight on into the next triangle without a turn.
  */
 export function generateSectorSearch(config: SectorSearchConfig): PatternResult {
-  const { center, radius, sweeps, altitude, speed, startBearing } = config;
+  const { center, radius, altitude, speed, startBearing } = config;
   const waypoints: PatternResult["waypoints"] = [];
-  assertTransectCount(sweeps * 2);
-  const angleStep = 360 / (sweeps * 2); // Angular spacing between outbound legs
+  const triangles = 3;
+  const crossOffset = 60; // the cross leg's far corner, degrees right of the radial
 
   // Start at datum
   waypoints.push({
@@ -142,8 +140,8 @@ export function generateSectorSearch(config: SectorSearchConfig): PatternResult 
     command: "WAYPOINT",
   });
 
-  for (let i = 0; i < sweeps; i++) {
-    const outboundBearing = (startBearing + i * (360 / sweeps)) % 360;
+  for (let i = 0; i < triangles; i++) {
+    const outboundBearing = (((startBearing - i * 120) % 360) + 360) % 360;
 
     // Fly outward to radius
     const outbound = offsetPoint(center[0], center[1], outboundBearing, radius);
@@ -156,7 +154,7 @@ export function generateSectorSearch(config: SectorSearchConfig): PatternResult 
     });
 
     // Turn and fly to offset point at radius
-    const returnBearing = (outboundBearing + angleStep) % 360;
+    const returnBearing = (outboundBearing + crossOffset) % 360;
     const offsetPt = offsetPoint(center[0], center[1], returnBearing, radius);
     waypoints.push({
       lat: offsetPt[0],
@@ -176,7 +174,7 @@ export function generateSectorSearch(config: SectorSearchConfig): PatternResult 
     });
   }
 
-  const stats = computeStats(waypoints, speed, 0);
+  const stats = computeStats(waypoints, speed);
 
   return {
     waypoints,
@@ -233,7 +231,7 @@ export function generateParallelTrack(config: ParallelTrackConfig): PatternResul
     });
   }
 
-  const stats = computeStats(waypoints, speed, 0);
+  const stats = computeStats(waypoints, speed, trackCount);
 
   return {
     waypoints,
@@ -243,10 +241,11 @@ export function generateParallelTrack(config: ParallelTrackConfig): PatternResul
 
 // ── Helpers ───────────────────────────────────────────────────
 
+/** Distance, time and leg count of a SAR route; `transects` is set only where tracks are flown as transects. */
 function computeStats(
   waypoints: PatternResult["waypoints"],
   speed: number,
-  triggerDistance: number,
+  transects = 0,
 ): PatternStats {
   let totalDistance = 0;
   for (let i = 1; i < waypoints.length; i++) {
@@ -260,8 +259,9 @@ function computeStats(
   return {
     totalDistance,
     estimatedTime: speed > 0 ? totalDistance / speed : 0,
-    photoCount: triggerDistance > 0 ? Math.ceil(totalDistance / triggerDistance) : 0,
+    photoCount: 0,
     coveredArea: 0, // SAR patterns don't have a neat area calculation
-    transectCount: Math.ceil(waypoints.length / 2),
+    transectCount: transects,
+    legCount: Math.max(0, waypoints.length - 1),
   };
 }

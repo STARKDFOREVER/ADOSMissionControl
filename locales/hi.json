@@ -2957,7 +2957,6 @@
     "cameraProfile": "Camera Profile",
     "hideAdvanced": "Advanced छिपाएं",
     "showAdvanced": "Advanced दिखाएं",
-    "gridAngle": "Grid Angle",
     "turnAroundDistance": "Turn-around Distance",
     "entryPoint": "Entry Point",
     "alternateTransects": "Alternate Transects",
@@ -2987,7 +2986,6 @@
     "maxLegs": "Max Legs",
     "startBearing": "Start Bearing",
     "searchRadius": "Search Radius",
-    "sweeps": "Sweeps",
     "clickMapSetStart": "Start point सेट करने के लिए map पर click करें",
     "trackLength": "Track Length",
     "trackSpacing": "Track Spacing",
@@ -3663,7 +3661,8 @@
         "parallelTrack": "Parallel track",
         "structureScan": "Structure scan",
         "fixedWingLanding": "Fixed-wing landing",
-        "vtolLanding": "VTOL landing"
+        "vtolLanding": "VTOL landing",
+        "facade": "मुखौटा"
       },
       "help": {
         "title": "Keyboard shortcuts",
@@ -3674,6 +3673,68 @@
           "edit": "Edit",
           "file": "File"
         }
+      }
+    },
+    "pattern": {
+      "gridAngleFromNorth": "ग्रिड कोण (उत्तर से)",
+      "legs": "लेग",
+      "windFromForecast": "साइट पूर्वानुमान से",
+      "hoverAndCapture": "रुककर फ़ोटो लें",
+      "hoverHint": "हर फ़ोटो बिंदु पर 1 सेकंड रुकें और एक फ़ोटो लें",
+      "altitude": {
+        "title": "ऊँचाई",
+        "reference": "संदर्भ",
+        "relative": "होम से ऊपर",
+        "followTerrain": "भू-भाग का अनुसरण",
+        "terrain": "भू-भाग फ़्रेम",
+        "tolerance": "सहनशीलता",
+        "maxClimb": "अधिकतम चढ़ाई",
+        "maxDescent": "अधिकतम उतराई",
+        "terrainHint": "ऊँचाइयाँ हर वेपॉइंट के नीचे की ज़मीन से हैं। वाहन को भू-भाग डेटा चाहिए।",
+        "followHint": "समुद्र तल से ऊँचाइयाँ जो हर लेग पर ज़मीन से ऊँचाई बनाए रखती हैं।",
+        "sampling": "भू-भाग का नमूना लिया जा रहा है…",
+        "unavailable": "यहाँ भू-भाग उपलब्ध नहीं। होम से ऊपर उपयोग करें",
+        "applyBlocked": "लागू करने के लिए भू-भाग चाहिए",
+        "heightAboveGround": "ज़मीन से ऊँचाई"
+      },
+      "camera": {
+        "custom": "कस्टम कैमरा…",
+        "edit": "कैमरा संपादित करें",
+        "delete": "कैमरा हटाएँ",
+        "orientation": "अभिविन्यास",
+        "landscape": "लैंडस्केप",
+        "portrait": "पोर्ट्रेट",
+        "tooFast": "कैमरा इतनी तेज़ी से फ़ोटो नहीं ले सकता: {speed} m/s तक धीमा करें"
+      },
+      "customCamera": {
+        "title": "कस्टम कैमरा",
+        "name": "नाम",
+        "sensorWidth": "सेंसर चौड़ाई",
+        "sensorHeight": "सेंसर ऊँचाई",
+        "imageWidth": "छवि चौड़ाई",
+        "imageHeight": "छवि ऊँचाई",
+        "focalLength": "फ़ोकल लंबाई",
+        "minInterval": "न्यूनतम ट्रिगर अंतराल",
+        "save": "सहेजें",
+        "cancel": "रद्द करें",
+        "errorName": "ऐसा नाम दर्ज करें जो कोई और कैमरा उपयोग न करे",
+        "errorSensor": "सेंसर चौड़ाई और ऊँचाई 0 से अधिक होनी चाहिए",
+        "errorImage": "छवि चौड़ाई और ऊँचाई 0 से अधिक होनी चाहिए",
+        "errorFocal": "फ़ोकल लंबाई 0 से अधिक होनी चाहिए",
+        "errorInterval": "ट्रिगर अंतराल ऋणात्मक नहीं हो सकता"
+      },
+      "facade": {
+        "drawLine": "मुखौटा रेखा खींचें",
+        "drawHint": "मानचित्र पर दीवार के आधार के दोनों सिरों पर क्लिक करें",
+        "lineSet": "मुखौटा रेखा: {length} m",
+        "side": "इस ओर उड़ें",
+        "sideHint": "रेखा की ओर, पहले बिंदु से दूसरे की ओर देखते हुए",
+        "left": "बाएँ",
+        "right": "दाएँ",
+        "distance": "मुखौटे से दूरी",
+        "bottomAlt": "निचली पंक्ति",
+        "topAlt": "ऊपरी पंक्ति",
+        "rowSpacing": "पंक्ति अंतर"
       }
     }
   },

@@ -29,7 +29,7 @@ function wp(lat: number, lon: number): PatternWaypoint {
 }
 
 function trigger(lat: number, lon: number, distance: number): PatternWaypoint {
-  return { lat, lon, alt: 50, speed: 5, command: "DO_SET_CAM_TRIGG", param1: distance };
+  return { lat, lon, alt: 50, speed: 5, command: "DO_SET_CAM_TRIGG", param1: distance, param3: 1 };
 }
 
 /** Two ~111 m north-south transects, the camera armed every 50 m along each. */
@@ -53,8 +53,8 @@ describe("CoverageStats", () => {
   it("counts the captures the trigger distance takes along the transects", () => {
     render(<CoverageStats camera={camera} altitude={50} minSideOverlap={0.6} />);
     expect(screen.getByText("coverage.title")).toBeInTheDocument();
-    // 0, 50 and 100 m along each 111 m transect.
-    expect(screen.getByText("6")).toBeInTheDocument();
+    // 0, 50 and 100 m along each 111 m transect, plus the shot where it disarms.
+    expect(screen.getByText("8")).toBeInTheDocument();
   });
 
   it("shows no front overlap when the camera is never armed", () => {

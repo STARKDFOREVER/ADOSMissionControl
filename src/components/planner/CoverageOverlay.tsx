@@ -16,7 +16,8 @@
 import { memo, useMemo } from "react";
 import { Polygon } from "react-leaflet";
 import { usePatternStore } from "@/stores/pattern-store";
-import { CAMERA_PROFILES } from "@/lib/patterns/gsd-calculator";
+import { findCamera } from "@/lib/patterns/gsd-calculator";
+import { useSettingsStore } from "@/stores/settings-store";
 import { MAP_COLORS } from "@/lib/map-constants";
 import { buildFootprintPolygons } from "@/lib/patterns/coverage-footprints";
 import { useCoverageCaptures } from "@/hooks/use-coverage-captures";
@@ -32,14 +33,22 @@ const FOOTPRINT_STYLE = {
 
 export const CoverageOverlay = memo(function CoverageOverlay() {
   const showCoverageOverlay = usePatternStore((s) => s.showCoverageOverlay);
-  const cameraName = usePatternStore((s) => (s.surveyConfig as { _cameraName?: string })._cameraName);
+  const cameraName = usePatternStore((s) => s.surveyConfig._cameraName);
+  const orientation = usePatternStore((s) => s.surveyConfig._orientation);
+  // In the terrain modes the rows carry sea-level or terrain altitudes; the
+  // footprint is sized by the height above ground the survey holds.
+  const heightAboveGround = usePatternStore((s) =>
+    (s.surveyConfig.altitudeMode ?? "relative") === "relative" ? null : s.surveyConfig.altitude ?? null);
+  const customCameras = useSettingsStore((s) => s.customCameras);
   const { points } = useCoverageCaptures();
 
   const footprints = useMemo(() => {
     if (!showCoverageOverlay) return [];
-    const camera = CAMERA_PROFILES.find((c) => c.name === cameraName);
-    return camera ? buildFootprintPolygons(points, camera) : [];
-  }, [showCoverageOverlay, cameraName, points]);
+    const camera = findCamera(cameraName, customCameras);
+    if (!camera) return [];
+    const sized = heightAboveGround === null ? points : points.map((p) => ({ ...p, alt: heightAboveGround }));
+    return buildFootprintPolygons(sized, camera, orientation);
+  }, [showCoverageOverlay, cameraName, customCameras, orientation, heightAboveGround, points]);
 
   if (footprints.length === 0) return null;
 

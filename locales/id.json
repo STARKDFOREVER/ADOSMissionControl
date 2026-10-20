@@ -2957,7 +2957,6 @@
     "cameraProfile": "Profil Kamera",
     "hideAdvanced": "Sembunyikan Lanjutan",
     "showAdvanced": "Tampilkan Lanjutan",
-    "gridAngle": "Sudut Grid",
     "turnAroundDistance": "Jarak Putar Balik",
     "entryPoint": "Titik Masuk",
     "alternateTransects": "Transek Bergantian",
@@ -2987,7 +2986,6 @@
     "maxLegs": "Kaki Maks",
     "startBearing": "Bearing Awal",
     "searchRadius": "Radius Pencarian",
-    "sweeps": "Sapuan",
     "clickMapSetStart": "Klik peta untuk menetapkan titik mulai",
     "trackLength": "Panjang Jalur",
     "trackSpacing": "Jarak Jalur",
@@ -3663,7 +3661,8 @@
         "parallelTrack": "Parallel track",
         "structureScan": "Structure scan",
         "fixedWingLanding": "Fixed-wing landing",
-        "vtolLanding": "VTOL landing"
+        "vtolLanding": "VTOL landing",
+        "facade": "Fasad"
       },
       "help": {
         "title": "Keyboard shortcuts",
@@ -3674,6 +3673,68 @@
           "edit": "Edit",
           "file": "File"
         }
+      }
+    },
+    "pattern": {
+      "gridAngleFromNorth": "Sudut grid (dari utara)",
+      "legs": "Kaki",
+      "windFromForecast": "Dari prakiraan lokasi",
+      "hoverAndCapture": "Melayang dan memotret",
+      "hoverHint": "Berhenti 1 dtk di setiap titik foto dan ambil satu foto",
+      "altitude": {
+        "title": "Ketinggian",
+        "reference": "Acuan",
+        "relative": "Di atas home",
+        "followTerrain": "Ikuti medan",
+        "terrain": "Bingkai medan",
+        "tolerance": "Toleransi",
+        "maxClimb": "Naik maks.",
+        "maxDescent": "Turun maks.",
+        "terrainHint": "Ketinggian diukur dari tanah di bawah setiap waypoint. Wahana memerlukan data medan.",
+        "followHint": "Ketinggian di atas permukaan laut yang menjaga tinggi di atas tanah di setiap segmen.",
+        "sampling": "Mengambil sampel medan…",
+        "unavailable": "Data medan tidak tersedia di sini. Gunakan Di atas home",
+        "applyBlocked": "Terapkan memerlukan data medan",
+        "heightAboveGround": "Tinggi di atas tanah"
+      },
+      "camera": {
+        "custom": "Kamera kustom…",
+        "edit": "Edit kamera",
+        "delete": "Hapus kamera",
+        "orientation": "Orientasi",
+        "landscape": "Lanskap",
+        "portrait": "Potret",
+        "tooFast": "Kamera tidak bisa memotret secepat itu: perlambat ke {speed} m/s"
+      },
+      "customCamera": {
+        "title": "Kamera kustom",
+        "name": "Nama",
+        "sensorWidth": "Lebar sensor",
+        "sensorHeight": "Tinggi sensor",
+        "imageWidth": "Lebar gambar",
+        "imageHeight": "Tinggi gambar",
+        "focalLength": "Panjang fokus",
+        "minInterval": "Interval pemicu min.",
+        "save": "Simpan",
+        "cancel": "Batal",
+        "errorName": "Masukkan nama yang tidak dipakai kamera lain",
+        "errorSensor": "Lebar dan tinggi sensor harus lebih dari 0",
+        "errorImage": "Lebar dan tinggi gambar harus lebih dari 0",
+        "errorFocal": "Panjang fokus harus lebih dari 0",
+        "errorInterval": "Interval pemicu tidak boleh negatif"
+      },
+      "facade": {
+        "drawLine": "Gambar garis fasad",
+        "drawHint": "Klik kedua ujung dasar dinding di peta",
+        "lineSet": "Garis fasad: {length} m",
+        "side": "Terbang di",
+        "sideHint": "Sisi garis, dilihat dari titik pertama ke titik kedua",
+        "left": "Kiri",
+        "right": "Kanan",
+        "distance": "Jarak dari fasad",
+        "bottomAlt": "Baris bawah",
+        "topAlt": "Baris atas",
+        "rowSpacing": "Jarak baris"
       }
     }
   },

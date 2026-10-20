@@ -2957,7 +2957,6 @@
     "cameraProfile": "Profil caméra",
     "hideAdvanced": "Masquer les options avancées",
     "showAdvanced": "Afficher les options avancées",
-    "gridAngle": "Angle de grille",
     "turnAroundDistance": "Distance de virage",
     "entryPoint": "Point d'entrée",
     "alternateTransects": "Transects alternés",
@@ -2987,7 +2986,6 @@
     "maxLegs": "Segments max",
     "startBearing": "Cap de départ",
     "searchRadius": "Rayon de recherche",
-    "sweeps": "Balayages",
     "clickMapSetStart": "Cliquer la carte pour définir le point de départ",
     "trackLength": "Longueur de piste",
     "trackSpacing": "Espacement des pistes",
@@ -3663,7 +3661,8 @@
         "parallelTrack": "Parallel track",
         "structureScan": "Structure scan",
         "fixedWingLanding": "Fixed-wing landing",
-        "vtolLanding": "VTOL landing"
+        "vtolLanding": "VTOL landing",
+        "facade": "Façade"
       },
       "help": {
         "title": "Keyboard shortcuts",
@@ -3674,6 +3673,68 @@
           "edit": "Edit",
           "file": "File"
         }
+      }
+    },
+    "pattern": {
+      "gridAngleFromNorth": "Angle de la grille (depuis le nord)",
+      "legs": "Branches",
+      "windFromForecast": "D'après la prévision du site",
+      "hoverAndCapture": "Stationner et photographier",
+      "hoverHint": "S'arrêter 1 s à chaque point photo et prendre une photo",
+      "altitude": {
+        "title": "Altitude",
+        "reference": "Référence",
+        "relative": "Au-dessus du départ",
+        "followTerrain": "Suivre le relief",
+        "terrain": "Repère terrain",
+        "tolerance": "Tolérance",
+        "maxClimb": "Montée max.",
+        "maxDescent": "Descente max.",
+        "terrainHint": "Les hauteurs sont au-dessus du sol sous chaque waypoint. Le véhicule a besoin de données de relief.",
+        "followHint": "Altitudes au-dessus du niveau de la mer qui gardent la hauteur sol sur chaque segment.",
+        "sampling": "Échantillonnage du relief…",
+        "unavailable": "Relief indisponible ici. Utilisez Au-dessus du départ",
+        "applyBlocked": "Appliquer nécessite le relief",
+        "heightAboveGround": "Hauteur au-dessus du sol"
+      },
+      "camera": {
+        "custom": "Caméra personnalisée…",
+        "edit": "Modifier la caméra",
+        "delete": "Supprimer la caméra",
+        "orientation": "Orientation",
+        "landscape": "Paysage",
+        "portrait": "Portrait",
+        "tooFast": "La caméra ne peut pas déclencher aussi vite : ralentir à {speed} m/s"
+      },
+      "customCamera": {
+        "title": "Caméra personnalisée",
+        "name": "Nom",
+        "sensorWidth": "Largeur du capteur",
+        "sensorHeight": "Hauteur du capteur",
+        "imageWidth": "Largeur d'image",
+        "imageHeight": "Hauteur d'image",
+        "focalLength": "Focale",
+        "minInterval": "Intervalle min. de déclenchement",
+        "save": "Enregistrer",
+        "cancel": "Annuler",
+        "errorName": "Saisissez un nom qu'aucune autre caméra n'utilise",
+        "errorSensor": "La largeur et la hauteur du capteur doivent dépasser 0",
+        "errorImage": "La largeur et la hauteur d'image doivent dépasser 0",
+        "errorFocal": "La focale doit dépasser 0",
+        "errorInterval": "L'intervalle de déclenchement ne peut pas être négatif"
+      },
+      "facade": {
+        "drawLine": "Tracer la ligne de façade",
+        "drawHint": "Cliquez sur les deux extrémités du pied du mur sur la carte",
+        "lineSet": "Ligne de façade : {length} m",
+        "side": "Voler du côté",
+        "sideHint": "Côté de la ligne, vu du premier point vers le second",
+        "left": "Gauche",
+        "right": "Droite",
+        "distance": "Distance à la façade",
+        "bottomAlt": "Rangée basse",
+        "topAlt": "Rangée haute",
+        "rowSpacing": "Espacement des rangées"
       }
     }
   },

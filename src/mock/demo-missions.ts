@@ -47,7 +47,7 @@ function fromPattern(result: PatternResult): RawWp[] {
   return result.waypoints.map((pw) => ({
     lat: pw.lat, lon: pw.lon, alt: pw.alt, speed: pw.speed,
     command: (pw.command || "WAYPOINT") as WaypointCommand,
-    param1: pw.param1, param2: pw.param2,
+    param1: pw.param1, param2: pw.param2, param3: pw.param3, param5: pw.param5, holdTime: pw.holdTime,
   }));
 }
 
@@ -151,7 +151,7 @@ const matterhorn = buildPlan({
     { lat: 45.9788, lon: 7.6595, alt: 50, command: "CONDITION_YAW", param1: 45, param2: 20, param3: 1 },
     ...fromPattern(generateExpandingSquare({ center: sarDatum, legSpacing: 60, maxLegs: 8, altitude: 50, speed: 9, startBearing: 45 })),
     { lat: sarDatum[0], lon: sarDatum[1], alt: 50, speed: 9, holdTime: 25, command: "LOITER_TIME", param1: 25 },
-    ...fromPattern(generateSectorSearch({ center: sarDatum, radius: 150, sweeps: 3, altitude: 50, speed: 9, startBearing: 0 })),
+    ...fromPattern(generateSectorSearch({ center: sarDatum, radius: 150, altitude: 50, speed: 9, startBearing: 0 })),
     ...fromPattern(generateParallelTrack({ startPoint: [45.9782, 7.6585], trackLength: 250, trackSpacing: 60, trackCount: 4, bearing: 90, altitude: 50, speed: 9 })),
     { lat: 45.9788, lon: 7.6595, alt: 50, command: "RTL" },
   ],
@@ -167,7 +167,7 @@ const matterhorn = buildPlan({
 // ── Mission 4 — Keukenhof Tulip-Fields Mapping Survey (NL) ───
 const tulipSurvey = generateSurvey({
   polygon: [[52.2725, 4.5445], [52.2725, 4.5490], [52.2700, 4.5490], [52.2700, 4.5445]],
-  gridAngle: 0, lineSpacing: 40, turnAroundDistance: 15, entryLocation: "topLeft",
+  gridAngle: 90, lineSpacing: 40, turnAroundDistance: 15, entryLocation: "topLeft",
   flyAlternateTransects: false, cameraTriggerDistance: 20, crosshatch: true, altitude: 50, speed: 6,
 });
 const keukenhof = buildPlan({

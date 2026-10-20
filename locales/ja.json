@@ -2957,7 +2957,6 @@
     "cameraProfile": "カメラプロファイル",
     "hideAdvanced": "詳細設定を非表示",
     "showAdvanced": "詳細設定を表示",
-    "gridAngle": "グリッド角度",
     "turnAroundDistance": "ターンアラウンド距離",
     "entryPoint": "エントリーポイント",
     "alternateTransects": "トランセクト交互",
@@ -2987,7 +2986,6 @@
     "maxLegs": "最大レグ数",
     "startBearing": "開始方位",
     "searchRadius": "捜索半径",
-    "sweeps": "スイープ数",
     "clickMapSetStart": "地図をクリックして開始点を設定",
     "trackLength": "トラック長",
     "trackSpacing": "トラック間隔",
@@ -3663,7 +3661,8 @@
         "parallelTrack": "Parallel track",
         "structureScan": "Structure scan",
         "fixedWingLanding": "Fixed-wing landing",
-        "vtolLanding": "VTOL landing"
+        "vtolLanding": "VTOL landing",
+        "facade": "ファサード"
       },
       "help": {
         "title": "Keyboard shortcuts",
@@ -3674,6 +3673,68 @@
           "edit": "Edit",
           "file": "File"
         }
+      }
+    },
+    "pattern": {
+      "gridAngleFromNorth": "グリッド角度（北基準）",
+      "legs": "レグ",
+      "windFromForecast": "現地予報より",
+      "hoverAndCapture": "ホバーして撮影",
+      "hoverHint": "各撮影地点で1秒停止し、1枚撮影します",
+      "altitude": {
+        "title": "高度",
+        "reference": "基準",
+        "relative": "ホーム基準",
+        "followTerrain": "地形追従",
+        "terrain": "地形フレーム",
+        "tolerance": "許容差",
+        "maxClimb": "最大上昇",
+        "maxDescent": "最大下降",
+        "terrainHint": "高度は各ウェイポイント直下の地面からの高さです。機体に地形データが必要です。",
+        "followHint": "各区間で対地高度を保つ海抜高度を書き込みます。",
+        "sampling": "地形を取得中…",
+        "unavailable": "この場所の地形は取得できません。ホーム基準を使ってください",
+        "applyBlocked": "適用には地形が必要です",
+        "heightAboveGround": "対地高度"
+      },
+      "camera": {
+        "custom": "カスタムカメラ…",
+        "edit": "カメラを編集",
+        "delete": "カメラを削除",
+        "orientation": "向き",
+        "landscape": "横向き",
+        "portrait": "縦向き",
+        "tooFast": "カメラはそこまで速く撮影できません：{speed} m/s まで減速してください"
+      },
+      "customCamera": {
+        "title": "カスタムカメラ",
+        "name": "名前",
+        "sensorWidth": "センサー幅",
+        "sensorHeight": "センサー高さ",
+        "imageWidth": "画像幅",
+        "imageHeight": "画像高さ",
+        "focalLength": "焦点距離",
+        "minInterval": "最小撮影間隔",
+        "save": "保存",
+        "cancel": "キャンセル",
+        "errorName": "他のカメラで使われていない名前を入力してください",
+        "errorSensor": "センサーの幅と高さは0より大きくしてください",
+        "errorImage": "画像の幅と高さは0より大きくしてください",
+        "errorFocal": "焦点距離は0より大きくしてください",
+        "errorInterval": "撮影間隔は負にできません"
+      },
+      "facade": {
+        "drawLine": "ファサード線を描く",
+        "drawHint": "地図上で壁の基部の両端をクリックします",
+        "lineSet": "ファサード線：{length} m",
+        "side": "飛行側",
+        "sideHint": "最初の点から2番目の点を見たときの線の側",
+        "left": "左",
+        "right": "右",
+        "distance": "ファサードからの距離",
+        "bottomAlt": "最下段",
+        "topAlt": "最上段",
+        "rowSpacing": "段の間隔"
       }
     }
   },

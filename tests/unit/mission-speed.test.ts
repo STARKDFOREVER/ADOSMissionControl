@@ -82,7 +82,7 @@ describe("speed encoding", () => {
     const survey = patternToMission(
       generateSurvey({
         polygon: [[12.970, 77.590], [12.970, 77.593], [12.973, 77.593], [12.973, 77.590]],
-        gridAngle: 0, lineSpacing: 80, turnAroundDistance: 10, entryLocation: "topLeft",
+        gridAngle: 90, lineSpacing: 80, turnAroundDistance: 10, entryLocation: "topLeft",
         flyAlternateTransects: false, cameraTriggerDistance: 0, altitude: 50, speed: 3,
       }).waypoints,
     );

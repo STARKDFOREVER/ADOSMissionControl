@@ -28,6 +28,7 @@ import {
 import { cn, isDemoMode } from "@/lib/utils";
 import { useClockTick } from "@/lib/agent/freshness";
 import { useClockStore } from "@/stores/clock-store";
+import { useSiteWeatherStore } from "@/stores/site-weather-store";
 import { fetchWeather, type WeatherReport } from "@/lib/weather/open-meteo";
 import {
   assessWeather,
@@ -166,6 +167,10 @@ export function WeatherCard({ lat, lon, className }: WeatherCardProps) {
   const report = demo
     ? DEMO_REPORT
     : fetched && fetched.lat === rLat && fetched.lon === rLon ? fetched.report : null;
+  // Share the report with the pattern editor (survey wind defaults).
+  useEffect(() => {
+    if (report) useSiteWeatherStore.getState().setReport(report);
+  }, [report]);
   // Age of the reading: its observation time, else when it was fetched.
   const observedAt = report?.observedAt ?? (report && !demo ? fetched?.at ?? null : null);
   const ageMin = observedAt !== null ? Math.max(0, Math.floor((now - observedAt) / 60_000)) : null;

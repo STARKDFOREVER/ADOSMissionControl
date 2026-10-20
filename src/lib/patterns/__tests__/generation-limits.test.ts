@@ -14,7 +14,7 @@ const KM_SQUARE: [number, number][] = [
 
 const surveyBase = {
   polygon: KM_SQUARE,
-  gridAngle: 0,
+  gridAngle: 90,
   lineSpacing: 25,
   turnAroundDistance: 0,
   entryLocation: "topLeft" as const,
@@ -45,14 +45,14 @@ describe("pattern generation limits", () => {
     expect(() => generateSurvey({ ...surveyBase, cameraTriggerDistance: 0.01 })).toThrow(PatternLimitError);
   });
 
-  it("corridor with a tiny spacing throws", () => {
+  it("corridor needing more lines than the limit throws", () => {
     expect(() =>
       generateCorridor({
         pathPoints: [
           [12.0, 77.0],
           [12.5, 77.0],
         ],
-        corridorWidth: 50,
+        corridorWidth: 5000,
         lineSpacing: 1,
         altitude: 50,
         speed: 10,

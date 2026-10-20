@@ -17,7 +17,7 @@ function appliedSurvey(triggerDistance: number): Waypoint[] {
       [12.98, 77.6],
       [12.98, 77.59],
     ],
-    gridAngle: 0,
+    gridAngle: 90,
     lineSpacing: 100,
     turnAroundDistance: 10,
     entryLocation: "topLeft",

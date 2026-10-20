@@ -98,7 +98,7 @@ const TOOL_MAP: Readonly<Record<string, PlannerTool>> = TOOL_SHORTCUT_MAP;
 
 /** True for the tools whose map gesture is an in-progress shape draw. */
 function isDrawingTool(tool: PlannerTool): boolean {
-  return tool === "polygon" || tool === "circle" || tool === "measure";
+  return tool === "polygon" || tool === "polyline" || tool === "circle" || tool === "measure";
 }
 
 /** Register the single global keyboard dispatcher for the mission planner. */

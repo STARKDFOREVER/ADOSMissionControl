@@ -2,7 +2,7 @@
  * @module gsd-calculator
  * @description Ground Sample Distance (GSD) calculator for survey/mapping missions.
  * Computes GSD, image footprint, line spacing (sidelap), and trigger distance (frontlap)
- * given a camera profile and flight altitude.
+ * given a camera profile, its mounting orientation and the flight altitude.
  * @license GPL-3.0-only
  */
 
@@ -14,7 +14,15 @@ export interface CameraProfile {
   focalLength: number;   // mm
   imageWidth: number;    // pixels
   imageHeight: number;   // pixels
+  /** Shortest time between two photos the camera can take, seconds; absent = unknown. */
+  minTriggerIntervalS?: number;
 }
+
+/**
+ * How the camera is mounted. Landscape puts the sensor's long side across the
+ * flight line; portrait turns it 90°, so the long side runs along the line.
+ */
+export type CameraOrientation = "landscape" | "portrait";
 
 /** Built-in camera profiles for common survey/mapping cameras. */
 export const CAMERA_PROFILES: CameraProfile[] = [
@@ -49,39 +57,48 @@ export function computeGSD(
 }
 
 /**
- * Compute image footprint on the ground at a given altitude.
+ * Compute image footprint on the ground at a given altitude (or on a wall at a
+ * given distance).
  *
- * @param altitude Flight altitude in meters AGL
- * @param camera   Camera profile
- * @returns Footprint width and height in meters
+ * `width` runs across the flight line and `height` along it. Landscape maps the
+ * sensor width across the line; portrait swaps the two axes.
+ *
+ * @param altitude    Flight altitude in meters AGL (distance to the surface)
+ * @param camera      Camera profile
+ * @param orientation Camera mounting orientation (default landscape)
+ * @returns Footprint width (across-track) and height (along-track) in meters
  */
 export function computeFootprint(
   altitude: number,
   camera: CameraProfile,
+  orientation: CameraOrientation = "landscape",
 ): { width: number; height: number } {
   const gsdW = computeGSD(altitude, camera.focalLength, camera.sensorWidth, camera.imageWidth);
   const gsdH = computeGSD(altitude, camera.focalLength, camera.sensorHeight, camera.imageHeight);
-  return {
-    width: gsdW * camera.imageWidth,
-    height: gsdH * camera.imageHeight,
-  };
+  const sensorW = gsdW * camera.imageWidth;
+  const sensorH = gsdH * camera.imageHeight;
+  return orientation === "portrait"
+    ? { width: sensorH, height: sensorW }
+    : { width: sensorW, height: sensorH };
 }
 
 /**
  * Compute line spacing for a given sidelap percentage.
  * Line spacing = footprint_width * (1 - sidelap)
  *
- * @param altitude Flight altitude in meters AGL
- * @param camera   Camera profile
- * @param sidelap  Desired sidelap as a fraction (0 to 1), e.g. 0.6 for 60%
+ * @param altitude    Flight altitude in meters AGL
+ * @param camera      Camera profile
+ * @param sidelap     Desired sidelap as a fraction (0 to 1), e.g. 0.6 for 60%
+ * @param orientation Camera mounting orientation (default landscape)
  * @returns Line spacing in meters
  */
 export function computeLineSpacing(
   altitude: number,
   camera: CameraProfile,
   sidelap: number,
+  orientation: CameraOrientation = "landscape",
 ): number {
-  const footprint = computeFootprint(altitude, camera);
+  const footprint = computeFootprint(altitude, camera, orientation);
   return footprint.width * (1 - sidelap);
 }
 
@@ -89,16 +106,56 @@ export function computeLineSpacing(
  * Compute camera trigger distance for a given frontlap percentage.
  * Trigger distance = footprint_height * (1 - frontlap)
  *
- * @param altitude Flight altitude in meters AGL
- * @param camera   Camera profile
- * @param frontlap Desired frontlap as a fraction (0 to 1), e.g. 0.7 for 70%
+ * @param altitude    Flight altitude in meters AGL
+ * @param camera      Camera profile
+ * @param frontlap    Desired frontlap as a fraction (0 to 1), e.g. 0.7 for 70%
+ * @param orientation Camera mounting orientation (default landscape)
  * @returns Trigger distance in meters
  */
 export function computeTriggerDistance(
   altitude: number,
   camera: CameraProfile,
   frontlap: number,
+  orientation: CameraOrientation = "landscape",
 ): number {
-  const footprint = computeFootprint(altitude, camera);
+  const footprint = computeFootprint(altitude, camera, orientation);
   return footprint.height * (1 - frontlap);
+}
+
+/**
+ * Problems with a camera profile an operator typed in, as stable codes the UI
+ * translates. Empty when the profile is usable.
+ */
+export type CameraProfileProblem = "name" | "sensor" | "image" | "focal" | "interval";
+
+export function validateCameraProfile(camera: CameraProfile): CameraProfileProblem[] {
+  const problems: CameraProfileProblem[] = [];
+  const positive = (v: number) => Number.isFinite(v) && v > 0;
+  if (camera.name.trim() === "") problems.push("name");
+  if (!positive(camera.sensorWidth) || !positive(camera.sensorHeight)) problems.push("sensor");
+  if (!positive(camera.imageWidth) || !positive(camera.imageHeight)) problems.push("image");
+  if (!positive(camera.focalLength)) problems.push("focal");
+  if (camera.minTriggerIntervalS !== undefined && !(Number.isFinite(camera.minTriggerIntervalS) && camera.minTriggerIntervalS >= 0)) {
+    problems.push("interval");
+  }
+  return problems;
+}
+
+/** Find a camera by name among the built-ins and the operator's custom cameras. */
+export function findCamera(
+  name: string | undefined,
+  custom: readonly CameraProfile[] = [],
+): CameraProfile | undefined {
+  if (!name) return undefined;
+  return CAMERA_PROFILES.find((c) => c.name === name) ?? custom.find((c) => c.name === name);
+}
+
+/**
+ * Fastest speed the camera keeps up with at a trigger distance, m/s, or null
+ * when the camera's interval is unknown or the distance is off.
+ */
+export function maxSpeedForTriggerInterval(camera: CameraProfile, triggerDistanceM: number): number | null {
+  const interval = camera.minTriggerIntervalS;
+  if (!(interval !== undefined && interval > 0) || !(triggerDistanceM > 0)) return null;
+  return triggerDistanceM / interval;
 }

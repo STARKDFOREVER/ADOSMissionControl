@@ -2957,7 +2957,6 @@
     "cameraProfile": "Camera Profile",
     "hideAdvanced": "Hide Advanced",
     "showAdvanced": "Show Advanced",
-    "gridAngle": "Grid Angle",
     "turnAroundDistance": "Turn-around Distance",
     "entryPoint": "Entry Point",
     "alternateTransects": "Alternate Transects",
@@ -2987,7 +2986,6 @@
     "maxLegs": "Max Legs",
     "startBearing": "Start Bearing",
     "searchRadius": "Search Radius",
-    "sweeps": "Sweeps",
     "clickMapSetStart": "Click map to set start point",
     "trackLength": "Track Length",
     "trackSpacing": "Track Spacing",
@@ -3663,7 +3661,8 @@
         "parallelTrack": "Parallel track",
         "structureScan": "Structure scan",
         "fixedWingLanding": "Fixed-wing landing",
-        "vtolLanding": "VTOL landing"
+        "vtolLanding": "VTOL landing",
+        "facade": "ਮੂਹਰਲਾ ਹਿੱਸਾ"
       },
       "help": {
         "title": "Keyboard shortcuts",
@@ -3674,6 +3673,68 @@
           "edit": "Edit",
           "file": "File"
         }
+      }
+    },
+    "pattern": {
+      "gridAngleFromNorth": "ਗ੍ਰਿਡ ਕੋਣ (ਉੱਤਰ ਤੋਂ)",
+      "legs": "ਲੈੱਗ",
+      "windFromForecast": "ਥਾਂ ਦੇ ਪੂਰਵ ਅਨੁਮਾਨ ਤੋਂ",
+      "hoverAndCapture": "ਰੁਕ ਕੇ ਫ਼ੋਟੋ ਲਓ",
+      "hoverHint": "ਹਰ ਫ਼ੋਟੋ ਬਿੰਦੂ 'ਤੇ 1 ਸਕਿੰਟ ਰੁਕੋ ਅਤੇ ਇੱਕ ਫ਼ੋਟੋ ਲਓ",
+      "altitude": {
+        "title": "ਉਚਾਈ",
+        "reference": "ਹਵਾਲਾ",
+        "relative": "ਹੋਮ ਤੋਂ ਉੱਪਰ",
+        "followTerrain": "ਭੂ-ਭਾਗ ਦੀ ਪਾਲਣਾ",
+        "terrain": "ਭੂ-ਭਾਗ ਫ੍ਰੇਮ",
+        "tolerance": "ਸਹਿਣਸ਼ੀਲਤਾ",
+        "maxClimb": "ਵੱਧ ਤੋਂ ਵੱਧ ਚੜ੍ਹਾਈ",
+        "maxDescent": "ਵੱਧ ਤੋਂ ਵੱਧ ਉਤਰਾਈ",
+        "terrainHint": "ਉਚਾਈਆਂ ਹਰ ਵੇਅਪੁਆਇੰਟ ਹੇਠਲੀ ਜ਼ਮੀਨ ਤੋਂ ਹਨ। ਵਾਹਨ ਨੂੰ ਭੂ-ਭਾਗ ਡਾਟਾ ਚਾਹੀਦਾ ਹੈ।",
+        "followHint": "ਸਮੁੰਦਰ ਤਲ ਤੋਂ ਉਚਾਈਆਂ ਜੋ ਹਰ ਲੈੱਗ 'ਤੇ ਜ਼ਮੀਨ ਤੋਂ ਉਚਾਈ ਬਣਾਈ ਰੱਖਦੀਆਂ ਹਨ।",
+        "sampling": "ਭੂ-ਭਾਗ ਦੇ ਨਮੂਨੇ ਲਏ ਜਾ ਰਹੇ ਹਨ…",
+        "unavailable": "ਇੱਥੇ ਭੂ-ਭਾਗ ਉਪਲਬਧ ਨਹੀਂ। ਹੋਮ ਤੋਂ ਉੱਪਰ ਵਰਤੋ",
+        "applyBlocked": "ਲਾਗੂ ਕਰਨ ਲਈ ਭੂ-ਭਾਗ ਚਾਹੀਦਾ ਹੈ",
+        "heightAboveGround": "ਜ਼ਮੀਨ ਤੋਂ ਉਚਾਈ"
+      },
+      "camera": {
+        "custom": "ਕਸਟਮ ਕੈਮਰਾ…",
+        "edit": "ਕੈਮਰਾ ਸੋਧੋ",
+        "delete": "ਕੈਮਰਾ ਮਿਟਾਓ",
+        "orientation": "ਦਿਸ਼ਾ",
+        "landscape": "ਲੇਟਵਾਂ",
+        "portrait": "ਖੜ੍ਹਵਾਂ",
+        "tooFast": "ਕੈਮਰਾ ਇੰਨੀ ਤੇਜ਼ੀ ਨਾਲ ਫ਼ੋਟੋ ਨਹੀਂ ਲੈ ਸਕਦਾ: {speed} m/s ਤੱਕ ਹੌਲੀ ਕਰੋ"
+      },
+      "customCamera": {
+        "title": "ਕਸਟਮ ਕੈਮਰਾ",
+        "name": "ਨਾਮ",
+        "sensorWidth": "ਸੈਂਸਰ ਚੌੜਾਈ",
+        "sensorHeight": "ਸੈਂਸਰ ਉਚਾਈ",
+        "imageWidth": "ਚਿੱਤਰ ਚੌੜਾਈ",
+        "imageHeight": "ਚਿੱਤਰ ਉਚਾਈ",
+        "focalLength": "ਫੋਕਲ ਲੰਬਾਈ",
+        "minInterval": "ਘੱਟੋ-ਘੱਟ ਟ੍ਰਿਗਰ ਅੰਤਰਾਲ",
+        "save": "ਸੰਭਾਲੋ",
+        "cancel": "ਰੱਦ ਕਰੋ",
+        "errorName": "ਅਜਿਹਾ ਨਾਮ ਦਿਓ ਜੋ ਕੋਈ ਹੋਰ ਕੈਮਰਾ ਨਾ ਵਰਤੇ",
+        "errorSensor": "ਸੈਂਸਰ ਚੌੜਾਈ ਅਤੇ ਉਚਾਈ 0 ਤੋਂ ਵੱਧ ਹੋਣੀ ਚਾਹੀਦੀ ਹੈ",
+        "errorImage": "ਚਿੱਤਰ ਚੌੜਾਈ ਅਤੇ ਉਚਾਈ 0 ਤੋਂ ਵੱਧ ਹੋਣੀ ਚਾਹੀਦੀ ਹੈ",
+        "errorFocal": "ਫੋਕਲ ਲੰਬਾਈ 0 ਤੋਂ ਵੱਧ ਹੋਣੀ ਚਾਹੀਦੀ ਹੈ",
+        "errorInterval": "ਟ੍ਰਿਗਰ ਅੰਤਰਾਲ ਰਿਣਾਤਮਕ ਨਹੀਂ ਹੋ ਸਕਦਾ"
+      },
+      "facade": {
+        "drawLine": "ਮੂਹਰਲੀ ਰੇਖਾ ਖਿੱਚੋ",
+        "drawHint": "ਨਕਸ਼ੇ 'ਤੇ ਕੰਧ ਦੇ ਅਧਾਰ ਦੇ ਦੋਵੇਂ ਸਿਰਿਆਂ 'ਤੇ ਕਲਿੱਕ ਕਰੋ",
+        "lineSet": "ਮੂਹਰਲੀ ਰੇਖਾ: {length} m",
+        "side": "ਇਸ ਪਾਸੇ ਉੱਡੋ",
+        "sideHint": "ਪਹਿਲੇ ਬਿੰਦੂ ਤੋਂ ਦੂਜੇ ਵੱਲ ਵੇਖਦਿਆਂ ਰੇਖਾ ਦਾ ਪਾਸਾ",
+        "left": "ਖੱਬੇ",
+        "right": "ਸੱਜੇ",
+        "distance": "ਮੂਹਰਲੇ ਹਿੱਸੇ ਤੋਂ ਦੂਰੀ",
+        "bottomAlt": "ਹੇਠਲੀ ਕਤਾਰ",
+        "topAlt": "ਉੱਪਰਲੀ ਕਤਾਰ",
+        "rowSpacing": "ਕਤਾਰ ਵਿੱਥ"
       }
     }
   },

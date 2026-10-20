@@ -64,6 +64,9 @@ export function generateOrbit(config: OrbitConfig): PatternResult {
       }
     }
   }
+  // Close the last turn on its first point, so the whole circle is flown.
+  const [closeLat, closeLon] = singleOrbit[0];
+  waypoints.push({ lat: closeLat, lon: closeLon, alt: altitude, speed, command: "WAYPOINT" });
 
   // Stats
   let totalDistance = 0;
@@ -72,13 +75,6 @@ export function generateOrbit(config: OrbitConfig): PatternResult {
     totalDistance += haversineDistance(
       wpOnly[i - 1].lat, wpOnly[i - 1].lon,
       wpOnly[i].lat, wpOnly[i].lon
-    );
-  }
-  // Add closing segment (last point back to first for the loop)
-  if (wpOnly.length > 1) {
-    totalDistance += haversineDistance(
-      wpOnly[wpOnly.length - 1].lat, wpOnly[wpOnly.length - 1].lon,
-      wpOnly[0].lat, wpOnly[0].lon
     );
   }
 

@@ -104,7 +104,7 @@ export const MISSION_TEMPLATES: MissionTemplate[] = [
       finalize(
         generateSurvey({
           polygon: boundaryOrBox(ctx),
-          gridAngle: 0,
+          gridAngle: 90,
           lineSpacing: 30,
           turnAroundDistance: 10,
           entryLocation: "topLeft",
@@ -126,7 +126,7 @@ export const MISSION_TEMPLATES: MissionTemplate[] = [
         // photogrammetry-grade coverage a property map wants.
         generateSurvey({
           polygon: boundaryOrBox(ctx),
-          gridAngle: 0,
+          gridAngle: 90,
           lineSpacing: 20,
           turnAroundDistance: 10,
           entryLocation: "topLeft",
@@ -208,7 +208,6 @@ export const MISSION_TEMPLATES: MissionTemplate[] = [
         generateSectorSearch({
           center: ctx.center,
           radius: 150,
-          sweeps: 3,
           altitude: ctx.altitude,
           speed: ctx.speed,
           startBearing: 0,

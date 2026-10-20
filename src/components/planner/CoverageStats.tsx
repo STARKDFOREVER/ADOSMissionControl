@@ -1,9 +1,9 @@
 /**
  * @module CoverageStats
  * @description Survey coverage statistics panel. Derives image count and front
- * overlap from the camera trigger distance, side overlap and line spacing from
- * the survey's navigation points, and swept ground coverage, and flags a
- * coverage gap when the line spacing is too wide for the target side overlap.
+ * overlap from the camera triggers, side overlap from the configured line
+ * spacing, and swept ground coverage, and flags a coverage gap when the line
+ * spacing is too wide for the target side overlap.
  * @license GPL-3.0-only
  */
 "use client";
@@ -13,7 +13,7 @@ import { useTranslations } from "next-intl";
 import { AlertTriangle } from "lucide-react";
 import { PropertyRow } from "@/components/ui/property-row";
 import { usePatternStore } from "@/stores/pattern-store";
-import type { CameraProfile } from "@/lib/patterns/gsd-calculator";
+import type { CameraOrientation, CameraProfile } from "@/lib/patterns/gsd-calculator";
 import { computeCoverageStats, detectCoverageGaps } from "@/lib/patterns/coverage";
 
 interface CoverageStatsProps {
@@ -21,13 +21,16 @@ interface CoverageStatsProps {
   altitude: number;
   /** Target side overlap as a fraction 0-1, used for the gap check. */
   minSideOverlap?: number;
+  /** The line spacing the survey was generated with, metres. */
+  lineSpacingM?: number;
+  orientation?: CameraOrientation;
 }
 
 function formatArea(m2: number): string {
   return m2 >= 10000 ? `${(m2 / 10000).toFixed(2)} ha` : `${Math.round(m2)} m²`;
 }
 
-export function CoverageStats({ camera, altitude, minSideOverlap = 0.6 }: CoverageStatsProps) {
+export function CoverageStats({ camera, altitude, minSideOverlap = 0.6, lineSpacingM, orientation }: CoverageStatsProps) {
   const t = useTranslations("survey");
   const activePatternType = usePatternStore((s) => s.activePatternType);
   const waypoints = usePatternStore((s) => s.patternResult?.waypoints);
@@ -36,11 +39,12 @@ export function CoverageStats({ camera, altitude, minSideOverlap = 0.6 }: Covera
     if (!camera || activePatternType !== "survey" || !waypoints || waypoints.length < 2) {
       return null;
     }
+    const options = { lineSpacingM, orientation };
     return {
-      stats: computeCoverageStats(waypoints, camera, altitude),
-      gaps: detectCoverageGaps(waypoints, camera, altitude, minSideOverlap),
+      stats: computeCoverageStats(waypoints, camera, altitude, options),
+      gaps: detectCoverageGaps(waypoints, camera, altitude, minSideOverlap, options),
     };
-  }, [camera, altitude, minSideOverlap, activePatternType, waypoints]);
+  }, [camera, altitude, minSideOverlap, lineSpacingM, orientation, activePatternType, waypoints]);
 
   if (!data) return null;
   const { stats, gaps } = data;

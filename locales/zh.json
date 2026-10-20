@@ -2957,7 +2957,6 @@
     "cameraProfile": "相机配置",
     "hideAdvanced": "隐藏高级选项",
     "showAdvanced": "显示高级选项",
-    "gridAngle": "网格角度",
     "turnAroundDistance": "转弯距离",
     "entryPoint": "入口点",
     "alternateTransects": "交替航线",
@@ -2987,7 +2986,6 @@
     "maxLegs": "最大航段数",
     "startBearing": "起始方位",
     "searchRadius": "搜索半径",
-    "sweeps": "扫描次数",
     "clickMapSetStart": "点击地图设置起点",
     "trackLength": "航迹长度",
     "trackSpacing": "航迹间距",
@@ -3663,7 +3661,8 @@
         "parallelTrack": "Parallel track",
         "structureScan": "Structure scan",
         "fixedWingLanding": "Fixed-wing landing",
-        "vtolLanding": "VTOL landing"
+        "vtolLanding": "VTOL landing",
+        "facade": "立面"
       },
       "help": {
         "title": "Keyboard shortcuts",
@@ -3674,6 +3673,68 @@
           "edit": "Edit",
           "file": "File"
         }
+      }
+    },
+    "pattern": {
+      "gridAngleFromNorth": "网格角度（自北起）",
+      "legs": "航段",
+      "windFromForecast": "来自现场预报",
+      "hoverAndCapture": "悬停拍摄",
+      "hoverHint": "在每个拍照点停留 1 秒并拍一张照片",
+      "altitude": {
+        "title": "高度",
+        "reference": "基准",
+        "relative": "相对起飞点",
+        "followTerrain": "地形跟随",
+        "terrain": "地形坐标系",
+        "tolerance": "容差",
+        "maxClimb": "最大爬升",
+        "maxDescent": "最大下降",
+        "terrainHint": "高度为每个航点下方地面以上的高度。飞行器需要地形数据。",
+        "followHint": "写入海拔高度，使每段航线保持离地高度。",
+        "sampling": "正在采样地形…",
+        "unavailable": "此处无地形数据。请使用相对起飞点",
+        "applyBlocked": "应用需要地形数据",
+        "heightAboveGround": "离地高度"
+      },
+      "camera": {
+        "custom": "自定义相机…",
+        "edit": "编辑相机",
+        "delete": "删除相机",
+        "orientation": "方向",
+        "landscape": "横向",
+        "portrait": "纵向",
+        "tooFast": "相机无法拍得这么快：请降速至 {speed} m/s"
+      },
+      "customCamera": {
+        "title": "自定义相机",
+        "name": "名称",
+        "sensorWidth": "传感器宽度",
+        "sensorHeight": "传感器高度",
+        "imageWidth": "图像宽度",
+        "imageHeight": "图像高度",
+        "focalLength": "焦距",
+        "minInterval": "最小触发间隔",
+        "save": "保存",
+        "cancel": "取消",
+        "errorName": "请输入其他相机未使用的名称",
+        "errorSensor": "传感器宽度和高度必须大于 0",
+        "errorImage": "图像宽度和高度必须大于 0",
+        "errorFocal": "焦距必须大于 0",
+        "errorInterval": "触发间隔不能为负"
+      },
+      "facade": {
+        "drawLine": "绘制立面线",
+        "drawHint": "在地图上点击墙基的两端",
+        "lineSet": "立面线：{length} m",
+        "side": "飞行侧",
+        "sideHint": "从第一个点看向第二个点时线的一侧",
+        "left": "左",
+        "right": "右",
+        "distance": "距立面距离",
+        "bottomAlt": "最低一行",
+        "topAlt": "最高一行",
+        "rowSpacing": "行间距"
       }
     }
   },

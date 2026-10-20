@@ -2957,7 +2957,6 @@
     "cameraProfile": "कॅमेरा प्रोफाइल",
     "hideAdvanced": "प्रगत लपवा",
     "showAdvanced": "प्रगत दाखवा",
-    "gridAngle": "ग्रिड कोन",
     "turnAroundDistance": "वळणाचे अंतर",
     "entryPoint": "प्रवेश बिंदू",
     "alternateTransects": "पर्यायी ट्रान्सेक्ट्स",
@@ -2987,7 +2986,6 @@
     "maxLegs": "कमाल लेग्ज",
     "startBearing": "प्रारंभ बेअरिंग",
     "searchRadius": "शोध त्रिज्या",
-    "sweeps": "स्वीप्स",
     "clickMapSetStart": "प्रारंभ बिंदू सेट करण्यासाठी नकाशावर क्लिक करा",
     "trackLength": "ट्रॅक लांबी",
     "trackSpacing": "ट्रॅक अंतर",
@@ -3663,7 +3661,8 @@
         "parallelTrack": "Parallel track",
         "structureScan": "Structure scan",
         "fixedWingLanding": "Fixed-wing landing",
-        "vtolLanding": "VTOL landing"
+        "vtolLanding": "VTOL landing",
+        "facade": "दर्शनी भाग"
       },
       "help": {
         "title": "Keyboard shortcuts",
@@ -3674,6 +3673,68 @@
           "edit": "Edit",
           "file": "File"
         }
+      }
+    },
+    "pattern": {
+      "gridAngleFromNorth": "ग्रिड कोन (उत्तरेपासून)",
+      "legs": "लेग",
+      "windFromForecast": "स्थळाच्या अंदाजावरून",
+      "hoverAndCapture": "थांबून फोटो घ्या",
+      "hoverHint": "प्रत्येक फोटो बिंदूवर 1 सेकंद थांबा आणि एक फोटो घ्या",
+      "altitude": {
+        "title": "उंची",
+        "reference": "संदर्भ",
+        "relative": "होमपासून वर",
+        "followTerrain": "भूभाग अनुसरा",
+        "terrain": "भूभाग फ्रेम",
+        "tolerance": "सहनशीलता",
+        "maxClimb": "कमाल चढ",
+        "maxDescent": "कमाल उतार",
+        "terrainHint": "उंची प्रत्येक वेपॉइंटखालील जमिनीपासून आहे. वाहनाला भूभाग डेटा लागतो.",
+        "followHint": "प्रत्येक लेगवर जमिनीपासूनची उंची राखणाऱ्या समुद्रसपाटीपासूनच्या उंची.",
+        "sampling": "भूभागाचे नमुने घेतले जात आहेत…",
+        "unavailable": "येथे भूभाग उपलब्ध नाही. होमपासून वर वापरा",
+        "applyBlocked": "लागू करण्यासाठी भूभाग हवा",
+        "heightAboveGround": "जमिनीपासून उंची"
+      },
+      "camera": {
+        "custom": "सानुकूल कॅमेरा…",
+        "edit": "कॅमेरा संपादित करा",
+        "delete": "कॅमेरा हटवा",
+        "orientation": "दिशा",
+        "landscape": "आडवे",
+        "portrait": "उभे",
+        "tooFast": "कॅमेरा इतक्या वेगाने फोटो घेऊ शकत नाही: {speed} m/s पर्यंत कमी करा"
+      },
+      "customCamera": {
+        "title": "सानुकूल कॅमेरा",
+        "name": "नाव",
+        "sensorWidth": "सेन्सर रुंदी",
+        "sensorHeight": "सेन्सर उंची",
+        "imageWidth": "प्रतिमा रुंदी",
+        "imageHeight": "प्रतिमा उंची",
+        "focalLength": "फोकल लांबी",
+        "minInterval": "किमान ट्रिगर अंतराल",
+        "save": "जतन करा",
+        "cancel": "रद्द करा",
+        "errorName": "दुसरा कॅमेरा वापरत नसलेले नाव टाका",
+        "errorSensor": "सेन्सर रुंदी आणि उंची 0 पेक्षा जास्त हवी",
+        "errorImage": "प्रतिमा रुंदी आणि उंची 0 पेक्षा जास्त हवी",
+        "errorFocal": "फोकल लांबी 0 पेक्षा जास्त हवी",
+        "errorInterval": "ट्रिगर अंतराल ऋण असू शकत नाही"
+      },
+      "facade": {
+        "drawLine": "दर्शनी रेषा काढा",
+        "drawHint": "नकाशावर भिंतीच्या पायाच्या दोन्ही टोकांवर क्लिक करा",
+        "lineSet": "दर्शनी रेषा: {length} m",
+        "side": "या बाजूने उडा",
+        "sideHint": "पहिल्या बिंदूपासून दुसऱ्याकडे पाहताना रेषेची बाजू",
+        "left": "डावी",
+        "right": "उजवी",
+        "distance": "दर्शनी भागापासून अंतर",
+        "bottomAlt": "खालची रांग",
+        "topAlt": "वरची रांग",
+        "rowSpacing": "रांगांमधील अंतर"
       }
     }
   },

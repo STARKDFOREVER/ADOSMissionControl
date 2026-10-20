@@ -41,6 +41,16 @@ the project follows [Semantic Versioning](https://semver.org/).
 - Inspector number fields commit on blur or Enter and can be scrubbed by
   dragging their label, unit or (on a bare field) the drag handle (Shift ×10,
   Alt ×0.1) or stepped with the arrow keys.
+- Survey, corridor, structure scan and the new facade scan follow the camera
+  and the ground. Patterns can fly above home, follow the terrain within a set
+  tolerance and climb and descent limits, or use the terrain frame on
+  ArduPilot. Custom cameras, portrait orientation, a minimum trigger interval
+  warning and hover-and-capture for multirotors are new, and corridors are
+  drawn as an open line. Alternate transects now fly every line, entry corners
+  start where they say, the grid angle is a compass bearing from north, a
+  narrow area gets one centred line, photo counts include the shot at each end
+  of a line, corridors fly parallel lines along the whole path, and structure
+  scans orbit the building outline at the scan distance.
 
 ### Changed
 

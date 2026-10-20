@@ -2,7 +2,13 @@
  * @module pattern-store
  * @description Zustand store for flight pattern generation state.
  * Holds config for each pattern type, the generated result, and actions
- * to update config, trigger generation, and clear.
+ * to update config, trigger generation, and clear. Pattern config is never
+ * persisted.
+ *
+ * A pattern in the follow-terrain altitude mode generates in two steps: the
+ * generator lays the path, then the ground is sampled along every leg. While
+ * sampling there is no result to apply, and when the ground is unknown the
+ * result stays empty and `terrainStatus` says so.
  * @license GPL-3.0-only
  */
 
@@ -11,6 +17,7 @@ import type {
   SurveyConfig,
   OrbitConfig,
   CorridorConfig,
+  FacadeConfig,
   PatternResult,
   PerimeterConfig,
   FixedWingLandingConfig,
@@ -18,21 +25,18 @@ import type {
 } from "@/lib/patterns/types";
 import type { ExpandingSquareConfig, SectorSearchConfig, ParallelTrackConfig } from "@/lib/patterns/sar-generators";
 import type { StructureScanConfig } from "@/lib/patterns/structure-scan-generator";
-import { generateCorridor } from "@/lib/patterns/corridor-generator";
-import { generateExpandingSquare, generateSectorSearch, generateParallelTrack } from "@/lib/patterns/sar-generators";
-import { generateFixedWingLanding } from "@/lib/patterns/landing-generator";
-import { generateVtolLanding } from "@/lib/patterns/vtol-landing-generator";
+import { followTerrain, withTerrainFrame } from "@/lib/patterns/follow-terrain";
 import { offsetPoint } from "@/lib/drawing/geo-utils";
 import { formatErrorMessage } from "@/lib/utils";
 import { useDrawingStore } from "./drawing-store";
+import { activeAltitudeSettings, generatePattern } from "./pattern-generation";
 import {
-  generateOrbitPattern,
-  generatePerimeterPattern,
-  generateStructureScanPattern,
-  generateSurveyPattern,
-} from "./pattern-generation";
+  defaultSurvey, defaultOrbit, defaultCorridor, defaultFacade, defaultExpandingSquare,
+  defaultSectorSearch, defaultParallelTrack, defaultStructureScan, defaultPerimeter,
+  defaultFixedWingLanding, defaultVtolLanding,
+} from "./pattern-defaults";
 
-export type PatternType = "survey" | "orbit" | "corridor" | "expandingSquare" | "sectorSearch" | "parallelTrack" | "structureScan" | "perimeter" | "fixedWingLanding" | "vtolLanding" | null;
+export type PatternType = "survey" | "orbit" | "corridor" | "facade" | "expandingSquare" | "sectorSearch" | "parallelTrack" | "structureScan" | "perimeter" | "fixedWingLanding" | "vtolLanding" | null;
 
 /**
  * A faint outline captured from the last-applied pattern's input geometry.
@@ -46,6 +50,15 @@ export type AppliedBoundary =
   | { kind: "circle"; center: [number, number]; radius: number }
   | { kind: "point"; center: [number, number] };
 
+/** Ground sampling for a follow-terrain pattern: idle, in flight, or failed (ground unknown). */
+export type TerrainStatus = "idle" | "sampling" | "failed";
+
+/** Operator-entered survey wind; null fields fall back to the site forecast. */
+export interface SurveyWind {
+  bearingDeg: number | null;
+  speedMps: number | null;
+}
+
 interface PatternStoreState {
   activePatternType: PatternType;
   surveyConfig: Partial<SurveyConfig>;
@@ -53,8 +66,11 @@ interface PatternStoreState {
   exclusionPolygonIds: string[];
   /** Session flag: draw per-image camera footprints on the map (coverage preview). */
   showCoverageOverlay: boolean;
+  /** Wind the survey aligns to, as entered; unset fields use the forecast. */
+  surveyWind: SurveyWind;
   orbitConfig: Partial<OrbitConfig>;
   corridorConfig: Partial<CorridorConfig>;
+  facadeConfig: Partial<FacadeConfig>;
   sarExpandingSquareConfig: Partial<ExpandingSquareConfig>;
   sarSectorSearchConfig: Partial<SectorSearchConfig>;
   sarParallelTrackConfig: Partial<ParallelTrackConfig>;
@@ -66,6 +82,7 @@ interface PatternStoreState {
   /** Faint outline of the last-applied pattern's input area (in-memory only). */
   appliedBoundary: AppliedBoundary | null;
   isGenerating: boolean;
+  terrainStatus: TerrainStatus;
   error: string | null;
 
   setPatternType: (type: PatternType) => void;
@@ -75,8 +92,10 @@ interface PatternStoreState {
   setExclusionPolygonIds: (ids: string[]) => void;
   toggleExclusionPolygonId: (id: string) => void;
   setShowCoverageOverlay: (show: boolean) => void;
+  setSurveyWind: (update: Partial<SurveyWind>) => void;
   updateOrbitConfig: (update: Partial<OrbitConfig>) => void;
   updateCorridorConfig: (update: Partial<CorridorConfig>) => void;
+  updateFacadeConfig: (update: Partial<FacadeConfig>) => void;
   updateSarExpandingSquareConfig: (update: Partial<ExpandingSquareConfig>) => void;
   updateSarSectorSearchConfig: (update: Partial<SectorSearchConfig>) => void;
   updateSarParallelTrackConfig: (update: Partial<ParallelTrackConfig>) => void;
@@ -88,133 +107,13 @@ interface PatternStoreState {
   clear: () => void;
 }
 
-const defaultSurvey: Partial<SurveyConfig> = {
-  gridAngle: 0,
-  lineSpacing: 25,
-  turnAroundDistance: 10,
-  entryLocation: "topLeft",
-  flyAlternateTransects: false,
-  cameraTriggerDistance: 0,
-  tieLines: false,
-  tieLineAngle: 90,
-  tieLineSpacing: 25,
-  altitude: 50,
-  speed: 5,
-};
-
-const defaultOrbit: Partial<OrbitConfig> = {
-  radius: 50,
-  direction: "cw",
-  turns: 1,
-  startAngle: 0,
-  altitude: 50,
-  speed: 5,
-};
-
-const defaultCorridor: Partial<CorridorConfig> = {
-  corridorWidth: 50,
-  lineSpacing: 20,
-  altitude: 50,
-  speed: 5,
-};
-
-const defaultExpandingSquare: Partial<ExpandingSquareConfig> = {
-  legSpacing: 50,
-  maxLegs: 20,
-  altitude: 50,
-  speed: 5,
-  startBearing: 0,
-};
-
-const defaultSectorSearch: Partial<SectorSearchConfig> = {
-  radius: 200,
-  sweeps: 3,
-  altitude: 50,
-  speed: 5,
-  startBearing: 0,
-};
-
-const defaultParallelTrack: Partial<ParallelTrackConfig> = {
-  trackLength: 500,
-  trackSpacing: 50,
-  trackCount: 10,
-  bearing: 0,
-  altitude: 50,
-  speed: 5,
-};
-
-const defaultStructureScan: Partial<StructureScanConfig> = {
-  bottomAlt: 10,
-  topAlt: 50,
-  layerSpacing: 10,
-  scanDistance: 15,
-  gimbalPitch: -30,
-  pointsPerLayer: 16,
-  cameraTriggerDistance: 0,
-  speed: 3,
-  direction: "bottom-up",
-};
-
-const defaultPerimeter: Partial<PerimeterConfig> = {
-  offsetM: 0,
-  altitude: 50,
-  speed: 5,
-};
-
-// No default approach heading: the final is flown along it, so the operator
-// chooses it and no landing is generated until they do.
-const defaultFixedWingLanding: Partial<FixedWingLandingConfig> = {
-  glideSlopeAngle: 5,
-  loiterAltitude: 60,
-  speed: 15,
-};
-
-const defaultVtolLanding: Partial<VtolLandingConfig> = {
-  transitionDistance: 150,
-  approachAltitude: 50,
-  descentSpeed: 2,
-  speed: 8,
-};
-
-/** Dispatch pattern generation by type. Returns null if input geometry is missing. */
-function generatePattern(state: PatternStoreState): PatternResult | null {
-  switch (state.activePatternType) {
-    case "survey": return generateSurveyPattern(state.surveyConfig, state.exclusionPolygonIds);
-    case "orbit": return generateOrbitPattern(state.orbitConfig);
-    case "corridor": {
-      const cfg = state.corridorConfig as CorridorConfig;
-      return cfg.pathPoints && cfg.pathPoints.length >= 2 ? generateCorridor(cfg) : null;
-    }
-    case "expandingSquare": {
-      const cfg = state.sarExpandingSquareConfig as ExpandingSquareConfig;
-      return cfg.center ? generateExpandingSquare(cfg) : null;
-    }
-    case "sectorSearch": {
-      const cfg = state.sarSectorSearchConfig as SectorSearchConfig;
-      return cfg.center ? generateSectorSearch(cfg) : null;
-    }
-    case "parallelTrack": {
-      const cfg = state.sarParallelTrackConfig as ParallelTrackConfig;
-      return cfg.startPoint ? generateParallelTrack(cfg) : null;
-    }
-    case "structureScan": return generateStructureScanPattern(state.structureScanConfig);
-    case "perimeter": return generatePerimeterPattern(state.perimeterConfig);
-    case "fixedWingLanding": {
-      const cfg = state.fixedWingLandingConfig as FixedWingLandingConfig;
-      return cfg.landingPoint ? generateFixedWingLanding(cfg) : null;
-    }
-    case "vtolLanding": {
-      const cfg = state.vtolLandingConfig as VtolLandingConfig;
-      return cfg.landingPoint ? generateVtolLanding(cfg) : null;
-    }
-    default: return null;
-  }
-}
+const NO_WIND: SurveyWind = { bearingDeg: null, speedMps: null };
 
 const MISSING_GEOMETRY_MESSAGES: Record<string, string> = {
   survey: "Draw a polygon on the map first",
   orbit: "Draw a circle or click to set orbit center",
   corridor: "Draw the corridor path on the map first",
+  facade: "Draw the facade base line on the map first",
   expandingSquare: "Click map to set datum point",
   sectorSearch: "Click map to set datum point",
   parallelTrack: "Click map to set start point",
@@ -223,6 +122,17 @@ const MISSING_GEOMETRY_MESSAGES: Record<string, string> = {
   fixedWingLanding: "Set the landing point first",
   vtolLanding: "Set the landing point first",
 };
+
+/** Ground sampling step along each leg of a follow-terrain pattern, metres. */
+const TERRAIN_SAMPLE_SPACING_M = 30;
+
+/** The in-flight terrain sampling, cancelled when a newer generation starts. */
+let terrainRun: AbortController | null = null;
+
+function cancelTerrainRun(): void {
+  terrainRun?.abort();
+  terrainRun = null;
+}
 
 /** Approximate outward reach of an expanding-square spiral, for a coverage ring. */
 export function expandingSquareReach(cfg: Partial<ExpandingSquareConfig>): number {
@@ -254,36 +164,25 @@ function deriveInputGeometry(state: PatternStoreState): AppliedBoundary | null {
   const lastPoly = polys[polys.length - 1];
   const lastCircle = circles[circles.length - 1];
   const drawnPolygon = lastPoly && lastPoly.vertices.length >= 3 ? lastPoly.vertices : null;
+  const configPolygon = (poly: [number, number][] | undefined): AppliedBoundary | null => {
+    const ring = poly && poly.length >= 3 ? poly : drawnPolygon;
+    return ring ? { kind: "polygon", positions: ring } : null;
+  };
+  const configLine = (pts: [number, number][] | undefined): AppliedBoundary | null =>
+    pts && pts.length >= 2 ? { kind: "polyline", positions: pts } : null;
 
   switch (state.activePatternType) {
-    case "survey": {
-      const poly = state.surveyConfig.polygon && state.surveyConfig.polygon.length >= 3
-        ? state.surveyConfig.polygon
-        : drawnPolygon;
-      return poly ? { kind: "polygon", positions: poly } : null;
-    }
-    case "structureScan": {
-      const poly = state.structureScanConfig.structurePolygon && state.structureScanConfig.structurePolygon.length >= 3
-        ? state.structureScanConfig.structurePolygon
-        : drawnPolygon;
-      return poly ? { kind: "polygon", positions: poly } : null;
-    }
-    case "perimeter": {
-      const poly = state.perimeterConfig.polygon && state.perimeterConfig.polygon.length >= 3
-        ? state.perimeterConfig.polygon
-        : drawnPolygon;
-      return poly ? { kind: "polygon", positions: poly } : null;
-    }
+    case "survey": return configPolygon(state.surveyConfig.polygon);
+    case "structureScan": return configPolygon(state.structureScanConfig.structurePolygon);
+    case "perimeter": return configPolygon(state.perimeterConfig.polygon);
     case "orbit": {
       const center = state.orbitConfig.center ?? lastCircle?.center ?? null;
       if (!center) return null;
       const radius = state.orbitConfig.radius ?? lastCircle?.radius ?? 50;
       return { kind: "circle", center, radius };
     }
-    case "corridor": {
-      const pts = state.corridorConfig.pathPoints;
-      return pts && pts.length >= 2 ? { kind: "polyline", positions: pts } : null;
-    }
+    case "corridor": return configLine(state.corridorConfig.pathPoints);
+    case "facade": return configLine(state.facadeConfig.pathPoints);
     case "expandingSquare": {
       const c = state.sarExpandingSquareConfig.center;
       return c ? { kind: "circle", center: c, radius: expandingSquareReach(state.sarExpandingSquareConfig) } : null;
@@ -311,24 +210,34 @@ function deriveInputGeometry(state: PatternStoreState): AppliedBoundary | null {
   }
 }
 
+/** Every pattern config back at its defaults, with no active pattern. */
+function freshConfigs() {
+  return {
+    activePatternType: null,
+    exclusionPolygonIds: [],
+    showCoverageOverlay: false,
+    surveyWind: { ...NO_WIND },
+    surveyConfig: { ...defaultSurvey },
+    orbitConfig: { ...defaultOrbit },
+    corridorConfig: { ...defaultCorridor },
+    facadeConfig: { ...defaultFacade },
+    sarExpandingSquareConfig: { ...defaultExpandingSquare },
+    sarSectorSearchConfig: { ...defaultSectorSearch },
+    sarParallelTrackConfig: { ...defaultParallelTrack },
+    structureScanConfig: { ...defaultStructureScan },
+    perimeterConfig: { ...defaultPerimeter },
+    fixedWingLandingConfig: { ...defaultFixedWingLanding },
+    vtolLandingConfig: { ...defaultVtolLanding },
+    patternResult: null,
+    isGenerating: false,
+    terrainStatus: "idle",
+    error: null,
+  } satisfies Partial<PatternStoreState>;
+}
+
 export const usePatternStore = create<PatternStoreState>()((set, get) => ({
-  activePatternType: null,
-  surveyConfig: { ...defaultSurvey },
-  exclusionPolygonIds: [],
-  showCoverageOverlay: false,
-  orbitConfig: { ...defaultOrbit },
-  corridorConfig: { ...defaultCorridor },
-  sarExpandingSquareConfig: { ...defaultExpandingSquare },
-  sarSectorSearchConfig: { ...defaultSectorSearch },
-  sarParallelTrackConfig: { ...defaultParallelTrack },
-  structureScanConfig: { ...defaultStructureScan },
-  perimeterConfig: { ...defaultPerimeter },
-  fixedWingLandingConfig: { ...defaultFixedWingLanding },
-  vtolLandingConfig: { ...defaultVtolLanding },
-  patternResult: null,
+  ...freshConfigs(),
   appliedBoundary: null,
-  isGenerating: false,
-  error: null,
 
   setAppliedBoundary: (boundary) => set({ appliedBoundary: boundary }),
   clearAppliedBoundary: () => set({ appliedBoundary: null }),
@@ -337,12 +246,15 @@ export const usePatternStore = create<PatternStoreState>()((set, get) => ({
     // Clear any previously drawn shapes so the new pattern can't silently
     // regenerate over the last polygon/circle via the generator's fallback.
     useDrawingStore.getState().clearAll();
+    cancelTerrainRun();
     set({
       activePatternType: type,
       patternResult: null,
       error: null,
+      isGenerating: false,
+      terrainStatus: "idle",
       exclusionPolygonIds: [],
-  showCoverageOverlay: false,
+      showCoverageOverlay: false,
       surveyConfig: { ...get().surveyConfig, polygon: undefined },
       structureScanConfig: { ...get().structureScanConfig, structurePolygon: undefined },
       perimeterConfig: { ...get().perimeterConfig, polygon: undefined },
@@ -356,6 +268,8 @@ export const usePatternStore = create<PatternStoreState>()((set, get) => ({
 
   setShowCoverageOverlay: (showCoverageOverlay) => set({ showCoverageOverlay }),
 
+  setSurveyWind: (update) => set((s) => ({ surveyWind: { ...s.surveyWind, ...update } })),
+
   toggleExclusionPolygonId: (id) =>
     set((s) => ({
       exclusionPolygonIds: s.exclusionPolygonIds.includes(id)
@@ -368,6 +282,9 @@ export const usePatternStore = create<PatternStoreState>()((set, get) => ({
 
   updateCorridorConfig: (update) =>
     set((s) => ({ corridorConfig: { ...s.corridorConfig, ...update } })),
+
+  updateFacadeConfig: (update) =>
+    set((s) => ({ facadeConfig: { ...s.facadeConfig, ...update } })),
 
   updateSarExpandingSquareConfig: (update) =>
     set((s) => ({ sarExpandingSquareConfig: { ...s.sarExpandingSquareConfig, ...update } })),
@@ -393,19 +310,52 @@ export const usePatternStore = create<PatternStoreState>()((set, get) => ({
   generate: () => {
     const state = get();
     if (!state.activePatternType) return;
+    cancelTerrainRun();
+    set({ isGenerating: true, error: null, terrainStatus: "idle" });
 
-    set({ isGenerating: true, error: null });
-
+    let result: PatternResult | null;
     try {
-      const result = generatePattern(state);
-      if (result === null) {
-        set({ patternResult: null, isGenerating: false, error: MISSING_GEOMETRY_MESSAGES[state.activePatternType] ?? "Missing input geometry" });
-      } else {
-        set({ patternResult: result, isGenerating: false, error: null });
-      }
+      result = generatePattern(state);
     } catch (err) {
       set({ error: formatErrorMessage(err), patternResult: null, isGenerating: false });
+      return;
     }
+    if (result === null) {
+      set({ patternResult: null, isGenerating: false, error: MISSING_GEOMETRY_MESSAGES[state.activePatternType] ?? "Missing input geometry" });
+      return;
+    }
+
+    const altitude = activeAltitudeSettings(state);
+    const mode = altitude?.settings.altitudeMode ?? "relative";
+    if (mode === "terrain") {
+      set({ patternResult: withTerrainFrame(result), isGenerating: false });
+      return;
+    }
+    if (mode !== "followTerrain" || !altitude) {
+      set({ patternResult: result, isGenerating: false });
+      return;
+    }
+
+    // Follow terrain: nothing to apply until the ground along every leg is known.
+    const run = new AbortController();
+    terrainRun = run;
+    set({ patternResult: null, terrainStatus: "sampling" });
+    const spacing = altitude.triggerDistance > 0
+      ? Math.min(TERRAIN_SAMPLE_SPACING_M, altitude.triggerDistance)
+      : TERRAIN_SAMPLE_SPACING_M;
+    followTerrain(result, altitude.settings.followTerrain, spacing, run.signal)
+      .then((outcome) => {
+        if (terrainRun !== run) return;
+        terrainRun = null;
+        set(outcome.ok
+          ? { patternResult: outcome.result, isGenerating: false, terrainStatus: "idle" }
+          : { patternResult: null, isGenerating: false, terrainStatus: "failed" });
+      })
+      .catch(() => {
+        if (terrainRun !== run) return;
+        terrainRun = null;
+        set({ patternResult: null, isGenerating: false, terrainStatus: "failed" });
+      });
   },
 
   clear: () => {
@@ -415,24 +365,7 @@ export const usePatternStore = create<PatternStoreState>()((set, get) => ({
     // clears any lingering outline instead.
     const state = get();
     const captured = state.patternResult ? deriveInputGeometry(state) : null;
-    set({
-      activePatternType: null,
-      exclusionPolygonIds: [],
-  showCoverageOverlay: false,
-      surveyConfig: { ...defaultSurvey },
-      orbitConfig: { ...defaultOrbit },
-      corridorConfig: { ...defaultCorridor },
-      sarExpandingSquareConfig: { ...defaultExpandingSquare },
-      sarSectorSearchConfig: { ...defaultSectorSearch },
-      sarParallelTrackConfig: { ...defaultParallelTrack },
-      structureScanConfig: { ...defaultStructureScan },
-      perimeterConfig: { ...defaultPerimeter },
-      fixedWingLandingConfig: { ...defaultFixedWingLanding },
-      vtolLandingConfig: { ...defaultVtolLanding },
-      patternResult: null,
-      appliedBoundary: captured,
-      isGenerating: false,
-      error: null,
-    });
+    cancelTerrainRun();
+    set({ ...freshConfigs(), appliedBoundary: captured });
   },
 }));

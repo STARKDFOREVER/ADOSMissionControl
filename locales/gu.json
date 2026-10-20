@@ -2957,7 +2957,6 @@
     "cameraProfile": "કેમેરા પ્રોફાઇલ",
     "hideAdvanced": "એડવાન્સ્ડ છુપાવો",
     "showAdvanced": "એડવાન્સ્ડ બતાવો",
-    "gridAngle": "ગ્રિડ ખૂણો",
     "turnAroundDistance": "ટર્ન-અરાઉન્ડ અંતર",
     "entryPoint": "પ્રવેશ બિંદુ",
     "alternateTransects": "વૈકલ્પિક ટ્રાન્સેક્ટ્સ",
@@ -2987,7 +2986,6 @@
     "maxLegs": "મહત્તમ લેગ્સ",
     "startBearing": "શરૂઆતનું બેરિંગ",
     "searchRadius": "શોધ ત્રિજ્યા",
-    "sweeps": "સ્વીપ્સ",
     "clickMapSetStart": "શરૂઆતનો બિંદુ સેટ કરવા નકશા પર ક્લિક કરો",
     "trackLength": "ટ્રેક લંબાઈ",
     "trackSpacing": "ટ્રેક અંતર",
@@ -3663,7 +3661,8 @@
         "parallelTrack": "Parallel track",
         "structureScan": "Structure scan",
         "fixedWingLanding": "Fixed-wing landing",
-        "vtolLanding": "VTOL landing"
+        "vtolLanding": "VTOL landing",
+        "facade": "અગ્રભાગ"
       },
       "help": {
         "title": "Keyboard shortcuts",
@@ -3674,6 +3673,68 @@
           "edit": "Edit",
           "file": "File"
         }
+      }
+    },
+    "pattern": {
+      "gridAngleFromNorth": "ગ્રિડ કોણ (ઉત્તરથી)",
+      "legs": "પગ",
+      "windFromForecast": "સ્થળની આગાહીમાંથી",
+      "hoverAndCapture": "સ્થિર રહી ફોટો લો",
+      "hoverHint": "દરેક ફોટો બિંદુ પર 1 સે. રોકાઈને એક ફોટો લો",
+      "altitude": {
+        "title": "ઊંચાઈ",
+        "reference": "સંદર્ભ",
+        "relative": "હોમથી ઉપર",
+        "followTerrain": "ભૂપ્રદેશ અનુસરો",
+        "terrain": "ભૂપ્રદેશ ફ્રેમ",
+        "tolerance": "સહનશીલતા",
+        "maxClimb": "મહત્તમ ચઢાણ",
+        "maxDescent": "મહત્તમ ઉતરાણ",
+        "terrainHint": "ઊંચાઈઓ દરેક વેપોઇન્ટ નીચેની જમીનથી છે. વાહનને ભૂપ્રદેશ ડેટા જોઈએ.",
+        "followHint": "દરિયાઈ સપાટીથી ઊંચાઈઓ જે દરેક લેગ પર જમીનથી ઊંચાઈ જાળવે છે.",
+        "sampling": "ભૂપ્રદેશ નમૂના લેવાય છે…",
+        "unavailable": "અહીં ભૂપ્રદેશ ઉપલબ્ધ નથી. હોમથી ઉપર વાપરો",
+        "applyBlocked": "લાગુ કરવા ભૂપ્રદેશ જોઈએ",
+        "heightAboveGround": "જમીનથી ઊંચાઈ"
+      },
+      "camera": {
+        "custom": "કસ્ટમ કૅમેરા…",
+        "edit": "કૅમેરા સંપાદિત કરો",
+        "delete": "કૅમેરા કાઢી નાખો",
+        "orientation": "દિશા",
+        "landscape": "આડું",
+        "portrait": "ઊભું",
+        "tooFast": "કૅમેરા આટલી ઝડપે ફોટો લઈ શકતો નથી: {speed} m/s સુધી ધીમું કરો"
+      },
+      "customCamera": {
+        "title": "કસ્ટમ કૅમેરા",
+        "name": "નામ",
+        "sensorWidth": "સેન્સર પહોળાઈ",
+        "sensorHeight": "સેન્સર ઊંચાઈ",
+        "imageWidth": "છબી પહોળાઈ",
+        "imageHeight": "છબી ઊંચાઈ",
+        "focalLength": "ફોકલ લંબાઈ",
+        "minInterval": "ન્યૂનતમ ટ્રિગર અંતરાલ",
+        "save": "સાચવો",
+        "cancel": "રદ કરો",
+        "errorName": "એવું નામ દાખલ કરો જે બીજો કૅમેરા ન વાપરે",
+        "errorSensor": "સેન્સર પહોળાઈ અને ઊંચાઈ 0 થી વધુ હોવી જોઈએ",
+        "errorImage": "છબી પહોળાઈ અને ઊંચાઈ 0 થી વધુ હોવી જોઈએ",
+        "errorFocal": "ફોકલ લંબાઈ 0 થી વધુ હોવી જોઈએ",
+        "errorInterval": "ટ્રિગર અંતરાલ ઋણ ન હોઈ શકે"
+      },
+      "facade": {
+        "drawLine": "અગ્રભાગ રેખા દોરો",
+        "drawHint": "નકશા પર દીવાલના પાયાના બંને છેડા પર ક્લિક કરો",
+        "lineSet": "અગ્રભાગ રેખા: {length} m",
+        "side": "આ બાજુ ઉડો",
+        "sideHint": "રેખાની બાજુ, પહેલા બિંદુથી બીજા તરફ જોતાં",
+        "left": "ડાબે",
+        "right": "જમણે",
+        "distance": "અગ્રભાગથી અંતર",
+        "bottomAlt": "નીચેની હરોળ",
+        "topAlt": "ઉપરની હરોળ",
+        "rowSpacing": "હરોળ અંતર"
       }
     }
   },

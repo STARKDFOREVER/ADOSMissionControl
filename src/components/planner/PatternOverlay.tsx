@@ -14,6 +14,9 @@ import { usePatternStore, parallelTrackRect, expandingSquareReach } from "@/stor
 import { useDrawingStore } from "@/stores/drawing-store";
 import { useGeofenceStore } from "@/stores/geofence-store";
 import { MAP_COLORS, withAlpha } from "@/lib/map-constants";
+import { useCoverageCaptures } from "@/hooks/use-coverage-captures";
+import { bearing, offsetPoint } from "@/lib/drawing/geo-utils";
+import { haversineDistance } from "@/lib/geo/distance";
 
 const Polyline = dynamic(
   () => import("react-leaflet").then((m) => m.Polyline),
@@ -78,6 +81,7 @@ export function PatternOverlay() {
   const surveyConfig = usePatternStore((s) => s.surveyConfig);
   const orbitConfig = usePatternStore((s) => s.orbitConfig);
   const corridorConfig = usePatternStore((s) => s.corridorConfig);
+  const facadeConfig = usePatternStore((s) => s.facadeConfig);
   const structureScanConfig = usePatternStore((s) => s.structureScanConfig);
   const sarExpandingSquareConfig = usePatternStore((s) => s.sarExpandingSquareConfig);
   const sarSectorSearchConfig = usePatternStore((s) => s.sarSectorSearchConfig);
@@ -106,13 +110,13 @@ export function PatternOverlay() {
       .map((wp) => [wp.lat, wp.lon] as [number, number]);
   }, [patternResult]);
 
-  // Camera capture positions (from DO_SET_CAM_TRIGG waypoints or generated trigger points)
-  const capturePoints = useMemo(() => {
-    if (!patternResult) return [];
-    return patternResult.waypoints
-      .filter((wp) => wp.command === "DO_SET_CAM_TRIGG" || wp.command === "DO_DIGICAM")
-      .map((wp) => [wp.lat, wp.lon] as [number, number]);
-  }, [patternResult]);
+  // Where the camera actually shoots: the trigger rows sampled along the
+  // route (distance triggers, their immediate shots, single photos).
+  const captures = useCoverageCaptures();
+  const capturePoints = useMemo(
+    () => captures.points.map((p) => [p.lat, p.lon] as [number, number]),
+    [captures.points],
+  );
 
   // Survey polygon boundary
   const surveyBoundary = useMemo(() => {
@@ -162,6 +166,25 @@ export function PatternOverlay() {
     }
     return null;
   }, [activeType, corridorConfig.pathPoints]);
+
+  // Facade base line and an arrow from its middle to the side the aircraft flies on.
+  const facadePreview = useMemo(() => {
+    const pts = facadeConfig.pathPoints;
+    if (activeType !== "facade" || !pts || pts.length < 2) return null;
+    const [a, b] = pts;
+    const brg = bearing(a[0], a[1], b[0], b[1]);
+    const side = (facadeConfig.side ?? "right") === "left" ? brg - 90 : brg + 90;
+    const mid: [number, number] = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+    const reach = Math.min(facadeConfig.distance ?? 20, haversineDistance(a[0], a[1], b[0], b[1]) / 2);
+    const tip = offsetPoint(mid[0], mid[1], side, reach);
+    const headLen = reach * 0.3;
+    const barbs: [number, number][] = [
+      offsetPoint(tip[0], tip[1], side + 150, headLen),
+      tip,
+      offsetPoint(tip[0], tip[1], side - 150, headLen),
+    ];
+    return { base: [a, b] as [number, number][], shaft: [mid, tip] as [number, number][], barbs };
+  }, [activeType, facadeConfig.pathPoints, facadeConfig.side, facadeConfig.distance]);
 
   // Expanding-square coverage ring — approximate outward reach from the datum.
   const expandingSquareRing = useMemo((): { center: [number, number]; radius: number } | null => {
@@ -359,6 +382,15 @@ export function PatternOverlay() {
             weight: 2,
           }}
         />
+      )}
+
+      {/* ── Facade base line and fly-side arrow ──────────────── */}
+      {facadePreview && (
+        <>
+          <Polyline positions={facadePreview.base} pathOptions={{ color: PATTERN_COLOR, weight: 3, opacity: 0.9 }} />
+          <Polyline positions={facadePreview.shaft} pathOptions={{ color: PATTERN_COLOR, weight: 2, opacity: 0.8 }} />
+          <Polyline positions={facadePreview.barbs} pathOptions={{ color: PATTERN_COLOR, weight: 2, opacity: 0.8 }} />
+        </>
       )}
 
       {/* ── Corridor path centerline ─────────────────────────── */}

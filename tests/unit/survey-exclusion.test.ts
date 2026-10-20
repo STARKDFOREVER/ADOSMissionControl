@@ -4,7 +4,7 @@ import { polygonArea } from '@/lib/drawing/geo-utils';
 import type { SurveyConfig } from '@/lib/patterns/types';
 import { pointInPolygon } from "@/lib/geo/distance";
 
-// A ~660 m boundary square. gridAngle 0 + turnAroundDistance 0 keeps transect
+// A ~660 m boundary square. gridAngle 90 + turnAroundDistance 0 keeps transect
 // endpoints on the exact scan-line crossings, so exclusion clipping is easy to
 // reason about.
 function makeConfig(overrides?: Partial<SurveyConfig>): SurveyConfig {
@@ -15,7 +15,7 @@ function makeConfig(overrides?: Partial<SurveyConfig>): SurveyConfig {
       [12.976, 77.596],
       [12.976, 77.590],
     ],
-    gridAngle: 0,
+    gridAngle: 90,
     lineSpacing: 50,
     turnAroundDistance: 0,
     entryLocation: 'topLeft',
@@ -129,13 +129,11 @@ describe('generateSurvey exclusions', () => {
     expect(withFar.stats.coveredArea).toBeCloseTo(base.stats.coveredArea, 5);
   });
 
-  it('flyAlternateTransects with a hole keeps whole scan lines, not split segments', () => {
+  it('flyAlternateTransects with a hole still flies every piece of every scan line', () => {
     // A hole that splits the middle scan line into two segments, with alternate
-    // transects on. The fix groups by scan-line y, so the result stays valid and
-    // strictly smaller than the full survey rather than mixing half-lines.
+    // transects on: the lines are reordered by scan line, never dropped.
     const full = generateSurvey({ ...makeConfig(), exclusions: [HOLE] });
     const alt = generateSurvey({ ...makeConfig(), flyAlternateTransects: true, exclusions: [HOLE] });
-    expect(alt.stats.transectCount).toBeGreaterThan(0);
-    expect(alt.stats.transectCount).toBeLessThan(full.stats.transectCount);
+    expect(alt.stats.transectCount).toBe(full.stats.transectCount);
   });
 });

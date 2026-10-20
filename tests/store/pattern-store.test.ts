@@ -6,6 +6,7 @@ vi.mock('@/lib/patterns/survey-generator', () => ({
     previewLines: [],
     stats: { totalDistance: 100, estimatedTime: 20, photoCount: 5, coveredArea: 1000, transectCount: 4 },
   })),
+  routeExit: vi.fn(() => undefined),
 }));
 vi.mock('@/lib/patterns/orbit-generator', () => ({
   generateOrbit: vi.fn(() => ({
@@ -92,7 +93,7 @@ describe('pattern-store', () => {
     usePatternStore.getState().updateSurveyConfig({ lineSpacing: 50 });
     expect(usePatternStore.getState().surveyConfig.lineSpacing).toBe(50);
     // Other defaults preserved
-    expect(usePatternStore.getState().surveyConfig.gridAngle).toBe(0);
+    expect(usePatternStore.getState().surveyConfig.gridAngle).toBe(90);
   });
 
   it('updateOrbitConfig merges partial config', () => {
@@ -223,7 +224,7 @@ describe('pattern-store', () => {
   // ------- Config defaults -------
   it('survey config defaults match expected values', () => {
     const s = usePatternStore.getState().surveyConfig;
-    expect(s.gridAngle).toBe(0);
+    expect(s.gridAngle).toBe(90); // east-west lines, as a compass bearing
     expect(s.lineSpacing).toBe(25);
     expect(s.altitude).toBe(50);
     expect(s.speed).toBe(5);

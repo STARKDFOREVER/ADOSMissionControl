@@ -21,7 +21,7 @@ import { clampLat, clampLon, clampAlt } from "./use-planner-state";
 import type { ContextMenuState } from "./use-planner-state";
 import type { Waypoint } from "@/lib/types";
 import { patternToMission } from "@/lib/patterns/pattern-to-mission";
-import type { DrawnPolygon, DrawnCircle } from "@/lib/drawing/types";
+import type { DrawnPolygon, DrawnCircle, DrawnPolyline } from "@/lib/drawing/types";
 import type { DrawingFor } from "@/lib/planner-mode";
 import { datumPatternFor } from "@/lib/planner-mode";
 
@@ -377,7 +377,7 @@ export function usePlannerActions(deps: ActionsDeps) {
   }, [uploadMission, toast]);
 
   const handleDrawingComplete = useCallback(
-    (shape: DrawnPolygon | DrawnCircle) => {
+    (shape: DrawnPolygon | DrawnCircle | DrawnPolyline) => {
       const patternStore = usePatternStore.getState();
       const patternType = patternStore.activePatternType;
       const geoStore = useGeofenceStore.getState();
@@ -395,7 +395,20 @@ export function usePlannerActions(deps: ActionsDeps) {
       // `"free"` while a pattern is armed; both feed the active pattern.
       const routeToPattern = drawingFor === "pattern" || (drawingFor === "free" && patternType !== null);
 
-      if ("vertices" in shape) {
+      if ("points" in shape) {
+        // An open line feeds the line patterns; with none armed it was a free sketch.
+        if (routeToPattern && patternType === "corridor") {
+          patternStore.updateCorridorConfig({ pathPoints: shape.points });
+          usePlannerStore.getState().setInspectorTarget({ kind: "pattern" });
+          toast(`Corridor path set (${shape.points.length} points)`, "success");
+        } else if (routeToPattern && patternType === "facade") {
+          patternStore.updateFacadeConfig({ pathPoints: shape.points.slice(0, 2) });
+          usePlannerStore.getState().setInspectorTarget({ kind: "pattern" });
+          toast("Facade line set", "success");
+        } else {
+          toast(`Line drawn (${shape.points.length} points)`, "info");
+        }
+      } else if ("vertices" in shape) {
         if (drawingFor === "geofence") {
           // Tagged for the fence: set it unconditionally (a concurrently-armed
           // pattern no longer steals the shape). Preserve the [lat, lon] vertex
@@ -420,9 +433,9 @@ export function usePlannerActions(deps: ActionsDeps) {
           drawingStore.removePolygon(shape.id);
           toast(`Structure boundary set (${shape.vertices.length} vertices)`, "success");
         } else if (routeToPattern && patternType === "corridor") {
+          // A corridor drawn as a closed shape still gives its center line.
           patternStore.updateCorridorConfig({ pathPoints: shape.vertices });
           usePlannerStore.getState().setInspectorTarget({ kind: "pattern" });
-          // The corridor renders from its centerline; drop the raw filled polygon.
           drawingStore.removePolygon(shape.id);
           toast(`Corridor path set (${shape.vertices.length} points)`, "success");
         } else {

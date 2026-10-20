@@ -22,7 +22,7 @@ const largePolygon: [number, number][] = [
 
 const baseConfig: SurveyConfig = {
   polygon: smallPolygon,
-  gridAngle: 0,
+  gridAngle: 90,
   lineSpacing: 50,
   turnAroundDistance: 20,
   entryLocation: 'topLeft',

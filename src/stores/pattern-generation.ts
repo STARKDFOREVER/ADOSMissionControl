@@ -1,19 +1,101 @@
 /**
  * @module pattern-generation
- * @description Geometry resolution for the pattern store's generators: the
- * patterns that take their area from the drawing store (survey, orbit,
- * structure scan, perimeter) fall back to the last drawn shape when their
- * config carries none.
+ * @description The pattern store's one dispatcher from a pattern type to its
+ * generator, plus geometry resolution: the patterns that take their area from
+ * the drawing store (survey, orbit, structure scan, perimeter) fall back to
+ * the last drawn shape when their config carries none.
  * @license GPL-3.0-only
  */
 
-import type { SurveyConfig, OrbitConfig, PatternResult, PerimeterConfig } from "@/lib/patterns/types";
+import type {
+  SurveyConfig, OrbitConfig, CorridorConfig, FacadeConfig, PatternResult, PerimeterConfig,
+  FixedWingLandingConfig, VtolLandingConfig, PatternAltitudeSettings,
+} from "@/lib/patterns/types";
+import type { ExpandingSquareConfig, SectorSearchConfig, ParallelTrackConfig } from "@/lib/patterns/sar-generators";
 import type { StructureScanConfig } from "@/lib/patterns/structure-scan-generator";
-import { generateSurvey } from "@/lib/patterns/survey-generator";
+import { generateSurvey, routeExit } from "@/lib/patterns/survey-generator";
 import { generateOrbit } from "@/lib/patterns/orbit-generator";
 import { generateStructureScan } from "@/lib/patterns/structure-scan-generator";
 import { generatePerimeter } from "@/lib/patterns/perimeter-generator";
+import { generateCorridor } from "@/lib/patterns/corridor-generator";
+import { generateFacade } from "@/lib/patterns/facade-generator";
+import { generateExpandingSquare, generateSectorSearch, generateParallelTrack } from "@/lib/patterns/sar-generators";
+import { generateFixedWingLanding } from "@/lib/patterns/landing-generator";
+import { generateVtolLanding } from "@/lib/patterns/vtol-landing-generator";
 import { useDrawingStore } from "./drawing-store";
+import type { PatternType } from "./pattern-store";
+
+/** The per-pattern configs the dispatcher reads. */
+export interface PatternConfigs {
+  activePatternType: PatternType;
+  surveyConfig: Partial<SurveyConfig>;
+  exclusionPolygonIds: string[];
+  orbitConfig: Partial<OrbitConfig>;
+  corridorConfig: Partial<CorridorConfig>;
+  facadeConfig: Partial<FacadeConfig>;
+  sarExpandingSquareConfig: Partial<ExpandingSquareConfig>;
+  sarSectorSearchConfig: Partial<SectorSearchConfig>;
+  sarParallelTrackConfig: Partial<ParallelTrackConfig>;
+  structureScanConfig: Partial<StructureScanConfig>;
+  perimeterConfig: Partial<PerimeterConfig>;
+  fixedWingLandingConfig: Partial<FixedWingLandingConfig>;
+  vtolLandingConfig: Partial<VtolLandingConfig>;
+}
+
+/** Dispatch pattern generation by type. Returns null if input geometry is missing. */
+export function generatePattern(state: PatternConfigs): PatternResult | null {
+  switch (state.activePatternType) {
+    case "survey": return generateSurveyPattern(state.surveyConfig, state.exclusionPolygonIds);
+    case "orbit": return generateOrbitPattern(state.orbitConfig);
+    case "corridor": {
+      const cfg = state.corridorConfig as CorridorConfig;
+      return cfg.pathPoints && cfg.pathPoints.length >= 2 ? generateCorridor(cfg) : null;
+    }
+    case "facade": {
+      const cfg = state.facadeConfig as FacadeConfig;
+      return cfg.pathPoints && cfg.pathPoints.length >= 2 ? generateFacade(cfg) : null;
+    }
+    case "expandingSquare": {
+      const cfg = state.sarExpandingSquareConfig as ExpandingSquareConfig;
+      return cfg.center ? generateExpandingSquare(cfg) : null;
+    }
+    case "sectorSearch": {
+      const cfg = state.sarSectorSearchConfig as SectorSearchConfig;
+      return cfg.center ? generateSectorSearch(cfg) : null;
+    }
+    case "parallelTrack": {
+      const cfg = state.sarParallelTrackConfig as ParallelTrackConfig;
+      return cfg.startPoint ? generateParallelTrack(cfg) : null;
+    }
+    case "structureScan": return generateStructureScanPattern(state.structureScanConfig);
+    case "perimeter": return generatePerimeterPattern(state.perimeterConfig);
+    case "fixedWingLanding": {
+      const cfg = state.fixedWingLandingConfig as FixedWingLandingConfig;
+      return cfg.landingPoint ? generateFixedWingLanding(cfg) : null;
+    }
+    case "vtolLanding": {
+      const cfg = state.vtolLandingConfig as VtolLandingConfig;
+      return cfg.landingPoint ? generateVtolLanding(cfg) : null;
+    }
+    default: return null;
+  }
+}
+
+/**
+ * The altitude reference of the active pattern and its camera trigger
+ * distance, or null for a pattern that is always flown above home.
+ */
+export function activeAltitudeSettings(
+  state: PatternConfigs,
+): { settings: PatternAltitudeSettings; triggerDistance: number } | null {
+  switch (state.activePatternType) {
+    case "survey": return { settings: state.surveyConfig, triggerDistance: state.surveyConfig.cameraTriggerDistance ?? 0 };
+    case "corridor": return { settings: state.corridorConfig, triggerDistance: state.corridorConfig.cameraTriggerDistance ?? 0 };
+    case "structureScan": return { settings: state.structureScanConfig, triggerDistance: state.structureScanConfig.cameraTriggerDistance ?? 0 };
+    case "facade": return { settings: state.facadeConfig, triggerDistance: state.facadeConfig.cameraTriggerDistance ?? 0 };
+    default: return null;
+  }
+}
 
 /** Merge multiple survey results into one combined result. */
 function mergeSurveyResults(results: PatternResult[]): PatternResult {
@@ -50,16 +132,22 @@ export function generateSurveyPattern(cfg: Partial<SurveyConfig>, exclusionIds: 
     ? drawState.polygons.filter((p) => selectedIds.includes(p.id))
     : drawState.polygons.slice(-1);
   // Exclusion polygons are keep-outs, never survey boundaries.
-  const polygons = candidate.filter((p) => !exclusionIds.includes(p.id));
+  const polygons = candidate.filter((p) => !exclusionIds.includes(p.id) && p.vertices.length >= 3);
 
-  if (polygons.length === 1 && polygons[0].vertices.length >= 3) {
+  if (polygons.length === 1) {
     return generateSurvey({ ...fullCfg, polygon: polygons[0].vertices, exclusions });
   }
   if (polygons.length > 1) {
-    const results = polygons
-      .filter((p) => p.vertices.length >= 3)
-      .map((p) => generateSurvey({ ...fullCfg, polygon: p.vertices, exclusions }));
-    return results.length > 0 ? mergeSurveyResults(results) : null;
+    // Each area starts where the previous one ended, so its line order and
+    // the connecting leg (counted, and routed around keep-outs) follow on.
+    const results: PatternResult[] = [];
+    let exit: [number, number] | undefined;
+    for (const p of polygons) {
+      const result = generateSurvey({ ...fullCfg, polygon: p.vertices, exclusions }, exit);
+      results.push(result);
+      exit = routeExit(result) ?? exit;
+    }
+    return mergeSurveyResults(results);
   }
   return null;
 }

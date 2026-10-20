@@ -11,7 +11,8 @@
  * unless the pattern already ends on the ground (LAND, VTOL_LAND) or with an
  * RTL.
  *
- * Every waypoint is stamped `relative` (above home), whatever the planner's
+ * A row's own frame wins (the terrain modes stamp `terrain` or `absolute`);
+ * a row without one is stamped `relative` (above home), whatever the planner's
  * default frame: generator altitudes are heights above the launch ground (the
  * GSD and glide-slope math assume it), so writing them as `absolute` would put
  * a 60 m survey at 60 m above sea level and a LAND at 0 m MSL. A LAND row at
@@ -37,7 +38,7 @@ import { randomId } from "@/lib/utils";
 /** Navigation commands after which the mission needs no RTL. */
 const MISSION_END_COMMANDS: ReadonlySet<WaypointCommand> = new Set<WaypointCommand>(["LAND", "VTOL_LAND", "RTL"]);
 
-/** The frame generator altitudes are measured in: above home. */
+/** The frame generator altitudes are measured in when a row names none: above home. */
 export const PATTERN_ALTITUDE_FRAME: AltitudeFrame = "relative";
 
 /**
@@ -45,7 +46,6 @@ export const PATTERN_ALTITUDE_FRAME: AltitudeFrame = "relative";
  * the rows contain no navigation point.
  */
 export function patternToMission(rows: readonly PatternWaypoint[]): Waypoint[] {
-  const frame = PATTERN_ALTITUDE_FRAME;
   const waypoints: Waypoint[] = [];
   /** Actions seen before the first navigation row. */
   const leading: CommandMissionAction[] = [];
@@ -60,6 +60,8 @@ export function patternToMission(rows: readonly PatternWaypoint[]): Waypoint[] {
         command: actionCommand,
         param1: row.param1,
         param2: row.param2,
+        param3: row.param3,
+        param5: positional ? undefined : row.param5,
         lat: positional ? row.lat : undefined,
         lon: positional ? row.lon : undefined,
         alt: positional ? row.alt : undefined,
@@ -69,7 +71,7 @@ export function patternToMission(rows: readonly PatternWaypoint[]): Waypoint[] {
       else leading.push(action);
       continue;
     }
-    waypoints.push({
+    const waypoint: Waypoint = {
       id: randomId(),
       lat: row.lat,
       lon: row.lon,
@@ -78,19 +80,21 @@ export function patternToMission(rows: readonly PatternWaypoint[]): Waypoint[] {
       command,
       param1: row.param1,
       param2: row.param2,
-      frame,
-    });
+      frame: row.frame ?? PATTERN_ALTITUDE_FRAME,
+    };
+    if (row.holdTime !== undefined) waypoint.holdTime = row.holdTime;
+    waypoints.push(waypoint);
   }
   if (waypoints.length === 0) return [];
   if (leading.length > 0) waypoints[0].actions = [...leading, ...(waypoints[0].actions ?? [])];
 
   const first = waypoints[0];
   if (first.command !== "TAKEOFF") {
-    waypoints.unshift({ id: randomId(), lat: first.lat, lon: first.lon, alt: first.alt, command: "TAKEOFF", frame });
+    waypoints.unshift({ id: randomId(), lat: first.lat, lon: first.lon, alt: first.alt, command: "TAKEOFF", frame: first.frame });
   }
   const last = waypoints[waypoints.length - 1];
   if (!MISSION_END_COMMANDS.has(last.command ?? "WAYPOINT")) {
-    waypoints.push({ id: randomId(), lat: last.lat, lon: last.lon, alt: 0, command: "RTL", frame });
+    waypoints.push({ id: randomId(), lat: last.lat, lon: last.lon, alt: 0, command: "RTL", frame: PATTERN_ALTITUDE_FRAME });
   }
   return waypoints;
 }

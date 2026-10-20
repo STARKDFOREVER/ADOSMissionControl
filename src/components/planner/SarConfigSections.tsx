@@ -94,8 +94,6 @@ export function SarSectorSearchConfig() {
       <div className="mt-1 flex flex-col">
         <PatternNumberRow label={t("searchRadius")} unit="m" step={5} min={1}
           value={config.radius ?? 200} onCommit={(radius) => update({ radius })} />
-        <PatternNumberRow label={t("sweeps")} step={1} min={1} precision={0}
-          value={config.sweeps ?? 3} onCommit={(sweeps) => update({ sweeps })} />
         <PatternNumberRow label={t("startBearing")} unit="deg" step={1} min={0} max={360}
           value={config.startBearing ?? 0} onCommit={(startBearing) => update({ startBearing })} />
         <PatternNumberRow label={t("altitudeAboveHome")} unit="m" step={1} min={1}

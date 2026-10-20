@@ -8,7 +8,6 @@ import { describe, it, expect } from "vitest";
 import {
   normalizeLineAxis,
   axisAngularDifference,
-  gridAngleLineBearing,
   optimalLineBearing,
   windPenalty,
 } from "../wind-optimized";
@@ -102,7 +101,7 @@ describe("optimalLineBearing", () => {
   });
 });
 
-describe("gridAngleLineBearing", () => {
+describe("grid angle as a line bearing", () => {
   /** Compass bearing of the first transect the generator flies at this grid angle. */
   function flownLegBearing(gridAngle: number): number {
     const rows = generateSurvey({
@@ -115,15 +114,15 @@ describe("gridAngleLineBearing", () => {
 
   it("aligning to the wind makes the generated survey fly its legs along the wind", () => {
     for (const wind of [0, 30, 90, 120]) {
-      const gridAngle = gridAngleLineBearing(optimalLineBearing(wind));
+      const gridAngle = optimalLineBearing(wind);
       expect(axisAngularDifference(flownLegBearing(gridAngle), wind)).toBeLessThan(1);
-      expect(windPenalty(gridAngleLineBearing(gridAngle), wind, 8)).toBeCloseTo(0, 6);
+      expect(windPenalty(gridAngle, wind, 8)).toBeCloseTo(0, 6);
     }
   });
 
-  it("reads a grid angle of 0 as east-west legs", () => {
-    expect(gridAngleLineBearing(0)).toBe(90);
-    expect(axisAngularDifference(flownLegBearing(0), 90)).toBeLessThan(1);
+  it("flies a grid angle of 90 as east-west legs and 30 at bearing 030", () => {
+    expect(axisAngularDifference(flownLegBearing(90), 90)).toBeLessThan(1);
+    expect(axisAngularDifference(flownLegBearing(30), 30)).toBeLessThan(1);
   });
 });
 

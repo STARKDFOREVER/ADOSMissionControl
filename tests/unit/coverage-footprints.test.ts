@@ -40,13 +40,13 @@ describe("buildFootprintPolygon", () => {
   });
 });
 
-/** One survey transect as the generator emits it: start, trigger on, end, trigger off. */
+/** One survey transect as the generator emits it: start, trigger on (shoot now), end, trigger off (shoot now). */
 function transect(start: [number, number], end: [number, number], alt: number, spacing: number): CaptureRouteRow[] {
   return [
     { lat: start[0], lon: start[1], alt, command: "WAYPOINT" },
-    { lat: start[0], lon: start[1], alt, command: "DO_SET_CAM_TRIGG", param1: spacing },
+    { lat: start[0], lon: start[1], alt, command: "DO_SET_CAM_TRIGG", param1: spacing, param3: 1 },
     { lat: end[0], lon: end[1], alt, command: "WAYPOINT" },
-    { lat: end[0], lon: end[1], alt, command: "DO_SET_CAM_TRIGG", param1: 0 },
+    { lat: end[0], lon: end[1], alt, command: "DO_SET_CAM_TRIGG", param1: 0, param3: 1 },
   ];
 }
 
@@ -54,16 +54,39 @@ describe("sampleCapturePoints", () => {
   // ~1112 m due north.
   const leg = transect([12.5, 77.5], [12.51, 77.5], 60, 100);
 
-  it("places a capture every trigger distance along the armed leg, not only at its ends", () => {
+  it("places a capture every trigger distance along the armed leg, plus one at each end", () => {
     const { points, total } = sampleCapturePoints(leg);
     const legM = haversineDistance(12.5, 77.5, 12.51, 77.5);
-    expect(total).toBe(Math.floor(legM / 100) + 1);
+    expect(total).toBe(Math.floor(legM / 100) + 2);
     expect(points).toHaveLength(total);
-    for (let i = 1; i < points.length; i++) {
+    for (let i = 1; i < points.length - 1; i++) {
       expect(haversineDistance(points[i - 1].lat, points[i - 1].lon, points[i].lat, points[i].lon)).toBeCloseTo(100, 0);
     }
     expect(points[0]).toMatchObject({ lat: 12.5, lon: 77.5, alt: 60 });
     expect(points[0].headingDeg).toBeCloseTo(0, 3);
+    // The disarming trigger's shot lands on the line's end point.
+    expect(points[points.length - 1]).toMatchObject({ lat: 12.51, lon: 77.5, alt: 60 });
+    expect(points[points.length - 1].headingDeg).toBeCloseTo(0, 3);
+  });
+
+  it("shoots nothing at the arming or disarming point without the shoot-now flag", () => {
+    const plain = leg.map((row) => ({ ...row, param3: undefined }));
+    const { points, total } = sampleCapturePoints(plain);
+    const legM = haversineDistance(12.5, 77.5, 12.51, 77.5);
+    expect(total).toBe(Math.floor(legM / 100));
+    expect(haversineDistance(12.5, 77.5, points[0].lat, points[0].lon)).toBeCloseTo(100, 0);
+  });
+
+  it("counts a DO_DIGICAM single shot where the aircraft is", () => {
+    const route: CaptureRouteRow[] = [
+      { lat: 12.5, lon: 77.5, alt: 30, command: "WAYPOINT" },
+      { lat: 12.5, lon: 77.5, alt: 30, command: "DO_DIGICAM" },
+      { lat: 12.501, lon: 77.5, alt: 30, command: "WAYPOINT" },
+      { lat: 12.501, lon: 77.5, alt: 30, command: "DO_DIGICAM" },
+    ];
+    const { points, total } = sampleCapturePoints(route);
+    expect(total).toBe(2);
+    expect(points[1]).toMatchObject({ lat: 12.501, lon: 77.5 });
   });
 
   it("takes no captures on the unarmed turn between transects", () => {
@@ -78,7 +101,7 @@ describe("sampleCapturePoints", () => {
   it("interpolates each capture's altitude along its leg", () => {
     const climbing: CaptureRouteRow[] = [
       { lat: 12.5, lon: 77.5, alt: 40, command: "WAYPOINT" },
-      { lat: 12.5, lon: 77.5, alt: 40, command: "DO_SET_CAM_TRIGG", param1: 100 },
+      { lat: 12.5, lon: 77.5, alt: 40, command: "DO_SET_CAM_TRIGG", param1: 100, param3: 1 },
       { lat: 12.51, lon: 77.5, alt: 80, command: "WAYPOINT" },
     ];
     const { points } = sampleCapturePoints(climbing);

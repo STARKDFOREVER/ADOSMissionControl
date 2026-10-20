@@ -16,6 +16,7 @@ import { authDefaults, createAuthActions } from "./settings/auth-slice";
 import { commandTabDefaults, createCommandTabActions } from "./settings/command-tab-slice";
 import { createVideoActions, videoDefaults } from "./settings/video-slice";
 import { createProtocolActions, protocolDefaults } from "./settings/protocol-slice";
+import { createPlanningActions, planningDefaults } from "./settings/planning-slice";
 import {
   createKeybindingsActions,
   keybindingsDefaults,
@@ -41,6 +42,7 @@ export const useSettingsStore = create<SettingsStoreState>()(
       ...(videoDefaults as SettingsStoreState),
       ...(keybindingsDefaults as SettingsStoreState),
       ...(protocolDefaults as SettingsStoreState),
+      ...(planningDefaults as SettingsStoreState),
       ...createDisplayActions(set, get),
       ...createNetworkActions(set, get),
       ...createAuthActions(set, get),
@@ -48,11 +50,12 @@ export const useSettingsStore = create<SettingsStoreState>()(
       ...createVideoActions(set, get),
       ...createKeybindingsActions(set, get),
       ...createProtocolActions(set, get),
+      ...createPlanningActions(set, get),
     }),
     {
       name: "altcmd:settings",
       storage: createJSONStorage(indexedDBStorage.storage),
-      version: 54,
+      version: 55,
       migrate: migrateSettings,
       // Runs after a successful rehydrate AND after a failed one (state is
       // undefined then): either way the persisted read is over and every gate

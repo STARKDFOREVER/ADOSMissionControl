@@ -26,7 +26,7 @@
 
 import type { Waypoint, WaypointCommand } from "@/lib/types";
 import { isActionCommand } from "@/lib/mission/command-classes";
-import type { CameraProfile } from "./gsd-calculator";
+import type { CameraOrientation, CameraProfile } from "./gsd-calculator";
 import { computeFootprint } from "./gsd-calculator";
 import { sampleCapturePoints, type CaptureRouteRow } from "./coverage-footprints";
 import { EARTH_RADIUS_M, haversineDistance } from "@/lib/geo/distance";
@@ -37,6 +37,17 @@ export type { CameraProfile };
 
 /** Minimal geographic point accepted by the coverage functions. */
 export type SurveyPoint = Readonly<Pick<Waypoint, "lat" | "lon">>;
+
+/** What the caller knows about the survey beyond its route. */
+export interface CoverageOptions {
+  /**
+   * The line spacing the survey was generated with, metres. Used in place of
+   * the estimate from the route, which an irregular boundary can skew.
+   */
+  lineSpacingM?: number;
+  /** Camera mounting orientation (default landscape). */
+  orientation?: CameraOrientation;
+}
 
 /** Aggregate coverage statistics for a survey route. */
 export interface CoverageStats {
@@ -221,9 +232,12 @@ export function computeCoverageStats(
   route: readonly CaptureRouteRow[],
   camera: CameraProfile,
   altitudeM: number,
+  options: CoverageOptions = {},
 ): CoverageStats {
-  const footprint = computeFootprint(altitudeM, camera);
-  const { lineSpacingM, alongTrackTotalM } = analyzeRoute(navPoints(route));
+  const footprint = computeFootprint(altitudeM, camera, options.orientation);
+  const analysis = analyzeRoute(navPoints(route));
+  const alongTrackTotalM = analysis.alongTrackTotalM;
+  const lineSpacingM = options.lineSpacingM ?? analysis.lineSpacingM;
   // Count every capture without building the points.
   const imageCount = sampleCapturePoints(route, 0).total;
   const trigger = route.find((row) => row.command === "DO_SET_CAM_TRIGG" && (row.param1 ?? 0) > 0);
@@ -269,9 +283,10 @@ export function detectCoverageGaps(
   camera: CameraProfile,
   altitudeM: number,
   minSideOverlap = 0.6,
+  options: CoverageOptions = {},
 ): CoverageGapResult {
-  const footprint = computeFootprint(altitudeM, camera);
-  const lineSpacingM = estimateLineSpacingM(navPoints(route));
+  const footprint = computeFootprint(altitudeM, camera, options.orientation);
+  const lineSpacingM = options.lineSpacingM ?? estimateLineSpacingM(navPoints(route));
   const overlap = clamp01(minSideOverlap);
   const maxSpacingForOverlapM = footprint.width * (1 - overlap);
 

@@ -83,7 +83,7 @@ describe("PatternOverlay", { retry: 2, timeout: 15000 }, () => {
   it("renders a coverage ring for a sector-search datum (previously missing overlay)", async () => {
     usePatternStore.setState({
       activePatternType: "sectorSearch",
-      sarSectorSearchConfig: { center: [12.97, 77.59], radius: 300, sweeps: 3, altitude: 50, speed: 5, startBearing: 0 },
+      sarSectorSearchConfig: { center: [12.97, 77.59], radius: 300, altitude: 50, speed: 5, startBearing: 0 },
     });
     render(<PatternOverlay />);
     const circles = await screen.findAllByTestId("rl-circle", {}, { timeout: 5000 });

@@ -3233,7 +3233,6 @@
     "cameraProfile": "Camera profile",
     "hideAdvanced": "Hide Advanced",
     "showAdvanced": "Show Advanced",
-    "gridAngle": "Grid angle",
     "turnAroundDistance": "Turn-around distance",
     "entryPoint": "Entry point",
     "alternateTransects": "Alternate transects",
@@ -3263,7 +3262,6 @@
     "maxLegs": "Max legs",
     "startBearing": "Start bearing",
     "searchRadius": "Search radius",
-    "sweeps": "Sweeps",
     "clickMapSetStart": "Click map to set start point",
     "trackLength": "Track length",
     "trackSpacing": "Track spacing",
@@ -3619,7 +3617,8 @@
         "parallelTrack": "Parallel track",
         "structureScan": "Structure scan",
         "fixedWingLanding": "Fixed-wing landing",
-        "vtolLanding": "VTOL landing"
+        "vtolLanding": "VTOL landing",
+        "facade": "Facade"
       },
       "help": {
         "title": "Keyboard shortcuts",
@@ -3674,6 +3673,68 @@
         "energy": "Show energy estimate",
         "site": "Show site conditions",
         "checklist": "Show pre-flight checklist"
+      }
+    },
+    "pattern": {
+      "gridAngleFromNorth": "Grid angle (from North)",
+      "legs": "Legs",
+      "windFromForecast": "From the site forecast",
+      "hoverAndCapture": "Hover and capture",
+      "hoverHint": "Stop for 1 s at each photo point and take one photo",
+      "altitude": {
+        "title": "Altitude",
+        "reference": "Reference",
+        "relative": "Above home",
+        "followTerrain": "Follow terrain",
+        "terrain": "Terrain frame",
+        "tolerance": "Tolerance",
+        "maxClimb": "Max climb",
+        "maxDescent": "Max descent",
+        "terrainHint": "Heights are above the ground under each waypoint. The vehicle needs terrain data.",
+        "followHint": "Sea-level altitudes that hold the height above the ground along every leg.",
+        "sampling": "Sampling terrain…",
+        "unavailable": "Terrain unavailable here. Use Above home",
+        "applyBlocked": "Apply needs terrain",
+        "heightAboveGround": "Height above ground"
+      },
+      "camera": {
+        "custom": "Custom camera…",
+        "edit": "Edit camera",
+        "delete": "Delete camera",
+        "orientation": "Orientation",
+        "landscape": "Landscape",
+        "portrait": "Portrait",
+        "tooFast": "Camera can't shoot that fast: slow to {speed} m/s"
+      },
+      "customCamera": {
+        "title": "Custom camera",
+        "name": "Name",
+        "sensorWidth": "Sensor width",
+        "sensorHeight": "Sensor height",
+        "imageWidth": "Image width",
+        "imageHeight": "Image height",
+        "focalLength": "Focal length",
+        "minInterval": "Min trigger interval",
+        "save": "Save",
+        "cancel": "Cancel",
+        "errorName": "Enter a name no other camera uses",
+        "errorSensor": "Sensor width and height must be above 0",
+        "errorImage": "Image width and height must be above 0",
+        "errorFocal": "Focal length must be above 0",
+        "errorInterval": "Trigger interval can't be negative"
+      },
+      "facade": {
+        "drawLine": "Draw facade line",
+        "drawHint": "Click the two ends of the wall's base on the map",
+        "lineSet": "Facade line: {length} m",
+        "side": "Fly on",
+        "sideHint": "Side of the line, looking from its first point to its second",
+        "left": "Left",
+        "right": "Right",
+        "distance": "Distance from facade",
+        "bottomAlt": "Bottom row",
+        "topAlt": "Top row",
+        "rowSpacing": "Row spacing"
       }
     }
   },

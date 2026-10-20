@@ -2957,7 +2957,6 @@
     "cameraProfile": "Kameraprofil",
     "hideAdvanced": "Erweitert ausblenden",
     "showAdvanced": "Erweitert anzeigen",
-    "gridAngle": "Rasterwinkel",
     "turnAroundDistance": "Wendeabstand",
     "entryPoint": "Einstiegspunkt",
     "alternateTransects": "Abwechselnde Transekte",
@@ -2987,7 +2986,6 @@
     "maxLegs": "Max. Schenkel",
     "startBearing": "Startkurs",
     "searchRadius": "Suchradius",
-    "sweeps": "Durchgänge",
     "clickMapSetStart": "Karte anklicken um Startpunkt zu setzen",
     "trackLength": "Streckenlänge",
     "trackSpacing": "Streckenabstand",
@@ -3663,7 +3661,8 @@
         "parallelTrack": "Parallel track",
         "structureScan": "Structure scan",
         "fixedWingLanding": "Fixed-wing landing",
-        "vtolLanding": "VTOL landing"
+        "vtolLanding": "VTOL landing",
+        "facade": "Fassade"
       },
       "help": {
         "title": "Keyboard shortcuts",
@@ -3674,6 +3673,68 @@
           "edit": "Edit",
           "file": "File"
         }
+      }
+    },
+    "pattern": {
+      "gridAngleFromNorth": "Rasterwinkel (ab Nord)",
+      "legs": "Schenkel",
+      "windFromForecast": "Aus der Standortvorhersage",
+      "hoverAndCapture": "Schweben und auslösen",
+      "hoverHint": "An jedem Fotopunkt 1 s anhalten und ein Foto aufnehmen",
+      "altitude": {
+        "title": "Höhe",
+        "reference": "Bezug",
+        "relative": "Über Startpunkt",
+        "followTerrain": "Gelände folgen",
+        "terrain": "Geländerahmen",
+        "tolerance": "Toleranz",
+        "maxClimb": "Max. Steigen",
+        "maxDescent": "Max. Sinken",
+        "terrainHint": "Höhen gelten über dem Boden unter jedem Wegpunkt. Das Fahrzeug braucht Geländedaten.",
+        "followHint": "Höhen über Meer, die auf jedem Abschnitt die Höhe über Grund halten.",
+        "sampling": "Gelände wird abgetastet…",
+        "unavailable": "Hier keine Geländedaten. Über Startpunkt verwenden",
+        "applyBlocked": "Übernehmen braucht Geländedaten",
+        "heightAboveGround": "Höhe über Grund"
+      },
+      "camera": {
+        "custom": "Eigene Kamera…",
+        "edit": "Kamera bearbeiten",
+        "delete": "Kamera löschen",
+        "orientation": "Ausrichtung",
+        "landscape": "Quer",
+        "portrait": "Hoch",
+        "tooFast": "Die Kamera kann nicht so schnell auslösen: auf {speed} m/s verlangsamen"
+      },
+      "customCamera": {
+        "title": "Eigene Kamera",
+        "name": "Name",
+        "sensorWidth": "Sensorbreite",
+        "sensorHeight": "Sensorhöhe",
+        "imageWidth": "Bildbreite",
+        "imageHeight": "Bildhöhe",
+        "focalLength": "Brennweite",
+        "minInterval": "Min. Auslöseintervall",
+        "save": "Speichern",
+        "cancel": "Abbrechen",
+        "errorName": "Einen Namen eingeben, den keine andere Kamera nutzt",
+        "errorSensor": "Sensorbreite und -höhe müssen über 0 liegen",
+        "errorImage": "Bildbreite und -höhe müssen über 0 liegen",
+        "errorFocal": "Die Brennweite muss über 0 liegen",
+        "errorInterval": "Das Auslöseintervall darf nicht negativ sein"
+      },
+      "facade": {
+        "drawLine": "Fassadenlinie zeichnen",
+        "drawHint": "Die beiden Enden der Wandbasis auf der Karte anklicken",
+        "lineSet": "Fassadenlinie: {length} m",
+        "side": "Fliegen auf",
+        "sideHint": "Seite der Linie, vom ersten zum zweiten Punkt gesehen",
+        "left": "Links",
+        "right": "Rechts",
+        "distance": "Abstand zur Fassade",
+        "bottomAlt": "Unterste Reihe",
+        "topAlt": "Oberste Reihe",
+        "rowSpacing": "Reihenabstand"
       }
     }
   },

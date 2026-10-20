@@ -173,7 +173,7 @@ export type MissionAction = CommandMissionAction | RawMissionAction;
 
 /** Available tools in the map toolbar. */
 export type PlannerTool =
-  | "select" | "waypoint" | "polygon" | "circle" | "measure"
+  | "select" | "waypoint" | "polygon" | "polyline" | "circle" | "measure"
   | "takeoff" | "land" | "loiter" | "roi" | "rally" | "datum" | "poi";
 
 /** Altitude reference frame for waypoints. */
