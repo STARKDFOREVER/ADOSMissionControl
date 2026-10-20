@@ -15,12 +15,21 @@
  */
 
 import type { MissionItem } from "@/lib/protocol/types";
+import type { SavedPlan } from "@/lib/types";
 import { speedItem } from "@/lib/mission/mission-expand";
 import { missionContentHash } from "@/lib/mission-upload";
-import { workspaceHasUnsavedChanges } from "@/lib/plan-workspace";
+import { capturePlanExtras, workspaceHasUnsavedChanges } from "@/lib/plan-workspace";
+import { planSnapshotString } from "@/lib/plan-snapshot";
+import { clearHistory } from "@/lib/planner-history";
+import { DEMO_MISSION_FOLDER_ID } from "@/lib/demo/demo-ids";
+import { droneSelection } from "@/stores/drone-selection";
+import { useGeofenceStore } from "@/stores/geofence-store";
 import { useMissionStore } from "@/stores/mission-store";
 import { planWireSettings } from "@/stores/mission-transfer";
 import { usePlanLibraryStore } from "@/stores/plan-library-store";
+import { usePlanPoiStore } from "@/stores/plan-poi-store";
+import { usePlannerStore } from "@/stores/planner-store";
+import { useRallyStore } from "@/stores/rally-store";
 import type { PathWaypoint } from "./flight-paths";
 import type { MockProtocol } from "./mock-protocol";
 
@@ -87,11 +96,50 @@ export function missionSeqForTarget(path: readonly PathWaypoint[], targetIdx: nu
 }
 
 /**
+ * Open the mission just downloaded from demo drone `droneId` as that drone's
+ * own demo plan, saved in the demo folder, so the planner always has a plan
+ * open and switching away asks about nothing. One plan per drone: a later
+ * selection of the same drone replaces it, keeping its creation time.
+ */
+export function openDemoDroneMissionPlan(droneId: string): void {
+  // The previous plan's fence, rally and POIs belong to it, not to the route.
+  useGeofenceStore.getState().clearFence();
+  useRallyStore.getState().clearPoints();
+  usePlanPoiStore.getState().clearPoints();
+
+  const id = `demo-drone-mission-${droneId}`;
+  const now = Date.now();
+  const extras = capturePlanExtras();
+  const { waypoints } = useMissionStore.getState();
+  const plan: SavedPlan = {
+    id,
+    // Demo data stays English, like the seeded demo missions.
+    name: `${droneSelection().drones.get(droneId)?.name ?? droneId} live mission`,
+    folderId: DEMO_MISSION_FOLDER_ID,
+    waypoints,
+    metadata: { droneId },
+    frame: usePlannerStore.getState().defaultFrame,
+    settings: extras.settings,
+    createdAt: usePlanLibraryStore.getState().plans.find((p) => p.id === id)?.createdAt ?? now,
+    updatedAt: now,
+  };
+  usePlanLibraryStore.setState((s) => ({
+    plans: [plan, ...s.plans.filter((p) => p.id !== id)],
+    activePlanId: id,
+    isDirty: false,
+    savedSnapshot: planSnapshotString(waypoints, extras),
+  }));
+  // Undo must not step back into the plan that was open before.
+  clearHistory();
+}
+
+/**
  * Loads the selected demo drone's mission into the planner once per selection,
  * through the mission store's download (which records the receipt MISSION_CURRENT
- * is mapped against). It never replaces a plan carrying unsaved edits, except
- * one it loaded itself. The workspace is detached from the library plan it was
- * opened from first, so the library never saves a drone's route over that plan.
+ * is mapped against), and opens it as that drone's demo plan. It never
+ * replaces a plan carrying unsaved edits, except one it loaded itself. The
+ * workspace is detached from the library plan it was opened from first, so the
+ * library never saves a drone's route over that plan.
  */
 export class DemoMissionLoader {
   private lastSelected: string | null = null;
@@ -103,10 +151,10 @@ export class DemoMissionLoader {
     if (selectedId === this.lastSelected) return;
     this.lastSelected = selectedId;
     if (!selectedId || !protocol?.getCapabilities().supportsMissionDownload) return;
-    return this.load();
+    return this.load(selectedId);
   }
 
-  private async load(): Promise<void> {
+  private async load(droneId: string): Promise<void> {
     const mission = useMissionStore.getState();
     const ownDownload =
       this.loading ||
@@ -117,7 +165,10 @@ export class DemoMissionLoader {
     this.loading = true;
     try {
       const waypoints = await useMissionStore.getState().downloadMission();
-      if (waypoints.length > 0) this.loadedHash = missionContentHash(waypoints, planWireSettings(useMissionStore.getState()));
+      if (waypoints.length > 0) {
+        this.loadedHash = missionContentHash(waypoints, planWireSettings(useMissionStore.getState()));
+        openDemoDroneMissionPlan(droneId);
+      }
     } finally {
       this.loading = false;
     }

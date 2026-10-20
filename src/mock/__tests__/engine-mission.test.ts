@@ -10,12 +10,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useDroneManager, type ManagedDrone } from "@/stores/drone-manager";
+import { useGeofenceStore } from "@/stores/geofence-store";
 import { useMissionStore } from "@/stores/mission-store";
 import { usePlanLibraryStore } from "@/stores/plan-library-store";
+import { useRallyStore, type RallyPoint } from "@/stores/rally-store";
 import { useUploadReceiptsStore } from "@/stores/upload-receipts-store";
-import { capturePlanExtras } from "@/lib/plan-workspace";
+import { capturePlanExtras, workspaceHasUnsavedChanges } from "@/lib/plan-workspace";
 import { planSnapshotString } from "@/lib/plan-snapshot";
-import type { Waypoint } from "@/lib/types";
+import { DEMO_MISSION_FOLDER_ID } from "@/lib/demo/demo-ids";
+import type { SavedPlan, Waypoint } from "@/lib/types";
 import { FLIGHT_PATHS } from "../flight-paths";
 import { MockProtocol } from "../mock-protocol";
 import {
@@ -44,6 +47,11 @@ function select(id: string): void {
 
 /** A clean library plan open in the workspace, as DemoMissionSync leaves it. */
 function openSavedPlan(waypoints: Waypoint[]): void {
+  const plan = {
+    id: "plan-open", name: "Open plan", folderId: null, waypoints, metadata: {}, frame: "relative",
+    createdAt: 0, updatedAt: 0,
+  } as SavedPlan;
+  usePlanLibraryStore.setState((s) => ({ plans: [...s.plans, plan] }));
   useMissionStore.getState().setWaypoints(waypoints);
   const lib = usePlanLibraryStore.getState();
   lib.setActivePlan("plan-open");
@@ -61,7 +69,9 @@ beforeEach(() => {
   vi.useFakeTimers();
   useDroneManager.setState({ drones: new Map(), selectedDroneId: null });
   useMissionStore.setState({ waypoints: [], currentWaypoint: null, downloadState: "idle", downloadWarnings: [] });
-  usePlanLibraryStore.setState({ activePlanId: null, isDirty: false, savedSnapshot: "" });
+  usePlanLibraryStore.setState({ plans: [], activePlanId: null, isDirty: false, savedSnapshot: "" });
+  useGeofenceStore.getState().clearFence();
+  useRallyStore.getState().clearPoints();
   useUploadReceiptsStore.getState().clearForDrone(DRONE);
   useUploadReceiptsStore.getState().clearForDrone(OTHER);
 });
@@ -127,8 +137,15 @@ describe("DemoMissionLoader", () => {
 
     const { waypoints } = useMissionStore.getState();
     expect(waypoints).toHaveLength(PATROL.length + 1);
-    // Detached from the library plan it replaced, so nothing saves over it.
-    expect(usePlanLibraryStore.getState().activePlanId).toBeNull();
+    // Opened as the drone's own demo plan, saved, so nothing reads as unsaved.
+    const lib = usePlanLibraryStore.getState();
+    expect(lib.activePlanId).toBe(`demo-drone-mission-${DRONE}`);
+    expect(lib.plans.find((p) => p.id === lib.activePlanId)).toMatchObject({
+      name: `${DRONE} live mission`,
+      folderId: DEMO_MISSION_FOLDER_ID,
+      metadata: { droneId: DRONE },
+    });
+    expect(workspaceHasUnsavedChanges()).toBe(false);
 
     // The bridge's MISSION_CURRENT handling, for the drone heading to point 3.
     const seq = missionSeqForTarget(PATROL, 3, holdsHomeSlot(protocol));
@@ -161,6 +178,38 @@ describe("DemoMissionLoader", () => {
 
     expect(download).not.toHaveBeenCalled();
     expect(useMissionStore.getState().waypoints).toEqual(elsewhere);
+  });
+
+  it("leaves the previous plan's fence and rally points behind", async () => {
+    openSavedPlan(elsewhere);
+    useGeofenceStore.getState().setPolygonPoints([[36.1, -112.1], [36.1, -112.09], [36.11, -112.09]]);
+    useRallyStore.setState({ points: [{ id: "r1", lat: 36.1, lon: -112.1, alt: 30 } as RallyPoint] });
+    usePlanLibraryStore.getState().setSavedSnapshot(planSnapshotString(elsewhere, capturePlanExtras()));
+    const protocol = demoDrone(DRONE, "ardupilot-copter");
+    select(DRONE);
+
+    await settle(new DemoMissionLoader().onSelection(DRONE, protocol));
+
+    expect(useGeofenceStore.getState().polygonPoints).toEqual([]);
+    expect(useRallyStore.getState().points).toEqual([]);
+    expect(workspaceHasUnsavedChanges()).toBe(false);
+  });
+
+  it("keeps one plan per drone across reselection and never writes over the plan open before", async () => {
+    openSavedPlan(elsewhere);
+    const alpha = demoDrone(DRONE, "ardupilot-copter");
+    const charlie = demoDrone(OTHER, "px4", FLIGHT_PATHS[2]);
+    const loader = new DemoMissionLoader();
+    for (const [id, protocol] of [[DRONE, alpha], [OTHER, charlie], [DRONE, alpha]] as const) {
+      select(id);
+      await settle(loader.onSelection(id, protocol));
+    }
+
+    const plans = usePlanLibraryStore.getState().plans;
+    expect(plans.filter((p) => p.id === `demo-drone-mission-${DRONE}`)).toHaveLength(1);
+    expect(plans.filter((p) => p.id === `demo-drone-mission-${OTHER}`)).toHaveLength(1);
+    expect(usePlanLibraryStore.getState().activePlanId).toBe(`demo-drone-mission-${DRONE}`);
+    expect(plans.find((p) => p.id === "plan-open")?.waypoints).toEqual(elsewhere);
   });
 
   it("replaces its own earlier download when another drone is selected", async () => {
