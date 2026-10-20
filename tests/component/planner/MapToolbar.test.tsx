@@ -125,4 +125,29 @@ describe("MapToolbar rail", () => {
       expect(within(help).getAllByText(s.labelKey).length).toBeGreaterThan(0);
     }
   });
+
+  it("keeps an unavailable offline-area button focusable, inert and explained", () => {
+    const onToggleDownload = vi.fn();
+    render(
+      <MapToolbar
+        activeTool="select"
+        onToolChange={vi.fn()}
+        canUndo
+        canRedo
+        onUndo={vi.fn()}
+        onRedo={vi.fn()}
+        onToggleDownload={onToggleDownload}
+        downloadDisabled
+      />,
+    );
+    const button = screen.getByRole("button", { name: "offline.waitingForMap" });
+    expect(button).toHaveAttribute("aria-disabled", "true");
+    expect(button).not.toBeDisabled();
+
+    fireEvent.click(button);
+    expect(onToggleDownload).not.toHaveBeenCalled();
+
+    fireEvent.focus(button);
+    expect(screen.getByRole("tooltip")).toHaveTextContent("offline.waitingForMap");
+  });
 });

@@ -8,7 +8,7 @@
  */
 
 import { useMemo, useSyncExternalStore } from "react";
-import { usePlannerStore } from "@/stores/planner-store";
+import { onPlannerHydrationSettled, plannerHydrationSettled, usePlannerStore } from "@/stores/planner-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useGcsLocationStore } from "@/stores/gcs-location-store";
 import { DEFAULT_CENTER, DEFAULT_ZOOM_UNLOCATED } from "@/lib/map-constants";
@@ -31,13 +31,9 @@ export function isRealCenter(center: [number, number] | undefined): center is [n
   return !!center && (center[0] !== 0 || center[1] !== 0);
 }
 
-/** Whether the persisted planner store has loaded; false on the server render. */
+/** Whether the persisted planner store has settled (loaded, or failed to); false on the server render. */
 function usePlannerHydrated(): boolean {
-  return useSyncExternalStore(
-    (onChange) => usePlannerStore.persist.onFinishHydration(onChange),
-    () => usePlannerStore.persist.hasHydrated(),
-    () => false,
-  );
+  return useSyncExternalStore(onPlannerHydrationSettled, plannerHydrationSettled, () => false);
 }
 
 export function useInitialPlannerView(): InitialPlannerView {

@@ -85,7 +85,7 @@ export function FlightPlanLibrary({ context, onPlanLoaded, onSave, onPlanRenamed
 
   /** Start a new plan with an empty workspace — no dirty check. */
   const startNewPlan = useCallback(() => {
-    createPlan();
+    createPlan(t("untitledPlan"));
     clearPlanWorkspace();
     onPlanLoaded?.({ name: t("untitledPlan") });
     toast(t("newPlanCreated"), "info");

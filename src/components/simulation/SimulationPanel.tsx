@@ -95,7 +95,7 @@ export function SimulationPanel({
   const handleExport = () => {
     if (missionWaypoints.length === 0) return;
     const name = activePlan?.name || "simulation";
-    exportWaypointsFormat(missionWaypoints, name, currentExportOptions());
+    exportWaypointsFormat(missionWaypoints, name, currentExportOptions(missionWaypoints));
     toast("Exported .waypoints", "success");
   };
 

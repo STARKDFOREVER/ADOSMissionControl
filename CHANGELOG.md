@@ -120,6 +120,19 @@ the project follows [Semantic Versioning](https://semver.org/).
 - A plan opened from the plan library fits the planner's own map area, the
   first GPS fix recentres the map even after it was moved programmatically,
   and the saved map view is no longer overwritten before it has loaded.
+- The planner's plan name and vehicle follow the open plan when it changes
+  outside the plan library (demo start-up, a vehicle mission replacing the
+  plan, deleting the open plan), and clear when no plan is open. A new plan is
+  stored under its translated "Untitled Plan" name.
+- A vehicle home more than 50 km from a plan's launch point is treated as
+  belonging to another site: flight time and distance, the validator's home
+  datum and link-range check, the return-leg terrain advisory, the 3D view's
+  altitudes and exported home slots fall back to the plan's own launch point.
+  A connected drone parked elsewhere no longer turns a 7 km plan into a
+  14,000 km one.
+- Unavailable planner rail buttons (offline area, undo, redo) stay in the tab
+  order and show why in their tooltip on focus. The offline-area button no
+  longer stays disabled forever when the saved planner state fails to load.
 
 ### Removed
 

@@ -16,6 +16,7 @@ import { usePlanPoiStore } from "@/stores/plan-poi-store";
 import { useMissionStore } from "@/stores/mission-store";
 import { capturePlanExtras, clearPlanWorkspace } from "@/lib/plan-workspace";
 import { planSnapshotString } from "@/lib/plan-snapshot";
+import { usePlanIdentitySeed } from "./use-plan-identity-seed";
 import {
   autoSave,
   flushAutoSave,
@@ -113,18 +114,7 @@ export function usePlannerIO(deps: IODeps) {
     })();
   }, [setWaypoints, toast, t, setMissionName, setSelectedDroneId]);
 
-  // The plan name and vehicle live in page state, so a remount (a reload, a
-  // route change) starts them empty while the library still has a plan open.
-  // Seed them from that plan, or the planner bar shows a named plan as
-  // untitled and the dirty check below flags the empty name as an edit.
-  useEffect(() => {
-    if (!activePlanId) return;
-    const plan = usePlanLibraryStore.getState().plans.find((pl) => pl.id === activePlanId);
-    if (!plan) return;
-    setMissionName((current) => current || plan.name);
-    const droneId = plan.metadata.droneId;
-    if (droneId) setSelectedDroneId((current) => current || droneId);
-  }, [activePlanId, setMissionName, setSelectedDroneId]);
+  usePlanIdentitySeed(activePlanId, setMissionName, setSelectedDroneId);
 
   // Auto-save to IndexedDB on any planner change, path or geometry. Flushed on
   // unmount rather than cancelled — cancelling discarded up to the last two
@@ -214,12 +204,12 @@ export function usePlannerIO(deps: IODeps) {
   }, [waypoints, missionName, selectedDroneId, toast, t]);
 
   const handleExportWaypoints = useCallback(() => {
-    exportWaypointsFormat(waypoints, missionName || "mission", currentExportOptions());
+    exportWaypointsFormat(waypoints, missionName || "mission", currentExportOptions(waypoints));
     toast(t("exported", { format: ".waypoints" }), "success");
   }, [waypoints, missionName, toast, t]);
 
   const handleExportPlan = useCallback(() => {
-    exportQGCPlan(waypoints, missionName || "mission", undefined, capturePlanExtras(), currentExportOptions());
+    exportQGCPlan(waypoints, missionName || "mission", undefined, capturePlanExtras(), currentExportOptions(waypoints));
     toast(t("exported", { format: ".plan" }), "success");
   }, [waypoints, missionName, toast, t]);
 
@@ -262,7 +252,7 @@ export function usePlannerIO(deps: IODeps) {
 
   const handleNewPlan = useCallback(() => {
     const libStore = usePlanLibraryStore.getState();
-    libStore.createPlan();
+    libStore.createPlan(t("untitledPlan"));
     clearPlanWorkspace();
     setMissionName(t("untitledPlan"));
     setSelectedDroneId("");
@@ -294,7 +284,7 @@ export function usePlannerIO(deps: IODeps) {
     const time = new Date().toLocaleTimeString("en-US", { hour12: false });
     const name = t("droneMissionName", { time });
     const libStore = usePlanLibraryStore.getState();
-    libStore.createPlan(name, downloaded);
+    libStore.createPlan(name, downloaded, { droneId: selectedDroneId || undefined });
     setMissionName(name);
     setSelectedDroneId(selectedDroneId);
     usePlannerStore.getState().requestFit();

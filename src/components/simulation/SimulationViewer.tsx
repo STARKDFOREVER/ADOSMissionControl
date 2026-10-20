@@ -20,6 +20,7 @@ import {
 import { buildSampledProperties } from "@/lib/build-sampled-properties";
 import { makeKinematicViewerTrack, type ViewerTrack } from "@/lib/simulation/viewer-track";
 import { resolveAGLToAbsolute, type ResolvedPath } from "@/lib/terrain-utils";
+import { isHomeNearPlan, planLaunchPoint } from "@/lib/mission/plan-home";
 import { useSimulationStore } from "@/stores/simulation-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useSimClock } from "@/hooks/use-sim-clock";
@@ -99,12 +100,14 @@ export function SimulationViewer({ waypoints, defaultSpeed, defaultFrame }: Simu
   const showCameraTriggers = useSettingsStore((s) => s.showCameraTriggers);
 
   // Relative-frame altitudes are measured from home: the vehicle's reported
-  // HOME_POSITION when there is one, else the launch point the upload uses
-  // (the first item with a position; a TAKEOFF saved at 0/0 has none).
+  // HOME_POSITION when it lies near this plan, else the launch point the
+  // upload uses (the first item with a position; a TAKEOFF saved at 0/0 has
+  // none).
   const planOptions = useFlightPlanOptions();
-  const launch = waypoints.find((wp) => wp.command !== "RTL" && !(wp.lat === 0 && wp.lon === 0));
-  const homeLat = planOptions.home?.lat ?? launch?.lat;
-  const homeLon = planOptions.home?.lon ?? launch?.lon;
+  const vehicleHome = planOptions.home && isHomeNearPlan(planOptions.home, waypoints) ? planOptions.home : undefined;
+  const launch = planLaunchPoint(waypoints);
+  const homeLat = vehicleHome?.lat ?? launch?.lat;
+  const homeLon = vehicleHome?.lon ?? launch?.lon;
 
   const missionSignature = useMemo(
     () => createSimulationMissionSignature(waypoints, defaultSpeed, defaultFrame),

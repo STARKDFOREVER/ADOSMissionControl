@@ -28,6 +28,7 @@ import {
   fcFamilyFromFirmware,
 } from "@/lib/validation/fc-item-count";
 import { checkRtlTerrainClearance } from "@/lib/terrain/rtl-advisory";
+import { isHomeNearPlan } from "@/lib/mission/plan-home";
 import { DEFAULT_MIN_TERRAIN_CLEARANCE } from "@/lib/terrain/terrain-clearance";
 import { useRtlReturnContext } from "@/hooks/use-rtl-return-context";
 
@@ -107,12 +108,13 @@ export function MissionAdvisories({
     }
 
     // RTL / failsafe return-leg terrain clearance. Home is the telemetry home
-    // with the terrain sampled beneath it; without that sample both the
+    // with the terrain sampled beneath it, when it lies near this plan (a
+    // vehicle at another site reports that site's home); otherwise both the
     // coordinates and the elevation come from the first waypoint, never a mix.
     // With no terrain at all the pure module returns [] and no RTL rows render.
     // Without the vehicle's own return altitude the check does not run.
     const first = waypoints[0];
-    const home = telemetryHome
+    const home = (telemetryHome && isHomeNearPlan(telemetryHome, waypoints) ? telemetryHome : undefined)
       ?? (first && first.groundElevation !== undefined
         ? { lat: first.lat, lon: first.lon, groundElevation: first.groundElevation }
         : null);

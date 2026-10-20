@@ -149,6 +149,9 @@ interface PlannerStoreState {
   setMapView: (bounds: { north: number; south: number; east: number; west: number }, zoom: number) => void;
 }
 
+let plannerHydrationDone = false;
+const plannerHydrationListeners = new Set<() => void>();
+
 export const usePlannerStore = create<PlannerStoreState>()(
   persist<PlannerStoreState, [], [], Partial<PlannerStoreState>>(
     (set) => {
@@ -287,6 +290,13 @@ export const usePlannerStore = create<PlannerStoreState>()(
         dockTab: state.dockTab,
         sectionOpen: state.sectionOpen,
       }),
+      // Fires on success and on a failed read (zustand leaves `hasHydrated()`
+      // false when the storage read rejects), so the planner never waits
+      // forever on persisted state that is not coming; the defaults stand.
+      onRehydrateStorage: () => () => {
+        plannerHydrationDone = true;
+        plannerHydrationListeners.forEach((cb) => cb());
+      },
       migrate: (persisted, version) => {
         const state = persisted as Record<string, unknown>;
         if (version < 2) {
@@ -306,3 +316,16 @@ export const usePlannerStore = create<PlannerStoreState>()(
     }
   )
 );
+
+/** Persisted planner state has loaded, or the load failed and the defaults stand. */
+export function plannerHydrationSettled(): boolean {
+  return plannerHydrationDone || usePlannerStore.persist.hasHydrated();
+}
+
+/** Subscribe to {@link plannerHydrationSettled} turning true; returns the unsubscribe. */
+export function onPlannerHydrationSettled(cb: () => void): () => void {
+  plannerHydrationListeners.add(cb);
+  return () => {
+    plannerHydrationListeners.delete(cb);
+  };
+}

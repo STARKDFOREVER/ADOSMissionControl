@@ -19,7 +19,7 @@ import { useInitialPlannerView } from "@/hooks/use-initial-planner-view";
 import { DrawingManager } from "@/lib/drawing/drawing-manager";
 import { registerActiveDrawApi } from "@/lib/drawing/active-draw-api";
 import { useDrawingStore } from "@/stores/drawing-store";
-import { usePlannerStore } from "@/stores/planner-store";
+import { plannerHydrationSettled, usePlannerStore } from "@/stores/planner-store";
 import { useRallyStore } from "@/stores/rally-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { polygonArea } from "@/lib/drawing/geo-utils";
@@ -296,7 +296,7 @@ export function PlannerMap({
     // Writing before the persisted store hydrates would be stored over the
     // operator's saved view before the async read lands.
     const reportView = () => {
-      if (!usePlannerStore.persist.hasHydrated()) return;
+      if (!plannerHydrationSettled()) return;
       const b = mapInstance.getBounds();
       usePlannerStore.getState().setMapView(
         { north: b.getNorth(), south: b.getSouth(), east: b.getEast(), west: b.getWest() },
@@ -305,7 +305,7 @@ export function PlannerMap({
     };
     const zoomHandler = () => { setZoom(mapInstance.getZoom()); reportView(); };
     const moveHandler = () => {
-      if (!usePlannerStore.persist.hasHydrated()) return;
+      if (!plannerHydrationSettled()) return;
       const c = mapInstance.getCenter();
       usePlannerStore.getState().setMapCenter([c.lat, c.lng]);
       reportView();

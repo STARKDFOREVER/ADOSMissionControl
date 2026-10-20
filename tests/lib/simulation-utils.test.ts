@@ -131,3 +131,25 @@ describe("computeFlightPlan launch point and return altitude", () => {
     expect(end.alt).toBe(0);
   });
 });
+
+describe("computeFlightPlan vehicle home", () => {
+  const canyon: Waypoint[] = [
+    { id: "t", lat: 36.0602, lon: -112.1155, alt: 30, command: "TAKEOFF" },
+    { id: "w1", lat: 36.065, lon: -112.11, alt: 60, command: "WAYPOINT" },
+    { id: "r", lat: 36.065, lon: -112.11, alt: 60, command: "RTL" },
+  ];
+
+  it("ignores a home reported from another site", () => {
+    const noHome = computeFlightPlan(canyon, 10, {});
+    const foreign = computeFlightPlan(canyon, 10, { home: { lat: 12.95, lon: 77.666 } });
+    expect(foreign.totalDistance).toBe(noHome.totalDistance);
+    expect(foreign.totalDistance).toBeLessThan(10_000);
+  });
+
+  it("returns to a home near the plan", () => {
+    const noHome = computeFlightPlan(canyon, 10, {});
+    // About 2 km south of the launch point.
+    const near = computeFlightPlan(canyon, 10, { home: { lat: 36.0422, lon: -112.1155 } });
+    expect(near.totalDistance - noHome.totalDistance).toBeGreaterThanOrEqual(1500);
+  });
+});

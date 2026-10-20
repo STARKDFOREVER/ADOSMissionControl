@@ -9,6 +9,7 @@ import type { AltitudeFrame, Waypoint } from "@/lib/types";
 import { bearing, normalizeHeading } from "@/lib/telemetry-utils";
 import { isActionCommand } from "@/lib/mission/command-classes";
 import { haversineDistance } from "@/lib/geo/distance";
+import { isHomeNearPlan } from "@/lib/mission/plan-home";
 
 /** A resolved point the simulated vehicle flies to. */
 export interface SimPoint {
@@ -152,7 +153,10 @@ export function computeFlightPlan(
   const positioned = flown
     .map((i) => waypoints[i])
     .find((wp) => wp.command !== "RTL" && !(wp.lat === 0 && wp.lon === 0));
-  const homeLatLon = options.home ?? (positioned ? { lat: positioned.lat, lon: positioned.lon } : undefined);
+  // A vehicle home from another site (a connected drone parked elsewhere)
+  // would route the RTL leg across the globe; only a home near the plan counts.
+  const usableHome = options.home && isHomeNearPlan(options.home, waypoints) ? options.home : undefined;
+  const homeLatLon = usableHome ?? (positioned ? { lat: positioned.lat, lon: positioned.lon } : undefined);
   if (!homeLatLon) {
     return { segments: [], totalDuration: 0, totalDistance: 0 };
   }

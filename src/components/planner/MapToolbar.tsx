@@ -80,13 +80,16 @@ const RailButton = forwardRef<
     dataTool?: string;
   }
 >(function RailButton({ active, disabled, onClick, children, tooltip, expanded, dataTool }, ref) {
+  // `aria-disabled` rather than `disabled` keeps an unavailable control in the
+  // tab order, so a keyboard operator can focus it and read why in its tooltip;
+  // a natively disabled button is unfocusable and the reason unreachable.
   return (
     <Tooltip content={tooltip} position="right">
       <button
         ref={ref}
         type="button"
-        onClick={onClick}
-        disabled={disabled}
+        onClick={disabled ? undefined : onClick}
+        aria-disabled={disabled || undefined}
         // Icon-only control: the tooltip text doubles as the accessible name.
         aria-label={tooltip}
         aria-pressed={active ?? undefined}
@@ -94,10 +97,12 @@ const RailButton = forwardRef<
         data-tool={dataTool}
         className={cn(
           "flex h-8 w-8 items-center justify-center rounded-md transition-colors cursor-pointer",
-          "disabled:cursor-not-allowed disabled:opacity-30",
-          active
-            ? "bg-accent-primary/20 text-accent-primary"
-            : "text-text-secondary hover:bg-bg-tertiary hover:text-text-primary",
+          disabled && "cursor-not-allowed opacity-30",
+          disabled
+            ? "text-text-secondary"
+            : active
+              ? "bg-accent-primary/20 text-accent-primary"
+              : "text-text-secondary hover:bg-bg-tertiary hover:text-text-primary",
         )}
       >
         {children}

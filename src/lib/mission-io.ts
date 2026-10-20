@@ -28,6 +28,7 @@ import { exportKML, exportKMZ } from "@/lib/formats/kml-exporter";
 import { downloadCSV, parseCSV } from "@/lib/formats/csv-handler";
 import { foldLegacyWaypoints } from "@/lib/mission/flat-rows";
 import { migrateWaypointSlots } from "@/lib/mission/waypoint-slot-migration";
+import { isHomeNearPlan } from "@/lib/mission/plan-home";
 import {
   parseWaypointsFile,
   parseQGCPlan,
@@ -391,17 +392,19 @@ export async function importBoundaryFile(file: File): Promise<BoundaryPolygon[]>
  * altitudes as above-home. Over rising terrain that is controlled flight into
  * terrain.
  *
- * `home` is included only when a vehicle has actually reported one. Absent, the
- * flat-file writers fall back to the first waypoint as a PLANNED home at 0 m,
- * which is the format's documented placeholder rather than a surveyed datum.
+ * `home` is included only when a vehicle has reported one near this plan; a
+ * vehicle parked at another site reports that site's home, which is no datum
+ * for these waypoints. Absent, the flat-file writers fall back to the first
+ * waypoint as a PLANNED home at 0 m, which is the format's documented
+ * placeholder rather than a surveyed datum.
  */
-export function currentExportOptions(): FlatExportOptions {
+export function currentExportOptions(waypoints: readonly Waypoint[]): FlatExportOptions {
   const home = useTelemetryStore.getState().homePosition.latest();
   const { defaultFrame, defaultSpeed } = usePlannerStore.getState();
   return {
     defaultFrame,
     defaultSpeed,
-    home: home ? { lat: home.lat, lon: home.lon, alt: home.alt } : undefined,
+    home: home && isHomeNearPlan(home, waypoints) ? { lat: home.lat, lon: home.lon, alt: home.alt } : undefined,
   };
 }
 
@@ -409,12 +412,12 @@ export function currentExportOptions(): FlatExportOptions {
 
 /** Export waypoints as a .kml file, carrying the operator's altitude frame. */
 export function exportMissionKML(waypoints: Waypoint[], name: string): void {
-  exportKML(waypoints, name, { defaultFrame: currentExportOptions().defaultFrame });
+  exportKML(waypoints, name, { defaultFrame: currentExportOptions(waypoints).defaultFrame });
 }
 
 /** Export waypoints as a .kmz file, carrying the operator's altitude frame. */
 export async function exportMissionKMZ(waypoints: Waypoint[], name: string): Promise<void> {
-  await exportKMZ(waypoints, name, { defaultFrame: currentExportOptions().defaultFrame });
+  await exportKMZ(waypoints, name, { defaultFrame: currentExportOptions(waypoints).defaultFrame });
 }
 
 /** Export waypoints as a .csv file. */

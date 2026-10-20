@@ -26,6 +26,7 @@ import { bearing } from "@/lib/telemetry-utils";
 import { isSelfIntersecting } from "@/lib/drawing/geo-utils";
 import { DEFAULT_MIN_TERRAIN_CLEARANCE } from "@/lib/terrain/terrain-clearance";
 import { isActionCommand } from "@/lib/mission/command-classes";
+import { isHomeNearPlan } from "@/lib/mission/plan-home";
 import {
   inferHomeGroundElevation,
   resolveWaypointAltitude,
@@ -169,17 +170,22 @@ export function validateMission(
     return { valid: false, warnings, errors };
   }
 
+  // A vehicle home from another site is not this plan's datum: its ground
+  // elevation and position would skew every relative altitude and the link
+  // range check, so only a home near the plan counts.
+  const home = options?.home && isHomeNearPlan(options.home, waypoints) ? options.home : undefined;
+
   // Vertical datums. Home ground elevation is either supplied by the caller or
   // inferred from the launch point's own terrain sample; without it no
   // relative-frame altitude can be resolved to a real height.
   const homeGroundElevation =
-    options?.home?.groundElevation ?? inferHomeGroundElevation(waypoints);
+    home?.groundElevation ?? inferHomeGroundElevation(waypoints);
   const datums: AltitudeDatums = {
     homeGroundElevation,
     defaultFrame: options?.defaultFrame,
   };
-  const homeLat = options?.home?.lat ?? waypoints[0].lat;
-  const homeLon = options?.home?.lon ?? waypoints[0].lon;
+  const homeLat = home?.lat ?? waypoints[0].lat;
+  const homeLon = home?.lon ?? waypoints[0].lon;
 
   /** Resolved altitude per waypoint, computed once and reused by every rule. */
   const resolved = waypoints.map((wp) => resolveWaypointAltitude(wp, datums));

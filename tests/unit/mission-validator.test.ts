@@ -534,6 +534,20 @@ describe('validateMission — newly added dangerous conditions', () => {
     expect(result.warnings.some((w) => w.code === 'OUTSIDE_LINK_RANGE')).toBe(true);
   });
 
+  it('ignores a vehicle home from another site for the link range check', () => {
+    const mission = [
+      wp({ lat: 12.97, lon: 77.59, alt: 0, command: 'TAKEOFF' }),
+      wp({ lat: 12.973, lon: 77.59, command: 'WAYPOINT' }),
+      wp({ lat: 12.973, lon: 77.59, command: 'LAND' }),
+    ];
+    const foreign = validateMission(mission, { linkRangeM: 1000, home: { lat: 36.06, lon: -112.11 } });
+    expect(foreign.warnings.some((w) => w.code === 'OUTSIDE_LINK_RANGE')).toBe(false);
+
+    // About 3 km north of the launch point: the same site, so it counts.
+    const near = validateMission(mission, { linkRangeM: 1000, home: { lat: 12.997, lon: 77.59 } });
+    expect(near.warnings.some((w) => w.code === 'OUTSIDE_LINK_RANGE')).toBe(true);
+  });
+
   it('flags TURN_RADIUS_TOO_TIGHT for a hairpin a fixed wing cannot fly', () => {
     // Out 200m east, then straight back west: a 180-degree reversal, which no
     // finite turn radius fits.
