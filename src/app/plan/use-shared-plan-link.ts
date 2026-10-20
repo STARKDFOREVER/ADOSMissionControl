@@ -16,8 +16,13 @@
 import { useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useToast } from "@/components/ui/toast";
-import { useMissionStore } from "@/stores/mission-store";
-import { usePlanLibraryStore } from "@/stores/plan-library-store";
+import { missionHydrationFailed, missionHydrationSettled, onMissionHydrationSettled } from "@/stores/mission-store";
+import {
+  libraryHydrationFailed,
+  libraryHydrationSettled,
+  onLibraryHydrationSettled,
+  usePlanLibraryStore,
+} from "@/stores/plan-library-store";
 import { readPlanFromHash } from "@/lib/plan-share";
 import {
   applyPlanToWorkspace,
@@ -75,9 +80,15 @@ export function openLibraryPlan(planId: string): { name: string; droneId?: strin
   return { name: plan.name, droneId: plan.metadata.droneId };
 }
 
+/** How long stored plans may take to load before the operator is told the link is waiting. */
+const SLOW_STORAGE_MS = 5_000;
+
 /**
  * Handle a share link in the page URL once, after the persisted mission and
- * library have loaded (opening earlier would be overwritten by their restore).
+ * library have settled (opening earlier would be overwritten by their
+ * restore). When browser storage fails to load, the plan still opens for this
+ * session, with a warning that it will not be kept. When storage is only
+ * slow, a notice after a few seconds says the link waits for it.
  */
 export function useSharedPlanLink(onPlanLoaded: (plan: { name: string; droneId?: string }) => void): void {
   const t = useTranslations("plannerIo");
@@ -96,15 +107,26 @@ export function useSharedPlanLink(onPlanLoaded: (plan: { name: string; droneId?:
     }
 
     let done = false;
+    let slowTimer: ReturnType<typeof setTimeout> | undefined;
+    const stopSlowTimer = () => clearTimeout(slowTimer);
     const run = () => {
       if (done) return;
-      if (!useMissionStore.persist.hasHydrated() || !usePlanLibraryStore.persist.hasHydrated()) return;
+      if (!missionHydrationSettled() || !libraryHydrationSettled()) {
+        // Started once and never reset, so the notice shows at most once.
+        slowTimer ??= setTimeout(() => {
+          if (!done) toast(t("sharedPlanWaiting"), "info");
+        }, SLOW_STORAGE_MS);
+        return;
+      }
       done = true;
+      stopSlowTimer();
       clearFragment();
+      const storageFailed = missionHydrationFailed() || libraryHydrationFailed();
       const result = openSharedPlan(link.file, t("untitledPlan"));
       if (result.opened) {
         onPlanLoaded({ name: result.name });
-        toast(t("sharedPlanOpened"), "success");
+        if (storageFailed) toast(t("sharedPlanNotKept"), "warning");
+        else toast(t("sharedPlanOpened"), "success");
         return;
       }
       toast(t("sharedPlanSaved", { name: result.name }), "info", {
@@ -117,13 +139,11 @@ export function useSharedPlanLink(onPlanLoaded: (plan: { name: string; droneId?:
         },
       });
     };
-    const unsubscribe = [
-      useMissionStore.persist.onFinishHydration(run),
-      usePlanLibraryStore.persist.onFinishHydration(run),
-    ];
+    const unsubscribe = [onMissionHydrationSettled(run), onLibraryHydrationSettled(run)];
     run();
     return () => {
       done = true;
+      stopSlowTimer();
       unsubscribe.forEach((off) => off());
     };
     // Runs once per page mount: the link is read from the URL the page opened with.

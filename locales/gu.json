@@ -218,7 +218,9 @@
     "sharedPlanSaved": "શેર કરેલી યોજના તમારી લાઇબ્રેરીમાં “{name}” તરીકે સાચવી",
     "sharedPlanOpen": "ખોલો",
     "sharedPlanOpened": "શેર કરેલી યોજના ખોલી",
-    "sharedPlanDamaged": "આ શેર લિંક ખરાબ છે અથવા નવા સંસ્કરણની છે"
+    "sharedPlanDamaged": "આ શેર લિંક ખરાબ છે અથવા નવા સંસ્કરણની છે",
+    "sharedPlanNotKept": "શેર કરેલી યોજના ખોલી, પણ બ્રાઉઝર સ્ટોરેજ ઉપલબ્ધ નથી, તેથી રીલોડ પછી તે રહેશે નહીં",
+    "sharedPlanWaiting": "તમારી સાચવેલી યોજનાઓ હજી લોડ થઈ રહી છે. તે તૈયાર થતાં જ શેર કરેલી યોજના ખુલશે"
   },
   "panelCommit": {
     "saved": "Saved to flight controller",

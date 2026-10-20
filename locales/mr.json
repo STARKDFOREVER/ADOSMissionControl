@@ -218,7 +218,9 @@
     "sharedPlanSaved": "सामायिक योजना तुमच्या लायब्ररीत “{name}” म्हणून जतन केली",
     "sharedPlanOpen": "उघडा",
     "sharedPlanOpened": "सामायिक योजना उघडली",
-    "sharedPlanDamaged": "ही सामायिक लिंक खराब आहे किंवा नवीन आवृत्तीची आहे"
+    "sharedPlanDamaged": "ही सामायिक लिंक खराब आहे किंवा नवीन आवृत्तीची आहे",
+    "sharedPlanNotKept": "सामायिक योजना उघडली, पण ब्राउझर स्टोरेज उपलब्ध नाही, त्यामुळे रीलोडनंतर ती राहणार नाही",
+    "sharedPlanWaiting": "तुमच्या जतन केलेल्या योजना अजून लोड होत आहेत. त्या तयार होताच सामायिक योजना उघडेल"
   },
   "panelCommit": {
     "saved": "Saved to flight controller",

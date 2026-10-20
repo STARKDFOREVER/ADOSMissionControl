@@ -218,7 +218,9 @@
     "sharedPlanSaved": "Rencana bersama disimpan di pustaka Anda sebagai “{name}”",
     "sharedPlanOpen": "Buka",
     "sharedPlanOpened": "Rencana bersama dibuka",
-    "sharedPlanDamaged": "Tautan berbagi ini rusak atau berasal dari versi yang lebih baru"
+    "sharedPlanDamaged": "Tautan berbagi ini rusak atau berasal dari versi yang lebih baru",
+    "sharedPlanNotKept": "Rencana bersama dibuka, tetapi penyimpanan browser tidak tersedia, jadi rencana ini tidak akan tersimpan setelah dimuat ulang",
+    "sharedPlanWaiting": "Rencana tersimpan Anda masih dimuat. Rencana bersama akan terbuka setelah semuanya siap"
   },
   "panelCommit": {
     "saved": "Saved to flight controller",

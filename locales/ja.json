@@ -218,7 +218,9 @@
     "sharedPlanSaved": "共有プランを「{name}」としてライブラリに保存しました",
     "sharedPlanOpen": "開く",
     "sharedPlanOpened": "共有プランを開きました",
-    "sharedPlanDamaged": "この共有リンクは破損しているか、新しいバージョンのものです"
+    "sharedPlanDamaged": "この共有リンクは破損しているか、新しいバージョンのものです",
+    "sharedPlanNotKept": "共有プランを開きましたが、ブラウザのストレージが使用できないため、再読み込み後は保持されません",
+    "sharedPlanWaiting": "保存済みのプランを読み込み中です。準備ができ次第、共有プランが開きます"
   },
   "panelCommit": {
     "saved": "Saved to flight controller",

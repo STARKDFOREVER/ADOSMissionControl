@@ -218,7 +218,9 @@
     "sharedPlanSaved": "Shared plan saved to your library as “{name}”",
     "sharedPlanOpen": "Open",
     "sharedPlanOpened": "Opened shared plan",
-    "sharedPlanDamaged": "This share link is damaged or from a newer version"
+    "sharedPlanDamaged": "This share link is damaged or from a newer version",
+    "sharedPlanNotKept": "Opened the shared plan, but browser storage is unavailable, so it won't be kept after a reload",
+    "sharedPlanWaiting": "Your saved plans are still loading. The shared plan opens when they're ready"
   },
   "panelCommit": {
     "saved": "Saved to flight controller",

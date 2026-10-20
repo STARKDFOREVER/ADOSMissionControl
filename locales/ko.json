@@ -218,7 +218,9 @@
     "sharedPlanSaved": "공유된 계획을 라이브러리에 “{name}”(으)로 저장했습니다",
     "sharedPlanOpen": "열기",
     "sharedPlanOpened": "공유된 계획을 열었습니다",
-    "sharedPlanDamaged": "이 공유 링크는 손상되었거나 최신 버전에서 만든 것입니다"
+    "sharedPlanDamaged": "이 공유 링크는 손상되었거나 최신 버전에서 만든 것입니다",
+    "sharedPlanNotKept": "공유된 계획을 열었지만 브라우저 저장소를 사용할 수 없어 새로고침 후에는 유지되지 않습니다",
+    "sharedPlanWaiting": "저장된 계획을 아직 불러오는 중입니다. 준비되면 공유된 계획이 열립니다"
   },
   "panelCommit": {
     "saved": "Saved to flight controller",

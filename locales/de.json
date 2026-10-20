@@ -218,7 +218,9 @@
     "sharedPlanSaved": "Geteilter Plan als „{name}“ in deiner Bibliothek gespeichert",
     "sharedPlanOpen": "Öffnen",
     "sharedPlanOpened": "Geteilten Plan geöffnet",
-    "sharedPlanDamaged": "Dieser Freigabelink ist beschädigt oder stammt aus einer neueren Version"
+    "sharedPlanDamaged": "Dieser Freigabelink ist beschädigt oder stammt aus einer neueren Version",
+    "sharedPlanNotKept": "Geteilter Plan geöffnet, aber der Browserspeicher ist nicht verfügbar, daher bleibt er nach dem Neuladen nicht erhalten",
+    "sharedPlanWaiting": "Deine gespeicherten Pläne werden noch geladen. Der geteilte Plan öffnet sich, sobald sie bereit sind"
   },
   "panelCommit": {
     "saved": "Saved to flight controller",

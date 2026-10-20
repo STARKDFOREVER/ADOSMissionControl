@@ -218,7 +218,9 @@
     "sharedPlanSaved": "Plan partagé enregistré dans votre bibliothèque sous « {name} »",
     "sharedPlanOpen": "Ouvrir",
     "sharedPlanOpened": "Plan partagé ouvert",
-    "sharedPlanDamaged": "Ce lien de partage est endommagé ou provient d'une version plus récente"
+    "sharedPlanDamaged": "Ce lien de partage est endommagé ou provient d'une version plus récente",
+    "sharedPlanNotKept": "Plan partagé ouvert, mais le stockage du navigateur est indisponible : il ne sera pas conservé après un rechargement",
+    "sharedPlanWaiting": "Vos plans enregistrés sont encore en cours de chargement. Le plan partagé s'ouvrira dès qu'ils seront prêts"
   },
   "panelCommit": {
     "saved": "Saved to flight controller",

@@ -6,8 +6,8 @@
  * @license GPL-3.0-only
  */
 
-import { describe, it, expect, beforeEach, vi } from "vitest";
-import { renderHook, waitFor } from "@testing-library/react";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { act, renderHook, waitFor } from "@testing-library/react";
 
 vi.mock("@/lib/storage", () => ({
   indexedDBStorage: {
@@ -119,5 +119,67 @@ describe("useSharedPlanLink", () => {
     ]);
     expect(window.location.hash).toBe("");
     expect(usePlanLibraryStore.getState().plans).toHaveLength(0);
+  });
+});
+
+describe("useSharedPlanLink when browser storage misbehaves", () => {
+  const NOT_KEPT = "Opened the shared plan, but browser storage is unavailable, so it won't be kept after a reload";
+  const WAITING = "Your saved plans are still loading. The shared plan opens when they're ready";
+
+  /** Fresh stores and hook over a storage whose reads follow `getItem`. */
+  async function load(getItem: () => Promise<string | null>) {
+    vi.resetModules();
+    vi.doMock("@/lib/storage", () => ({
+      indexedDBStorage: {
+        storage: () => ({ getItem, setItem: vi.fn().mockResolvedValue(undefined), removeItem: vi.fn().mockResolvedValue(undefined) }),
+      },
+    }));
+    const hook = await import("@/app/plan/use-shared-plan-link");
+    const { IntlWrapper: Wrapper } = await import("../helpers/intl-wrapper");
+    return { useLink: hook.useSharedPlanLink, Wrapper };
+  }
+
+  beforeEach(() => {
+    toasts.calls.length = 0;
+    window.history.replaceState(null, "", `/plan#plan=${encodePlan(FILE)}`);
+  });
+  afterEach(() => {
+    vi.doUnmock("@/lib/storage");
+    vi.useRealTimers();
+  });
+
+  it("opens the plan for this session and warns it will not be kept when the read fails", async () => {
+    const { useLink, Wrapper } = await load(() => Promise.reject(new Error("read failed")));
+    const onLoaded = vi.fn();
+    renderHook(() => useLink(onLoaded), { wrapper: Wrapper });
+    await waitFor(() => expect(onLoaded).toHaveBeenCalledWith({ name: "Canyon run" }));
+    expect(toasts.calls).toEqual([expect.objectContaining({ message: NOT_KEPT, status: "warning" })]);
+    expect(window.location.hash).toBe("");
+  });
+
+  it("says the link waits on slow storage, then opens once the stored plans arrive", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    let release: (value: string | null) => void = () => {};
+    const pending = new Promise<string | null>((resolve) => { release = resolve; });
+    const { useLink, Wrapper } = await load(() => pending);
+    const onLoaded = vi.fn();
+    renderHook(() => useLink(onLoaded), { wrapper: Wrapper });
+
+    await act(() => vi.advanceTimersByTimeAsync(4_999));
+    expect(toasts.calls).toHaveLength(0);
+    await act(() => vi.advanceTimersByTimeAsync(1));
+    expect(toasts.calls).toEqual([expect.objectContaining({ message: WAITING, status: "info" })]);
+    await act(() => vi.advanceTimersByTimeAsync(10_000));
+    expect(toasts.calls).toHaveLength(1);
+    expect(onLoaded).not.toHaveBeenCalled();
+    expect(window.location.hash).not.toBe("");
+
+    await act(async () => {
+      release(null);
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(onLoaded).toHaveBeenCalledTimes(1);
+    expect(onLoaded).toHaveBeenCalledWith({ name: "Canyon run" });
+    expect(window.location.hash).toBe("");
   });
 });

@@ -218,7 +218,9 @@
     "sharedPlanSaved": "ਸਾਂਝੀ ਯੋਜਨਾ ਤੁਹਾਡੀ ਲਾਇਬ੍ਰੇਰੀ ਵਿੱਚ “{name}” ਵਜੋਂ ਸੰਭਾਲੀ ਗਈ",
     "sharedPlanOpen": "ਖੋਲ੍ਹੋ",
     "sharedPlanOpened": "ਸਾਂਝੀ ਯੋਜਨਾ ਖੋਲ੍ਹੀ",
-    "sharedPlanDamaged": "ਇਹ ਸਾਂਝਾ ਲਿੰਕ ਖਰਾਬ ਹੈ ਜਾਂ ਨਵੇਂ ਸੰਸਕਰਣ ਦਾ ਹੈ"
+    "sharedPlanDamaged": "ਇਹ ਸਾਂਝਾ ਲਿੰਕ ਖਰਾਬ ਹੈ ਜਾਂ ਨਵੇਂ ਸੰਸਕਰਣ ਦਾ ਹੈ",
+    "sharedPlanNotKept": "ਸਾਂਝੀ ਯੋਜਨਾ ਖੋਲ੍ਹੀ, ਪਰ ਬ੍ਰਾਊਜ਼ਰ ਸਟੋਰੇਜ ਉਪਲਬਧ ਨਹੀਂ ਹੈ, ਇਸ ਲਈ ਰੀਲੋਡ ਤੋਂ ਬਾਅਦ ਇਹ ਨਹੀਂ ਰਹੇਗੀ",
+    "sharedPlanWaiting": "ਤੁਹਾਡੀਆਂ ਸੰਭਾਲੀਆਂ ਯੋਜਨਾਵਾਂ ਅਜੇ ਲੋਡ ਹੋ ਰਹੀਆਂ ਹਨ। ਉਹਨਾਂ ਦੇ ਤਿਆਰ ਹੁੰਦੇ ਹੀ ਸਾਂਝੀ ਯੋਜਨਾ ਖੁੱਲ੍ਹ ਜਾਵੇਗੀ"
   },
   "panelCommit": {
     "saved": "Saved to flight controller",

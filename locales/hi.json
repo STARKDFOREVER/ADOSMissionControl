@@ -218,7 +218,9 @@
     "sharedPlanSaved": "साझा योजना आपकी लाइब्रेरी में “{name}” नाम से सहेजी गई",
     "sharedPlanOpen": "खोलें",
     "sharedPlanOpened": "साझा योजना खोली गई",
-    "sharedPlanDamaged": "यह साझा लिंक खराब है या किसी नए संस्करण का है"
+    "sharedPlanDamaged": "यह साझा लिंक खराब है या किसी नए संस्करण का है",
+    "sharedPlanNotKept": "साझा योजना खोली गई, लेकिन ब्राउज़र स्टोरेज उपलब्ध नहीं है, इसलिए रीलोड के बाद यह नहीं रहेगी",
+    "sharedPlanWaiting": "आपकी सहेजी गई योजनाएँ अभी लोड हो रही हैं। उनके तैयार होते ही साझा योजना खुल जाएगी"
   },
   "panelCommit": {
     "saved": "Saved to flight controller",

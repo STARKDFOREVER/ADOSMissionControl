@@ -155,6 +155,10 @@ export interface MissionStoreState {
   redo: () => void;
 }
 
+let missionHydrationDone = false;
+let missionHydrationError = false;
+const missionHydrationListeners = new Set<() => void>();
+
 export const useMissionStore = create<MissionStoreState>()(
   persist<MissionStoreState, [], [], Partial<MissionStoreState>>(
     (set, get) => ({
@@ -344,9 +348,35 @@ export const useMissionStore = create<MissionStoreState>()(
       partialize: missionPartialize,
       migrate: async (persisted, version) =>
         migrateMissionStore(persisted, version, await readPersistedDefaultFrame()),
+      // Fires on success and on a rejected read or migration (zustand leaves
+      // `hasHydrated()` false then), so nothing waits forever on persisted
+      // state that is not coming; the defaults stand.
+      onRehydrateStorage: () => (_state, error) => {
+        missionHydrationDone = true;
+        missionHydrationError = error !== undefined;
+        missionHydrationListeners.forEach((cb) => cb());
+      },
     }
   )
 );
+
+/** The persisted plan has loaded, or the load failed and the defaults stand. */
+export function missionHydrationSettled(): boolean {
+  return missionHydrationDone || useMissionStore.persist.hasHydrated();
+}
+
+/** The persisted plan could not be read: nothing written this session will be kept. */
+export function missionHydrationFailed(): boolean {
+  return missionHydrationError;
+}
+
+/** Subscribe to {@link missionHydrationSettled} turning true; returns the unsubscribe. */
+export function onMissionHydrationSettled(cb: () => void): () => void {
+  missionHydrationListeners.add(cb);
+  return () => {
+    missionHydrationListeners.delete(cb);
+  };
+}
 
 // Register the plan half of the coordinated planner history: the waypoints and
 // the plan settings that live in this store. The history module snapshots /

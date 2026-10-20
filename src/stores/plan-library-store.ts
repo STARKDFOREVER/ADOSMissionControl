@@ -132,6 +132,10 @@ function genId(): string {
   return Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
 }
 
+let libraryHydrationDone = false;
+let libraryHydrationError = false;
+const libraryHydrationListeners = new Set<() => void>();
+
 export const usePlanLibraryStore = create<PlanLibraryState>()(
   persist(
     (set, get) => ({
@@ -297,6 +301,32 @@ export const usePlanLibraryStore = create<PlanLibraryState>()(
       }),
       migrate: async (persisted, version) =>
         migratePlanLibrary(persisted, version, await readPersistedDefaultFrame()),
+      // Fires on success and on a rejected read or migration (zustand leaves
+      // `hasHydrated()` false then), so nothing waits forever on persisted
+      // plans that are not coming; the empty library stands.
+      onRehydrateStorage: () => (_state, error) => {
+        libraryHydrationDone = true;
+        libraryHydrationError = error !== undefined;
+        libraryHydrationListeners.forEach((cb) => cb());
+      },
     }
   )
 );
+
+/** The persisted library has loaded, or the load failed and the empty library stands. */
+export function libraryHydrationSettled(): boolean {
+  return libraryHydrationDone || usePlanLibraryStore.persist.hasHydrated();
+}
+
+/** The persisted library could not be read: nothing written this session will be kept. */
+export function libraryHydrationFailed(): boolean {
+  return libraryHydrationError;
+}
+
+/** Subscribe to {@link libraryHydrationSettled} turning true; returns the unsubscribe. */
+export function onLibraryHydrationSettled(cb: () => void): () => void {
+  libraryHydrationListeners.add(cb);
+  return () => {
+    libraryHydrationListeners.delete(cb);
+  };
+}
