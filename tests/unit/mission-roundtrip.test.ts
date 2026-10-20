@@ -38,7 +38,7 @@ interface ExportedPlan {
   };
 }
 
-const OPTS = { defaultFrame: DEFAULT_FRAME };
+const OPTS = { autopilot: "ardupilot", vehicleClass: "copter", defaultFrame: DEFAULT_FRAME } as const;
 
 /**
  * Capture the text an exporter writes into its Blob without touching the DOM

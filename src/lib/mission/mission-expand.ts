@@ -42,6 +42,8 @@ import type {
   AltitudeFrame,
   CommandMissionAction,
   MissionAction,
+  PlanAutopilot,
+  PlanVehicleClass,
   RawMissionAction,
   Waypoint,
   WaypointCommand,
@@ -61,6 +63,10 @@ export interface HomeSlot {
 
 /** Options for {@link expandToItems}. */
 export interface ExpandOptions {
+  /** Autopilot the items are encoded for; frames and command ids differ per autopilot. */
+  autopilot: PlanAutopilot;
+  /** Vehicle class the items are encoded for; speed type and accepted commands differ per class. */
+  vehicleClass: PlanVehicleClass;
   /** Mission default altitude frame, applied to any waypoint with no explicit frame. */
   defaultFrame: AltitudeFrame;
   /**

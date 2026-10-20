@@ -32,7 +32,13 @@ vi.mock("@/lib/storage", () => ({
 import { useMissionStore } from "@/stores/mission-store";
 import { useRallyStore } from "@/stores/rally-store";
 import { usePlanLibraryStore } from "@/stores/plan-library-store";
-import { applyPlanToWorkspace, capturePlanExtras, clearPlanWorkspace, saveActivePlanFromWorkspace } from "@/lib/plan-workspace";
+import {
+  applyPlanToWorkspace,
+  capturePlanExtras,
+  clearPlanWorkspace,
+  saveActivePlanFromWorkspace,
+  workspaceHasUnsavedChanges,
+} from "@/lib/plan-workspace";
 import { canUndo, clearHistory, undoHistory } from "@/lib/planner-history";
 import type { Waypoint } from "@/lib/types";
 
@@ -46,7 +52,7 @@ function planWith(name: string, waypoints: Waypoint[]) {
 
 describe("plan-workspace", () => {
   beforeEach(() => {
-    useMissionStore.setState({ waypoints: [] });
+    useMissionStore.setState({ waypoints: [], plannedHome: null, vehicleProfile: null, transitAltM: null });
     useRallyStore.getState().clearPoints();
     usePlanLibraryStore.setState({ plans: [], folders: [], activePlanId: null, isDirty: false });
     clearHistory();
@@ -89,5 +95,37 @@ describe("plan-workspace", () => {
     expect(useMissionStore.getState().waypoints).toEqual([]);
     expect(capturePlanExtras()).toEqual({ geofence: undefined, rally: undefined, pois: undefined });
     expect(canUndo()).toBe(false);
+  });
+
+  it("saves plan settings with the plan and restores them when it loads", () => {
+    const a = planWith("A", [wp("a1", 12.9)]);
+    const b = planWith("B", [wp("b1", 13.5)]);
+    applyPlanToWorkspace(a);
+    const mission = useMissionStore.getState();
+    mission.setPlannedHome({ lat: 12.89, lon: 77.58, groundAmsl: 900 });
+    mission.setVehicleProfile({ autopilot: "px4", vehicleClass: "plane" });
+    mission.setTransitAlt(120);
+    expect(workspaceHasUnsavedChanges()).toBe(true);
+    saveActivePlanFromWorkspace();
+
+    applyPlanToWorkspace(b);
+    expect(useMissionStore.getState().plannedHome).toBeNull();
+    expect(useMissionStore.getState().transitAltM).toBeNull();
+
+    applyPlanToWorkspace(usePlanLibraryStore.getState().plans.find((p) => p.id === a.id)!);
+    const s = useMissionStore.getState();
+    expect(s.plannedHome).toEqual({ lat: 12.89, lon: 77.58, groundAmsl: 900 });
+    expect(s.vehicleProfile).toEqual({ autopilot: "px4", vehicleClass: "plane" });
+    expect(s.transitAltM).toBe(120);
+    expect(workspaceHasUnsavedChanges()).toBe(false);
+  });
+
+  it("undoes a planned-home move in one step, and a seeded home records no step", () => {
+    const mission = useMissionStore.getState();
+    mission.setPlannedHome({ lat: 1, lon: 2 }, { history: false });
+    expect(canUndo()).toBe(false);
+    mission.setPlannedHome({ lat: 3, lon: 4 });
+    undoHistory();
+    expect(useMissionStore.getState().plannedHome).toEqual({ lat: 1, lon: 2 });
   });
 });

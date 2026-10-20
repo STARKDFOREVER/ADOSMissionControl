@@ -15,7 +15,7 @@
  * @license GPL-3.0-only
  */
 
-import type { Waypoint, WaypointCommand, AltitudeFrame } from "@/lib/types";
+import type { Waypoint, WaypointCommand, AltitudeFrame, PlanVehicleProfile } from "@/lib/types";
 import type { MissionItem } from "@/lib/protocol/types/mission";
 import type { GeofenceSnapshot, FenceZone } from "@/stores/geofence-store";
 import type { RallyPoint } from "@/stores/rally-store";
@@ -40,6 +40,7 @@ import {
   mavToFrame,
 } from "@/lib/mission/altitude-frame";
 import { downloadBlob } from "@/lib/download";
+import { DEFAULT_PLAN_PROFILE } from "@/lib/mission/plan-profile";
 
 /**
  * The altitude-frame ⇄ MAV_FRAME mapping lives in `mission/altitude-frame`
@@ -63,6 +64,8 @@ export interface FlatExportOptions {
   defaultFrame?: AltitudeFrame;
   /** Mission default ground speed (m/s) for waypoints carrying none. */
   defaultSpeed?: number;
+  /** Autopilot and vehicle class the file is written for; absent = ArduPilot copter. */
+  vehicle?: PlanVehicleProfile;
   /**
    * The real home / launch position. When absent the first waypoint's
    * coordinates stand in as a PLANNED home at 0 m — a placeholder the format
@@ -83,7 +86,10 @@ function num(raw: string | undefined, fallback: number): number {
  */
 function toFileItems(waypoints: readonly Waypoint[], opts?: FlatExportOptions): MissionItem[] {
   const home = opts?.home ?? { lat: waypoints[0]?.lat ?? 0, lon: waypoints[0]?.lon ?? 0, alt: 0 };
+  const vehicle = opts?.vehicle ?? DEFAULT_PLAN_PROFILE;
   return expandToItems(waypoints, {
+    autopilot: vehicle.autopilot,
+    vehicleClass: vehicle.vehicleClass,
     defaultFrame: opts?.defaultFrame ?? DEFAULT_FRAME,
     defaultSpeed: opts?.defaultSpeed,
     reserveHomeSlot: { lat: home.lat, lon: home.lon, alt: home.alt ?? 0 },

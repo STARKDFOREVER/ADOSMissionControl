@@ -16,7 +16,14 @@
 
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import type { Mission, Waypoint, MissionState, AltitudeFrame } from "@/lib/types";
+import type {
+  Mission,
+  Waypoint,
+  MissionState,
+  AltitudeFrame,
+  PlannedHome,
+  PlanVehicleProfile,
+} from "@/lib/types";
 import type { DroneProtocol, MissionItem } from "@/lib/protocol/types";
 import { droneSelection, selectedDroneProtocol } from "./drone-selection";
 import { useTelemetryStore } from "./telemetry-store";
@@ -43,6 +50,7 @@ import {
   missionContentHash,
   missionSeqToWaypointIndex,
 } from "@/lib/mission-upload";
+import { DEFAULT_PLAN_PROFILE, profileFromVehicleInfo } from "@/lib/mission/plan-profile";
 import { useUploadReceiptsStore, receiptFor } from "./upload-receipts-store";
 import { foldLegacyWaypoints } from "@/lib/mission/flat-rows";
 import { migrateWaypointSlots } from "@/lib/mission/waypoint-slot-migration";
@@ -70,6 +78,9 @@ const IDLE_EXECUTION = {
 export interface PersistedMissionState {
   waypoints: Waypoint[];
   activeMission: Mission | null;
+  plannedHome: PlannedHome | null;
+  vehicleProfile: PlanVehicleProfile | null;
+  transitAltM: number | null;
 }
 
 /**
@@ -94,6 +105,9 @@ export function missionPartialize(
     activeMission: state.activeMission
       ? { ...state.activeMission, ...IDLE_EXECUTION }
       : null,
+    plannedHome: state.plannedHome,
+    vehicleProfile: state.vehicleProfile,
+    transitAltM: state.transitAltM,
   };
 }
 
@@ -152,6 +166,13 @@ export function migrateMissionStore(
     if (Array.isArray(state.waypoints)) {
       state.waypoints = stampWaypointFrames(state.waypoints as Waypoint[], defaultFrame);
     }
+  }
+  if (version < 7) {
+    // v7 adds the plan settings: planned home, vehicle profile and transit
+    // altitude. A payload written before them carries none.
+    state.plannedHome = null;
+    state.vehicleProfile = null;
+    state.transitAltM = null;
   }
   return state as Partial<MissionStoreState>;
 }
@@ -213,6 +234,12 @@ interface MissionStoreState {
   downloadError: string | null;
   /** Items the last download could not keep, named for the operator. */
   downloadWarnings: string[];
+  /** Where the plan expects to launch and return; `null` until set or seeded. */
+  plannedHome: PlannedHome | null;
+  /** The autopilot and vehicle class the plan is written for; `null` = follow the vehicle. */
+  vehicleProfile: PlanVehicleProfile | null;
+  /** Height above home flown to and from the work area; `null` = off. */
+  transitAltM: number | null;
 
   setMission: (mission: Mission | null) => void;
   setWaypoints: (waypoints: Waypoint[]) => void;
@@ -245,6 +272,15 @@ interface MissionStoreState {
   setDownloadState: (state: "idle" | "downloading" | "downloaded" | "error") => void;
   createMission: (name: string, droneId: string) => void;
   clearMission: () => void;
+  /**
+   * Set the planned home. One undo step, unless `history: false` (a derived
+   * seed or a ground-elevation fill, which the operator did not make).
+   */
+  setPlannedHome: (home: PlannedHome | null, opts?: { history?: boolean }) => void;
+  /** Set the plan's vehicle profile (one undo step). */
+  setVehicleProfile: (profile: PlanVehicleProfile | null) => void;
+  /** Set the transit altitude in metres above home; `null` or ≤ 0 turns it off (one undo step). */
+  setTransitAlt: (altM: number | null) => void;
   /** Upload the current waypoints. `target` pins the destination drone; when
    *  omitted the operator's selected drone is used. A caller scoped to one
    *  drone MUST pass `target` — the selection fallback sent a plugin's mission
@@ -279,6 +315,9 @@ export const useMissionStore = create<MissionStoreState>()(
   downloadState: "idle",
   downloadError: null,
   downloadWarnings: [],
+  plannedHome: null,
+  vehicleProfile: null,
+  transitAltM: null,
 
   setMission: (activeMission) => set({
     activeMission,
@@ -414,9 +453,27 @@ export const useMissionStore = create<MissionStoreState>()(
         progress: 0,
         currentWaypoint: null,
         uploadState: "idle",
+        plannedHome: null,
+        vehicleProfile: null,
+        transitAltM: null,
       }),
     );
   },
+
+  setPlannedHome: (plannedHome, opts) => {
+    if (opts?.history === false) {
+      set({ plannedHome });
+      return;
+    }
+    withPlannerHistory(() => set({ plannedHome }));
+  },
+
+  setVehicleProfile: (vehicleProfile) => withPlannerHistory(() => set({ vehicleProfile })),
+
+  setTransitAlt: (altM) =>
+    withPlannerHistory(() =>
+      set({ transitAltM: altM !== null && Number.isFinite(altM) && altM > 0 ? altM : null }),
+    ),
 
   undo: () => undoHistory(),
 
@@ -435,11 +492,14 @@ export const useMissionStore = create<MissionStoreState>()(
 
     // Flatten the waypoint model (NAV waypoints + their attached actions) into
     // the FC's contiguous `seq` item list, with each frame-less waypoint taking
-    // the mission's default frame. ArduPilot keeps home in slot 0 and starts
-    // the mission at slot 1, so the home slot is reserved there.
-    const isArduPilot = protocol.getVehicleInfo()?.firmwareType.startsWith("ardupilot-") ?? false;
+    // the mission's default frame, encoded for the autopilot and vehicle class
+    // the target reports. ArduPilot keeps home in slot 0 and starts the
+    // mission at slot 1, so the home slot is reserved there.
+    const info = protocol.getVehicleInfo();
+    const isArduPilot = info?.firmwareType.startsWith("ardupilot-") ?? false;
     const items: MissionItem[] = missionUploadItems(
       waypoints,
+      profileFromVehicleInfo(info) ?? DEFAULT_PLAN_PROFILE,
       isArduPilot ? uploadHome(protocol, waypoints) : undefined,
     );
     // Hash what is being sent now: an edit made while the transfer runs must
@@ -532,7 +592,7 @@ export const useMissionStore = create<MissionStoreState>()(
     {
       name: "altcmd:mission-store",
       storage: createJSONStorage(indexedDBStorage.storage),
-      version: 6,
+      version: 7,
       partialize: missionPartialize,
       migrate: async (persisted, version) =>
         migrateMissionStore(persisted, version, await readPersistedDefaultFrame()),
@@ -540,16 +600,36 @@ export const useMissionStore = create<MissionStoreState>()(
   )
 );
 
-// Register the waypoint half of the coordinated planner history. The history
-// module snapshots / restores the waypoints array through this adapter so it can
-// participate in the unified timeline without importing this store (which would
-// create a cycle: mission-store → planner-history → mission-store). Waypoints are
-// copied on capture and restore so a later mutation can never alias a stored
-// snapshot.
+// Register the plan half of the coordinated planner history: the waypoints and
+// the plan settings that live in this store. The history module snapshots /
+// restores it through this adapter so it can participate in the unified
+// timeline without importing this store (which would create a cycle:
+// mission-store → planner-history → mission-store). Waypoints are copied on
+// capture and restore so a later mutation can never alias a stored snapshot.
+interface MissionHistorySnapshot {
+  waypoints: Waypoint[];
+  plannedHome: PlannedHome | null;
+  vehicleProfile: PlanVehicleProfile | null;
+  transitAltM: number | null;
+}
+
 registerWaypointAdapter({
-  snapshot: () => useMissionStore.getState().waypoints.map((w) => ({ ...w })),
+  snapshot: (): MissionHistorySnapshot => {
+    const s = useMissionStore.getState();
+    return {
+      waypoints: s.waypoints.map((w) => ({ ...w })),
+      plannedHome: s.plannedHome,
+      vehicleProfile: s.vehicleProfile,
+      transitAltM: s.transitAltM,
+    };
+  },
   restore: (snap) => {
-    const waypoints = (snap as Waypoint[]).map((w) => ({ ...w }));
-    useMissionStore.setState({ waypoints });
+    const s = snap as MissionHistorySnapshot;
+    useMissionStore.setState({
+      waypoints: s.waypoints.map((w) => ({ ...w })),
+      plannedHome: s.plannedHome,
+      vehicleProfile: s.vehicleProfile,
+      transitAltM: s.transitAltM,
+    });
   },
 });

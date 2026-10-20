@@ -14,6 +14,8 @@ import { generateSurvey } from "@/lib/patterns/survey-generator";
 import { patternToMission } from "@/lib/patterns/pattern-to-mission";
 import { missionUploadItems } from "@/lib/mission-upload";
 
+const AP_COPTER = { autopilot: "ardupilot", vehicleClass: "copter" } as const;
+
 vi.mock("@/stores/planner-store", () => ({
   usePlannerStore: {
     getState: () => ({ defaultFrame: "relative", defaultSpeed: 7 }),
@@ -52,7 +54,7 @@ const MISSION: Waypoint[] = [
 
 describe("speed encoding", () => {
   it("writes the default speed first and a ground-speed change before each leg that needs one", () => {
-    const items = expandToItems(MISSION, { defaultFrame: "relative", defaultSpeed: 8 });
+    const items = expandToItems(MISSION, { ...AP_COPTER, defaultFrame: "relative", defaultSpeed: 8 });
     expect(describeItems(items)).toEqual(["S8", "TAKEOFF", "S3", "WAYPOINT", "WAYPOINT", "S8", "WAYPOINT", "RTL"]);
     for (const it of items.filter((i) => i.command === SPEED)) {
       expect(it.param1).toBe(1); // ground speed
@@ -63,16 +65,16 @@ describe("speed encoding", () => {
 
   it("writes no speed item when nothing sets a speed", () => {
     const plain = MISSION.map((w) => ({ ...w, speed: undefined }));
-    const items = expandToItems(plain, { defaultFrame: "relative" });
+    const items = expandToItems(plain, { ...AP_COPTER, defaultFrame: "relative" });
     expect(items.some((it) => it.command === SPEED)).toBe(false);
   });
 
   it("downloads back as the speed each leg is flown at, and re-uploads identically", () => {
-    const items = expandToItems(MISSION, { defaultFrame: "relative", defaultSpeed: 8 });
+    const items = expandToItems(MISSION, { ...AP_COPTER, defaultFrame: "relative", defaultSpeed: 8 });
     const back = collapseFromItems(items);
     expect(back.map((w) => w.speed)).toEqual([8, 3, 3, 8, 8]);
     expect(back.every((w) => (w.actions ?? []).length === 0)).toBe(true);
-    const again = expandToItems(back, { defaultFrame: "relative", defaultSpeed: 8 });
+    const again = expandToItems(back, { ...AP_COPTER, defaultFrame: "relative", defaultSpeed: 8 });
     expect(again).toEqual(items);
   });
 
@@ -84,7 +86,7 @@ describe("speed encoding", () => {
         flyAlternateTransects: false, cameraTriggerDistance: 0, altitude: 50, speed: 3,
       }).waypoints,
     );
-    const described = describeItems(missionUploadItems(survey));
+    const described = describeItems(missionUploadItems(survey, AP_COPTER));
     // Default for the takeoff, the pattern's 3 m/s for the survey legs, the
     // default again for the return.
     expect(described.filter((d) => d.startsWith("S"))).toEqual(["S7", "S3", "S7"]);

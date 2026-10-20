@@ -15,7 +15,7 @@ function known(a: MissionAction | undefined): CommandMissionAction | undefined {
   return a;
 }
 
-const OPTS = { defaultFrame: "relative" as AltitudeFrame };
+const OPTS = { autopilot: "ardupilot", vehicleClass: "copter", defaultFrame: "relative" as AltitudeFrame } as const;
 
 // ── Structural normalizers (ignore fresh ids; 0 ≡ undefined; []≡undefined) ──
 

@@ -16,7 +16,7 @@
  */
 
 import { get, set, del } from "idb-keyval";
-import type { Waypoint } from "@/lib/types";
+import type { PlanSettings, Waypoint } from "@/lib/types";
 import type { GeofenceSnapshot, FenceZone } from "@/stores/geofence-store";
 import type { RallyPoint } from "@/stores/rally-store";
 import type { PointOfInterest } from "@/stores/plan-poi-store";
@@ -38,6 +38,7 @@ import {
 } from "./mission-io-formats";
 import { usePlannerStore } from "@/stores/planner-store";
 import { useTelemetryStore } from "@/stores/telemetry-store";
+import { useMissionStore } from "@/stores/mission-store";
 import { downloadBlob } from "@/lib/download";
 
 const AUTOSAVE_KEY = "altcmd_autosave";
@@ -64,6 +65,8 @@ export interface MissionFile {
   rally?: RallyPoint[];
   /** Plan-attached points of interest, preserved on native round-trip. */
   pois?: PointOfInterest[];
+  /** Planned home, vehicle profile and transit altitude, preserved on native round-trip. */
+  settings?: PlanSettings;
 }
 
 /** Current native-file schema version written on every export. */
@@ -92,6 +95,7 @@ export interface MissionExtras {
   geofence?: GeofenceSnapshot;
   rally?: RallyPoint[];
   pois?: PointOfInterest[];
+  settings?: PlanSettings;
 }
 
 /**
@@ -111,6 +115,11 @@ export interface ImportedMission {
   rally?: RallyPoint[];
   /** Plan points of interest (native `.altmission` only). */
   pois?: PointOfInterest[];
+  /**
+   * Plan settings the file carries: the native file's whole block, or the
+   * planned home and vehicle profile a `.plan` / `.waypoints` names.
+   */
+  settings?: PlanSettings;
   /** Items the parser could not keep (named), for the importer to show. */
   warnings?: string[];
 }
@@ -157,6 +166,7 @@ export function downloadMissionFile(
     ...(extras?.geofence ? { geofence: extras.geofence } : {}),
     ...(extras?.rally && extras.rally.length > 0 ? { rally: extras.rally } : {}),
     ...(extras?.pois && extras.pois.length > 0 ? { pois: extras.pois } : {}),
+    ...(extras?.settings ? { settings: extras.settings } : {}),
   };
   const blob = new Blob([JSON.stringify(file, null, 2)], { type: "application/json" });
   downloadBlob(blob, `${metadata.name || "mission"}.altmission`);
@@ -225,6 +235,7 @@ export function autoSave(
     geofence: extras?.geofence,
     rally: extras?.rally,
     pois: extras?.pois,
+    settings: extras?.settings,
   };
   autoSaveTimer = setTimeout(() => {
     autoSaveTimer = null;
@@ -337,6 +348,7 @@ export async function importMissionFile(file: File): Promise<ImportedMission> {
     geofence: migrated.geofence,
     rally: migrated.rally,
     pois: migrated.pois,
+    settings: migrated.settings,
   };
 }
 
@@ -401,9 +413,11 @@ export async function importBoundaryFile(file: File): Promise<BoundaryPolygon[]>
 export function currentExportOptions(waypoints: readonly Waypoint[]): FlatExportOptions {
   const home = useTelemetryStore.getState().homePosition.latest();
   const { defaultFrame, defaultSpeed } = usePlannerStore.getState();
+  const vehicle = useMissionStore.getState().vehicleProfile;
   return {
     defaultFrame,
     defaultSpeed,
+    ...(vehicle ? { vehicle } : {}),
     home: home && isHomeNearPlan(home, waypoints) ? { lat: home.lat, lon: home.lon, alt: home.alt } : undefined,
   };
 }

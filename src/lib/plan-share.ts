@@ -19,7 +19,7 @@ import {
   type MissionExtras,
 } from "@/lib/mission-io";
 import { ACTION_COMMANDS, NAV_COMMANDS } from "@/lib/mission/command-classes";
-import type { ActionCommand, NavCommand, Waypoint } from "@/lib/types";
+import type { ActionCommand, NavCommand, PlanSettings, Waypoint } from "@/lib/types";
 import type { FenceZone, GeofenceSnapshot } from "@/stores/geofence-store";
 import type { RallyPoint } from "@/stores/rally-store";
 import type { PointOfInterest } from "@/stores/plan-poi-store";
@@ -66,6 +66,7 @@ export function buildMissionFile(
     ...(extras?.geofence ? { geofence: extras.geofence } : {}),
     ...(extras?.rally && extras.rally.length > 0 ? { rally: extras.rally } : {}),
     ...(extras?.pois && extras.pois.length > 0 ? { pois: extras.pois } : {}),
+    ...(extras?.settings ? { settings: extras.settings } : {}),
   };
 }
 
@@ -220,6 +221,29 @@ function isValidPoi(raw: unknown): raw is PointOfInterest {
   );
 }
 
+const AUTOPILOTS: Record<string, true> = { ardupilot: true, px4: true };
+const VEHICLE_CLASSES: Record<string, true> = { copter: true, plane: true, vtol: true, rover: true };
+
+/** Plan settings with a finite home on the globe, a known profile and a positive transit altitude. */
+function isValidSettings(raw: unknown): raw is PlanSettings {
+  if (!raw || typeof raw !== "object") return false;
+  const s = raw as Record<string, unknown>;
+  if (s.plannedHome !== undefined) {
+    const h = s.plannedHome as Record<string, unknown> | null;
+    if (!h || typeof h !== "object" || !isLatLonPair([h.lat, h.lon])) return false;
+    if (h.groundAmsl !== undefined && !isFiniteNumber(h.groundAmsl)) return false;
+  }
+  if (s.vehicle !== undefined) {
+    const v = s.vehicle as Record<string, unknown> | null;
+    if (!v || typeof v !== "object") return false;
+    if (!AUTOPILOTS[v.autopilot as string] || !VEHICLE_CLASSES[v.vehicleClass as string]) return false;
+  }
+  if (s.transitAltM !== undefined && !(isFiniteNumber(s.transitAltM) && (s.transitAltM as number) > 0)) {
+    return false;
+  }
+  return true;
+}
+
 /**
  * Decode a fragment value back into a mission file, migrated to the current
  * schema. Returns `null` for any bad input (not base64url, not deflate, not
@@ -257,9 +281,16 @@ export function decodePlan(encoded: string): MissionFile | null {
     if (migrated.pois !== undefined && !(Array.isArray(migrated.pois) && migrated.pois.every(isValidPoi))) {
       return null;
     }
+    if (migrated.settings !== undefined && !isValidSettings(migrated.settings)) return null;
+    const settings = migrated.settings;
+    const plannedHome = settings?.plannedHome
+      ? { lat: settings.plannedHome.lat, lon: settings.plannedHome.lon }
+      : undefined;
     return {
       ...migrated,
       waypoints: migrated.waypoints.map(({ groundElevation: _asserted, ...wp }) => wp),
+      // The home's ground height is a terrain sample too: resampled locally.
+      ...(settings ? { settings: { ...settings, ...(plannedHome ? { plannedHome } : {}) } } : {}),
     };
   } catch {
     return null;

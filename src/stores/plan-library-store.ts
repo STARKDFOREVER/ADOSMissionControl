@@ -7,7 +7,7 @@
 
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import type { SavedPlan, PlanMetadata, PlanFolder, Waypoint, AltitudeFrame } from "@/lib/types";
+import type { SavedPlan, PlanMetadata, PlanFolder, Waypoint, AltitudeFrame, PlanSettings } from "@/lib/types";
 import type { GeofenceSnapshot } from "@/stores/geofence-store";
 import type { RallyPoint } from "@/stores/rally-store";
 import type { PointOfInterest } from "@/stores/plan-poi-store";
@@ -19,11 +19,12 @@ import { DEFAULT_ALTITUDE_FRAME } from "@/lib/mission/altitude-frame";
 import { planSnapshotString } from "@/lib/plan-snapshot";
 import { usePlannerStore } from "@/stores/planner-store";
 
-/** Fence + rally + POI geometry captured alongside a plan's waypoints on save. */
+/** Fence + rally + POI geometry and plan settings captured alongside a plan's waypoints on save. */
 export interface PlanExtras {
   geofence?: GeofenceSnapshot;
   rally?: RallyPoint[];
   pois?: PointOfInterest[];
+  settings?: PlanSettings;
 }
 
 /**
@@ -158,6 +159,7 @@ export const usePlanLibraryStore = create<PlanLibraryState>()(
           geofence: extras?.geofence,
           rally: extras?.rally,
           pois: extras?.pois,
+          settings: extras?.settings,
           createdAt: now,
           updatedAt: now,
         };
@@ -179,11 +181,12 @@ export const usePlanLibraryStore = create<PlanLibraryState>()(
                   waypoints,
                   metadata: metadata ? { ...p.metadata, ...metadata } : p.metadata,
                   frame: usePlannerStore.getState().defaultFrame,
-                  // Only overwrite fence/rally/poi when a capture was passed, so
-                  // a waypoints-only save never wipes them.
+                  // Only overwrite fence/rally/poi/settings when a capture was
+                  // passed, so a waypoints-only save never wipes them.
                   geofence: extras ? extras.geofence : p.geofence,
                   rally: extras ? extras.rally : p.rally,
                   pois: extras ? extras.pois : p.pois,
+                  settings: extras ? extras.settings : p.settings,
                   updatedAt: Date.now(),
                 }
               : p

@@ -18,7 +18,7 @@ import { usePlannerStore } from "@/stores/planner-store";
 import { planSnapshotString } from "@/lib/plan-snapshot";
 import { stampWaypointFrames } from "@/lib/mission/mission-frame";
 import { clearHistory } from "@/lib/planner-history";
-import type { SavedPlan } from "@/lib/types";
+import type { PlanSettings, SavedPlan } from "@/lib/types";
 
 /**
  * Load a saved plan into the live workspace: set it active, load its waypoints,
@@ -31,11 +31,19 @@ export function applyPlanToWorkspace(plan: SavedPlan): void {
   lib.setActivePlan(plan.id);
   const waypoints = stampWaypointFrames(plan.waypoints, plan.frame);
   useMissionStore.getState().setWaypoints(waypoints);
+  // Plan settings are restored outside the undo timeline, which is cleared
+  // below anyway: loading a plan is not an edit to undo back out of.
+  useMissionStore.setState({
+    plannedHome: plan.settings?.plannedHome ?? null,
+    vehicleProfile: plan.settings?.vehicle ?? null,
+    transitAltM: plan.settings?.transitAltM ?? null,
+  });
   lib.setSavedSnapshot(
     planSnapshotString(waypoints, {
       geofence: plan.geofence,
       rally: plan.rally,
       pois: plan.pois,
+      settings: plan.settings,
     }),
   );
 
@@ -101,17 +109,18 @@ export function workspaceHasUnsavedChanges(): boolean {
       waypoints.length > 0 ||
       extras.geofence !== undefined ||
       extras.rally !== undefined ||
-      extras.pois !== undefined
+      extras.pois !== undefined ||
+      extras.settings !== undefined
     );
   }
   return lib.isDirty || planSnapshotString(waypoints, extras) !== lib.savedSnapshot;
 }
 
 /**
- * Capture the current geofence + rally + POI geometry to persist alongside a
- * plan. Returns `undefined` for a domain with no meaningful content so plans
- * stay lean and `plan.geofence`/`plan.rally`/`plan.pois` presence is a truthful
- * "has a fence/rally/poi".
+ * Capture the current geofence + rally + POI geometry and the plan settings to
+ * persist alongside a plan. Returns `undefined` for a domain with no meaningful
+ * content so plans stay lean and `plan.geofence`/`plan.rally`/`plan.pois`/
+ * `plan.settings` presence is a truthful "has a fence/rally/poi/setting".
  */
 export function capturePlanExtras(): PlanExtras {
   const geo = useGeofenceStore.getState();
@@ -126,6 +135,18 @@ export function capturePlanExtras(): PlanExtras {
     geofence: hasFence ? geo.snapshot() : undefined,
     rally: rallyPoints.length > 0 ? rallyPoints.map((p) => ({ ...p })) : undefined,
     pois: poiPoints.length > 0 ? poiPoints.map((p) => ({ ...p })) : undefined,
+    settings: capturePlanSettings(),
+  };
+}
+
+/** The mission store's plan settings, or `undefined` when none is set. */
+function capturePlanSettings(): PlanSettings | undefined {
+  const { plannedHome, vehicleProfile, transitAltM } = useMissionStore.getState();
+  if (plannedHome === null && vehicleProfile === null && transitAltM === null) return undefined;
+  return {
+    ...(plannedHome ? { plannedHome: { ...plannedHome } } : {}),
+    ...(vehicleProfile ? { vehicle: { ...vehicleProfile } } : {}),
+    ...(transitAltM !== null ? { transitAltM } : {}),
   };
 }
 

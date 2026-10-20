@@ -34,5 +34,6 @@ export function planSnapshotString(
     geofence: extras?.geofence ?? null,
     rally: extras?.rally ?? null,
     pois: extras?.pois ?? null,
+    settings: extras?.settings ?? null,
   });
 }

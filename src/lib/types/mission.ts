@@ -9,6 +9,34 @@ import type { GeofenceSnapshot } from "@/stores/geofence-store";
 import type { RallyPoint } from "@/stores/rally-store";
 import type { PointOfInterest } from "@/stores/plan-poi-store";
 
+/** Where the plan expects the vehicle to launch and RTL to return: plan-owned, saved with the plan. */
+export interface PlannedHome {
+  lat: number;
+  lon: number;
+  /** Ground elevation at home, metres AMSL; absent when unknown. */
+  groundAmsl?: number;
+}
+
+/** Autopilot family a plan is written for. */
+export type PlanAutopilot = "ardupilot" | "px4";
+
+/** Vehicle class a plan is written for. */
+export type PlanVehicleClass = "copter" | "plane" | "vtol" | "rover";
+
+/** The autopilot and vehicle class a plan targets; decides how it is encoded and flown. */
+export interface PlanVehicleProfile {
+  autopilot: PlanAutopilot;
+  vehicleClass: PlanVehicleClass;
+}
+
+/** Plan-level settings saved with the plan. */
+export interface PlanSettings {
+  plannedHome?: PlannedHome;
+  vehicle?: PlanVehicleProfile;
+  /** Height above home flown to and from the work area; absent = off. */
+  transitAltM?: number;
+}
+
 export interface Waypoint {
   id: string;
   lat: number;
@@ -43,6 +71,8 @@ export interface Waypoint {
    * item. Absent or empty when the waypoint carries no attached actions.
    */
   actions?: MissionAction[];
+  /** `false` writes autocontinue 0 on the wire; absent means 1 (continue). */
+  autocontinue?: false;
 }
 
 /**
@@ -103,6 +133,8 @@ export interface CommandMissionAction {
   alt?: number;
   /** For DO_JUMP: the `id` of the NAV waypoint to jump to. */
   jumpTargetId?: string;
+  /** `false` writes autocontinue 0 on the wire; absent means 1 (continue). */
+  autocontinue?: false;
 }
 
 /**
@@ -127,6 +159,8 @@ export interface RawMissionAction {
   z: number;
   /** MAV_FRAME exactly as received. */
   frame: number;
+  /** `false` when the item was received with autocontinue 0. */
+  autocontinue?: false;
 }
 
 /** An action attached to a navigation waypoint: a modelled command or a raw passthrough. */
@@ -208,6 +242,8 @@ export interface SavedPlan {
    * Absent when the plan has none.
    */
   pois?: PointOfInterest[];
+  /** Planned home, vehicle profile and transit altitude. Absent when none is set. */
+  settings?: PlanSettings;
   createdAt: number;
   updatedAt: number;
 }

@@ -17,7 +17,7 @@ import { defaultActionParams } from "@/components/planner/waypoint-constants";
 import type { MissionItem } from "@/lib/protocol/types/mission";
 import type { AltitudeFrame, Waypoint } from "@/lib/types/mission";
 
-const OPTS = { defaultFrame: "relative" as AltitudeFrame };
+const OPTS = { autopilot: "ardupilot", vehicleClass: "copter", defaultFrame: "relative" as AltitudeFrame } as const;
 const HOME = { lat: 12.9716, lon: 77.5946, alt: 912 };
 
 /**

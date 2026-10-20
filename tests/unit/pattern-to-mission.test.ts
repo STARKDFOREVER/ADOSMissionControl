@@ -27,7 +27,7 @@ const isNavItem = (it: MissionItem) => {
 /** The uploaded items, without the speed items the expander interleaves. */
 function uploaded(rows: readonly PatternWaypoint[]): MissionItem[] {
   const waypoints = patternToMission(rows);
-  return expandToItems(waypoints, { defaultFrame: "relative", defaultSpeed: 5 })
+  return expandToItems(waypoints, { autopilot: "ardupilot", vehicleClass: "copter", defaultFrame: "relative", defaultSpeed: 5 })
     .filter((it) => it.command !== cmdMap.DO_SET_SPEED);
 }
 

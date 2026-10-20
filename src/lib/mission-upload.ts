@@ -10,7 +10,7 @@
  * @license GPL-3.0-only
  */
 
-import type { Waypoint } from "@/lib/types";
+import type { PlanVehicleProfile, Waypoint } from "@/lib/types";
 import type { MissionItem } from "@/lib/protocol/types";
 import { usePlannerStore } from "@/stores/planner-store";
 import { contentHash } from "@/stores/upload-receipts-store";
@@ -19,27 +19,38 @@ import {
   expandedItemOwners,
   type HomeSlot,
 } from "@/lib/mission/mission-expand";
+import { DEFAULT_PLAN_PROFILE } from "@/lib/mission/plan-profile";
 
 /**
- * Expand the planner waypoints into the wire items an upload sends. Each
- * waypoint without its own frame takes the planner's default frame, and each
- * without its own speed flies the planner's default speed.
+ * Expand the planner waypoints into the wire items an upload sends to an
+ * autopilot of `profile`. Each waypoint without its own frame takes the
+ * planner's default frame, and each without its own speed flies the planner's
+ * default speed.
  */
 export function missionUploadItems(
   waypoints: readonly Waypoint[],
+  profile: PlanVehicleProfile,
   reserveHomeSlot?: HomeSlot,
 ): MissionItem[] {
   const { defaultFrame, defaultSpeed } = usePlannerStore.getState();
-  return expandToItems(waypoints, { defaultFrame, defaultSpeed, reserveHomeSlot });
+  return expandToItems(waypoints, {
+    autopilot: profile.autopilot,
+    vehicleClass: profile.vehicleClass,
+    defaultFrame,
+    defaultSpeed,
+    reserveHomeSlot,
+  });
 }
 
 /**
  * Hash of the mission content an upload would send, without the ArduPilot
  * home slot. The home position moves (the FC resets it on arming), but it is
  * not part of the plan, so it must not make an unchanged mission look edited.
+ * The hash identifies the plan, so it is taken over one fixed encoding: the
+ * upload and every later comparison agree whatever the target autopilot.
  */
 export function missionContentHash(waypoints: readonly Waypoint[]): string {
-  return contentHash(missionUploadItems(waypoints));
+  return contentHash(missionUploadItems(waypoints, DEFAULT_PLAN_PROFILE));
 }
 
 /**

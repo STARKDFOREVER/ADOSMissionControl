@@ -57,7 +57,8 @@ describe("positioned actions", () => {
       { id: "l", lat: 12.99, lon: 77.61, alt: 0, command: "LAND" },
     ];
     expect(validateMission(mission, { defaultFrame: "relative" }).errors).toEqual([]);
-    const roi = expandToItems(mission, { defaultFrame: "relative" }).find((it) => it.command === cmdMap.ROI);
+    const roi = expandToItems(mission, { autopilot: "ardupilot", vehicleClass: "copter", defaultFrame: "relative" })
+      .find((it) => it.command === cmdMap.ROI);
     expect(roi?.x).toBe(Math.round(PARENT.lat * 1e7));
     expect(roi?.y).toBe(Math.round(PARENT.lon * 1e7));
   });
