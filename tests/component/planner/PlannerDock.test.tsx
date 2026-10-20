@@ -1,7 +1,8 @@
 /**
  * Component tests for the planner dock: the strip's mission summary (unit
  * formatting included), tab switching through the planner store, issue rows
- * selecting their waypoint, and checklist ticks surviving a collapse.
+ * (a terrain-clash leg included) selecting their waypoint, and checklist ticks
+ * surviving a collapse.
  *
  * @license GPL-3.0-only
  */
@@ -26,15 +27,31 @@ const planOptions = vi.hoisted(() => ({}));
 vi.mock("@/hooks/use-rtl-return-context", () => ({ useFlightPlanOptions: () => planOptions }));
 const validationOptions = vi.hoisted(() => ({}));
 vi.mock("@/hooks/use-validation-options", () => ({ useValidationOptions: () => validationOptions }));
+vi.mock("@/lib/storage", () => ({
+  indexedDBStorage: {
+    storage: () => ({
+      getItem: vi.fn().mockResolvedValue(null),
+      setItem: vi.fn().mockResolvedValue(undefined),
+      removeItem: vi.fn().mockResolvedValue(undefined),
+    }),
+  },
+}));
 
-// One blocking issue tied to waypoint "wp-2", one warning with no waypoint.
+// Two blocking issues (one tied to waypoint "wp-2", one a terrain-clash leg
+// starting at "wp-1"), one warning with no waypoint.
 vi.mock("@/lib/validation/mission-validator", () => ({
   validateMission: (wps: unknown[]) =>
     wps.length === 0
       ? { valid: true, errors: [], warnings: [] }
       : {
           valid: false,
-          errors: [{ severity: "blocking", code: "x", message: "Waypoint 2 below terrain", waypointId: "wp-2" }],
+          errors: [
+            { severity: "blocking", code: "x", message: "Waypoint 2 below terrain", waypointId: "wp-2" },
+            {
+              severity: "blocking", code: "LEG_TERRAIN_CLEARANCE", message: "Leg 1 → 2 clips terrain by 12 m",
+              waypointId: "wp-1", leg: { toWaypointId: "wp-2", clearanceM: -12, alongM: 300 },
+            },
+          ],
           warnings: [{ severity: "advisory", code: "y", message: "Long leg" }],
         },
 }));
@@ -43,6 +60,7 @@ vi.mock("@/components/planner/MissionAdvisories", () => ({ MissionAdvisories: ()
 import { PlannerDock } from "@/components/planner/dock/PlannerDock";
 import { usePlannerStore, type DockTab } from "@/stores/planner-store";
 import { useSettingsStore } from "@/stores/settings-store";
+import { useMissionStore } from "@/stores/mission-store";
 import { usePreflightChecklistStore } from "@/stores/preflight-checklist-store";
 import { PREFLIGHT_ITEM_IDS } from "@/components/planner/preflight-items";
 
@@ -52,9 +70,10 @@ const waypoints = [
 ] as unknown as Waypoint[];
 
 function makeP(overrides: Partial<{ waypoints: Waypoint[] }> = {}) {
+  // The strip's statistics read the open plan from the mission store.
+  useMissionStore.setState({ waypoints: overrides.waypoints ?? waypoints });
   return {
     waypoints: overrides.waypoints ?? waypoints,
-    defaultSpeed: 5,
     selectedWaypointId: null,
     setSelectedWaypoint: vi.fn(),
   };
@@ -115,7 +134,7 @@ describe("PlannerDock strip", () => {
 
   it("badges the issue count and checklist progress", () => {
     renderWithIntl(<PlannerDock p={makeP()} />);
-    expect(tab(/^Issues/).textContent).toBe("Issues2");
+    expect(tab(/^Issues/).textContent).toBe("Issues3");
     expect(tab(/^Checklist/).textContent).toBe(`Checklist0/${PREFLIGHT_ITEM_IDS.length}`);
   });
 });
@@ -152,7 +171,15 @@ describe("PlannerDock tabs", () => {
     const row = await screen.findByText("Waypoint 2 below terrain", undefined, { timeout: 2000 });
     fireEvent.click(row);
     expect(p.setSelectedWaypoint).toHaveBeenCalledWith("wp-2");
-    expect(screen.getByText("1 error, 1 warning")).toBeDefined();
+    expect(screen.getByText("2 errors, 1 warning")).toBeDefined();
+  });
+
+  it("a terrain-clash row selects the leg's start waypoint", async () => {
+    const p = makeP();
+    renderWithIntl(<PlannerDock p={p} />);
+    setDock("issues", true);
+    fireEvent.click(await screen.findByText("Leg 1 → 2 clips terrain by 12 m", undefined, { timeout: 2000 }));
+    expect(p.setSelectedWaypoint).toHaveBeenCalledWith("wp-1");
   });
 
   it("keeps checklist ticks across a collapse and re-expand", () => {

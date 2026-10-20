@@ -3113,15 +3113,46 @@
       }
     },
     "energy": {
-      "title": "ஆற்றல் மதிப்பீடு",
       "required": "தேவையான ஆற்றல்",
       "flightTime": "மதிப்பிட்ட பறப்பு நேரம்",
       "swaps": "பேட்டரி மாற்றங்கள்",
-      "estimate": "மதிப்பீடு",
-      "note": "இயல்புநிலை மின் நுகர்வு மற்றும் பெயரளவு பேட்டரி அடிப்படையிலான தோராயமான மதிப்பு. உங்கள் சொந்த மின் வளைவுடன் சரிபார்க்கவும்.",
       "packRange": "பேட்டரி {n}: WP {from}–{to}",
       "profileNote": "{pack} சுயவிவரம் ({capacity} Wh, {reserve} % இருப்பு) மற்றும் திட்டத்தின் பறப்பு நேரத்திலிருந்து மதிப்பீடு.",
-      "forecastNote": "காற்றும் வெப்பநிலையும் தள முன்னறிவிப்பிலிருந்து."
+      "forecastNote": "காற்றும் வெப்பநிலையும் தள முன்னறிவிப்பிலிருந்து.",
+      "battery": "பேட்டரி",
+      "editPacks": "பேட்டரிகளைத் திருத்து…",
+      "reserve": "இருப்பு",
+      "reserveHint": "தரையிறங்கும்போது மீதமிருக்கும் சார்ஜ்",
+      "packSection": "பேட்டரியும் பேக்குகளும்",
+      "perPack": "ஒவ்வொரு பேட்டரிக்கான ஆற்றலும் நேரமும்",
+      "resumeFrom": "WP {wp} இலிருந்து தொடர்",
+      "resumeTitle": "பேட்டரி {n} க்கான பணியைப் பதிவேற்று: புறப்பட்டு WP {wp} இலிருந்து தொடரும்",
+      "routeSection": "பேட்டரி வாரியாகப் பிரித்த பாதை",
+      "routeTitle": "பேட்டரி வாரியான பாதை",
+      "noFlight": "இன்னும் பறக்க எதுவும் இல்லை.",
+      "routeStart": "ஹோம்",
+      "routeEnd": "முடிவு",
+      "changeTick": "⚡{n} WP {wp}",
+      "changeTitle": "WP {wp} இல் பேட்டரி {n} பொறுப்பேற்கிறது",
+      "packs": {
+        "title": "பேட்டரி பேக்குகள்",
+        "add": "பேட்டரியைச் சேர்",
+        "done": "முடிந்தது",
+        "name": "பெயர்",
+        "capacity": "கொள்ளளவு",
+        "cruise": "பயணம்",
+        "hover": "மிதத்தல்",
+        "reserve": "இருப்பு",
+        "hint": "கொள்ளளவு என்பது முழு சார்ஜ் பேக்கின் பயன்படுத்தக்கூடிய ஆற்றல். பயணமும் மிதத்தலும் முன்னோக்கிப் பறக்கும்போதும், மிதக்கும்போது அல்லது ஏறும்போதும் உள்ள சராசரி மின் நுகர்வு. இருப்பு என்பது தரையிறங்கும்போது மீதமிருக்கும் சார்ஜ்.",
+        "newName": "பேட்டரி {n}",
+        "nameOf": "{name} இன் பெயர்",
+        "capacityOf": "{name} இன் கொள்ளளவு",
+        "cruiseOf": "{name} இன் பயண மின்திறன்",
+        "hoverOf": "{name} இன் மிதத்தல் மின்திறன்",
+        "reserveOf": "{name} இன் இருப்பு",
+        "delete": "{name} ஐ நீக்கு",
+        "deleteDefaultReason": "இயல்புநிலை பேட்டரியை நீக்க முடியாது"
+      }
     },
     "validation": {
       "advisories": "அறிவுறுத்தல்கள்"
@@ -3277,7 +3308,6 @@
     "perimeterAreaSet": "Boundary polygon set",
     "offline": {
       "waitingForMap": "Waiting for the map to load",
-      "title": "Download current view",
       "close": "Close",
       "scope": "Caches offline tiles covering the current map view.",
       "provider": "Tile provider",
@@ -3292,7 +3322,21 @@
       "downloadedFailed": ", {count} failed",
       "customUnusable": "Set a usable custom tile URL before downloading.",
       "cancel": "Cancel",
-      "download": "Download"
+      "download": "Download",
+      "areaTitle": "ஆஃப்லைன் பகுதியைப் பதிவிறக்கு",
+      "area": "பகுதி",
+      "areaView": "தற்போதைய காட்சி",
+      "areaPlan": "திட்டப் பகுதி",
+      "areaPlanEmpty": "திட்டம் காலியாக உள்ளது: முதலில் வழிப்புள்ளிகள், ஹோம், ஜியோஃபென்ஸ் அல்லது ரேலி புள்ளிகளைச் சேர்க்கவும்",
+      "areaPlanTitle": "வழிப்புள்ளிகள், திட்டமிட்ட ஹோம், ஜியோஃபென்ஸ், ரேலி புள்ளிகள், கூடுதலாக 500 m",
+      "scopePlan": "திட்டத்தின் வழிப்புள்ளிகள், திட்டமிட்ட ஹோம், ஜியோஃபென்ஸ், ரேலி புள்ளிகள் மற்றும் சுற்றியுள்ள 500 m ஐச் சேமிக்கிறது.",
+      "includeTerrain": "நில உயரத்தைச் சேர்",
+      "progressTiles": "டைல்கள் {done} / {total}",
+      "progressElevation": "உயரக் கலங்கள் {done} / {total}",
+      "elevationStarting": "உயரம்: தொடங்குகிறது…",
+      "elevationDone": "உயரம்: {count} கலங்கள் சேமிக்கப்பட்டன",
+      "elevationTooLarge": "நிலப் பதிவிறக்கத்திற்குப் பகுதி மிகப் பெரியது",
+      "elevationFailed": "உயரப் பதிவிறக்கம் தோல்வி: {reason}"
     },
     "commands": {
       "sendToVehicle": "Send to vehicle",
@@ -3355,7 +3399,9 @@
         "frameMslTitle": "Above mean sea level",
         "frameTerrain": "Terrain",
         "frameTerrainTitle": "Follows the terrain",
-        "terrainHint": "Altitude adjusts to the terrain elevation."
+        "terrainHint": "Altitude adjusts to the terrain elevation.",
+        "acceptRadiusAuto": "தானியங்கு (WP_RADIUS)",
+        "frameTerrainPx4": "PX4-இல் நிலப்பரப்பு சட்டகம் இல்லை. வடிவங்களில் நிலப்பரப்பைப் பின்தொடர் பயன்படுத்தவும்"
       },
       "waypoint": {
         "position": "Position",
@@ -3427,7 +3473,9 @@
         "copy": "Copy",
         "delete": "Delete",
         "collapseAction": "Hide action settings",
-        "expandAction": "Show action settings"
+        "expandAction": "Show action settings",
+        "resumeFromHere": "இங்கிருந்து தொடர்…",
+        "resumeFirstReason": "பணி இங்கிருந்தே தொடங்குகிறது, எனவே வழக்கம்போல் அனுப்பவும்"
       },
       "batch": {
         "hint": "Ctrl-click or Shift-click waypoints to edit several at once.",
@@ -3512,7 +3560,37 @@
         "directionCwShort": "CW",
         "directionCcwShort": "CCW"
       },
-      "label": "Inspector"
+      "label": "Inspector",
+      "vehicle": {
+        "title": "வாகனம்",
+        "autopilotLabel": "ஆட்டோபைலட்",
+        "typeLabel": "வகை",
+        "autopilot": {
+          "ardupilot": "ArduPilot",
+          "px4": "PX4"
+        },
+        "class": {
+          "copter": "மல்டிரோட்டர்",
+          "plane": "நிலை இறக்கை",
+          "vtol": "VTOL",
+          "rover": "ரோவர்"
+        },
+        "reports": "{drone} {profile} எனத் தெரிவிக்கிறது",
+        "use": "பயன்படுத்து"
+      },
+      "home": {
+        "title": "ஹோம் & ஏவுதல்",
+        "plannedHome": "திட்டமிட்ட ஹோம்",
+        "pickOnMap": "வரைபடத்தில் தேர்வுசெய்",
+        "pickCancel": "வரைபடத் தேர்வை ரத்துசெய்",
+        "groundMsl": "{alt} MSL",
+        "groundUnknown": "தரை தெரியவில்லை",
+        "notSet": "அமைக்கப்படவில்லை",
+        "useVehicleHome": "வாகனத்தின் ஹோமைப் பயன்படுத்து",
+        "transitAlt": "கடப்பு உயரம்",
+        "transitHint": "முதல் வேபாயிண்டிற்கு முன்பும் திரும்பும் வழியிலும் இந்த உயரத்திற்கு ஏறு.",
+        "off": "அணை"
+      }
     },
     "outline": {
       "label": "Plan outline",
@@ -3547,7 +3625,10 @@
       "rallyItem": "Rally {n}",
       "addPoi": "Add point of interest",
       "noPoi": "No points of interest",
-      "poiItem": "POI {n}"
+      "poiItem": "POI {n}",
+      "rowMenu": "வழிப்புள்ளி {n} செயல்கள்",
+      "resumeFromHere": "இங்கிருந்து தொடர்…",
+      "resumeFirstReason": "திட்டம் இங்கேயே தொடங்குகிறது; வழக்கம்போல் அனுப்பவும்"
     },
     "bar": {
       "plans": "Plans",
@@ -3786,7 +3867,21 @@
       "timeMin": "{value} நிமி",
       "timeSec": "{value} வினா",
       "pasteDroppedJumps": "ஒட்டிய தொகுப்புக்கு வெளியே உள்ள வழிப்புள்ளிகளுக்கான தாவல்கள் நீக்கப்பட்டன: {count}"
-    }
+    },
+    "map": {
+      "pickHomeBanner": "திட்டமிட்ட ஹோமை அமைக்க வரைபடத்தில் கிளிக் செய்யவும்",
+      "plannedHome": "திட்டமிட்ட ஹோம் · {ground}",
+      "groundMsl": "{m} மீ MSL",
+      "groundUnknown": "நில உயரம் தெரியவில்லை",
+      "vehicleHome": "வாகனத்தின் ஹோம்",
+      "useAsPlannedHome": "திட்டமிட்ட ஹோமாகப் பயன்படுத்து",
+      "transitAlt": "↑ {m} மீ",
+      "clipsTerrain": "நிலப்பரப்பை {m} மீ ஊடுருவுகிறது",
+      "lowOverTerrain": "நிலப்பரப்பிலிருந்து {m} மீ மட்டுமே உயரம்",
+      "insertWaypoint": "வேபாயிண்ட் செருகு",
+      "packStarts": "பேட்டரி பேக் {n} இங்கே தொடங்குகிறது"
+    },
+    "setFacadeLine": "வரைபடத்தில் முகப்புக் கோட்டை அமைக்கவும்"
   },
   "geofence": {
     "autoFence": "தானியங்கு வேலி",

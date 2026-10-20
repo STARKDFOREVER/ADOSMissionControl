@@ -28,6 +28,7 @@ import { MapFollower } from "@/components/map/MapFollower";
 import { MeasureToolManager } from "@/components/map/MeasureToolManager";
 import { FleetPluginSlot } from "@/components/plugins/FleetPluginSlot";
 import { MissionRouteOverlay } from "@/components/flight/MissionRouteOverlay";
+import { homeIcon } from "@/components/map/home-icon";
 
 const GcsMarker = dynamic(
   () => import("@/components/map/GcsMarker").then((m) => ({ default: m.GcsMarker })),
@@ -117,21 +118,6 @@ function droneIcon(heading: number, color = "#00ff41", size = 24): L.DivIcon {
   return icon;
 }
 
-
-/** SVG home marker icon. */
-function createHomeIcon(): L.DivIcon {
-  return L.divIcon({
-    className: "",
-    iconSize: [20, 20],
-    iconAnchor: [10, 10],
-    html: `<svg width="20" height="20" viewBox="0 0 20 20">
-      <circle cx="10" cy="10" r="8" fill="none" stroke="#3A82FF" stroke-width="1.5" stroke-dasharray="4 3" />
-      <circle cx="10" cy="10" r="3" fill="#3A82FF" fill-opacity="0.6" />
-    </svg>`,
-  });
-}
-
-const homeIcon = createHomeIcon();
 
 /** Tells Leaflet to recalculate its size when the container resizes. */
 function MapResizer() {

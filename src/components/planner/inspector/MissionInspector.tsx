@@ -1,8 +1,10 @@
 /**
  * @module MissionInspector
- * @description What the inspector shows with nothing selected: the defaults
- * new waypoints take, a template picker while the plan is empty, and one row
- * per plan element (pattern, geofence, rally, POI) that opens its editor.
+ * @description What the inspector shows with nothing selected, top to bottom:
+ * the vehicle the plan is written for, its planned home and transit altitude,
+ * the defaults new waypoints take, a template picker while the plan is empty,
+ * and one row per plan element (pattern, geofence, rally, POI) that opens its
+ * editor.
  * @license GPL-3.0-only
  */
 "use client";
@@ -15,7 +17,10 @@ import { usePlannerStore, type InspectorTarget } from "@/stores/planner-store";
 import { usePatternStore } from "@/stores/pattern-store";
 import { useGeofenceStore } from "@/stores/geofence-store";
 import { usePlanPoiStore } from "@/stores/plan-poi-store";
+import { usePlanVehicleProfile } from "@/hooks/use-plan-profile";
 import { DefaultsSection } from "../DefaultsSection";
+import { VehicleSection } from "./VehicleSection";
+import { HomeLaunchSection } from "./HomeLaunchSection";
 import { TemplatesPanel } from "../TemplatesPanel";
 import { VALID_PATTERN_TYPES } from "../pattern-editor-constants";
 import type { Planner } from "@/app/plan/use-planner";
@@ -32,6 +37,7 @@ export function MissionInspector({ p, showGeofence, showRally }: MissionInspecto
   const activePattern = usePatternStore((s) => s.activePatternType);
   const geofenceEnabled = useGeofenceStore((s) => s.enabled);
   const poiCount = usePlanPoiStore((s) => s.points.length);
+  const vehicleProfile = usePlanVehicleProfile(p.selectedDroneId);
   const tTypes = useTranslations("planner.rail.patternTypes");
   const patternLabel = activePattern && VALID_PATTERN_TYPES.has(activePattern)
     ? tTypes(activePattern as Parameters<typeof tTypes>[0])
@@ -40,9 +46,13 @@ export function MissionInspector({ p, showGeofence, showRally }: MissionInspecto
 
   return (
     <>
+      <VehicleSection droneId={p.selectedDroneId || null} />
+      <HomeLaunchSection />
+
       <PropertySection title={t("defaults")} collapsible persistKey="inspector.mission.defaults">
         <DefaultsSection defaultAlt={p.defaultAlt} defaultSpeed={p.defaultSpeed}
           defaultAcceptRadius={p.defaultAcceptRadius} defaultFrame={p.defaultFrame}
+          vehicleProfile={vehicleProfile}
           onAltChange={(v) => p.setDefaults({ defaultAlt: v })}
           onSpeedChange={(v) => p.setDefaults({ defaultSpeed: v })}
           onRadiusChange={(v) => p.setDefaults({ defaultAcceptRadius: v })}

@@ -3113,15 +3113,46 @@
       }
     },
     "energy": {
-      "title": "能量估算",
       "required": "所需能量",
       "flightTime": "预计飞行时间",
       "swaps": "换电次数",
-      "estimate": "估算值",
-      "note": "基于默认功耗和标称电池的粗略估算。请对照您自己的功率曲线核实。",
       "packRange": "电池 {n}：WP {from}–{to}",
       "profileNote": "根据 {pack} 配置（{capacity} Wh，{reserve} % 储备）和计划飞行时间估算。",
-      "forecastNote": "风和温度来自场地预报。"
+      "forecastNote": "风和温度来自场地预报。",
+      "battery": "电池",
+      "editPacks": "编辑电池…",
+      "reserve": "预留",
+      "reserveHint": "着陆时保留的电量",
+      "packSection": "电池与电池包",
+      "perPack": "每块电池的能量和时间",
+      "resumeFrom": "从 WP {wp} 继续",
+      "resumeTitle": "上传电池 {n} 的任务：起飞后从 WP {wp} 继续",
+      "routeSection": "按电池划分的航线",
+      "routeTitle": "按电池的航线",
+      "noFlight": "还没有可飞行的内容。",
+      "routeStart": "起点",
+      "routeEnd": "终点",
+      "changeTick": "⚡{n} WP {wp}",
+      "changeTitle": "在 WP {wp} 由电池 {n} 接替",
+      "packs": {
+        "title": "电池包",
+        "add": "添加电池",
+        "done": "完成",
+        "name": "名称",
+        "capacity": "容量",
+        "cruise": "巡航",
+        "hover": "悬停",
+        "reserve": "预留",
+        "hint": "容量是满电电池的可用能量。巡航和悬停是前飞以及悬停或爬升时的平均功耗。预留是着陆时保留的电量。",
+        "newName": "电池 {n}",
+        "nameOf": "{name} 的名称",
+        "capacityOf": "{name} 的容量",
+        "cruiseOf": "{name} 的巡航功率",
+        "hoverOf": "{name} 的悬停功率",
+        "reserveOf": "{name} 的预留",
+        "delete": "删除 {name}",
+        "deleteDefaultReason": "默认电池无法删除"
+      }
     },
     "validation": {
       "advisories": "注意事项"
@@ -3277,7 +3308,6 @@
     "perimeterAreaSet": "Boundary polygon set",
     "offline": {
       "waitingForMap": "Waiting for the map to load",
-      "title": "Download current view",
       "close": "Close",
       "scope": "Caches offline tiles covering the current map view.",
       "provider": "Tile provider",
@@ -3292,7 +3322,21 @@
       "downloadedFailed": ", {count} failed",
       "customUnusable": "Set a usable custom tile URL before downloading.",
       "cancel": "Cancel",
-      "download": "Download"
+      "download": "Download",
+      "areaTitle": "下载离线区域",
+      "area": "区域",
+      "areaView": "当前视图",
+      "areaPlan": "计划区域",
+      "areaPlanEmpty": "计划为空：请先添加航点、起降点、地理围栏或集结点",
+      "areaPlanTitle": "航点、计划起降点、地理围栏和集结点，外加 500 m",
+      "scopePlan": "缓存计划的航点、计划起降点、地理围栏和集结点，以及周围 500 m。",
+      "includeTerrain": "包含地形高程",
+      "progressTiles": "瓦片 {done} / {total}",
+      "progressElevation": "高程单元 {done} / {total}",
+      "elevationStarting": "高程：正在开始…",
+      "elevationDone": "高程：已存储 {count} 个单元",
+      "elevationTooLarge": "区域太大，无法下载地形",
+      "elevationFailed": "高程下载失败：{reason}"
     },
     "commands": {
       "sendToVehicle": "Send to vehicle",
@@ -3355,7 +3399,9 @@
         "frameMslTitle": "Above mean sea level",
         "frameTerrain": "Terrain",
         "frameTerrainTitle": "Follows the terrain",
-        "terrainHint": "Altitude adjusts to the terrain elevation."
+        "terrainHint": "Altitude adjusts to the terrain elevation.",
+        "acceptRadiusAuto": "自动 (WP_RADIUS)",
+        "frameTerrainPx4": "PX4 没有地形坐标系。请在航线模式中使用“跟随地形”"
       },
       "waypoint": {
         "position": "Position",
@@ -3427,7 +3473,9 @@
         "copy": "Copy",
         "delete": "Delete",
         "collapseAction": "Hide action settings",
-        "expandAction": "Show action settings"
+        "expandAction": "Show action settings",
+        "resumeFromHere": "从此处继续…",
+        "resumeFirstReason": "任务从这里开始，请正常发送"
       },
       "batch": {
         "hint": "Ctrl-click or Shift-click waypoints to edit several at once.",
@@ -3512,7 +3560,37 @@
         "directionCwShort": "CW",
         "directionCcwShort": "CCW"
       },
-      "label": "Inspector"
+      "label": "Inspector",
+      "vehicle": {
+        "title": "飞行器",
+        "autopilotLabel": "自动驾驶仪",
+        "typeLabel": "类型",
+        "autopilot": {
+          "ardupilot": "ArduPilot",
+          "px4": "PX4"
+        },
+        "class": {
+          "copter": "多旋翼",
+          "plane": "固定翼",
+          "vtol": "垂直起降",
+          "rover": "车辆"
+        },
+        "reports": "{drone} 报告为 {profile}",
+        "use": "使用"
+      },
+      "home": {
+        "title": "Home 与起飞",
+        "plannedHome": "计划 Home 点",
+        "pickOnMap": "在地图上选取",
+        "pickCancel": "取消地图选取",
+        "groundMsl": "海拔 {alt}",
+        "groundUnknown": "地面高度未知",
+        "notSet": "未设置",
+        "useVehicleHome": "使用飞行器 Home 点",
+        "transitAlt": "转场高度",
+        "transitHint": "在第一个航点之前及返航途中爬升到此高度。",
+        "off": "关闭"
+      }
     },
     "outline": {
       "label": "Plan outline",
@@ -3547,7 +3625,10 @@
       "rallyItem": "Rally {n}",
       "addPoi": "Add point of interest",
       "noPoi": "No points of interest",
-      "poiItem": "POI {n}"
+      "poiItem": "POI {n}",
+      "rowMenu": "航点 {n} 操作",
+      "resumeFromHere": "从此处继续…",
+      "resumeFirstReason": "计划从这里开始；请正常发送"
     },
     "bar": {
       "plans": "Plans",
@@ -3786,7 +3867,21 @@
       "timeMin": "{value} 分钟",
       "timeSec": "{value} 秒",
       "pasteDroppedJumps": "已删除 {count} 个跳转到粘贴范围外航点的跳转"
-    }
+    },
+    "map": {
+      "pickHomeBanner": "点击地图设置计划起飞点",
+      "plannedHome": "计划起飞点 · {ground}",
+      "groundMsl": "海拔 {m} 米",
+      "groundUnknown": "地面高程未知",
+      "vehicleHome": "飞行器起飞点",
+      "useAsPlannedHome": "用作计划起飞点",
+      "transitAlt": "↑ {m} 米",
+      "clipsTerrain": "穿入地形 {m} 米",
+      "lowOverTerrain": "仅高出地形 {m} 米",
+      "insertWaypoint": "插入航点",
+      "packStarts": "电池 {n} 从这里开始"
+    },
+    "setFacadeLine": "在地图上设置立面线"
   },
   "geofence": {
     "autoFence": "自动围栏",

@@ -20,6 +20,9 @@ export interface SegmentedOption<T extends string> {
   /** Show only the icon; the label stays as the segment's accessible name.
    * Give such a segment a `title` so pointer users see the full text too. */
   iconOnly?: boolean;
+  /** Unavailable: the segment stays visible and focusable but cannot be
+   * picked, and the arrow keys pass over it. Put the reason in `title`. */
+  disabled?: boolean;
 }
 
 interface SegmentedControlProps<T extends string> {
@@ -57,6 +60,16 @@ export function SegmentedControl<T extends string>({
     if (next.value !== value) onChange(next.value);
   };
 
+  /** The next enabled segment from `from` stepping by `step`, else `from`. */
+  const nextEnabled = (from: number, step: 1 | -1) => {
+    const count = options.length;
+    for (let k = 1; k <= count; k++) {
+      const i = (((from + step * k) % count) + count) % count;
+      if (!options[i].disabled) return i;
+    }
+    return from;
+  };
+
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     const count = options.length;
     if (count === 0) return;
@@ -65,20 +78,20 @@ export function SegmentedControl<T extends string>({
       case "ArrowRight":
       case "ArrowDown":
         e.preventDefault();
-        move((from + 1) % count);
+        move(nextEnabled(from, 1));
         break;
       case "ArrowLeft":
       case "ArrowUp":
         e.preventDefault();
-        move((from - 1 + count) % count);
+        move(nextEnabled(from, -1));
         break;
       case "Home":
         e.preventDefault();
-        move(0);
+        move(nextEnabled(count - 1, 1));
         break;
       case "End":
         e.preventDefault();
-        move(count - 1);
+        move(nextEnabled(0, -1));
         break;
     }
   };
@@ -101,13 +114,15 @@ export function SegmentedControl<T extends string>({
             type="button"
             role="radio"
             aria-checked={selected}
+            aria-disabled={o.disabled || undefined}
             tabIndex={i === tabbableIndex ? 0 : -1}
             title={o.title}
             onClick={() => {
-              if (!selected) onChange(o.value);
+              if (!selected && !o.disabled) onChange(o.value);
             }}
             className={cn(
-              "inline-flex items-center justify-center gap-1 rounded whitespace-nowrap cursor-pointer transition-colors focus-ring",
+              "inline-flex items-center justify-center gap-1 rounded whitespace-nowrap transition-colors focus-ring",
+              o.disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer",
               // A stretched segment is sized by the container, so it keeps
               // almost no padding and gives the width to its text.
               stretch ? "flex-1 min-w-0 px-0.5" : "px-2",
@@ -115,7 +130,7 @@ export function SegmentedControl<T extends string>({
               segmentClassName ?? (size === "sm" ? "text-[11px] font-medium" : "text-xs font-medium"),
               selected
                 ? "bg-accent-primary text-accent-foreground"
-                : "border border-border-default text-text-secondary hover:text-text-primary",
+                : cn("border border-border-default text-text-secondary", !o.disabled && "hover:text-text-primary"),
             )}
           >
             {o.icon}

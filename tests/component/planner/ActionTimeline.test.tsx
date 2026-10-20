@@ -101,3 +101,20 @@ describe("DO_JUMP repeat 0", () => {
     expect(screen.queryAllByTestId("jump-arc")).toHaveLength(1);
   });
 });
+
+describe("camera action rows", () => {
+  it.each([
+    ["PHOTO_INTERVAL", "lucide-images", "every 2 s"],
+    ["PHOTO_STOP", "lucide-camera-off", "stop photos"],
+    ["VIDEO_START", "lucide-video", "start video"],
+    ["VIDEO_STOP", "lucide-video-off", "stop video"],
+  ] as const)("%s shows its own icon, not the generic camera", (command, iconClass, summary) => {
+    const action: CommandMissionAction = { id: "c", command, param2: 2 };
+    const { container } = renderWithIntl(
+      <ActionRow action={action} targets={[]} expanded={false} onUpdate={noop} {...rowHandlers} />,
+    );
+    expect(container.querySelector(`svg.${iconClass}`)).not.toBeNull();
+    expect(container.querySelector("svg.lucide-camera")).toBeNull();
+    expect(screen.getByText(summary)).toBeTruthy();
+  });
+});

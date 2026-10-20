@@ -118,10 +118,14 @@ export function legTerrainIssues(input: LegTerrainInput): {
     if (segments.length === 0) continue;
     const worst = segments.reduce((w, s) => (s.minAgl < w.minAgl ? s : w));
     const at = samples.find((s) => s.agl === worst.minAgl) ?? samples[0];
+    const along = Math.round(at.distance);
+    const detail = at.agl < 0
+      ? `clips terrain by ${Math.round(-at.agl)}m`
+      : `only ${Math.round(at.agl)}m above terrain`;
     errors.push({
       severity: "blocking",
       code: "LEG_TERRAIN_CLEARANCE",
-      message: `WP${a + 1} to WP${b + 1}: only ${Math.round(at.agl)}m above terrain ${Math.round(at.distance)}m along the leg (min: ${minClearance}m)`,
+      message: `WP${a + 1} to WP${b + 1}: ${detail} ${along}m along the leg (min: ${minClearance}m)`,
       waypointIndex: a,
       waypointId: from.id,
       leg: { toWaypointId: to.id, clearanceM: at.agl, alongM: at.distance },

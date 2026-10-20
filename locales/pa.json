@@ -3113,15 +3113,46 @@
       }
     },
     "energy": {
-      "title": "ਊਰਜਾ ਅਨੁਮਾਨ",
       "required": "ਲੋੜੀਂਦੀ ਊਰਜਾ",
       "flightTime": "ਅਨੁਮਾਨਿਤ ਉਡਾਣ ਸਮਾਂ",
       "swaps": "ਬੈਟਰੀ ਬਦਲੀਆਂ",
-      "estimate": "ਅਨੁਮਾਨ",
-      "note": "ਮੂਲ ਪਾਵਰ ਖਪਤ ਅਤੇ ਇੱਕ ਆਮ ਪੈਕ ਤੋਂ ਮੋਟਾ ਅੰਦਾਜ਼ਾ। ਆਪਣੇ ਖੁਦ ਦੇ ਪਾਵਰ ਕਰਵ ਨਾਲ ਜਾਂਚ ਕਰੋ।",
       "packRange": "ਬੈਟਰੀ {n}: WP {from}–{to}",
       "profileNote": "{pack} ਪ੍ਰੋਫਾਈਲ ({capacity} Wh, {reserve} % ਰਿਜ਼ਰਵ) ਅਤੇ ਯੋਜਨਾ ਦੇ ਉਡਾਣ ਸਮੇਂ ਤੋਂ ਅੰਦਾਜ਼ਾ।",
-      "forecastNote": "ਹਵਾ ਅਤੇ ਤਾਪਮਾਨ ਸਾਈਟ ਦੀ ਭਵਿੱਖਬਾਣੀ ਤੋਂ।"
+      "forecastNote": "ਹਵਾ ਅਤੇ ਤਾਪਮਾਨ ਸਾਈਟ ਦੀ ਭਵਿੱਖਬਾਣੀ ਤੋਂ।",
+      "battery": "ਬੈਟਰੀ",
+      "editPacks": "ਬੈਟਰੀਆਂ ਸੋਧੋ…",
+      "reserve": "ਰਿਜ਼ਰਵ",
+      "reserveHint": "ਲੈਂਡਿੰਗ ਵੇਲੇ ਬਚਿਆ ਚਾਰਜ",
+      "packSection": "ਬੈਟਰੀ ਅਤੇ ਪੈਕ",
+      "perPack": "ਹਰ ਬੈਟਰੀ ਦੀ ਊਰਜਾ ਅਤੇ ਸਮਾਂ",
+      "resumeFrom": "WP {wp} ਤੋਂ ਮੁੜ ਸ਼ੁਰੂ ਕਰੋ",
+      "resumeTitle": "ਬੈਟਰੀ {n} ਲਈ ਮਿਸ਼ਨ ਅੱਪਲੋਡ ਕਰੋ ਜੋ ਟੇਕਆਫ਼ ਕਰਕੇ WP {wp} ਤੋਂ ਅੱਗੇ ਚੱਲਦਾ ਹੈ",
+      "routeSection": "ਬੈਟਰੀ ਮੁਤਾਬਕ ਵੰਡਿਆ ਰੂਟ",
+      "routeTitle": "ਬੈਟਰੀ ਮੁਤਾਬਕ ਰੂਟ",
+      "noFlight": "ਅਜੇ ਉਡਾਉਣ ਲਈ ਕੁਝ ਨਹੀਂ।",
+      "routeStart": "ਹੋਮ",
+      "routeEnd": "ਅੰਤ",
+      "changeTick": "⚡{n} WP {wp}",
+      "changeTitle": "WP {wp} 'ਤੇ ਬੈਟਰੀ {n} ਸੰਭਾਲਦੀ ਹੈ",
+      "packs": {
+        "title": "ਬੈਟਰੀ ਪੈਕ",
+        "add": "ਬੈਟਰੀ ਜੋੜੋ",
+        "done": "ਹੋ ਗਿਆ",
+        "name": "ਨਾਮ",
+        "capacity": "ਸਮਰੱਥਾ",
+        "cruise": "ਕਰੂਜ਼",
+        "hover": "ਹੋਵਰ",
+        "reserve": "ਰਿਜ਼ਰਵ",
+        "hint": "ਸਮਰੱਥਾ ਪੂਰੇ ਚਾਰਜ ਪੈਕ ਦੀ ਵਰਤਣਯੋਗ ਊਰਜਾ ਹੈ। ਕਰੂਜ਼ ਅਤੇ ਹੋਵਰ ਅੱਗੇ ਉੱਡਦੇ ਸਮੇਂ ਅਤੇ ਹੋਵਰ ਜਾਂ ਚੜ੍ਹਾਈ ਵੇਲੇ ਔਸਤ ਬਿਜਲੀ ਖਪਤ ਹਨ। ਰਿਜ਼ਰਵ ਲੈਂਡਿੰਗ ਵੇਲੇ ਬਚਿਆ ਚਾਰਜ ਹੈ।",
+        "newName": "ਬੈਟਰੀ {n}",
+        "nameOf": "{name} ਦਾ ਨਾਮ",
+        "capacityOf": "{name} ਦੀ ਸਮਰੱਥਾ",
+        "cruiseOf": "{name} ਦੀ ਕਰੂਜ਼ ਪਾਵਰ",
+        "hoverOf": "{name} ਦੀ ਹੋਵਰ ਪਾਵਰ",
+        "reserveOf": "{name} ਦਾ ਰਿਜ਼ਰਵ",
+        "delete": "{name} ਮਿਟਾਓ",
+        "deleteDefaultReason": "ਡਿਫ਼ੌਲਟ ਬੈਟਰੀ ਮਿਟਾਈ ਨਹੀਂ ਜਾ ਸਕਦੀ"
+      }
     },
     "validation": {
       "advisories": "ਸਲਾਹਾਂ"
@@ -3277,7 +3308,6 @@
     "perimeterAreaSet": "Boundary polygon set",
     "offline": {
       "waitingForMap": "Waiting for the map to load",
-      "title": "Download current view",
       "close": "Close",
       "scope": "Caches offline tiles covering the current map view.",
       "provider": "Tile provider",
@@ -3292,7 +3322,21 @@
       "downloadedFailed": ", {count} failed",
       "customUnusable": "Set a usable custom tile URL before downloading.",
       "cancel": "Cancel",
-      "download": "Download"
+      "download": "Download",
+      "areaTitle": "ਔਫ਼ਲਾਈਨ ਖੇਤਰ ਡਾਊਨਲੋਡ ਕਰੋ",
+      "area": "ਖੇਤਰ",
+      "areaView": "ਮੌਜੂਦਾ ਦ੍ਰਿਸ਼",
+      "areaPlan": "ਯੋਜਨਾ ਖੇਤਰ",
+      "areaPlanEmpty": "ਯੋਜਨਾ ਖਾਲੀ ਹੈ: ਪਹਿਲਾਂ ਵੇਅਪੁਆਇੰਟ, ਹੋਮ, ਜੀਓਫ਼ੈਂਸ ਜਾਂ ਰੈਲੀ ਪੁਆਇੰਟ ਜੋੜੋ",
+      "areaPlanTitle": "ਵੇਅਪੁਆਇੰਟ, ਯੋਜਨਾਬੱਧ ਹੋਮ, ਜੀਓਫ਼ੈਂਸ ਅਤੇ ਰੈਲੀ ਪੁਆਇੰਟ, ਨਾਲ 500 m",
+      "scopePlan": "ਯੋਜਨਾ ਦੇ ਵੇਅਪੁਆਇੰਟ, ਯੋਜਨਾਬੱਧ ਹੋਮ, ਜੀਓਫ਼ੈਂਸ ਅਤੇ ਰੈਲੀ ਪੁਆਇੰਟ, ਅਤੇ ਆਲੇ-ਦੁਆਲੇ 500 m ਕੈਸ਼ ਕਰਦਾ ਹੈ।",
+      "includeTerrain": "ਭੂਮੀ ਦੀ ਉਚਾਈ ਸ਼ਾਮਲ ਕਰੋ",
+      "progressTiles": "ਟਾਈਲਾਂ {done} / {total}",
+      "progressElevation": "ਉਚਾਈ ਸੈੱਲ {done} / {total}",
+      "elevationStarting": "ਉਚਾਈ: ਸ਼ੁਰੂ ਹੋ ਰਿਹਾ ਹੈ…",
+      "elevationDone": "ਉਚਾਈ: {count} ਸੈੱਲ ਸੰਭਾਲੇ",
+      "elevationTooLarge": "ਭੂਮੀ ਡਾਊਨਲੋਡ ਲਈ ਖੇਤਰ ਬਹੁਤ ਵੱਡਾ ਹੈ",
+      "elevationFailed": "ਉਚਾਈ ਡਾਊਨਲੋਡ ਅਸਫਲ: {reason}"
     },
     "commands": {
       "sendToVehicle": "Send to vehicle",
@@ -3355,7 +3399,9 @@
         "frameMslTitle": "Above mean sea level",
         "frameTerrain": "Terrain",
         "frameTerrainTitle": "Follows the terrain",
-        "terrainHint": "Altitude adjusts to the terrain elevation."
+        "terrainHint": "Altitude adjusts to the terrain elevation.",
+        "acceptRadiusAuto": "ਆਟੋ (WP_RADIUS)",
+        "frameTerrainPx4": "PX4 ਵਿੱਚ ਭੂਮੀ ਫ੍ਰੇਮ ਨਹੀਂ ਹੈ। ਪੈਟਰਨਾਂ ਵਿੱਚ ਭੂਮੀ ਦਾ ਪਾਲਣ ਕਰੋ ਵਰਤੋ"
       },
       "waypoint": {
         "position": "Position",
@@ -3427,7 +3473,9 @@
         "copy": "Copy",
         "delete": "Delete",
         "collapseAction": "Hide action settings",
-        "expandAction": "Show action settings"
+        "expandAction": "Show action settings",
+        "resumeFromHere": "ਇੱਥੋਂ ਮੁੜ ਸ਼ੁਰੂ ਕਰੋ…",
+        "resumeFirstReason": "ਮਿਸ਼ਨ ਇੱਥੋਂ ਸ਼ੁਰੂ ਹੁੰਦਾ ਹੈ, ਇਸ ਲਈ ਆਮ ਵਾਂਗ ਭੇਜੋ"
       },
       "batch": {
         "hint": "Ctrl-click or Shift-click waypoints to edit several at once.",
@@ -3512,7 +3560,37 @@
         "directionCwShort": "CW",
         "directionCcwShort": "CCW"
       },
-      "label": "Inspector"
+      "label": "Inspector",
+      "vehicle": {
+        "title": "ਵਾਹਨ",
+        "autopilotLabel": "ਆਟੋਪਾਇਲਟ",
+        "typeLabel": "ਕਿਸਮ",
+        "autopilot": {
+          "ardupilot": "ArduPilot",
+          "px4": "PX4"
+        },
+        "class": {
+          "copter": "ਮਲਟੀਰੋਟਰ",
+          "plane": "ਫਿਕਸਡ ਵਿੰਗ",
+          "vtol": "VTOL",
+          "rover": "ਰੋਵਰ"
+        },
+        "reports": "{drone} {profile} ਦੱਸਦਾ ਹੈ",
+        "use": "ਵਰਤੋ"
+      },
+      "home": {
+        "title": "ਹੋਮ ਅਤੇ ਲਾਂਚ",
+        "plannedHome": "ਯੋਜਨਾਬੱਧ ਹੋਮ",
+        "pickOnMap": "ਨਕਸ਼ੇ 'ਤੇ ਚੁਣੋ",
+        "pickCancel": "ਨਕਸ਼ੇ 'ਤੇ ਚੋਣ ਰੱਦ ਕਰੋ",
+        "groundMsl": "{alt} MSL",
+        "groundUnknown": "ਜ਼ਮੀਨ ਅਣਜਾਣ",
+        "notSet": "ਸੈੱਟ ਨਹੀਂ",
+        "useVehicleHome": "ਵਾਹਨ ਦਾ ਹੋਮ ਵਰਤੋ",
+        "transitAlt": "ਟ੍ਰਾਂਜ਼ਿਟ ਉਚਾਈ",
+        "transitHint": "ਪਹਿਲੇ ਵੇਅਪੁਆਇੰਟ ਤੋਂ ਪਹਿਲਾਂ ਅਤੇ ਵਾਪਸੀ ਵੇਲੇ ਇਸ ਉਚਾਈ ਤੱਕ ਚੜ੍ਹੋ।",
+        "off": "ਬੰਦ"
+      }
     },
     "outline": {
       "label": "Plan outline",
@@ -3547,7 +3625,10 @@
       "rallyItem": "Rally {n}",
       "addPoi": "Add point of interest",
       "noPoi": "No points of interest",
-      "poiItem": "POI {n}"
+      "poiItem": "POI {n}",
+      "rowMenu": "ਵੇਅਪੁਆਇੰਟ {n} ਦੀਆਂ ਕਾਰਵਾਈਆਂ",
+      "resumeFromHere": "ਇੱਥੋਂ ਮੁੜ ਸ਼ੁਰੂ ਕਰੋ…",
+      "resumeFirstReason": "ਯੋਜਨਾ ਇੱਥੋਂ ਹੀ ਸ਼ੁਰੂ ਹੁੰਦੀ ਹੈ; ਇਸਨੂੰ ਆਮ ਵਾਂਗ ਭੇਜੋ"
     },
     "bar": {
       "plans": "Plans",
@@ -3786,7 +3867,21 @@
       "timeMin": "{value} ਮਿੰਟ",
       "timeSec": "{value} ਸਕਿੰਟ",
       "pasteDroppedJumps": "ਪੇਸਟ ਕੀਤੇ ਸਮੂਹ ਤੋਂ ਬਾਹਰਲੇ ਵੇਪੁਆਇੰਟਾਂ ਵੱਲ ਜਾਣ ਵਾਲੇ ਜੰਪ ਹਟਾਏ: {count}"
-    }
+    },
+    "map": {
+      "pickHomeBanner": "ਯੋਜਨਾਬੱਧ ਹੋਮ ਸੈੱਟ ਕਰਨ ਲਈ ਨਕਸ਼ੇ 'ਤੇ ਕਲਿੱਕ ਕਰੋ",
+      "plannedHome": "ਯੋਜਨਾਬੱਧ ਹੋਮ · {ground}",
+      "groundMsl": "{m} ਮੀ MSL",
+      "groundUnknown": "ਜ਼ਮੀਨ ਦੀ ਉਚਾਈ ਅਣਜਾਣ",
+      "vehicleHome": "ਵਾਹਨ ਦਾ ਹੋਮ",
+      "useAsPlannedHome": "ਯੋਜਨਾਬੱਧ ਹੋਮ ਵਜੋਂ ਵਰਤੋ",
+      "transitAlt": "↑ {m} ਮੀ",
+      "clipsTerrain": "ਭੂਮੀ ਨੂੰ {m} ਮੀ ਕੱਟਦਾ ਹੈ",
+      "lowOverTerrain": "ਭੂਮੀ ਤੋਂ ਸਿਰਫ਼ {m} ਮੀ ਉੱਪਰ",
+      "insertWaypoint": "ਵੇਅਪੁਆਇੰਟ ਜੋੜੋ",
+      "packStarts": "ਬੈਟਰੀ ਪੈਕ {n} ਇੱਥੋਂ ਸ਼ੁਰੂ ਹੁੰਦਾ ਹੈ"
+    },
+    "setFacadeLine": "ਨਕਸ਼ੇ 'ਤੇ ਫ਼ਸਾਡ ਰੇਖਾ ਤੈਅ ਕਰੋ"
   },
   "geofence": {
     "autoFence": "ਆਟੋ-ਵਾੜ",

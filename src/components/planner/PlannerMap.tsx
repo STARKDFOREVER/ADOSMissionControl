@@ -2,14 +2,16 @@
  * @module PlannerMap
  * @description Leaflet-based mission planner map component. Renders waypoint markers
  * (draggable in select mode), path polyline, segment distance/bearing labels,
- * drawing overlays (polygon, circle, measure), and handles click/right-click/drag events.
- * Uses dark CARTO tiles.
+ * drawing overlays (polygon, circle, measure), the planned home, the implicit
+ * home/transit/RTL legs, leg insert handles, terrain clashes and battery change
+ * badges (layers under `./map`), and handles click/right-click/drag events.
  * @license GPL-3.0-only
  */
 "use client";
 
 import { memo, useEffect, useMemo, useState, useRef } from "react";
 import dynamic from "next/dynamic";
+import { useTranslations } from "next-intl";
 import type { Waypoint, PlannerTool } from "@/lib/types";
 import type { RallyPoint } from "@/stores/rally-store";
 import type { DrawnPolygon, DrawnCircle, DrawnPolyline } from "@/lib/drawing/types";
@@ -35,30 +37,10 @@ import { generateSplinePath } from "@/lib/spline-interpolation";
 import { withPlannerHistory } from "@/lib/planner-history";
 import { JumpArrowOverlay } from "./JumpArrowOverlay";
 import { FleetPluginSlot } from "@/components/plugins/FleetPluginSlot";
-import { useMapEvents } from "react-leaflet";
-import { CURSOR_MOVE_EVENT } from "@/lib/planner/cursor-coord";
 import { haversineDistance } from "@/lib/geo/distance";
-
-/**
- * In-map tracker that reports the cursor's map coordinate to the bottom-right
- * coordinate widget. Lives inside the MapContainer so `useMapEvents` has the
- * leaflet context, renders nothing, and dispatches a lightweight DOM CustomEvent
- * (a null payload on mouse-out) rather than routing a per-move value through a
- * store.
- */
-function CursorTracker() {
-  useMapEvents({
-    mousemove(e) {
-      window.dispatchEvent(
-        new CustomEvent(CURSOR_MOVE_EVENT, { detail: { lat: e.latlng.lat, lon: e.latlng.lng } }),
-      );
-    },
-    mouseout() {
-      window.dispatchEvent(new CustomEvent(CURSOR_MOVE_EVENT, { detail: null }));
-    },
-  });
-  return null;
-}
+import { CursorTracker } from "./map/CursorTracker";
+import { pickPlannedHome, useHomePickEscape } from "./map/planned-home";
+import { LegInsertHandles } from "./map/LegInsertHandles";
 
 const MapContainer = dynamic(() => import("react-leaflet").then((m) => m.MapContainer), { ssr: false });
 const TileLayerSwitcher = dynamic(() => import("@/components/map/TileLayerSwitcher").then((m) => ({ default: m.TileLayerSwitcher })), { ssr: false });
@@ -74,6 +56,10 @@ const GuidanceSettingsMenu = dynamic(() => import("@/components/shared/GuidanceS
 const EditableGeofenceOverlay = dynamic(() => import("@/components/map/EditableGeofenceOverlay").then((m) => ({ default: m.EditableGeofenceOverlay })), { ssr: false });
 const PlanPoiLayer = memo(dynamic(() => import("@/components/planner/PlanPoiLayer").then((m) => ({ default: m.PlanPoiLayer })), { ssr: false }));
 const GeofenceZonesOverlay = dynamic(() => import("@/components/map/GeofenceZonesOverlay").then((m) => ({ default: m.GeofenceZonesOverlay })), { ssr: false });
+const PlannedHomeLayer = dynamic(() => import("./map/PlannedHomeLayer").then((m) => ({ default: m.PlannedHomeLayer })), { ssr: false });
+const ImplicitLegsLayer = memo(dynamic(() => import("./map/ImplicitLegsLayer").then((m) => ({ default: m.ImplicitLegsLayer })), { ssr: false }));
+const TerrainClashLayer = memo(dynamic(() => import("./map/TerrainClashLayer").then((m) => ({ default: m.TerrainClashLayer })), { ssr: false }));
+const BatteryChangeBadges = memo(dynamic(() => import("./map/BatteryChangeBadges").then((m) => ({ default: m.BatteryChangeBadges })), { ssr: false }));
 
 
 /** Static layer styles, hoisted so react-leaflet never restyles on re-render. */
@@ -114,6 +100,9 @@ export function PlannerMap({
   const drawnCircsForSnap = useDrawingStore((s) => s.circles);
   const unitSystem = useSettingsStore((s) => s.units);
   const setActiveTool = usePlannerStore((s) => s.setActiveTool);
+  const homePickArmed = usePlannerStore((s) => s.homePickArmed);
+  const t = useTranslations("planner.map");
+  useHomePickEscape();
   // Authoritative interaction mode drives the single in-map hint banner.
   const mode = usePlannerStore((s) => s.mode);
   const fitRequestTs = usePlannerStore((s) => s.fitRequestTs);
@@ -282,6 +271,8 @@ export function PlannerMap({
     if (!mapInstance) return;
     const clickHandler = (e: L.LeafletMouseEvent) => {
       if (drawingManagerRef.current?.getMode() !== null) return;
+      // An armed "pick home on map" takes the click before any tool does.
+      if (usePlannerStore.getState().homePickArmed) { pickPlannedHome(e.latlng.lat, e.latlng.lng); return; }
       // Forward clicks for placement tools, the explicit datum tool, and select mode.
       if (PLACEMENT_TOOLS.includes(activeTool) || activeTool === "datum" || activeTool === "select") {
         onMapClick(e.latlng.lat, e.latlng.lng);
@@ -329,7 +320,9 @@ export function PlannerMap({
     return () => { mapInstance.off("click", clickHandler); mapInstance.off("contextmenu", contextHandler); mapInstance.off("zoomend", zoomHandler); mapInstance.off("moveend", moveHandler); };
   }, [mapInstance, activeTool, onMapClick, onMapRightClick, setActiveTool, setDrawingMode, setActiveDrawingVertices]);
 
-  useEffect(() => { if (mapInstance) mapInstance.getContainer().style.cursor = TOOL_CURSORS[activeTool]; }, [mapInstance, activeTool]);
+  useEffect(() => {
+    if (mapInstance) mapInstance.getContainer().style.cursor = homePickArmed ? "crosshair" : TOOL_CURSORS[activeTool];
+  }, [mapInstance, activeTool, homePickArmed]);
 
   useEffect(() => {
     if (!mapInstance || fitRequestTs === 0 || waypoints.length === 0) return;
@@ -414,7 +407,10 @@ export function PlannerMap({
     [hasSpline],
   );
 
-  const banner = useMemo(() => mapBannerDescriptor(mode), [mode]);
+  const banner = useMemo(
+    () => (homePickArmed ? { message: t("pickHomeBanner"), tone: "accent" as const } : mapBannerDescriptor(mode)),
+    [mode, homePickArmed, t],
+  );
 
   return (
     <div className="w-full h-full relative">
@@ -429,9 +425,16 @@ export function PlannerMap({
         {hasActivePlan && <KmlOverlayLayers />}
         {/* Straight path (always shown for non-spline or as baseline) */}
         {hasActivePlan && polylinePositions.length >= 2 && <Polyline positions={polylinePositions} pathOptions={pathStyle} />}
+        {/* Legs flown but not drawn between items: home out, transit, RTL back */}
+        {hasActivePlan && <ImplicitLegsLayer />}
+        {hasActivePlan && <TerrainClashLayer waypoints={waypoints} />}
         {/* Spline curve overlay (when spline waypoints present) */}
         {hasActivePlan && splinePositions.length >= 2 && <Polyline positions={splinePositions} pathOptions={SPLINE_PATH_STYLE} />}
         {hasActivePlan && segments.map((seg) => <Marker key={seg.key} position={seg.position} icon={makeSegmentLabel(seg.label)} interactive={false} />)}
+        {hasActivePlan && (
+          <LegInsertHandles waypoints={waypoints} zoom={zoom}
+            enabled={activeTool === "select" && drawingMode === null && !homePickArmed} />
+        )}
         <LocateControl />
         {hasActivePlan && <><GcsMarker /><PatternOverlay /></>}
         {/* Geofence: primary fence (editable) + inclusion/exclusion zones */}
@@ -439,6 +442,8 @@ export function PlannerMap({
         {hasActivePlan && <PlannerGuidanceVectors />}
         {hasActivePlan && <JumpArrowOverlay waypoints={waypoints} />}
         {hasActivePlan && waypointMarkers}
+        {hasActivePlan && <BatteryChangeBadges waypoints={waypoints} />}
+        {hasActivePlan && <PlannedHomeLayer />}
         {rallyMarkers}
         <PlanPoiLayer />
         {hasActivePlan && measureLine && measureLine.points.length >= 2 && (<>

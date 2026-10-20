@@ -3113,15 +3113,46 @@
       }
     },
     "energy": {
-      "title": "Estimación de energía",
       "required": "Energía requerida",
       "flightTime": "Tiempo de vuelo est.",
       "swaps": "Cambios de batería",
-      "estimate": "estimación",
-      "note": "Cifra aproximada según el consumo predeterminado y una batería nominal. Verifícala con tu propia curva de potencia.",
       "packRange": "Batería {n}: WP {from}–{to}",
       "profileNote": "Estimación a partir del perfil {pack} ({capacity} Wh, {reserve} % de reserva) y el tiempo de vuelo del plan.",
-      "forecastNote": "Viento y temperatura del pronóstico del sitio."
+      "forecastNote": "Viento y temperatura del pronóstico del sitio.",
+      "battery": "Batería",
+      "editPacks": "Editar baterías…",
+      "reserve": "Reserva",
+      "reserveHint": "Carga que queda al aterrizar",
+      "packSection": "Batería y packs",
+      "perPack": "Energía y tiempo por batería",
+      "resumeFrom": "Reanudar desde WP {wp}",
+      "resumeTitle": "Subir una misión para la batería {n} que despega y continúa desde WP {wp}",
+      "routeSection": "Ruta dividida por batería",
+      "routeTitle": "Ruta por batería",
+      "noFlight": "Aún no hay nada que volar.",
+      "routeStart": "Home",
+      "routeEnd": "Fin",
+      "changeTick": "⚡{n} WP {wp}",
+      "changeTitle": "La batería {n} toma el relevo en WP {wp}",
+      "packs": {
+        "title": "Baterías",
+        "add": "Añadir batería",
+        "done": "Listo",
+        "name": "Nombre",
+        "capacity": "Capacidad",
+        "cruise": "Crucero",
+        "hover": "Estacionario",
+        "reserve": "Reserva",
+        "hint": "La capacidad es la energía utilizable de una batería llena. Crucero y estacionario son el consumo medio en vuelo hacia delante y al mantenerse o ascender. La reserva es la carga que queda al aterrizar.",
+        "newName": "Batería {n}",
+        "nameOf": "Nombre de {name}",
+        "capacityOf": "Capacidad de {name}",
+        "cruiseOf": "Potencia de crucero de {name}",
+        "hoverOf": "Potencia en estacionario de {name}",
+        "reserveOf": "Reserva de {name}",
+        "delete": "Eliminar {name}",
+        "deleteDefaultReason": "La batería predeterminada no se puede eliminar"
+      }
     },
     "validation": {
       "advisories": "Avisos"
@@ -3277,7 +3308,6 @@
     "perimeterAreaSet": "Boundary polygon set",
     "offline": {
       "waitingForMap": "Waiting for the map to load",
-      "title": "Download current view",
       "close": "Close",
       "scope": "Caches offline tiles covering the current map view.",
       "provider": "Tile provider",
@@ -3292,7 +3322,21 @@
       "downloadedFailed": ", {count} failed",
       "customUnusable": "Set a usable custom tile URL before downloading.",
       "cancel": "Cancel",
-      "download": "Download"
+      "download": "Download",
+      "areaTitle": "Descargar zona sin conexión",
+      "area": "Zona",
+      "areaView": "Vista actual",
+      "areaPlan": "Zona del plan",
+      "areaPlanEmpty": "El plan está vacío: añade antes waypoints, un home, una geocerca o puntos de reunión",
+      "areaPlanTitle": "Waypoints, home planificado, geocerca y puntos de reunión, más 500 m",
+      "scopePlan": "Guarda los waypoints, el home planificado, la geocerca y los puntos de reunión del plan, más 500 m alrededor.",
+      "includeTerrain": "Incluir elevación del terreno",
+      "progressTiles": "Teselas {done} / {total}",
+      "progressElevation": "Celdas de elevación {done} / {total}",
+      "elevationStarting": "Elevación: iniciando…",
+      "elevationDone": "Elevación: {count} celdas guardadas",
+      "elevationTooLarge": "Zona demasiado grande para descargar el terreno",
+      "elevationFailed": "Error al descargar la elevación: {reason}"
     },
     "commands": {
       "sendToVehicle": "Send to vehicle",
@@ -3355,7 +3399,9 @@
         "frameMslTitle": "Above mean sea level",
         "frameTerrain": "Terrain",
         "frameTerrainTitle": "Follows the terrain",
-        "terrainHint": "Altitude adjusts to the terrain elevation."
+        "terrainHint": "Altitude adjusts to the terrain elevation.",
+        "acceptRadiusAuto": "Auto (WP_RADIUS)",
+        "frameTerrainPx4": "PX4 no tiene marco de terreno. Usa Seguir terreno en los patrones"
       },
       "waypoint": {
         "position": "Position",
@@ -3427,7 +3473,9 @@
         "copy": "Copy",
         "delete": "Delete",
         "collapseAction": "Hide action settings",
-        "expandAction": "Show action settings"
+        "expandAction": "Show action settings",
+        "resumeFromHere": "Reanudar desde aquí…",
+        "resumeFirstReason": "La misión empieza aquí; envíala de forma normal"
       },
       "batch": {
         "hint": "Ctrl-click or Shift-click waypoints to edit several at once.",
@@ -3512,7 +3560,37 @@
         "directionCwShort": "CW",
         "directionCcwShort": "CCW"
       },
-      "label": "Inspector"
+      "label": "Inspector",
+      "vehicle": {
+        "title": "Vehículo",
+        "autopilotLabel": "Piloto automático",
+        "typeLabel": "Tipo",
+        "autopilot": {
+          "ardupilot": "ArduPilot",
+          "px4": "PX4"
+        },
+        "class": {
+          "copter": "Multirrotor",
+          "plane": "Ala fija",
+          "vtol": "VTOL",
+          "rover": "Rover"
+        },
+        "reports": "{drone} informa {profile}",
+        "use": "Usar"
+      },
+      "home": {
+        "title": "Inicio y despegue",
+        "plannedHome": "Inicio planificado",
+        "pickOnMap": "Elegir en el mapa",
+        "pickCancel": "Cancelar selección en el mapa",
+        "groundMsl": "{alt} s. n. m.",
+        "groundUnknown": "terreno desconocido",
+        "notSet": "Sin definir",
+        "useVehicleHome": "Usar inicio del vehículo",
+        "transitAlt": "Altitud de tránsito",
+        "transitHint": "Sube a esta altura antes del primer waypoint y en el regreso.",
+        "off": "Desactivada"
+      }
     },
     "outline": {
       "label": "Plan outline",
@@ -3547,7 +3625,10 @@
       "rallyItem": "Rally {n}",
       "addPoi": "Add point of interest",
       "noPoi": "No points of interest",
-      "poiItem": "POI {n}"
+      "poiItem": "POI {n}",
+      "rowMenu": "Acciones del waypoint {n}",
+      "resumeFromHere": "Reanudar desde aquí…",
+      "resumeFirstReason": "El plan empieza aquí; envíalo de forma normal"
     },
     "bar": {
       "plans": "Plans",
@@ -3786,7 +3867,21 @@
       "timeMin": "{value} min",
       "timeSec": "{value} s",
       "pasteDroppedJumps": "{count, plural, one {Se eliminó # salto} other {Se eliminaron # saltos}} a waypoints fuera del conjunto pegado"
-    }
+    },
+    "map": {
+      "pickHomeBanner": "Haz clic en el mapa para fijar el punto de origen planificado",
+      "plannedHome": "Origen planificado · {ground}",
+      "groundMsl": "{m} m s. n. m.",
+      "groundUnknown": "terreno desconocido",
+      "vehicleHome": "Origen del vehículo",
+      "useAsPlannedHome": "Usar como origen planificado",
+      "transitAlt": "↑ {m} m",
+      "clipsTerrain": "Atraviesa el terreno por {m} m",
+      "lowOverTerrain": "Solo {m} m sobre el terreno",
+      "insertWaypoint": "Insertar waypoint",
+      "packStarts": "La batería {n} empieza aquí"
+    },
+    "setFacadeLine": "Marca la línea de la fachada en el mapa"
   },
   "geofence": {
     "autoFence": "Auto-geocerca",

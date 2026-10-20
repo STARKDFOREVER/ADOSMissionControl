@@ -3113,15 +3113,46 @@
       }
     },
     "energy": {
-      "title": "ऊर्जा अनुमान",
       "required": "आवश्यक ऊर्जा",
       "flightTime": "अनुमानित उड़ान समय",
       "swaps": "बैटरी बदलाव",
-      "estimate": "अनुमान",
-      "note": "डिफ़ॉल्ट पावर खपत और सामान्य बैटरी पैक पर आधारित मोटा अनुमान। अपने स्वयं के पावर कर्व से जाँच करें।",
       "packRange": "बैटरी {n}: WP {from}–{to}",
       "profileNote": "{pack} प्रोफ़ाइल ({capacity} Wh, {reserve} % रिज़र्व) और प्लान के उड़ान समय से अनुमान।",
-      "forecastNote": "हवा और तापमान साइट पूर्वानुमान से।"
+      "forecastNote": "हवा और तापमान साइट पूर्वानुमान से।",
+      "battery": "बैटरी",
+      "editPacks": "बैटरी संपादित करें…",
+      "reserve": "रिज़र्व",
+      "reserveHint": "लैंडिंग पर बचा चार्ज",
+      "packSection": "बैटरी और पैक",
+      "perPack": "हर बैटरी की ऊर्जा और समय",
+      "resumeFrom": "WP {wp} से फिर शुरू करें",
+      "resumeTitle": "बैटरी {n} के लिए मिशन अपलोड करें जो टेकऑफ़ करके WP {wp} से आगे चलता है",
+      "routeSection": "बैटरी के अनुसार बँटा रूट",
+      "routeTitle": "बैटरी के अनुसार रूट",
+      "noFlight": "अभी उड़ाने को कुछ नहीं है।",
+      "routeStart": "होम",
+      "routeEnd": "अंत",
+      "changeTick": "⚡{n} WP {wp}",
+      "changeTitle": "WP {wp} पर बैटरी {n} संभालती है",
+      "packs": {
+        "title": "बैटरी पैक",
+        "add": "बैटरी जोड़ें",
+        "done": "हो गया",
+        "name": "नाम",
+        "capacity": "क्षमता",
+        "cruise": "क्रूज़",
+        "hover": "होवर",
+        "reserve": "रिज़र्व",
+        "hint": "क्षमता पूरे चार्ज पैक की उपयोगी ऊर्जा है। क्रूज़ और होवर आगे की उड़ान में और होवर या चढ़ाई के समय की औसत बिजली खपत हैं। रिज़र्व लैंडिंग पर बचा चार्ज है।",
+        "newName": "बैटरी {n}",
+        "nameOf": "{name} का नाम",
+        "capacityOf": "{name} की क्षमता",
+        "cruiseOf": "{name} की क्रूज़ पावर",
+        "hoverOf": "{name} की होवर पावर",
+        "reserveOf": "{name} का रिज़र्व",
+        "delete": "{name} हटाएँ",
+        "deleteDefaultReason": "डिफ़ॉल्ट बैटरी हटाई नहीं जा सकती"
+      }
     },
     "validation": {
       "advisories": "सलाह"
@@ -3277,7 +3308,6 @@
     "perimeterAreaSet": "Boundary polygon set",
     "offline": {
       "waitingForMap": "Waiting for the map to load",
-      "title": "Download current view",
       "close": "Close",
       "scope": "Caches offline tiles covering the current map view.",
       "provider": "Tile provider",
@@ -3292,7 +3322,21 @@
       "downloadedFailed": ", {count} failed",
       "customUnusable": "Set a usable custom tile URL before downloading.",
       "cancel": "Cancel",
-      "download": "Download"
+      "download": "Download",
+      "areaTitle": "ऑफ़लाइन क्षेत्र डाउनलोड करें",
+      "area": "क्षेत्र",
+      "areaView": "मौजूदा दृश्य",
+      "areaPlan": "योजना क्षेत्र",
+      "areaPlanEmpty": "योजना खाली है: पहले वेपॉइंट, होम, जियोफ़ेंस या रैली पॉइंट जोड़ें",
+      "areaPlanTitle": "वेपॉइंट, नियोजित होम, जियोफ़ेंस और रैली पॉइंट, साथ में 500 m",
+      "scopePlan": "योजना के वेपॉइंट, नियोजित होम, जियोफ़ेंस और रैली पॉइंट, और उनके आसपास 500 m कैश करता है।",
+      "includeTerrain": "भू-भाग की ऊँचाई शामिल करें",
+      "progressTiles": "टाइल {done} / {total}",
+      "progressElevation": "ऊँचाई सेल {done} / {total}",
+      "elevationStarting": "ऊँचाई: शुरू हो रहा है…",
+      "elevationDone": "ऊँचाई: {count} सेल सहेजे गए",
+      "elevationTooLarge": "भू-भाग डाउनलोड के लिए क्षेत्र बहुत बड़ा है",
+      "elevationFailed": "ऊँचाई डाउनलोड विफल: {reason}"
     },
     "commands": {
       "sendToVehicle": "Send to vehicle",
@@ -3355,7 +3399,9 @@
         "frameMslTitle": "Above mean sea level",
         "frameTerrain": "Terrain",
         "frameTerrainTitle": "Follows the terrain",
-        "terrainHint": "Altitude adjusts to the terrain elevation."
+        "terrainHint": "Altitude adjusts to the terrain elevation.",
+        "acceptRadiusAuto": "ऑटो (WP_RADIUS)",
+        "frameTerrainPx4": "PX4 में भूभाग फ़्रेम नहीं है। पैटर्न में भूभाग का अनुसरण करें का उपयोग करें"
       },
       "waypoint": {
         "position": "Position",
@@ -3427,7 +3473,9 @@
         "copy": "Copy",
         "delete": "Delete",
         "collapseAction": "Hide action settings",
-        "expandAction": "Show action settings"
+        "expandAction": "Show action settings",
+        "resumeFromHere": "यहाँ से फिर शुरू करें…",
+        "resumeFirstReason": "मिशन यहीं से शुरू होता है, इसलिए इसे सामान्य रूप से भेजें"
       },
       "batch": {
         "hint": "Ctrl-click or Shift-click waypoints to edit several at once.",
@@ -3512,7 +3560,37 @@
         "directionCwShort": "CW",
         "directionCcwShort": "CCW"
       },
-      "label": "Inspector"
+      "label": "Inspector",
+      "vehicle": {
+        "title": "वाहन",
+        "autopilotLabel": "ऑटोपायलट",
+        "typeLabel": "प्रकार",
+        "autopilot": {
+          "ardupilot": "ArduPilot",
+          "px4": "PX4"
+        },
+        "class": {
+          "copter": "मल्टीरोटर",
+          "plane": "फिक्स्ड विंग",
+          "vtol": "VTOL",
+          "rover": "रोवर"
+        },
+        "reports": "{drone} {profile} बताता है",
+        "use": "उपयोग करें"
+      },
+      "home": {
+        "title": "होम और लॉन्च",
+        "plannedHome": "नियोजित होम",
+        "pickOnMap": "मानचित्र पर चुनें",
+        "pickCancel": "मानचित्र पर चयन रद्द करें",
+        "groundMsl": "{alt} MSL",
+        "groundUnknown": "ज़मीन अज्ञात",
+        "notSet": "सेट नहीं",
+        "useVehicleHome": "वाहन का होम उपयोग करें",
+        "transitAlt": "ट्रांज़िट ऊँचाई",
+        "transitHint": "पहले वेपॉइंट से पहले और वापसी में इस ऊँचाई तक चढ़ें।",
+        "off": "बंद"
+      }
     },
     "outline": {
       "label": "Plan outline",
@@ -3547,7 +3625,10 @@
       "rallyItem": "Rally {n}",
       "addPoi": "Add point of interest",
       "noPoi": "No points of interest",
-      "poiItem": "POI {n}"
+      "poiItem": "POI {n}",
+      "rowMenu": "वेपॉइंट {n} की कार्रवाइयाँ",
+      "resumeFromHere": "यहाँ से फिर शुरू करें…",
+      "resumeFirstReason": "योजना यहीं से शुरू होती है; इसे सामान्य रूप से भेजें"
     },
     "bar": {
       "plans": "Plans",
@@ -3786,7 +3867,21 @@
       "timeMin": "{value} मिनट",
       "timeSec": "{value} सेकंड",
       "pasteDroppedJumps": "चिपकाए गए सेट से बाहर के वेपॉइंट पर जाने वाले जंप हटाए गए: {count}"
-    }
+    },
+    "map": {
+      "pickHomeBanner": "नियोजित होम सेट करने के लिए मानचित्र पर क्लिक करें",
+      "plannedHome": "नियोजित होम · {ground}",
+      "groundMsl": "{m} मी MSL",
+      "groundUnknown": "ज़मीन की ऊँचाई अज्ञात",
+      "vehicleHome": "वाहन का होम",
+      "useAsPlannedHome": "नियोजित होम के रूप में उपयोग करें",
+      "transitAlt": "↑ {m} मी",
+      "clipsTerrain": "भूभाग को {m} मी काटता है",
+      "lowOverTerrain": "भूभाग से केवल {m} मी ऊपर",
+      "insertWaypoint": "वेपॉइंट जोड़ें",
+      "packStarts": "बैटरी पैक {n} यहाँ से शुरू होता है"
+    },
+    "setFacadeLine": "मानचित्र पर फ़साड रेखा तय करें"
   },
   "geofence": {
     "autoFence": "ऑटो-फ़ेंस",

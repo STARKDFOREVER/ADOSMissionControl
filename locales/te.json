@@ -3113,15 +3113,46 @@
       }
     },
     "energy": {
-      "title": "శక్తి అంచనా",
       "required": "అవసరమైన శక్తి",
       "flightTime": "అంచనా విమాన సమయం",
       "swaps": "బ్యాటరీ మార్పులు",
-      "estimate": "అంచనా",
-      "note": "డిఫాల్ట్ పవర్ డ్రా మరియు నామమాత్ర ప్యాక్ ఆధారంగా స్థూల అంచనా. మీ స్వంత పవర్ కర్వ్‌తో సరిచూసుకోండి.",
       "packRange": "బ్యాటరీ {n}: WP {from}–{to}",
       "profileNote": "{pack} ప్రొఫైల్ ({capacity} Wh, {reserve} % రిజర్వ్) మరియు ప్లాన్ ఎగిరే సమయం నుండి అంచనా.",
-      "forecastNote": "గాలి మరియు ఉష్ణోగ్రత సైట్ అంచనా నుండి."
+      "forecastNote": "గాలి మరియు ఉష్ణోగ్రత సైట్ అంచనా నుండి.",
+      "battery": "బ్యాటరీ",
+      "editPacks": "బ్యాటరీలను సవరించు…",
+      "reserve": "రిజర్వ్",
+      "reserveHint": "ల్యాండింగ్ సమయంలో మిగిలే ఛార్జ్",
+      "packSection": "బ్యాటరీ మరియు ప్యాక్‌లు",
+      "perPack": "ప్రతి బ్యాటరీకి శక్తి మరియు సమయం",
+      "resumeFrom": "WP {wp} నుండి కొనసాగించు",
+      "resumeTitle": "బ్యాటరీ {n} కోసం మిషన్ అప్‌లోడ్ చేయి: టేకాఫ్ చేసి WP {wp} నుండి కొనసాగుతుంది",
+      "routeSection": "బ్యాటరీ వారీగా విభజించిన మార్గం",
+      "routeTitle": "బ్యాటరీ వారీ మార్గం",
+      "noFlight": "ఇంకా ఎగరడానికి ఏమీ లేదు.",
+      "routeStart": "హోమ్",
+      "routeEnd": "ముగింపు",
+      "changeTick": "⚡{n} WP {wp}",
+      "changeTitle": "WP {wp} వద్ద బ్యాటరీ {n} బాధ్యత తీసుకుంటుంది",
+      "packs": {
+        "title": "బ్యాటరీ ప్యాక్‌లు",
+        "add": "బ్యాటరీ జోడించు",
+        "done": "పూర్తయింది",
+        "name": "పేరు",
+        "capacity": "సామర్థ్యం",
+        "cruise": "క్రూజ్",
+        "hover": "హోవర్",
+        "reserve": "రిజర్వ్",
+        "hint": "సామర్థ్యం అంటే పూర్తి ఛార్జ్ ప్యాక్‌లో వాడుకోదగిన శక్తి. క్రూజ్ మరియు హోవర్ అంటే ముందుకు ఎగిరేటప్పుడు, హోవర్ లేదా ఎక్కేటప్పుడు సగటు విద్యుత్ వినియోగం. రిజర్వ్ అంటే ల్యాండింగ్ సమయంలో మిగిలే ఛార్జ్.",
+        "newName": "బ్యాటరీ {n}",
+        "nameOf": "{name} పేరు",
+        "capacityOf": "{name} సామర్థ్యం",
+        "cruiseOf": "{name} క్రూజ్ పవర్",
+        "hoverOf": "{name} హోవర్ పవర్",
+        "reserveOf": "{name} రిజర్వ్",
+        "delete": "{name} తొలగించు",
+        "deleteDefaultReason": "డిఫాల్ట్ బ్యాటరీని తొలగించలేరు"
+      }
     },
     "validation": {
       "advisories": "సూచనలు"
@@ -3277,7 +3308,6 @@
     "perimeterAreaSet": "Boundary polygon set",
     "offline": {
       "waitingForMap": "Waiting for the map to load",
-      "title": "Download current view",
       "close": "Close",
       "scope": "Caches offline tiles covering the current map view.",
       "provider": "Tile provider",
@@ -3292,7 +3322,21 @@
       "downloadedFailed": ", {count} failed",
       "customUnusable": "Set a usable custom tile URL before downloading.",
       "cancel": "Cancel",
-      "download": "Download"
+      "download": "Download",
+      "areaTitle": "ఆఫ్‌లైన్ ప్రాంతాన్ని డౌన్‌లోడ్ చేయి",
+      "area": "ప్రాంతం",
+      "areaView": "ప్రస్తుత వీక్షణ",
+      "areaPlan": "ప్లాన్ ప్రాంతం",
+      "areaPlanEmpty": "ప్లాన్ ఖాళీగా ఉంది: ముందుగా వేపాయింట్‌లు, హోమ్, జియోఫెన్స్ లేదా ర్యాలీ పాయింట్‌లు జోడించండి",
+      "areaPlanTitle": "వేపాయింట్‌లు, ప్లాన్ చేసిన హోమ్, జియోఫెన్స్, ర్యాలీ పాయింట్‌లు, అదనంగా 500 m",
+      "scopePlan": "ప్లాన్ వేపాయింట్‌లు, ప్లాన్ చేసిన హోమ్, జియోఫెన్స్, ర్యాలీ పాయింట్‌లు మరియు వాటి చుట్టూ 500 m ను కాష్ చేస్తుంది.",
+      "includeTerrain": "భూభాగ ఎత్తును చేర్చు",
+      "progressTiles": "టైల్స్ {done} / {total}",
+      "progressElevation": "ఎత్తు సెల్‌లు {done} / {total}",
+      "elevationStarting": "ఎత్తు: ప్రారంభమవుతోంది…",
+      "elevationDone": "ఎత్తు: {count} సెల్‌లు భద్రపరచబడ్డాయి",
+      "elevationTooLarge": "భూభాగ డౌన్‌లోడ్‌కు ప్రాంతం చాలా పెద్దది",
+      "elevationFailed": "ఎత్తు డౌన్‌లోడ్ విఫలమైంది: {reason}"
     },
     "commands": {
       "sendToVehicle": "Send to vehicle",
@@ -3355,7 +3399,9 @@
         "frameMslTitle": "Above mean sea level",
         "frameTerrain": "Terrain",
         "frameTerrainTitle": "Follows the terrain",
-        "terrainHint": "Altitude adjusts to the terrain elevation."
+        "terrainHint": "Altitude adjusts to the terrain elevation.",
+        "acceptRadiusAuto": "ఆటో (WP_RADIUS)",
+        "frameTerrainPx4": "PX4లో భూభాగ ఫ్రేమ్ లేదు. ప్యాటర్న్‌లలో భూభాగాన్ని అనుసరించు ఉపయోగించండి"
       },
       "waypoint": {
         "position": "Position",
@@ -3427,7 +3473,9 @@
         "copy": "Copy",
         "delete": "Delete",
         "collapseAction": "Hide action settings",
-        "expandAction": "Show action settings"
+        "expandAction": "Show action settings",
+        "resumeFromHere": "ఇక్కడి నుండి కొనసాగించు…",
+        "resumeFirstReason": "మిషన్ ఇక్కడే మొదలవుతుంది, కాబట్టి సాధారణంగా పంపండి"
       },
       "batch": {
         "hint": "Ctrl-click or Shift-click waypoints to edit several at once.",
@@ -3512,7 +3560,37 @@
         "directionCwShort": "CW",
         "directionCcwShort": "CCW"
       },
-      "label": "Inspector"
+      "label": "Inspector",
+      "vehicle": {
+        "title": "వాహనం",
+        "autopilotLabel": "ఆటోపైలట్",
+        "typeLabel": "రకం",
+        "autopilot": {
+          "ardupilot": "ArduPilot",
+          "px4": "PX4"
+        },
+        "class": {
+          "copter": "మల్టీరోటర్",
+          "plane": "స్థిర రెక్క",
+          "vtol": "VTOL",
+          "rover": "రోవర్"
+        },
+        "reports": "{drone} {profile} అని నివేదిస్తోంది",
+        "use": "ఉపయోగించు"
+      },
+      "home": {
+        "title": "హోమ్ & ప్రయోగం",
+        "plannedHome": "ప్రణాళిక హోమ్",
+        "pickOnMap": "మ్యాప్‌లో ఎంచుకోండి",
+        "pickCancel": "మ్యాప్‌లో ఎంపిక రద్దు చేయండి",
+        "groundMsl": "{alt} MSL",
+        "groundUnknown": "నేల తెలియదు",
+        "notSet": "సెట్ కాలేదు",
+        "useVehicleHome": "వాహన హోమ్ ఉపయోగించు",
+        "transitAlt": "రవాణా ఎత్తు",
+        "transitHint": "మొదటి వేపాయింట్‌కు ముందు మరియు తిరుగు ప్రయాణంలో ఈ ఎత్తుకు ఎక్కండి.",
+        "off": "ఆఫ్"
+      }
     },
     "outline": {
       "label": "Plan outline",
@@ -3547,7 +3625,10 @@
       "rallyItem": "Rally {n}",
       "addPoi": "Add point of interest",
       "noPoi": "No points of interest",
-      "poiItem": "POI {n}"
+      "poiItem": "POI {n}",
+      "rowMenu": "వేపాయింట్ {n} చర్యలు",
+      "resumeFromHere": "ఇక్కడి నుండి కొనసాగించు…",
+      "resumeFirstReason": "ప్లాన్ ఇక్కడే మొదలవుతుంది; దాన్ని మామూలుగా పంపండి"
     },
     "bar": {
       "plans": "Plans",
@@ -3786,7 +3867,21 @@
       "timeMin": "{value} నిమి",
       "timeSec": "{value} సె",
       "pasteDroppedJumps": "అతికించిన సమూహం వెలుపలి వేపాయింట్‌లకు వెళ్లే జంప్‌లు తొలగించబడ్డాయి: {count}"
-    }
+    },
+    "map": {
+      "pickHomeBanner": "ప్రణాళిక హోమ్ సెట్ చేయడానికి మ్యాప్‌పై క్లిక్ చేయండి",
+      "plannedHome": "ప్రణాళిక హోమ్ · {ground}",
+      "groundMsl": "{m} మీ MSL",
+      "groundUnknown": "నేల ఎత్తు తెలియదు",
+      "vehicleHome": "వాహన హోమ్",
+      "useAsPlannedHome": "ప్రణాళిక హోమ్‌గా ఉపయోగించు",
+      "transitAlt": "↑ {m} మీ",
+      "clipsTerrain": "భూభాగాన్ని {m} మీ చొచ్చుకుపోతుంది",
+      "lowOverTerrain": "భూభాగం పైన కేవలం {m} మీ",
+      "insertWaypoint": "వేపాయింట్ చొప్పించు",
+      "packStarts": "బ్యాటరీ ప్యాక్ {n} ఇక్కడ మొదలవుతుంది"
+    },
+    "setFacadeLine": "మ్యాప్‌పై ముఖభాగ రేఖను సెట్ చేయండి"
   },
   "geofence": {
     "autoFence": "ఆటో-ఫెన్స్",

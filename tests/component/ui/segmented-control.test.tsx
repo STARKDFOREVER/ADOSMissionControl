@@ -28,4 +28,21 @@ describe("SegmentedControl", () => {
     fireEvent.keyDown(screen.getByRole("radio", { name: "Horizontal" }), { key: "ArrowRight" });
     expect(onChange).toHaveBeenCalledWith("lon");
   });
+
+  it("a disabled segment keeps its reason, ignores clicks and is skipped by the arrow keys", () => {
+    const onChange = vi.fn();
+    const options = [
+      { value: "a" as const, label: "A" },
+      { value: "b" as const, label: "B", disabled: true, title: "Not here" },
+      { value: "c" as const, label: "C" },
+    ];
+    render(<SegmentedControl value="a" options={options} onChange={onChange} ariaLabel="Pick" />);
+    const b = screen.getByRole("radio", { name: "B" });
+    expect(b.getAttribute("aria-disabled")).toBe("true");
+    expect(b.getAttribute("title")).toBe("Not here");
+    fireEvent.click(b);
+    expect(onChange).not.toHaveBeenCalled();
+    fireEvent.keyDown(screen.getByRole("radio", { name: "A" }), { key: "ArrowRight" });
+    expect(onChange).toHaveBeenCalledWith("c");
+  });
 });

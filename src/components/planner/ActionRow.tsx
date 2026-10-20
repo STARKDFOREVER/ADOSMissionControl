@@ -11,7 +11,7 @@
 import { useTranslations } from "next-intl";
 import {
   GripVertical, X, ChevronDown, ChevronRight,
-  Camera, Move3d, Crosshair, EyeOff, Gauge, RotateCw, SlidersHorizontal,
+  Camera, CameraOff, Images, Video, VideoOff, Move3d, Crosshair, EyeOff, Gauge, RotateCw, SlidersHorizontal,
   Grab, ArrowDownUp, ToggleRight, CornerUpRight, Timer, Ruler, Shield, Home, Hash,
   type LucideIcon,
 } from "lucide-react";
@@ -32,6 +32,10 @@ import { CommandSpecificEditors } from "./WaypointCommandEditors";
 const ACTION_ICON: Partial<Record<ActionCommand, LucideIcon>> = {
   DO_SET_CAM_TRIGG: Camera,
   DO_DIGICAM: Camera,
+  PHOTO_INTERVAL: Images,
+  PHOTO_STOP: CameraOff,
+  VIDEO_START: Video,
+  VIDEO_STOP: VideoOff,
   DO_MOUNT_CONTROL: Move3d,
   ROI: Crosshair,
   DO_SET_ROI_NONE: EyeOff,

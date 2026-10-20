@@ -54,6 +54,16 @@ the project follows [Semantic Versioning](https://semver.org/).
 - Terrain heights are kept in the browser between sessions, and an area can be
   downloaded for offline use. Terrain profiles sample the ground every 30 m
   instead of five points per leg.
+- The planner shows where the flight starts and ends. A plan keeps a planned
+  home "H" that can be dragged, picked on the map or taken from the vehicle,
+  and the inspector gains Vehicle (autopilot and type) and Home & launch
+  sections with a transit altitude. The map draws the legs from home and back,
+  transit climbs, battery change points and legs that clip terrain, and a "+"
+  on each leg inserts a waypoint at the previous altitude. The Energy tab
+  picks and edits battery packs, splits the route per pack and resumes from
+  the start of any pack; the outline and waypoint menus can resume from a
+  waypoint too. The offline area download can cover the plan's own area and
+  stores terrain heights with the map tiles.
 
 ### Changed
 

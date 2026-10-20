@@ -195,7 +195,8 @@ export function PatternEditor({ onApply }: PatternEditorProps) {
   const missingGeometryHint =
     activeType === "survey" || activeType === "structureScan" || activeType === "perimeter" ? t("drawPolygonFirst") :
     activeType === "orbit" ? t("drawCircleFirst") :
-    activeType === "corridor" || activeType === "facade" ? t("setPathPoints") :
+    activeType === "corridor" ? t("setPathPoints") :
+    activeType === "facade" ? t("setFacadeLine") :
     activeType === "parallelTrack" ? t("setStartPoint") :
     activeType === "fixedWingLanding" || activeType === "vtolLanding" ? t("setLandingPoint") : t("setDatumPoint");
   const sampling = terrainStatus === "sampling";

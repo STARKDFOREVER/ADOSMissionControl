@@ -10,29 +10,19 @@
  */
 "use client";
 
-import { useMemo } from "react";
 import { useTranslations } from "next-intl";
-import type { Waypoint } from "@/lib/types";
-import { computeFlightPlan } from "@/lib/flight-plan";
-import { useFlightPlanOptions } from "@/hooks/use-rtl-return-context";
+import { usePlannerFlightPlan } from "@/hooks/use-planner-flight-plan";
+import { useMissionStore } from "@/stores/mission-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { formatDistance, formatAltitude, formatSpeed } from "@/lib/units/format";
 
-interface DockStatsProps {
-  waypoints: Waypoint[];
-  defaultSpeed: number;
-}
-
-export function DockStats({ waypoints, defaultSpeed }: DockStatsProps) {
+export function DockStats() {
   const t = useTranslations("planner.dock.stats");
   const units = useSettingsStore((s) => s.units);
-  const planOptions = useFlightPlanOptions();
-  const plan = useMemo(
-    () => computeFlightPlan(waypoints, defaultSpeed, planOptions),
-    [waypoints, defaultSpeed, planOptions],
-  );
+  const waypointCount = useMissionStore((s) => s.waypoints.length);
+  const plan = usePlannerFlightPlan();
 
-  if (waypoints.length === 0) return null;
+  if (waypointCount === 0) return null;
 
   const duration = plan.totalDuration;
   const etaMin = Math.ceil(duration / 60);
@@ -41,7 +31,7 @@ export function DockStats({ waypoints, defaultSpeed }: DockStatsProps) {
 
   return (
     <div className="flex min-w-0 items-center gap-3 overflow-hidden whitespace-nowrap">
-      <Stat title={t("waypointsTitle")}>{t("waypoints", { count: waypoints.length })}</Stat>
+      <Stat title={t("waypointsTitle")}>{t("waypoints", { count: waypointCount })}</Stat>
       <Stat title={t("distanceTitle")}>{formatDistance(plan.totalDistance, units)}</Stat>
       {plan.openEnded ? (
         <Stat title={t("etaOpenTitle")}>{t("etaOpen", { minutes: etaMin })}</Stat>

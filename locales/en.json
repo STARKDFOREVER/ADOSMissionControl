@@ -2821,7 +2821,9 @@
         "frameMslTitle": "Above mean sea level",
         "frameTerrain": "Terrain",
         "frameTerrainTitle": "Follows the terrain",
-        "terrainHint": "Altitude adjusts to the terrain elevation."
+        "terrainHint": "Altitude adjusts to the terrain elevation.",
+        "acceptRadiusAuto": "Auto (WP_RADIUS)",
+        "frameTerrainPx4": "PX4 has no terrain frame. Use Follow terrain on patterns"
       },
       "waypoint": {
         "collapseAction": "Hide action settings",
@@ -2893,7 +2895,9 @@
         "insertBefore": "Insert before",
         "insertAfter": "Insert after",
         "copy": "Copy",
-        "delete": "Delete"
+        "delete": "Delete",
+        "resumeFromHere": "Resume from here…",
+        "resumeFirstReason": "The mission starts here, so send it normally"
       },
       "batch": {
         "hint": "Ctrl-click or Shift-click waypoints to edit several at once.",
@@ -2978,7 +2982,37 @@
         "confirmMirrorHorizontal": "Mirror all {count} waypoints horizontally?",
         "confirmMirrorVertical": "Mirror all {count} waypoints vertically?"
       },
-      "label": "Inspector"
+      "label": "Inspector",
+      "vehicle": {
+        "title": "Vehicle",
+        "autopilotLabel": "Autopilot",
+        "typeLabel": "Type",
+        "autopilot": {
+          "ardupilot": "ArduPilot",
+          "px4": "PX4"
+        },
+        "class": {
+          "copter": "Multirotor",
+          "plane": "Fixed wing",
+          "vtol": "VTOL",
+          "rover": "Rover"
+        },
+        "reports": "{drone} reports {profile}",
+        "use": "Use"
+      },
+      "home": {
+        "title": "Home & launch",
+        "plannedHome": "Planned home",
+        "pickOnMap": "Pick on map",
+        "pickCancel": "Cancel picking on map",
+        "groundMsl": "{alt} MSL",
+        "groundUnknown": "ground unknown",
+        "notSet": "Not set",
+        "useVehicleHome": "Use vehicle home",
+        "transitAlt": "Transit altitude",
+        "transitHint": "Climb to this height before the first waypoint and on the way back.",
+        "off": "Off"
+      }
     },
     "outline": {
       "label": "Plan outline",
@@ -3013,7 +3047,10 @@
       "rallyItem": "Rally {n}",
       "addPoi": "Add point of interest",
       "noPoi": "No points of interest",
-      "poiItem": "POI {n}"
+      "poiItem": "POI {n}",
+      "rowMenu": "Waypoint {n} actions",
+      "resumeFromHere": "Resume from here…",
+      "resumeFirstReason": "The plan starts here; send it normally"
     },
     "bar": {
       "plans": "Plans",
@@ -3436,15 +3473,46 @@
       }
     },
     "energy": {
-      "title": "Energy estimate",
       "required": "Energy required",
       "flightTime": "Est. flight time",
       "swaps": "Battery swaps",
-      "estimate": "estimate",
-      "note": "Rough figure from default power draw and a nominal pack. Verify against your own power curve.",
       "packRange": "Pack {n}: WP {from}–{to}",
       "profileNote": "Estimate from the {pack} profile ({capacity} Wh, {reserve} % reserve) and the plan's flight time.",
-      "forecastNote": "Wind and temperature from the site forecast."
+      "forecastNote": "Wind and temperature from the site forecast.",
+      "battery": "Battery",
+      "editPacks": "Edit packs…",
+      "reserve": "Reserve",
+      "reserveHint": "Charge kept at landing",
+      "packSection": "Battery and packs",
+      "perPack": "Energy and time per pack",
+      "resumeFrom": "Resume from WP {wp}",
+      "resumeTitle": "Upload a mission for pack {n} that takes off and continues from WP {wp}",
+      "routeSection": "Route split by pack",
+      "routeTitle": "Route by pack",
+      "noFlight": "Nothing to fly yet.",
+      "routeStart": "Home",
+      "routeEnd": "End",
+      "changeTick": "⚡{n} WP {wp}",
+      "changeTitle": "Pack {n} takes over at WP {wp}",
+      "packs": {
+        "title": "Battery packs",
+        "add": "Add pack",
+        "done": "Done",
+        "name": "Name",
+        "capacity": "Capacity",
+        "cruise": "Cruise",
+        "hover": "Hover",
+        "reserve": "Reserve",
+        "hint": "Capacity is the usable energy of a full pack. Cruise and hover are the average power draw in forward flight and while hovering or climbing. Reserve is the charge kept at landing.",
+        "newName": "Pack {n}",
+        "nameOf": "Name of {name}",
+        "capacityOf": "Capacity of {name}",
+        "cruiseOf": "Cruise power of {name}",
+        "hoverOf": "Hover power of {name}",
+        "reserveOf": "Reserve of {name}",
+        "delete": "Delete {name}",
+        "deleteDefaultReason": "The default pack can't be deleted"
+      }
     },
     "validation": {
       "advisories": "Advisories"
@@ -3650,7 +3718,6 @@
     },
     "offline": {
       "waitingForMap": "Waiting for the map to load",
-      "title": "Download current view",
       "close": "Close",
       "scope": "Caches offline tiles covering the current map view.",
       "provider": "Tile provider",
@@ -3665,7 +3732,21 @@
       "downloadedFailed": ", {count} failed",
       "customUnusable": "Set a usable custom tile URL before downloading.",
       "cancel": "Cancel",
-      "download": "Download"
+      "download": "Download",
+      "areaTitle": "Download offline area",
+      "area": "Area",
+      "areaView": "Current view",
+      "areaPlan": "Plan area",
+      "areaPlanEmpty": "The plan is empty: add waypoints, a home, a fence or rally points first",
+      "areaPlanTitle": "Waypoints, planned home, fence and rally points, plus 500 m",
+      "scopePlan": "Caches the plan's waypoints, planned home, fence and rally points, plus 500 m around them.",
+      "includeTerrain": "Include terrain elevation",
+      "progressTiles": "Tiles {done} / {total}",
+      "progressElevation": "Elevation cells {done} / {total}",
+      "elevationStarting": "Elevation: starting…",
+      "elevationDone": "Elevation: {count} cells stored",
+      "elevationTooLarge": "Area too large for terrain download",
+      "elevationFailed": "Elevation download failed: {reason}"
     },
     "commands": {
       "sendToVehicle": "Send to vehicle",
@@ -3786,7 +3867,21 @@
       "timeMin": "{value} min",
       "timeSec": "{value} s",
       "pasteDroppedJumps": "{count, plural, one {Dropped # jump} other {Dropped # jumps}} to waypoints outside the pasted set"
-    }
+    },
+    "map": {
+      "pickHomeBanner": "Click the map to set the planned home",
+      "plannedHome": "Planned home · {ground}",
+      "groundMsl": "{m} m MSL",
+      "groundUnknown": "ground unknown",
+      "vehicleHome": "Vehicle home",
+      "useAsPlannedHome": "Use as planned home",
+      "transitAlt": "↑ {m} m",
+      "clipsTerrain": "Clips terrain by {m} m",
+      "lowOverTerrain": "Only {m} m above terrain",
+      "insertWaypoint": "Insert waypoint",
+      "packStarts": "Battery pack {n} starts here"
+    },
+    "setFacadeLine": "Set the facade line on the map"
   },
   "basemap": {
     "fieldPackActive": "Field pack: {name}",

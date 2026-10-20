@@ -23,7 +23,6 @@ import { PreflightChecklist } from "@/components/planner/PreflightChecklist";
 interface DockTabContentProps {
   tab: DockTab;
   waypoints: Waypoint[];
-  defaultSpeed: number;
   selectedWaypointId: string | null;
   onSelectWaypoint: (id: string) => void;
 }
@@ -31,7 +30,6 @@ interface DockTabContentProps {
 export function DockTabContent({
   tab,
   waypoints,
-  defaultSpeed,
   selectedWaypointId,
   onSelectWaypoint,
 }: DockTabContentProps) {
@@ -67,9 +65,7 @@ export function DockTabContent({
     case "energy":
       return (
         <Scroll>
-          <div className="max-w-sm">
-            <EnergyCard waypoints={waypoints} defaultSpeed={defaultSpeed} />
-          </div>
+          <EnergyCard />
         </Scroll>
       );
     case "site":

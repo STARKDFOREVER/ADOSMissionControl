@@ -44,11 +44,13 @@ interface OutlineWaypointRowProps {
   onDrop: (index: number, e: React.DragEvent) => void;
   dragOver: boolean;
   registerRow: (id: string, el: HTMLElement | null) => void;
+  /** Right-click on the row: the list opens the row menu. Absent on iNav, which has no row menu. */
+  onContextMenu?: (index: number, e: React.MouseEvent) => void;
 }
 
 export const OutlineWaypointRow = memo(function OutlineWaypointRow({
   waypoint, index, selected, multiSelected, isInav, defaultFrame, homeGroundElevation,
-  onClick, onRemove, onDragStart, onDragOver, onDragEnd, onDrop, dragOver, registerRow,
+  onClick, onRemove, onDragStart, onDragOver, onDragEnd, onDrop, dragOver, registerRow, onContextMenu,
 }: OutlineWaypointRowProps) {
   const t = useTranslations("planner");
   const id = waypoint.id;
@@ -70,6 +72,7 @@ export const OutlineWaypointRow = memo(function OutlineWaypointRow({
       onDragOver={(e) => onDragOver(index, e)}
       onDragEnd={onDragEnd}
       onDrop={(e) => onDrop(index, e)}
+      onContextMenu={onContextMenu ? (e) => onContextMenu(index, e) : undefined}
       className={cn(
         "group/row relative flex h-7 items-center gap-1 pl-1 pr-2 transition-colors",
         highlighted ? "bg-accent-primary/10" : "hover:bg-bg-tertiary",

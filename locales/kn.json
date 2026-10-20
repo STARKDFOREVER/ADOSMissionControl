@@ -3113,15 +3113,46 @@
       }
     },
     "energy": {
-      "title": "ಶಕ್ತಿ ಅಂದಾಜು",
       "required": "ಅಗತ್ಯ ಶಕ್ತಿ",
       "flightTime": "ಅಂದಾಜು ಹಾರಾಟ ಸಮಯ",
       "swaps": "ಬ್ಯಾಟರಿ ಬದಲಾವಣೆಗಳು",
-      "estimate": "ಅಂದಾಜು",
-      "note": "ಡೀಫಾಲ್ಟ್ ವಿದ್ಯುತ್ ಬಳಕೆ ಮತ್ತು ನಾಮಮಾತ್ರ ಪ್ಯಾಕ್‌ನಿಂದ ಸ್ಥೂಲ ಅಂದಾಜು. ನಿಮ್ಮದೇ ವಿದ್ಯುತ್ ರೇಖೆಯೊಂದಿಗೆ ಪರಿಶೀಲಿಸಿ.",
       "packRange": "ಬ್ಯಾಟರಿ {n}: WP {from}–{to}",
       "profileNote": "{pack} ಪ್ರೊಫೈಲ್ ({capacity} Wh, {reserve} % ಮೀಸಲು) ಮತ್ತು ಯೋಜನೆಯ ಹಾರಾಟ ಸಮಯದಿಂದ ಅಂದಾಜು.",
-      "forecastNote": "ಗಾಳಿ ಮತ್ತು ತಾಪಮಾನ ಸ್ಥಳದ ಮುನ್ಸೂಚನೆಯಿಂದ."
+      "forecastNote": "ಗಾಳಿ ಮತ್ತು ತಾಪಮಾನ ಸ್ಥಳದ ಮುನ್ಸೂಚನೆಯಿಂದ.",
+      "battery": "ಬ್ಯಾಟರಿ",
+      "editPacks": "ಬ್ಯಾಟರಿಗಳನ್ನು ಸಂಪಾದಿಸಿ…",
+      "reserve": "ಮೀಸಲು",
+      "reserveHint": "ಇಳಿಯುವಾಗ ಉಳಿಯುವ ಚಾರ್ಜ್",
+      "packSection": "ಬ್ಯಾಟರಿ ಮತ್ತು ಪ್ಯಾಕ್‌ಗಳು",
+      "perPack": "ಪ್ರತಿ ಬ್ಯಾಟರಿಯ ಶಕ್ತಿ ಮತ್ತು ಸಮಯ",
+      "resumeFrom": "WP {wp} ರಿಂದ ಮುಂದುವರಿಸಿ",
+      "resumeTitle": "ಬ್ಯಾಟರಿ {n} ಗಾಗಿ ಮಿಷನ್ ಅಪ್‌ಲೋಡ್ ಮಾಡಿ: ಟೇಕಾಫ್ ಮಾಡಿ WP {wp} ರಿಂದ ಮುಂದುವರಿಯುತ್ತದೆ",
+      "routeSection": "ಬ್ಯಾಟರಿ ಪ್ರಕಾರ ವಿಭಜಿಸಿದ ಮಾರ್ಗ",
+      "routeTitle": "ಬ್ಯಾಟರಿ ಪ್ರಕಾರ ಮಾರ್ಗ",
+      "noFlight": "ಇನ್ನೂ ಹಾರಿಸಲು ಏನೂ ಇಲ್ಲ.",
+      "routeStart": "ಹೋಮ್",
+      "routeEnd": "ಅಂತ್ಯ",
+      "changeTick": "⚡{n} WP {wp}",
+      "changeTitle": "WP {wp} ನಲ್ಲಿ ಬ್ಯಾಟರಿ {n} ಮುಂದುವರಿಸುತ್ತದೆ",
+      "packs": {
+        "title": "ಬ್ಯಾಟರಿ ಪ್ಯಾಕ್‌ಗಳು",
+        "add": "ಬ್ಯಾಟರಿ ಸೇರಿಸಿ",
+        "done": "ಮುಗಿದಿದೆ",
+        "name": "ಹೆಸರು",
+        "capacity": "ಸಾಮರ್ಥ್ಯ",
+        "cruise": "ಕ್ರೂಸ್",
+        "hover": "ಹೋವರ್",
+        "reserve": "ಮೀಸಲು",
+        "hint": "ಸಾಮರ್ಥ್ಯ ಎಂದರೆ ಪೂರ್ಣ ಚಾರ್ಜ್ ಪ್ಯಾಕ್‌ನ ಬಳಸಬಹುದಾದ ಶಕ್ತಿ. ಕ್ರೂಸ್ ಮತ್ತು ಹೋವರ್ ಎಂದರೆ ಮುಂದೆ ಹಾರುವಾಗ ಮತ್ತು ಹೋವರ್ ಅಥವಾ ಏರುವಾಗ ಸರಾಸರಿ ವಿದ್ಯುತ್ ಬಳಕೆ. ಮೀಸಲು ಎಂದರೆ ಇಳಿಯುವಾಗ ಉಳಿಯುವ ಚಾರ್ಜ್.",
+        "newName": "ಬ್ಯಾಟರಿ {n}",
+        "nameOf": "{name} ಹೆಸರು",
+        "capacityOf": "{name} ಸಾಮರ್ಥ್ಯ",
+        "cruiseOf": "{name} ಕ್ರೂಸ್ ಪವರ್",
+        "hoverOf": "{name} ಹೋವರ್ ಪವರ್",
+        "reserveOf": "{name} ಮೀಸಲು",
+        "delete": "{name} ಅಳಿಸಿ",
+        "deleteDefaultReason": "ಡೀಫಾಲ್ಟ್ ಬ್ಯಾಟರಿಯನ್ನು ಅಳಿಸಲಾಗುವುದಿಲ್ಲ"
+      }
     },
     "validation": {
       "advisories": "ಸಲಹೆಗಳು"
@@ -3277,7 +3308,6 @@
     "perimeterAreaSet": "Boundary polygon set",
     "offline": {
       "waitingForMap": "Waiting for the map to load",
-      "title": "Download current view",
       "close": "Close",
       "scope": "Caches offline tiles covering the current map view.",
       "provider": "Tile provider",
@@ -3292,7 +3322,21 @@
       "downloadedFailed": ", {count} failed",
       "customUnusable": "Set a usable custom tile URL before downloading.",
       "cancel": "Cancel",
-      "download": "Download"
+      "download": "Download",
+      "areaTitle": "ಆಫ್‌ಲೈನ್ ಪ್ರದೇಶ ಡೌನ್‌ಲೋಡ್ ಮಾಡಿ",
+      "area": "ಪ್ರದೇಶ",
+      "areaView": "ಪ್ರಸ್ತುತ ನೋಟ",
+      "areaPlan": "ಯೋಜನೆ ಪ್ರದೇಶ",
+      "areaPlanEmpty": "ಯೋಜನೆ ಖಾಲಿಯಾಗಿದೆ: ಮೊದಲು ವೇಪಾಯಿಂಟ್‌ಗಳು, ಹೋಮ್, ಜಿಯೋಫೆನ್ಸ್ ಅಥವಾ ರ್ಯಾಲಿ ಪಾಯಿಂಟ್‌ಗಳನ್ನು ಸೇರಿಸಿ",
+      "areaPlanTitle": "ವೇಪಾಯಿಂಟ್‌ಗಳು, ಯೋಜಿತ ಹೋಮ್, ಜಿಯೋಫೆನ್ಸ್ ಮತ್ತು ರ್ಯಾಲಿ ಪಾಯಿಂಟ್‌ಗಳು, ಜೊತೆಗೆ 500 m",
+      "scopePlan": "ಯೋಜನೆಯ ವೇಪಾಯಿಂಟ್‌ಗಳು, ಯೋಜಿತ ಹೋಮ್, ಜಿಯೋಫೆನ್ಸ್, ರ್ಯಾಲಿ ಪಾಯಿಂಟ್‌ಗಳು ಮತ್ತು ಸುತ್ತಲಿನ 500 m ಅನ್ನು ಕ್ಯಾಶ್ ಮಾಡುತ್ತದೆ.",
+      "includeTerrain": "ಭೂಪ್ರದೇಶದ ಎತ್ತರ ಸೇರಿಸಿ",
+      "progressTiles": "ಟೈಲ್‌ಗಳು {done} / {total}",
+      "progressElevation": "ಎತ್ತರ ಕೋಶಗಳು {done} / {total}",
+      "elevationStarting": "ಎತ್ತರ: ಪ್ರಾರಂಭವಾಗುತ್ತಿದೆ…",
+      "elevationDone": "ಎತ್ತರ: {count} ಕೋಶಗಳನ್ನು ಉಳಿಸಲಾಗಿದೆ",
+      "elevationTooLarge": "ಭೂಪ್ರದೇಶ ಡೌನ್‌ಲೋಡ್‌ಗೆ ಪ್ರದೇಶ ತುಂಬಾ ದೊಡ್ಡದು",
+      "elevationFailed": "ಎತ್ತರ ಡೌನ್‌ಲೋಡ್ ವಿಫಲವಾಗಿದೆ: {reason}"
     },
     "commands": {
       "sendToVehicle": "Send to vehicle",
@@ -3355,7 +3399,9 @@
         "frameMslTitle": "Above mean sea level",
         "frameTerrain": "Terrain",
         "frameTerrainTitle": "Follows the terrain",
-        "terrainHint": "Altitude adjusts to the terrain elevation."
+        "terrainHint": "Altitude adjusts to the terrain elevation.",
+        "acceptRadiusAuto": "ಸ್ವಯಂ (WP_RADIUS)",
+        "frameTerrainPx4": "PX4 ನಲ್ಲಿ ಭೂಪ್ರದೇಶ ಫ್ರೇಮ್ ಇಲ್ಲ. ಮಾದರಿಗಳಲ್ಲಿ ಭೂಪ್ರದೇಶ ಅನುಸರಿಸಿ ಬಳಸಿ"
       },
       "waypoint": {
         "position": "Position",
@@ -3427,7 +3473,9 @@
         "copy": "Copy",
         "delete": "Delete",
         "collapseAction": "Hide action settings",
-        "expandAction": "Show action settings"
+        "expandAction": "Show action settings",
+        "resumeFromHere": "ಇಲ್ಲಿಂದ ಮುಂದುವರಿಸಿ…",
+        "resumeFirstReason": "ಮಿಷನ್ ಇಲ್ಲಿಂದ ಆರಂಭವಾಗುತ್ತದೆ, ಆದ್ದರಿಂದ ಸಾಮಾನ್ಯವಾಗಿ ಕಳುಹಿಸಿ"
       },
       "batch": {
         "hint": "Ctrl-click or Shift-click waypoints to edit several at once.",
@@ -3512,7 +3560,37 @@
         "directionCwShort": "CW",
         "directionCcwShort": "CCW"
       },
-      "label": "Inspector"
+      "label": "Inspector",
+      "vehicle": {
+        "title": "ವಾಹನ",
+        "autopilotLabel": "ಆಟೋಪೈಲಟ್",
+        "typeLabel": "ಪ್ರಕಾರ",
+        "autopilot": {
+          "ardupilot": "ArduPilot",
+          "px4": "PX4"
+        },
+        "class": {
+          "copter": "ಮಲ್ಟಿರೋಟರ್",
+          "plane": "ಸ್ಥಿರ ರೆಕ್ಕೆ",
+          "vtol": "VTOL",
+          "rover": "ರೋವರ್"
+        },
+        "reports": "{drone} {profile} ಎಂದು ವರದಿ ಮಾಡುತ್ತದೆ",
+        "use": "ಬಳಸಿ"
+      },
+      "home": {
+        "title": "ಹೋಮ್ ಮತ್ತು ಉಡಾವಣೆ",
+        "plannedHome": "ಯೋಜಿತ ಹೋಮ್",
+        "pickOnMap": "ನಕ್ಷೆಯಲ್ಲಿ ಆರಿಸಿ",
+        "pickCancel": "ನಕ್ಷೆಯಲ್ಲಿ ಆಯ್ಕೆ ರದ್ದುಮಾಡಿ",
+        "groundMsl": "{alt} MSL",
+        "groundUnknown": "ನೆಲ ತಿಳಿದಿಲ್ಲ",
+        "notSet": "ಹೊಂದಿಸಿಲ್ಲ",
+        "useVehicleHome": "ವಾಹನದ ಹೋಮ್ ಬಳಸಿ",
+        "transitAlt": "ಸಾಗಣೆ ಎತ್ತರ",
+        "transitHint": "ಮೊದಲ ವೇಪಾಯಿಂಟ್‌ಗೆ ಮೊದಲು ಮತ್ತು ಹಿಂತಿರುಗುವಾಗ ಈ ಎತ್ತರಕ್ಕೆ ಏರಿ.",
+        "off": "ಆಫ್"
+      }
     },
     "outline": {
       "label": "Plan outline",
@@ -3547,7 +3625,10 @@
       "rallyItem": "Rally {n}",
       "addPoi": "Add point of interest",
       "noPoi": "No points of interest",
-      "poiItem": "POI {n}"
+      "poiItem": "POI {n}",
+      "rowMenu": "ವೇಪಾಯಿಂಟ್ {n} ಕ್ರಿಯೆಗಳು",
+      "resumeFromHere": "ಇಲ್ಲಿಂದ ಮುಂದುವರಿಸಿ…",
+      "resumeFirstReason": "ಯೋಜನೆ ಇಲ್ಲಿಂದಲೇ ಆರಂಭವಾಗುತ್ತದೆ; ಅದನ್ನು ಸಾಮಾನ್ಯವಾಗಿ ಕಳುಹಿಸಿ"
     },
     "bar": {
       "plans": "Plans",
@@ -3786,7 +3867,21 @@
       "timeMin": "{value} ನಿಮಿ",
       "timeSec": "{value} ಸೆ",
       "pasteDroppedJumps": "ಅಂಟಿಸಿದ ಗುಂಪಿನ ಹೊರಗಿನ ವೇಪಾಯಿಂಟ್‌ಗಳಿಗೆ ಹೋಗುವ ಜಂಪ್‌ಗಳನ್ನು ತೆಗೆದುಹಾಕಲಾಗಿದೆ: {count}"
-    }
+    },
+    "map": {
+      "pickHomeBanner": "ಯೋಜಿತ ಹೋಮ್ ಹೊಂದಿಸಲು ನಕ್ಷೆಯ ಮೇಲೆ ಕ್ಲಿಕ್ ಮಾಡಿ",
+      "plannedHome": "ಯೋಜಿತ ಹೋಮ್ · {ground}",
+      "groundMsl": "{m} ಮೀ MSL",
+      "groundUnknown": "ನೆಲದ ಎತ್ತರ ತಿಳಿದಿಲ್ಲ",
+      "vehicleHome": "ವಾಹನದ ಹೋಮ್",
+      "useAsPlannedHome": "ಯೋಜಿತ ಹೋಮ್ ಆಗಿ ಬಳಸಿ",
+      "transitAlt": "↑ {m} ಮೀ",
+      "clipsTerrain": "ಭೂಪ್ರದೇಶವನ್ನು {m} ಮೀ ಕತ್ತರಿಸುತ್ತದೆ",
+      "lowOverTerrain": "ಭೂಪ್ರದೇಶದಿಂದ ಕೇವಲ {m} ಮೀ ಮೇಲೆ",
+      "insertWaypoint": "ವೇಪಾಯಿಂಟ್ ಸೇರಿಸಿ",
+      "packStarts": "ಬ್ಯಾಟರಿ ಪ್ಯಾಕ್ {n} ಇಲ್ಲಿ ಆರಂಭವಾಗುತ್ತದೆ"
+    },
+    "setFacadeLine": "ನಕ್ಷೆಯಲ್ಲಿ ಮುಂಭಾಗದ ರೇಖೆಯನ್ನು ಹೊಂದಿಸಿ"
   },
   "geofence": {
     "autoFence": "ಸ್ವಯಂ-ಬೇಲಿ",

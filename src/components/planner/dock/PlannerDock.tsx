@@ -13,12 +13,11 @@
  */
 "use client";
 
-import { useId, useMemo, useState, type TransitionEvent } from "react";
+import { useId, useState, type TransitionEvent } from "react";
 import { useTranslations } from "next-intl";
 import { ChevronDown } from "lucide-react";
 import type { Planner } from "@/app/plan/use-planner";
-import { useValidationOptions } from "@/hooks/use-validation-options";
-import { validateMission } from "@/lib/validation/mission-validator";
+import { usePlannerValidation } from "@/hooks/use-planner-validation";
 import { MAP_OVERLAY_Z } from "@/lib/map-overlay-z";
 import { cn } from "@/lib/utils";
 import { DOCK_TABS, usePlannerStore, type DockTab } from "@/stores/planner-store";
@@ -32,7 +31,7 @@ export const DOCK_DRAWER_HEIGHT = 200;
 
 interface PlannerDockProps {
   /** The planner; the dock reads only these members. */
-  p: Pick<Planner, "waypoints" | "defaultSpeed" | "selectedWaypointId" | "setSelectedWaypoint">;
+  p: Pick<Planner, "waypoints" | "selectedWaypointId" | "setSelectedWaypoint">;
 }
 
 export function PlannerDock({ p }: PlannerDockProps) {
@@ -46,12 +45,8 @@ export function PlannerDock({ p }: PlannerDockProps) {
   // True from a tab click that opens or closes the drawer until its slide ends.
   const [animate, setAnimate] = useState(false);
 
-  const validationOptions = useValidationOptions();
-  const issues = useMemo(() => {
-    if (p.waypoints.length === 0) return { errors: 0, warnings: 0 };
-    const r = validateMission(p.waypoints, validationOptions);
-    return { errors: r.errors.length, warnings: r.warnings.length };
-  }, [p.waypoints, validationOptions]);
+  const validation = usePlannerValidation(p.waypoints);
+  const issues = { errors: validation?.errors.length ?? 0, warnings: validation?.warnings.length ?? 0 };
   const checkedCount = countCheckedPreflightItems(checked);
 
   const onTabClick = (tab: DockTab) => {
@@ -93,7 +88,6 @@ export function PlannerDock({ p }: PlannerDockProps) {
             <DockTabContent
               tab={dockTab}
               waypoints={p.waypoints}
-              defaultSpeed={p.defaultSpeed}
               selectedWaypointId={p.selectedWaypointId}
               onSelectWaypoint={p.setSelectedWaypoint}
             />
@@ -107,7 +101,7 @@ export function PlannerDock({ p }: PlannerDockProps) {
         style={{ height: DOCK_STRIP_HEIGHT }}
       >
         <div className="min-w-0 flex-1">
-          <DockStats waypoints={p.waypoints} defaultSpeed={p.defaultSpeed} />
+          <DockStats />
         </div>
         <div role="tablist" aria-label={t("tabsLabel")} className="flex shrink-0 items-center gap-0.5">
           {DOCK_TABS.map((tab) => {

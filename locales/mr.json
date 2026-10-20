@@ -3113,15 +3113,46 @@
       }
     },
     "energy": {
-      "title": "ऊर्जा अंदाज",
       "required": "आवश्यक ऊर्जा",
       "flightTime": "अंदाजे उड्डाण वेळ",
       "swaps": "बॅटरी बदल",
-      "estimate": "अंदाज",
-      "note": "डीफॉल्ट पॉवर वापर आणि सामान्य पॅकवरून ढोबळ आकडा. तुमच्या स्वतःच्या पॉवर कर्व्हशी पडताळून पहा.",
       "packRange": "बॅटरी {n}: WP {from}–{to}",
       "profileNote": "{pack} प्रोफाइल ({capacity} Wh, {reserve} % राखीव) आणि योजनेच्या उड्डाण वेळेवरून अंदाज.",
-      "forecastNote": "वारा आणि तापमान साइटच्या अंदाजावरून."
+      "forecastNote": "वारा आणि तापमान साइटच्या अंदाजावरून.",
+      "battery": "बॅटरी",
+      "editPacks": "बॅटरी संपादित करा…",
+      "reserve": "राखीव",
+      "reserveHint": "लँडिंगला उरणारा चार्ज",
+      "packSection": "बॅटरी आणि पॅक",
+      "perPack": "प्रत्येक बॅटरीची ऊर्जा आणि वेळ",
+      "resumeFrom": "WP {wp} पासून पुन्हा सुरू करा",
+      "resumeTitle": "बॅटरी {n} साठी मिशन अपलोड करा जे टेकऑफ करून WP {wp} पासून पुढे जाते",
+      "routeSection": "बॅटरीनुसार विभागलेला मार्ग",
+      "routeTitle": "बॅटरीनुसार मार्ग",
+      "noFlight": "अजून उडवण्यासारखे काही नाही.",
+      "routeStart": "होम",
+      "routeEnd": "शेवट",
+      "changeTick": "⚡{n} WP {wp}",
+      "changeTitle": "WP {wp} वर बॅटरी {n} पुढे चालवते",
+      "packs": {
+        "title": "बॅटरी पॅक",
+        "add": "बॅटरी जोडा",
+        "done": "झाले",
+        "name": "नाव",
+        "capacity": "क्षमता",
+        "cruise": "क्रूझ",
+        "hover": "होव्हर",
+        "reserve": "राखीव",
+        "hint": "क्षमता म्हणजे पूर्ण चार्ज पॅकची वापरण्याजोगी ऊर्जा. क्रूझ आणि होव्हर म्हणजे पुढे उडताना आणि होव्हर किंवा चढाई करताना सरासरी वीज वापर. राखीव म्हणजे लँडिंगला उरणारा चार्ज.",
+        "newName": "बॅटरी {n}",
+        "nameOf": "{name} चे नाव",
+        "capacityOf": "{name} ची क्षमता",
+        "cruiseOf": "{name} ची क्रूझ पॉवर",
+        "hoverOf": "{name} ची होव्हर पॉवर",
+        "reserveOf": "{name} चा राखीव",
+        "delete": "{name} हटवा",
+        "deleteDefaultReason": "डीफॉल्ट बॅटरी हटवता येत नाही"
+      }
     },
     "validation": {
       "advisories": "सूचना"
@@ -3277,7 +3308,6 @@
     "perimeterAreaSet": "Boundary polygon set",
     "offline": {
       "waitingForMap": "Waiting for the map to load",
-      "title": "Download current view",
       "close": "Close",
       "scope": "Caches offline tiles covering the current map view.",
       "provider": "Tile provider",
@@ -3292,7 +3322,21 @@
       "downloadedFailed": ", {count} failed",
       "customUnusable": "Set a usable custom tile URL before downloading.",
       "cancel": "Cancel",
-      "download": "Download"
+      "download": "Download",
+      "areaTitle": "ऑफलाइन क्षेत्र डाउनलोड करा",
+      "area": "क्षेत्र",
+      "areaView": "सध्याचे दृश्य",
+      "areaPlan": "योजनेचे क्षेत्र",
+      "areaPlanEmpty": "योजना रिकामी आहे: आधी वेपॉइंट, होम, जिओफेन्स किंवा रॅली पॉइंट जोडा",
+      "areaPlanTitle": "वेपॉइंट, नियोजित होम, जिओफेन्स आणि रॅली पॉइंट, अधिक 500 m",
+      "scopePlan": "योजनेचे वेपॉइंट, नियोजित होम, जिओफेन्स आणि रॅली पॉइंट, आणि भोवतीचे 500 m कॅश करते.",
+      "includeTerrain": "भूभागाची उंची समाविष्ट करा",
+      "progressTiles": "टाइल {done} / {total}",
+      "progressElevation": "उंची सेल {done} / {total}",
+      "elevationStarting": "उंची: सुरू होत आहे…",
+      "elevationDone": "उंची: {count} सेल जतन केले",
+      "elevationTooLarge": "भूभाग डाउनलोडसाठी क्षेत्र खूप मोठे आहे",
+      "elevationFailed": "उंची डाउनलोड अयशस्वी: {reason}"
     },
     "commands": {
       "sendToVehicle": "Send to vehicle",
@@ -3355,7 +3399,9 @@
         "frameMslTitle": "Above mean sea level",
         "frameTerrain": "Terrain",
         "frameTerrainTitle": "Follows the terrain",
-        "terrainHint": "Altitude adjusts to the terrain elevation."
+        "terrainHint": "Altitude adjusts to the terrain elevation.",
+        "acceptRadiusAuto": "स्वयं (WP_RADIUS)",
+        "frameTerrainPx4": "PX4 मध्ये भूभाग फ्रेम नाही. पॅटर्नमध्ये भूभागाचे अनुसरण वापरा"
       },
       "waypoint": {
         "position": "Position",
@@ -3427,7 +3473,9 @@
         "copy": "Copy",
         "delete": "Delete",
         "collapseAction": "Hide action settings",
-        "expandAction": "Show action settings"
+        "expandAction": "Show action settings",
+        "resumeFromHere": "येथून पुन्हा सुरू करा…",
+        "resumeFirstReason": "मोहीम येथूनच सुरू होते, म्हणून ती नेहमीप्रमाणे पाठवा"
       },
       "batch": {
         "hint": "Ctrl-click or Shift-click waypoints to edit several at once.",
@@ -3512,7 +3560,37 @@
         "directionCwShort": "CW",
         "directionCcwShort": "CCW"
       },
-      "label": "Inspector"
+      "label": "Inspector",
+      "vehicle": {
+        "title": "वाहन",
+        "autopilotLabel": "ऑटोपायलट",
+        "typeLabel": "प्रकार",
+        "autopilot": {
+          "ardupilot": "ArduPilot",
+          "px4": "PX4"
+        },
+        "class": {
+          "copter": "मल्टिरोटर",
+          "plane": "स्थिर पंख",
+          "vtol": "VTOL",
+          "rover": "रोव्हर"
+        },
+        "reports": "{drone} {profile} कळवते",
+        "use": "वापरा"
+      },
+      "home": {
+        "title": "होम आणि उड्डाण",
+        "plannedHome": "नियोजित होम",
+        "pickOnMap": "नकाशावर निवडा",
+        "pickCancel": "नकाशावरील निवड रद्द करा",
+        "groundMsl": "{alt} MSL",
+        "groundUnknown": "जमीन अज्ञात",
+        "notSet": "सेट नाही",
+        "useVehicleHome": "वाहनाचे होम वापरा",
+        "transitAlt": "ट्रान्झिट उंची",
+        "transitHint": "पहिल्या वेपॉइंटआधी आणि परतीच्या मार्गावर या उंचीपर्यंत चढा.",
+        "off": "बंद"
+      }
     },
     "outline": {
       "label": "Plan outline",
@@ -3547,7 +3625,10 @@
       "rallyItem": "Rally {n}",
       "addPoi": "Add point of interest",
       "noPoi": "No points of interest",
-      "poiItem": "POI {n}"
+      "poiItem": "POI {n}",
+      "rowMenu": "वेपॉइंट {n} च्या क्रिया",
+      "resumeFromHere": "येथून पुन्हा सुरू करा…",
+      "resumeFirstReason": "योजना इथूनच सुरू होते; ती नेहमीप्रमाणे पाठवा"
     },
     "bar": {
       "plans": "Plans",
@@ -3786,7 +3867,21 @@
       "timeMin": "{value} मिनिटे",
       "timeSec": "{value} सेकंद",
       "pasteDroppedJumps": "चिकटवलेल्या संचाबाहेरील वेपॉइंटवर जाणारे जंप काढले: {count}"
-    }
+    },
+    "map": {
+      "pickHomeBanner": "नियोजित होम सेट करण्यासाठी नकाशावर क्लिक करा",
+      "plannedHome": "नियोजित होम · {ground}",
+      "groundMsl": "{m} मी MSL",
+      "groundUnknown": "जमिनीची उंची अज्ञात",
+      "vehicleHome": "वाहनाचे होम",
+      "useAsPlannedHome": "नियोजित होम म्हणून वापरा",
+      "transitAlt": "↑ {m} मी",
+      "clipsTerrain": "भूप्रदेश {m} मी ने छेदतो",
+      "lowOverTerrain": "भूप्रदेशापासून फक्त {m} मी वर",
+      "insertWaypoint": "वेपॉइंट घाला",
+      "packStarts": "बॅटरी पॅक {n} येथून सुरू होतो"
+    },
+    "setFacadeLine": "नकाशावर दर्शनी रेषा निश्चित करा"
   },
   "geofence": {
     "autoFence": "ऑटो-फेन्स",

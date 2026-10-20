@@ -4,8 +4,9 @@
  * @module outline/OutlineMissionList
  * @description The waypoint rows of the plan outline: click to select
  * (Ctrl/Cmd adds, Shift selects a range), drag to reorder, a hover `+`
- * between rows to insert, and a hover delete. The selected row scrolls into
- * view when the selection changes elsewhere (map, keyboard).
+ * between rows to insert, a hover delete, and a right-click menu that resumes
+ * the plan from a row. The selected row scrolls into view when the selection
+ * changes elsewhere (map, keyboard).
  * @license GPL-3.0-only
  */
 
@@ -18,6 +19,7 @@ import { useMissionStore } from "@/stores/mission-store";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { OutlineWaypointRow } from "./OutlineWaypointRow";
 import { OutlineEmpty } from "./OutlineItemRow";
+import { OutlineRowMenu } from "./OutlineRowMenu";
 
 interface OutlineMissionListProps {
   waypoints: Waypoint[];
@@ -34,11 +36,21 @@ export function OutlineMissionList({
   const t = useTranslations("planner");
   const selectedIds = usePlannerStore((s) => s.selectedWaypointIds);
   const defaultFrame = usePlannerStore((s) => s.defaultFrame);
-  const homeGroundElevation = useMissionStore((s) => s.waypoints[0]?.groundElevation);
+  // The same home datum the flight plan and the validator use: the planned
+  // home's ground, else the launch waypoint's sample.
+  const homeGroundElevation = useMissionStore(
+    (s) => s.plannedHome?.groundAmsl ?? s.waypoints[0]?.groundElevation,
+  );
   const protocol = useDroneManager(selectSelectedProtocol);
   const isInav = protocol?.getVehicleInfo()?.firmwareType === "inav";
 
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [rowMenu, setRowMenu] = useState<{ index: number; x: number; y: number } | null>(null);
+  const closeRowMenu = useCallback(() => setRowMenu(null), []);
+  const handleContextMenu = useCallback((index: number, e: React.MouseEvent) => {
+    e.preventDefault();
+    setRowMenu({ index, x: e.clientX, y: e.clientY });
+  }, []);
   const dragIndexRef = useRef<number | null>(null);
   const rowRefs = useRef(new Map<string, HTMLElement>());
 
@@ -143,9 +155,19 @@ export function OutlineMissionList({
             onDrop={handleDrop}
             dragOver={dragOverIndex === i}
             registerRow={registerRow}
+            onContextMenu={isInav ? undefined : handleContextMenu}
           />
         </div>
       ))}
+      {rowMenu && (
+        <OutlineRowMenu
+          index={rowMenu.index}
+          count={waypoints.length}
+          x={rowMenu.x}
+          y={rowMenu.y}
+          onClose={closeRowMenu}
+        />
+      )}
     </div>
   );
 }

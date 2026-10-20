@@ -133,13 +133,26 @@ export function WaypointInspector({ p, waypoint }: WaypointInspectorProps) {
   );
 }
 
-/** Header menu for the selected waypoint: insert around it, copy, delete. */
+/**
+ * Header menu for the selected waypoint: insert around it, copy, resume the
+ * mission from it on a fresh pack, delete. Resume is a MAVLink mission, so it
+ * is absent on iNav, and the first waypoint has nothing to resume past.
+ */
 export function WaypointMenu({ p, waypoint }: WaypointInspectorProps) {
   const t = useTranslations("planner.inspector.waypoint");
+  const openSendDialog = usePlannerStore((s) => s.openSendDialog);
+  const isInav = useDroneManager((s) => selectSelectedProtocol(s)?.getVehicleInfo()?.firmwareType === "inav");
+  const index = p.waypoints.findIndex((w) => w.id === waypoint.id);
   const items = [
     { id: "insert-before", label: t("insertBefore") },
     { id: "insert-after", label: t("insertAfter") },
     { id: "copy", label: t("copy") },
+    ...(isInav ? [] : [{
+      id: "resume",
+      label: t("resumeFromHere"),
+      disabled: index <= 0,
+      title: index <= 0 ? t("resumeFirstReason") : undefined,
+    }]),
     { id: "div", label: "", divider: true },
     { id: "delete", label: t("delete"), danger: true },
   ];
@@ -148,6 +161,7 @@ export function WaypointMenu({ p, waypoint }: WaypointInspectorProps) {
       case "insert-before": p.handleInsertRelative(waypoint.id, "before"); break;
       case "insert-after": p.handleInsertRelative(waypoint.id, "after"); break;
       case "copy": setClipboard([waypoint]); break;
+      case "resume": if (index > 0) openSendDialog({ resumeFromIndex: index }); break;
       case "delete": p.removeWaypoint(waypoint.id); break;
     }
   };

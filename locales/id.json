@@ -3113,15 +3113,46 @@
       }
     },
     "energy": {
-      "title": "Perkiraan energi",
       "required": "Energi diperlukan",
       "flightTime": "Perk. waktu terbang",
       "swaps": "Penggantian baterai",
-      "estimate": "perkiraan",
-      "note": "Angka kasar dari konsumsi daya bawaan dan paket baterai nominal. Verifikasi dengan kurva daya Anda sendiri.",
       "packRange": "Baterai {n}: WP {from}–{to}",
       "profileNote": "Perkiraan dari profil {pack} ({capacity} Wh, cadangan {reserve} %) dan waktu terbang rencana.",
-      "forecastNote": "Angin dan suhu dari prakiraan lokasi."
+      "forecastNote": "Angin dan suhu dari prakiraan lokasi.",
+      "battery": "Baterai",
+      "editPacks": "Edit baterai…",
+      "reserve": "Cadangan",
+      "reserveHint": "Muatan yang tersisa saat mendarat",
+      "packSection": "Baterai dan paket",
+      "perPack": "Energi dan waktu per baterai",
+      "resumeFrom": "Lanjutkan dari WP {wp}",
+      "resumeTitle": "Unggah misi untuk baterai {n} yang lepas landas dan berlanjut dari WP {wp}",
+      "routeSection": "Rute dibagi per baterai",
+      "routeTitle": "Rute per baterai",
+      "noFlight": "Belum ada yang diterbangkan.",
+      "routeStart": "Home",
+      "routeEnd": "Akhir",
+      "changeTick": "⚡{n} WP {wp}",
+      "changeTitle": "Baterai {n} mengambil alih di WP {wp}",
+      "packs": {
+        "title": "Paket baterai",
+        "add": "Tambah baterai",
+        "done": "Selesai",
+        "name": "Nama",
+        "capacity": "Kapasitas",
+        "cruise": "Jelajah",
+        "hover": "Melayang",
+        "reserve": "Cadangan",
+        "hint": "Kapasitas adalah energi yang dapat dipakai dari baterai penuh. Jelajah dan melayang adalah daya rata-rata saat terbang maju dan saat melayang atau naik. Cadangan adalah muatan yang tersisa saat mendarat.",
+        "newName": "Baterai {n}",
+        "nameOf": "Nama {name}",
+        "capacityOf": "Kapasitas {name}",
+        "cruiseOf": "Daya jelajah {name}",
+        "hoverOf": "Daya melayang {name}",
+        "reserveOf": "Cadangan {name}",
+        "delete": "Hapus {name}",
+        "deleteDefaultReason": "Baterai bawaan tidak dapat dihapus"
+      }
     },
     "validation": {
       "advisories": "Anjuran"
@@ -3277,7 +3308,6 @@
     "perimeterAreaSet": "Boundary polygon set",
     "offline": {
       "waitingForMap": "Waiting for the map to load",
-      "title": "Download current view",
       "close": "Close",
       "scope": "Caches offline tiles covering the current map view.",
       "provider": "Tile provider",
@@ -3292,7 +3322,21 @@
       "downloadedFailed": ", {count} failed",
       "customUnusable": "Set a usable custom tile URL before downloading.",
       "cancel": "Cancel",
-      "download": "Download"
+      "download": "Download",
+      "areaTitle": "Unduh area offline",
+      "area": "Area",
+      "areaView": "Tampilan saat ini",
+      "areaPlan": "Area rencana",
+      "areaPlanEmpty": "Rencana kosong: tambahkan dulu waypoint, home, geofence, atau titik kumpul",
+      "areaPlanTitle": "Waypoint, home terencana, geofence, dan titik kumpul, ditambah 500 m",
+      "scopePlan": "Menyimpan waypoint, home terencana, geofence, dan titik kumpul rencana, ditambah 500 m di sekitarnya.",
+      "includeTerrain": "Sertakan elevasi medan",
+      "progressTiles": "Tile {done} / {total}",
+      "progressElevation": "Sel elevasi {done} / {total}",
+      "elevationStarting": "Elevasi: memulai…",
+      "elevationDone": "Elevasi: {count} sel tersimpan",
+      "elevationTooLarge": "Area terlalu besar untuk unduhan medan",
+      "elevationFailed": "Unduhan elevasi gagal: {reason}"
     },
     "commands": {
       "sendToVehicle": "Send to vehicle",
@@ -3355,7 +3399,9 @@
         "frameMslTitle": "Above mean sea level",
         "frameTerrain": "Terrain",
         "frameTerrainTitle": "Follows the terrain",
-        "terrainHint": "Altitude adjusts to the terrain elevation."
+        "terrainHint": "Altitude adjusts to the terrain elevation.",
+        "acceptRadiusAuto": "Otomatis (WP_RADIUS)",
+        "frameTerrainPx4": "PX4 tidak punya frame terrain. Gunakan Ikuti terrain pada pola"
       },
       "waypoint": {
         "position": "Position",
@@ -3427,7 +3473,9 @@
         "copy": "Copy",
         "delete": "Delete",
         "collapseAction": "Hide action settings",
-        "expandAction": "Show action settings"
+        "expandAction": "Show action settings",
+        "resumeFromHere": "Lanjutkan dari sini…",
+        "resumeFirstReason": "Misi dimulai di sini, jadi kirim seperti biasa"
       },
       "batch": {
         "hint": "Ctrl-click or Shift-click waypoints to edit several at once.",
@@ -3512,7 +3560,37 @@
         "directionCwShort": "CW",
         "directionCcwShort": "CCW"
       },
-      "label": "Inspector"
+      "label": "Inspector",
+      "vehicle": {
+        "title": "Wahana",
+        "autopilotLabel": "Autopilot",
+        "typeLabel": "Tipe",
+        "autopilot": {
+          "ardupilot": "ArduPilot",
+          "px4": "PX4"
+        },
+        "class": {
+          "copter": "Multirotor",
+          "plane": "Sayap tetap",
+          "vtol": "VTOL",
+          "rover": "Rover"
+        },
+        "reports": "{drone} melaporkan {profile}",
+        "use": "Gunakan"
+      },
+      "home": {
+        "title": "Home & peluncuran",
+        "plannedHome": "Home terencana",
+        "pickOnMap": "Pilih di peta",
+        "pickCancel": "Batalkan pemilihan di peta",
+        "groundMsl": "{alt} MSL",
+        "groundUnknown": "tanah tidak diketahui",
+        "notSet": "Belum diatur",
+        "useVehicleHome": "Gunakan home wahana",
+        "transitAlt": "Ketinggian transit",
+        "transitHint": "Naik ke ketinggian ini sebelum waypoint pertama dan saat kembali.",
+        "off": "Mati"
+      }
     },
     "outline": {
       "label": "Plan outline",
@@ -3547,7 +3625,10 @@
       "rallyItem": "Rally {n}",
       "addPoi": "Add point of interest",
       "noPoi": "No points of interest",
-      "poiItem": "POI {n}"
+      "poiItem": "POI {n}",
+      "rowMenu": "Tindakan waypoint {n}",
+      "resumeFromHere": "Lanjutkan dari sini…",
+      "resumeFirstReason": "Rencana dimulai di sini; kirim seperti biasa"
     },
     "bar": {
       "plans": "Plans",
@@ -3786,7 +3867,21 @@
       "timeMin": "{value} mnt",
       "timeSec": "{value} dtk",
       "pasteDroppedJumps": "{count} lompatan ke waypoint di luar set yang ditempel dihapus"
-    }
+    },
+    "map": {
+      "pickHomeBanner": "Klik peta untuk menetapkan home yang direncanakan",
+      "plannedHome": "Home rencana · {ground}",
+      "groundMsl": "{m} m dpl",
+      "groundUnknown": "ketinggian tanah tidak diketahui",
+      "vehicleHome": "Home kendaraan",
+      "useAsPlannedHome": "Gunakan sebagai home rencana",
+      "transitAlt": "↑ {m} m",
+      "clipsTerrain": "Menembus medan sejauh {m} m",
+      "lowOverTerrain": "Hanya {m} m di atas medan",
+      "insertWaypoint": "Sisipkan waypoint",
+      "packStarts": "Baterai {n} dimulai di sini"
+    },
+    "setFacadeLine": "Tetapkan garis fasad di peta"
   },
   "geofence": {
     "autoFence": "Pagar otomatis",

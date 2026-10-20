@@ -3113,15 +3113,46 @@
       }
     },
     "energy": {
-      "title": "エネルギー見積もり",
       "required": "必要電力量",
       "flightTime": "推定飛行時間",
       "swaps": "バッテリー交換回数",
-      "estimate": "概算",
-      "note": "デフォルトの消費電力と標準的なバッテリーによる概算値です。実際の電力曲線で確認してください。",
       "packRange": "バッテリー {n}: WP {from}–{to}",
       "profileNote": "{pack} プロファイル ({capacity} Wh、予備 {reserve} %) と計画の飛行時間からの推定値です。",
-      "forecastNote": "風と気温はサイト予報から取得しています。"
+      "forecastNote": "風と気温はサイト予報から取得しています。",
+      "battery": "バッテリー",
+      "editPacks": "バッテリーを編集…",
+      "reserve": "予備",
+      "reserveHint": "着陸時に残す残量",
+      "packSection": "バッテリーとパック",
+      "perPack": "バッテリーごとのエネルギーと時間",
+      "resumeFrom": "WP {wp} から再開",
+      "resumeTitle": "離陸して WP {wp} から続けるバッテリー {n} 用のミッションをアップロード",
+      "routeSection": "バッテリーごとのルート分割",
+      "routeTitle": "バッテリー別ルート",
+      "noFlight": "まだ飛行する内容がありません。",
+      "routeStart": "ホーム",
+      "routeEnd": "終了",
+      "changeTick": "⚡{n} WP {wp}",
+      "changeTitle": "WP {wp} でバッテリー {n} に交代",
+      "packs": {
+        "title": "バッテリーパック",
+        "add": "バッテリーを追加",
+        "done": "完了",
+        "name": "名前",
+        "capacity": "容量",
+        "cruise": "巡航",
+        "hover": "ホバー",
+        "reserve": "予備",
+        "hint": "容量は満充電パックの使用可能エネルギーです。巡航とホバーは前進飛行時とホバリング・上昇時の平均消費電力です。予備は着陸時に残す残量です。",
+        "newName": "バッテリー {n}",
+        "nameOf": "{name} の名前",
+        "capacityOf": "{name} の容量",
+        "cruiseOf": "{name} の巡航電力",
+        "hoverOf": "{name} のホバー電力",
+        "reserveOf": "{name} の予備",
+        "delete": "{name} を削除",
+        "deleteDefaultReason": "既定のバッテリーは削除できません"
+      }
     },
     "validation": {
       "advisories": "注意事項"
@@ -3277,7 +3308,6 @@
     "perimeterAreaSet": "Boundary polygon set",
     "offline": {
       "waitingForMap": "Waiting for the map to load",
-      "title": "Download current view",
       "close": "Close",
       "scope": "Caches offline tiles covering the current map view.",
       "provider": "Tile provider",
@@ -3292,7 +3322,21 @@
       "downloadedFailed": ", {count} failed",
       "customUnusable": "Set a usable custom tile URL before downloading.",
       "cancel": "Cancel",
-      "download": "Download"
+      "download": "Download",
+      "areaTitle": "オフライン領域をダウンロード",
+      "area": "領域",
+      "areaView": "現在の表示",
+      "areaPlan": "計画の領域",
+      "areaPlanEmpty": "計画が空です。先にウェイポイント、ホーム、ジオフェンス、ラリーポイントを追加してください",
+      "areaPlanTitle": "ウェイポイント、計画ホーム、ジオフェンス、ラリーポイントと周囲 500 m",
+      "scopePlan": "計画のウェイポイント、計画ホーム、ジオフェンス、ラリーポイントとその周囲 500 m をキャッシュします。",
+      "includeTerrain": "地形標高を含める",
+      "progressTiles": "タイル {done} / {total}",
+      "progressElevation": "標高セル {done} / {total}",
+      "elevationStarting": "標高: 開始中…",
+      "elevationDone": "標高: {count} セルを保存",
+      "elevationTooLarge": "地形をダウンロードするには領域が大きすぎます",
+      "elevationFailed": "標高のダウンロードに失敗しました: {reason}"
     },
     "commands": {
       "sendToVehicle": "Send to vehicle",
@@ -3355,7 +3399,9 @@
         "frameMslTitle": "Above mean sea level",
         "frameTerrain": "Terrain",
         "frameTerrainTitle": "Follows the terrain",
-        "terrainHint": "Altitude adjusts to the terrain elevation."
+        "terrainHint": "Altitude adjusts to the terrain elevation.",
+        "acceptRadiusAuto": "自動 (WP_RADIUS)",
+        "frameTerrainPx4": "PX4 には地形フレームがありません。パターンで「地形に追従」を使用してください"
       },
       "waypoint": {
         "position": "Position",
@@ -3427,7 +3473,9 @@
         "copy": "Copy",
         "delete": "Delete",
         "collapseAction": "Hide action settings",
-        "expandAction": "Show action settings"
+        "expandAction": "Show action settings",
+        "resumeFromHere": "ここから再開…",
+        "resumeFirstReason": "ミッションはここから始まるため、通常どおり送信してください"
       },
       "batch": {
         "hint": "Ctrl-click or Shift-click waypoints to edit several at once.",
@@ -3512,7 +3560,37 @@
         "directionCwShort": "CW",
         "directionCcwShort": "CCW"
       },
-      "label": "Inspector"
+      "label": "Inspector",
+      "vehicle": {
+        "title": "機体",
+        "autopilotLabel": "オートパイロット",
+        "typeLabel": "種類",
+        "autopilot": {
+          "ardupilot": "ArduPilot",
+          "px4": "PX4"
+        },
+        "class": {
+          "copter": "マルチローター",
+          "plane": "固定翼",
+          "vtol": "VTOL",
+          "rover": "ローバー"
+        },
+        "reports": "{drone} の報告: {profile}",
+        "use": "使用"
+      },
+      "home": {
+        "title": "ホームと離陸",
+        "plannedHome": "計画ホーム",
+        "pickOnMap": "地図で選択",
+        "pickCancel": "地図での選択を取り消す",
+        "groundMsl": "海抜 {alt}",
+        "groundUnknown": "地面不明",
+        "notSet": "未設定",
+        "useVehicleHome": "機体のホームを使用",
+        "transitAlt": "移動高度",
+        "transitHint": "最初のウェイポイントの前と帰路でこの高さまで上昇します。",
+        "off": "オフ"
+      }
     },
     "outline": {
       "label": "Plan outline",
@@ -3547,7 +3625,10 @@
       "rallyItem": "Rally {n}",
       "addPoi": "Add point of interest",
       "noPoi": "No points of interest",
-      "poiItem": "POI {n}"
+      "poiItem": "POI {n}",
+      "rowMenu": "ウェイポイント {n} の操作",
+      "resumeFromHere": "ここから再開…",
+      "resumeFirstReason": "計画はここから始まります。通常どおり送信してください"
     },
     "bar": {
       "plans": "Plans",
@@ -3786,7 +3867,21 @@
       "timeMin": "{value} 分",
       "timeSec": "{value} 秒",
       "pasteDroppedJumps": "貼り付けた範囲外のウェイポイントへのジャンプを {count} 件削除しました"
-    }
+    },
+    "map": {
+      "pickHomeBanner": "地図をクリックして計画ホームを設定",
+      "plannedHome": "計画ホーム · {ground}",
+      "groundMsl": "海抜 {m} m",
+      "groundUnknown": "地面標高不明",
+      "vehicleHome": "機体のホーム",
+      "useAsPlannedHome": "計画ホームとして使用",
+      "transitAlt": "↑ {m} m",
+      "clipsTerrain": "地形に {m} m 接触",
+      "lowOverTerrain": "地形上わずか {m} m",
+      "insertWaypoint": "ウェイポイントを挿入",
+      "packStarts": "バッテリー {n} はここから"
+    },
+    "setFacadeLine": "地図上でファサードの線を設定してください"
   },
   "geofence": {
     "autoFence": "自動フェンス",

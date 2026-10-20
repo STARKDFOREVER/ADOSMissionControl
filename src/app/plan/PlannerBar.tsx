@@ -18,10 +18,9 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu } from "@/components/ui/dropdown-menu";
 import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { useValidationOptions } from "@/hooks/use-validation-options";
+import { usePlannerValidation } from "@/hooks/use-planner-validation";
 import { useMissionUploadStatus } from "@/hooks/use-upload-status";
 import { buildFenceElements } from "@/lib/geofence-elements";
-import { validateMission } from "@/lib/validation/mission-validator";
 import { useGeofenceStore } from "@/stores/geofence-store";
 import { useRallyStore } from "@/stores/rally-store";
 import { useMissionStore } from "@/stores/mission-store";
@@ -79,11 +78,8 @@ export function PlannerBar({ p, hasDrone, showGeofence, showRally, shareIo, onOp
 
   // Hard errors (out-of-fence, below terrain, bad jump target, ...) block the
   // send so an invalid mission can't be pushed to the FC.
-  const validationOptions = useValidationOptions();
-  const errorCount = useMemo(
-    () => (p.waypoints.length > 0 ? validateMission(p.waypoints, validationOptions).errors.length : 0),
-    [p.waypoints, validationOptions],
-  );
+  // The map's terrain-clash legs read the same shared result.
+  const errorCount = usePlannerValidation(p.waypoints)?.errors.length ?? 0;
 
   const { hasWaypoints, fenceSendable, rallySendable, canSendSomething } = useSendable(p, showGeofence, showRally);
   const isDownloading = p.downloadState === "downloading";

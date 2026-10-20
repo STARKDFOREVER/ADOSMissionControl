@@ -3113,15 +3113,46 @@
       }
     },
     "energy": {
-      "title": "Energieschätzung",
       "required": "Benötigte Energie",
       "flightTime": "Gesch. Flugzeit",
       "swaps": "Akkuwechsel",
-      "estimate": "Schätzung",
-      "note": "Grober Wert aus Standard-Stromaufnahme und einem nominalen Akku. Mit Ihrer eigenen Leistungskurve abgleichen.",
       "packRange": "Akku {n}: WP {from}–{to}",
       "profileNote": "Schätzung aus dem Profil {pack} ({capacity} Wh, {reserve} % Reserve) und der Flugzeit des Plans.",
-      "forecastNote": "Wind und Temperatur aus der Standortvorhersage."
+      "forecastNote": "Wind und Temperatur aus der Standortvorhersage.",
+      "battery": "Akku",
+      "editPacks": "Akkus bearbeiten…",
+      "reserve": "Reserve",
+      "reserveHint": "Ladung, die bei der Landung bleibt",
+      "packSection": "Akku und Packs",
+      "perPack": "Energie und Zeit je Akku",
+      "resumeFrom": "Ab WP {wp} fortsetzen",
+      "resumeTitle": "Eine Mission für Akku {n} hochladen, die startet und ab WP {wp} fortfährt",
+      "routeSection": "Route nach Akku aufgeteilt",
+      "routeTitle": "Route nach Akku",
+      "noFlight": "Noch nichts zu fliegen.",
+      "routeStart": "Home",
+      "routeEnd": "Ende",
+      "changeTick": "⚡{n} WP {wp}",
+      "changeTitle": "Akku {n} übernimmt bei WP {wp}",
+      "packs": {
+        "title": "Akkupacks",
+        "add": "Akku hinzufügen",
+        "done": "Fertig",
+        "name": "Name",
+        "capacity": "Kapazität",
+        "cruise": "Reiseflug",
+        "hover": "Schweben",
+        "reserve": "Reserve",
+        "hint": "Die Kapazität ist die nutzbare Energie eines vollen Akkus. Reiseflug und Schweben sind die mittlere Leistungsaufnahme im Vorwärtsflug und beim Schweben oder Steigen. Die Reserve ist die Ladung, die bei der Landung bleibt.",
+        "newName": "Akku {n}",
+        "nameOf": "Name von {name}",
+        "capacityOf": "Kapazität von {name}",
+        "cruiseOf": "Reiseflugleistung von {name}",
+        "hoverOf": "Schwebeleistung von {name}",
+        "reserveOf": "Reserve von {name}",
+        "delete": "{name} löschen",
+        "deleteDefaultReason": "Der Standardakku kann nicht gelöscht werden"
+      }
     },
     "validation": {
       "advisories": "Hinweise"
@@ -3277,7 +3308,6 @@
     "perimeterAreaSet": "Boundary polygon set",
     "offline": {
       "waitingForMap": "Waiting for the map to load",
-      "title": "Download current view",
       "close": "Close",
       "scope": "Caches offline tiles covering the current map view.",
       "provider": "Tile provider",
@@ -3292,7 +3322,21 @@
       "downloadedFailed": ", {count} failed",
       "customUnusable": "Set a usable custom tile URL before downloading.",
       "cancel": "Cancel",
-      "download": "Download"
+      "download": "Download",
+      "areaTitle": "Offline-Gebiet herunterladen",
+      "area": "Gebiet",
+      "areaView": "Aktuelle Ansicht",
+      "areaPlan": "Plangebiet",
+      "areaPlanEmpty": "Der Plan ist leer: Füge zuerst Wegpunkte, ein Home, einen Geozaun oder Sammelpunkte hinzu",
+      "areaPlanTitle": "Wegpunkte, geplantes Home, Geozaun und Sammelpunkte plus 500 m",
+      "scopePlan": "Speichert die Wegpunkte, das geplante Home, den Geozaun und die Sammelpunkte des Plans plus 500 m darum herum.",
+      "includeTerrain": "Geländehöhen einbeziehen",
+      "progressTiles": "Kacheln {done} / {total}",
+      "progressElevation": "Höhenzellen {done} / {total}",
+      "elevationStarting": "Höhendaten: Start…",
+      "elevationDone": "Höhendaten: {count} Zellen gespeichert",
+      "elevationTooLarge": "Gebiet zu groß für den Geländedownload",
+      "elevationFailed": "Download der Höhendaten fehlgeschlagen: {reason}"
     },
     "commands": {
       "sendToVehicle": "Send to vehicle",
@@ -3355,7 +3399,9 @@
         "frameMslTitle": "Above mean sea level",
         "frameTerrain": "Terrain",
         "frameTerrainTitle": "Follows the terrain",
-        "terrainHint": "Altitude adjusts to the terrain elevation."
+        "terrainHint": "Altitude adjusts to the terrain elevation.",
+        "acceptRadiusAuto": "Auto (WP_RADIUS)",
+        "frameTerrainPx4": "PX4 hat keinen Gelände-Bezugsrahmen. Nutze „Gelände folgen“ in Mustern"
       },
       "waypoint": {
         "position": "Position",
@@ -3427,7 +3473,9 @@
         "copy": "Copy",
         "delete": "Delete",
         "collapseAction": "Hide action settings",
-        "expandAction": "Show action settings"
+        "expandAction": "Show action settings",
+        "resumeFromHere": "Ab hier fortsetzen…",
+        "resumeFirstReason": "Die Mission beginnt hier, also normal senden"
       },
       "batch": {
         "hint": "Ctrl-click or Shift-click waypoints to edit several at once.",
@@ -3512,7 +3560,37 @@
         "directionCwShort": "CW",
         "directionCcwShort": "CCW"
       },
-      "label": "Inspector"
+      "label": "Inspector",
+      "vehicle": {
+        "title": "Fahrzeug",
+        "autopilotLabel": "Autopilot",
+        "typeLabel": "Typ",
+        "autopilot": {
+          "ardupilot": "ArduPilot",
+          "px4": "PX4"
+        },
+        "class": {
+          "copter": "Multirotor",
+          "plane": "Starrflügler",
+          "vtol": "VTOL",
+          "rover": "Rover"
+        },
+        "reports": "{drone} meldet {profile}",
+        "use": "Übernehmen"
+      },
+      "home": {
+        "title": "Home & Start",
+        "plannedHome": "Geplanter Home-Punkt",
+        "pickOnMap": "Auf Karte wählen",
+        "pickCancel": "Auswahl auf Karte abbrechen",
+        "groundMsl": "{alt} ü. NN",
+        "groundUnknown": "Boden unbekannt",
+        "notSet": "Nicht gesetzt",
+        "useVehicleHome": "Fahrzeug-Home übernehmen",
+        "transitAlt": "Transferhöhe",
+        "transitHint": "Vor dem ersten Wegpunkt und auf dem Rückweg auf diese Höhe steigen.",
+        "off": "Aus"
+      }
     },
     "outline": {
       "label": "Plan outline",
@@ -3547,7 +3625,10 @@
       "rallyItem": "Rally {n}",
       "addPoi": "Add point of interest",
       "noPoi": "No points of interest",
-      "poiItem": "POI {n}"
+      "poiItem": "POI {n}",
+      "rowMenu": "Aktionen für Wegpunkt {n}",
+      "resumeFromHere": "Ab hier fortsetzen…",
+      "resumeFirstReason": "Der Plan beginnt hier; sende ihn normal"
     },
     "bar": {
       "plans": "Plans",
@@ -3786,7 +3867,21 @@
       "timeMin": "{value} min",
       "timeSec": "{value} s",
       "pasteDroppedJumps": "{count, plural, one {# Sprung} other {# Sprünge}} zu Wegpunkten außerhalb der eingefügten Auswahl entfernt"
-    }
+    },
+    "map": {
+      "pickHomeBanner": "Auf die Karte klicken, um den geplanten Startpunkt festzulegen",
+      "plannedHome": "Geplanter Startpunkt · {ground}",
+      "groundMsl": "{m} m ü. NN",
+      "groundUnknown": "Geländehöhe unbekannt",
+      "vehicleHome": "Startpunkt des Fahrzeugs",
+      "useAsPlannedHome": "Als geplanten Startpunkt verwenden",
+      "transitAlt": "↑ {m} m",
+      "clipsTerrain": "Schneidet das Gelände um {m} m",
+      "lowOverTerrain": "Nur {m} m über Gelände",
+      "insertWaypoint": "Wegpunkt einfügen",
+      "packStarts": "Akku {n} beginnt hier"
+    },
+    "setFacadeLine": "Fassadenlinie auf der Karte festlegen"
   },
   "geofence": {
     "autoFence": "Auto-Geofence",

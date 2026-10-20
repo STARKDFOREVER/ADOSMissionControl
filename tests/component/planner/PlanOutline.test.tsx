@@ -145,6 +145,30 @@ describe("PlanOutline mission rows", () => {
   });
 });
 
+describe("PlanOutline row menu", () => {
+  beforeEach(() => usePlannerStore.setState({ sendDialog: null }));
+
+  it("Resume from here… opens the Send dialog in resume mode at that row", () => {
+    renderOutline();
+    fireEvent.contextMenu(document.querySelector('[data-waypoint-id="c"]') as HTMLElement);
+    fireEvent.click(screen.getByRole("menuitem", { name: "Resume from here…" }));
+    expect(usePlannerStore.getState().sendDialog).toEqual({ resumeFromIndex: 2 });
+    expect(screen.queryByRole("menu")).toBeNull();
+  });
+
+  it("the first row cannot resume, with the reason, and Escape closes the menu", () => {
+    renderOutline();
+    fireEvent.contextMenu(document.querySelector('[data-waypoint-id="a"]') as HTMLElement);
+    const item = screen.getByRole("menuitem", { name: "Resume from here…" });
+    expect(item.getAttribute("aria-disabled")).toBe("true");
+    expect(item.getAttribute("title")).toBe("The plan starts here; send it normally");
+    fireEvent.click(item);
+    expect(usePlannerStore.getState().sendDialog).toBeNull();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("menu")).toBeNull();
+  });
+});
+
 describe("PlanOutline groups", () => {
   it("group headers set the inspector target", () => {
     renderOutline();

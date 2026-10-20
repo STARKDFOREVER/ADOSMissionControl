@@ -64,7 +64,8 @@ export function makeSegmentLabel(text: string): L.DivIcon {
   const icon = L.divIcon({
     className: "",
     iconSize: [80, 16],
-    iconAnchor: [40, 8],
+    // Below the leg's midpoint, which the leg's insert handle occupies.
+    iconAnchor: [40, -8],
     html: `<div style="font-size:9px;font-family:JetBrains Mono,monospace;color:${MAP_COLORS.muted};white-space:nowrap;text-align:center;background:rgba(0,0,0,0.7);padding:1px 4px;border:1px solid rgba(255,255,255,0.1)">${text}</div>`,
   });
   if (segmentLabelCache.size >= SEGMENT_CACHE_MAX) {

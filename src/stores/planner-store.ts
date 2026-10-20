@@ -108,6 +108,12 @@ interface PlannerStoreState {
   openSendDialog: (opts?: { resumeFromIndex?: number }) => void;
   closeSendDialog: () => void;
   /**
+   * One-shot planned-home placement: the next map click sets the planned home
+   * and disarms. Transient, never persisted.
+   */
+  homePickArmed: boolean;
+  setHomePickArmed: (armed: boolean) => void;
+  /**
    * Set the active tool. Routes through the planner-mode reducer so the new
    * mode carries no residue of the previous sub-mode, and mirrors the transient
    * drawing sub-mode for the new tool.
@@ -216,6 +222,7 @@ export const usePlannerStore = create<PlannerStoreState>()(
   mapBounds: null,
   mapZoom: DEFAULT_ZOOM_UNLOCATED,
   sendDialog: null,
+  homePickArmed: false,
 
   setActiveTool: (tool) => {
     const mode = usePlannerStore.getState().mode;
@@ -284,6 +291,7 @@ export const usePlannerStore = create<PlannerStoreState>()(
   openSendDialog: (opts) =>
     set({ sendDialog: opts?.resumeFromIndex !== undefined ? { resumeFromIndex: opts.resumeFromIndex } : {} }),
   closeSendDialog: () => set({ sendDialog: null }),
+  setHomePickArmed: (homePickArmed) => set({ homePickArmed }),
   };
   return state;
     },

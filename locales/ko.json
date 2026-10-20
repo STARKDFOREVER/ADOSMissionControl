@@ -3113,15 +3113,46 @@
       }
     },
     "energy": {
-      "title": "에너지 추정치",
       "required": "필요 에너지",
       "flightTime": "예상 비행 시간",
       "swaps": "배터리 교체",
-      "estimate": "추정치",
-      "note": "기본 소비 전력과 표준 배터리를 기준으로 한 대략적인 값입니다. 실제 전력 곡선으로 확인하세요.",
       "packRange": "배터리 {n}: WP {from}–{to}",
       "profileNote": "{pack} 프로필({capacity} Wh, 예비 {reserve} %)과 계획 비행 시간으로 추정한 값입니다.",
-      "forecastNote": "바람과 기온은 현장 예보에서 가져왔습니다."
+      "forecastNote": "바람과 기온은 현장 예보에서 가져왔습니다.",
+      "battery": "배터리",
+      "editPacks": "배터리 편집…",
+      "reserve": "예비",
+      "reserveHint": "착륙 시 남겨 둘 충전량",
+      "packSection": "배터리와 팩",
+      "perPack": "배터리별 에너지와 시간",
+      "resumeFrom": "WP {wp}부터 재개",
+      "resumeTitle": "이륙 후 WP {wp}부터 이어 가는 배터리 {n}용 미션 업로드",
+      "routeSection": "배터리별 경로 분할",
+      "routeTitle": "배터리별 경로",
+      "noFlight": "아직 비행할 내용이 없습니다.",
+      "routeStart": "홈",
+      "routeEnd": "끝",
+      "changeTick": "⚡{n} WP {wp}",
+      "changeTitle": "WP {wp}에서 배터리 {n}이(가) 이어받음",
+      "packs": {
+        "title": "배터리 팩",
+        "add": "배터리 추가",
+        "done": "완료",
+        "name": "이름",
+        "capacity": "용량",
+        "cruise": "순항",
+        "hover": "호버",
+        "reserve": "예비",
+        "hint": "용량은 완충된 팩의 사용 가능한 에너지입니다. 순항과 호버는 전진 비행 중, 그리고 호버링이나 상승 중의 평균 소비 전력입니다. 예비는 착륙 시 남겨 둘 충전량입니다.",
+        "newName": "배터리 {n}",
+        "nameOf": "{name} 이름",
+        "capacityOf": "{name} 용량",
+        "cruiseOf": "{name} 순항 전력",
+        "hoverOf": "{name} 호버 전력",
+        "reserveOf": "{name} 예비",
+        "delete": "{name} 삭제",
+        "deleteDefaultReason": "기본 배터리는 삭제할 수 없습니다"
+      }
     },
     "validation": {
       "advisories": "권고 사항"
@@ -3277,7 +3308,6 @@
     "perimeterAreaSet": "Boundary polygon set",
     "offline": {
       "waitingForMap": "Waiting for the map to load",
-      "title": "Download current view",
       "close": "Close",
       "scope": "Caches offline tiles covering the current map view.",
       "provider": "Tile provider",
@@ -3292,7 +3322,21 @@
       "downloadedFailed": ", {count} failed",
       "customUnusable": "Set a usable custom tile URL before downloading.",
       "cancel": "Cancel",
-      "download": "Download"
+      "download": "Download",
+      "areaTitle": "오프라인 영역 다운로드",
+      "area": "영역",
+      "areaView": "현재 보기",
+      "areaPlan": "계획 영역",
+      "areaPlanEmpty": "계획이 비어 있습니다. 먼저 웨이포인트, 홈, 지오펜스 또는 랠리 포인트를 추가하세요",
+      "areaPlanTitle": "웨이포인트, 계획 홈, 지오펜스, 랠리 포인트와 주변 500 m",
+      "scopePlan": "계획의 웨이포인트, 계획 홈, 지오펜스, 랠리 포인트와 그 주변 500 m를 캐시합니다.",
+      "includeTerrain": "지형 고도 포함",
+      "progressTiles": "타일 {done} / {total}",
+      "progressElevation": "고도 셀 {done} / {total}",
+      "elevationStarting": "고도: 시작 중…",
+      "elevationDone": "고도: 셀 {count}개 저장됨",
+      "elevationTooLarge": "지형을 다운로드하기에는 영역이 너무 큽니다",
+      "elevationFailed": "고도 다운로드 실패: {reason}"
     },
     "commands": {
       "sendToVehicle": "Send to vehicle",
@@ -3355,7 +3399,9 @@
         "frameMslTitle": "Above mean sea level",
         "frameTerrain": "Terrain",
         "frameTerrainTitle": "Follows the terrain",
-        "terrainHint": "Altitude adjusts to the terrain elevation."
+        "terrainHint": "Altitude adjusts to the terrain elevation.",
+        "acceptRadiusAuto": "자동 (WP_RADIUS)",
+        "frameTerrainPx4": "PX4에는 지형 프레임이 없습니다. 패턴에서 지형 따라가기를 사용하세요"
       },
       "waypoint": {
         "position": "Position",
@@ -3427,7 +3473,9 @@
         "copy": "Copy",
         "delete": "Delete",
         "collapseAction": "Hide action settings",
-        "expandAction": "Show action settings"
+        "expandAction": "Show action settings",
+        "resumeFromHere": "여기서 재개…",
+        "resumeFirstReason": "임무가 여기서 시작되므로 평소대로 전송하세요"
       },
       "batch": {
         "hint": "Ctrl-click or Shift-click waypoints to edit several at once.",
@@ -3512,7 +3560,37 @@
         "directionCwShort": "CW",
         "directionCcwShort": "CCW"
       },
-      "label": "Inspector"
+      "label": "Inspector",
+      "vehicle": {
+        "title": "기체",
+        "autopilotLabel": "오토파일럿",
+        "typeLabel": "유형",
+        "autopilot": {
+          "ardupilot": "ArduPilot",
+          "px4": "PX4"
+        },
+        "class": {
+          "copter": "멀티로터",
+          "plane": "고정익",
+          "vtol": "VTOL",
+          "rover": "로버"
+        },
+        "reports": "{drone} 보고: {profile}",
+        "use": "사용"
+      },
+      "home": {
+        "title": "홈 및 이륙",
+        "plannedHome": "계획된 홈",
+        "pickOnMap": "지도에서 선택",
+        "pickCancel": "지도에서 선택 취소",
+        "groundMsl": "해발 {alt}",
+        "groundUnknown": "지면 알 수 없음",
+        "notSet": "설정 안 됨",
+        "useVehicleHome": "기체 홈 사용",
+        "transitAlt": "이동 고도",
+        "transitHint": "첫 웨이포인트 전과 복귀 시 이 높이까지 상승합니다.",
+        "off": "끔"
+      }
     },
     "outline": {
       "label": "Plan outline",
@@ -3547,7 +3625,10 @@
       "rallyItem": "Rally {n}",
       "addPoi": "Add point of interest",
       "noPoi": "No points of interest",
-      "poiItem": "POI {n}"
+      "poiItem": "POI {n}",
+      "rowMenu": "웨이포인트 {n} 작업",
+      "resumeFromHere": "여기서부터 재개…",
+      "resumeFirstReason": "계획이 여기서 시작합니다. 평소대로 전송하세요"
     },
     "bar": {
       "plans": "Plans",
@@ -3786,7 +3867,21 @@
       "timeMin": "{value}분",
       "timeSec": "{value}초",
       "pasteDroppedJumps": "붙여넣은 범위 밖의 웨이포인트로 가는 점프 {count}개를 삭제했습니다"
-    }
+    },
+    "map": {
+      "pickHomeBanner": "지도를 클릭해 계획 홈을 설정하세요",
+      "plannedHome": "계획 홈 · {ground}",
+      "groundMsl": "해발 {m} m",
+      "groundUnknown": "지면 고도 알 수 없음",
+      "vehicleHome": "기체 홈",
+      "useAsPlannedHome": "계획 홈으로 사용",
+      "transitAlt": "↑ {m} m",
+      "clipsTerrain": "지형을 {m} m 침범",
+      "lowOverTerrain": "지형 위 {m} m에 불과",
+      "insertWaypoint": "웨이포인트 삽입",
+      "packStarts": "배터리 {n} 여기서 시작"
+    },
+    "setFacadeLine": "지도에서 외벽 선을 지정하세요"
   },
   "geofence": {
     "autoFence": "자동 펜스",
