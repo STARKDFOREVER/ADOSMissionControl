@@ -45,7 +45,7 @@ const MAV_CMD: Record<keyof typeof cmdMap, number> = {
   DO_SET_SERVO: 183, // MAV_CMD_DO_SET_SERVO
   DO_LAND_START: 189, // MAV_CMD_DO_LAND_START
   DO_SET_ROI_NONE: 197, // MAV_CMD_DO_SET_ROI_NONE
-  ROI: 201, // MAV_CMD_DO_SET_ROI
+  ROI: 195, // MAV_CMD_DO_SET_ROI_LOCATION
   DO_DIGICAM: 203, // MAV_CMD_DO_DIGICAM_CONTROL
   DO_MOUNT_CONTROL: 205, // MAV_CMD_DO_MOUNT_CONTROL
   DO_SET_CAM_TRIGG: 206, // MAV_CMD_DO_SET_CAM_TRIGG_DIST
@@ -53,6 +53,10 @@ const MAV_CMD: Record<keyof typeof cmdMap, number> = {
   DO_GRIPPER: 211, // MAV_CMD_DO_GRIPPER
   DO_AUX_FUNCTION: 218, // MAV_CMD_DO_AUX_FUNCTION
   DO_WINCH: 42600, // MAV_CMD_DO_WINCH
+  PHOTO_INTERVAL: 2000, // MAV_CMD_IMAGE_START_CAPTURE
+  PHOTO_STOP: 2001, // MAV_CMD_IMAGE_STOP_CAPTURE
+  VIDEO_START: 2500, // MAV_CMD_VIDEO_START_CAPTURE
+  VIDEO_STOP: 2501, // MAV_CMD_VIDEO_STOP_CAPTURE
 };
 
 function item(seq: number, command: number, over: Partial<MissionItem> = {}): MissionItem {
@@ -125,13 +129,14 @@ describe("ArduPilot home slot", () => {
     vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
     vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
     try {
-      exportWaypointsFormat(jumpMission(), "x", { home: HOME });
+      exportWaypointsFormat(jumpMission(), "x", { home: { lat: HOME.lat, lon: HOME.lon, groundAmsl: HOME.alt } });
     } finally {
       globalThis.Blob = realBlob;
       vi.restoreAllMocks();
     }
     const rows = text.trim().split("\n").slice(1).map((r) => r.split("\t"));
-    expect(rows[0].slice(0, 4)).toEqual(["0", "0", "0", "16"]);
+    // The home row is flagged current, as Mission Planner writes it.
+    expect(rows[0].slice(0, 4)).toEqual(["0", "1", "0", "16"]);
     expect(rows[0][10]).toBe(String(HOME.alt));
     const jumpRow = rows.find((r) => r[3] === "177");
     expect(jumpRow?.[4]).toBe("2");
@@ -144,12 +149,14 @@ describe("ArduPilot home slot", () => {
 describe("unmodelled commands pass through untouched", () => {
   it("a command-181 item survives download → upload byte-identical", () => {
     const relay = item(2, 181, { frame: 2, param1: 1, param2: 1, x: 7, y: -3, z: 0.5 });
+    // Items as the planner writes them: no heading set (NaN), the first
+    // mission item current, the camera command in frame 2.
     const downloaded = [
       item(0, 16, { frame: 0, x: 129716000, y: 775946000, z: 912 }), // ArduPilot home
-      item(1, 22, { current: 1, x: 129700000, y: 775900000, z: 30 }),
+      item(1, 22, { current: 1, param4: NaN, x: 129700000, y: 775900000, z: 30 }),
       relay,
-      item(3, 16, { x: 129800000, y: 776000000, z: 50 }),
-      item(4, 2000, { param3: 1 }),
+      item(3, 16, { param4: NaN, x: 129800000, y: 776000000, z: 50 }),
+      item(4, 2000, { frame: 2, param3: 1 }),
     ];
     const home = downloaded[0];
     const waypoints = collapseFromItems(downloaded.filter((it) => it.seq !== 0));
@@ -181,14 +188,14 @@ describe("unmodelled commands pass through untouched", () => {
       "1\t0\t3\t16\t0\t0\t0\t0\t12.97\t77.59\t50\t1",
       // Gimbal pitch/yaw: p5 is a flags word, p7 the gimbal id.
       "2\t0\t2\t1000\t-30\t0\t0\t0\t12\t0\t1\t1",
-      // Unmodelled DO_SET_ROI_LOCATION: p5/p6 are a location.
-      "3\t0\t3\t195\t0\t0\t0\t0\t12.98\t77.6\t0\t1",
+      // Unmodelled DO_REPOSITION: p5/p6 are a location.
+      "3\t0\t3\t192\t0\t0\t0\t0\t12.98\t77.6\t0\t1",
       "4\t0\t3\t16\t0\t0\t0\t0\t12.99\t77.61\t50\t1",
     ].join("\n");
     const { waypoints } = parseWaypointsFile(file);
     const raws = waypoints.flatMap((w) => w.actions ?? []).filter((a) => a.command === "RAW");
     expect(raws.find((a) => a.rawCommand === 1000)).toMatchObject({ x: 12, y: 0, z: 1 });
-    expect(raws.find((a) => a.rawCommand === 195)).toMatchObject({ x: 129800000, y: 776000000 });
+    expect(raws.find((a) => a.rawCommand === 192)).toMatchObject({ x: 129800000, y: 776000000 });
 
     // The upload sends the flags word as 12, not 12 × 1e7.
     const gimbal = expandToItems(waypoints, OPTS).find((it) => it.command === 1000);

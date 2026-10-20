@@ -133,6 +133,23 @@ the project follows [Semantic Versioning](https://semver.org/).
 - Unavailable planner rail buttons (offline area, undo, redo) stay in the tab
   order and show why in their tooltip on focus. The offline-area button no
   longer stays disabled forever when the saved planner state fails to load.
+- Missions reach ArduPilot and PX4 the way each autopilot reads them. Items
+  with no position (speed changes, camera and other actions, RTL,
+  DO_LAND_START) go out in the mission frame, which PX4 requires; a waypoint
+  with no heading sends NaN instead of north; only the first item is marked
+  current; ROI is sent as DO_SET_ROI_LOCATION; planes and VTOLs set airspeed
+  rather than ground speed; PX4 delays use NAV_DELAY and terrain-frame
+  waypoints are refused before a PX4 upload; the PX4 action list offers only
+  commands PX4 accepts. Transfers follow the MAVLink mission protocol more
+  strictly: a stray INVALID_SEQUENCE from ArduPilot no longer aborts an
+  upload, an early ACCEPTED is ignored, an empty download is acknowledged, a
+  repeated MISSION_COUNT is ignored and clearing a mission is retried. Rally
+  points keep their altitude frame, a fence return point survives download and
+  upload, ArduPlane's Land breach action is written as autoland-or-RTL, the
+  fence ceiling is read only when the altitude fence is on, and writing the
+  fence type keeps the vehicle's home circle. The waypoint action menu gains
+  photo every N seconds, stop photos, start video and stop video. The default
+  acceptance radius is 0, which leaves the turn distance to the autopilot.
 
 ### Removed
 

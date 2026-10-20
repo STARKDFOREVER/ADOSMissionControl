@@ -46,6 +46,7 @@ const MAV_CMD_NAV_TAKEOFF      = 22
 const MAV_CMD_CONDITION_YAW    = 115
 const MAV_CMD_DO_JUMP          = 177
 const MAV_CMD_DO_CHANGE_SPEED  = 178
+const MAV_CMD_DO_SET_ROI_LOCATION = 195
 const MAV_CMD_DO_SET_ROI       = 201
 
 /** Smallest per-waypoint speed (cm/s) iNav honours; lower flies the default. */
@@ -102,6 +103,7 @@ function toInavAction(
       return { action: INAV_WP_ACTION.LAND, p1: speedCmS, p2: Math.round(item.param2), p3: altitudeDatumBit(item, number) }
     case MAV_CMD_DO_JUMP:
       return { action: INAV_WP_ACTION.JUMP, p1: jumpTargetNumber(Math.round(item.param1)), p2: Math.round(item.param2), p3: 0 }
+    case MAV_CMD_DO_SET_ROI_LOCATION:
     case MAV_CMD_DO_SET_ROI:
       return { action: INAV_WP_ACTION.SET_POI, p1: 0, p2: 0, p3: altitudeDatumBit(item, number) }
     case MAV_CMD_CONDITION_YAW:
@@ -178,7 +180,7 @@ function fromInavAction(wp: INavWaypoint): Pick<MissionItem, 'command' | 'param1
     case INAV_WP_ACTION.RTH:           return { command: MAV_CMD_NAV_RETURN_TO_LAUNCH, param1: 0, param2: 0 }
     case INAV_WP_ACTION.LAND:          return { command: MAV_CMD_NAV_LAND, param1: 0, param2: wp.p2 }
     case INAV_WP_ACTION.JUMP:          return { command: MAV_CMD_DO_JUMP, param1: wp.p1 - 1, param2: wp.p2 }
-    case INAV_WP_ACTION.SET_POI:       return { command: MAV_CMD_DO_SET_ROI, param1: 0, param2: 0 }
+    case INAV_WP_ACTION.SET_POI:       return { command: MAV_CMD_DO_SET_ROI_LOCATION, param1: 0, param2: 0 }
     case INAV_WP_ACTION.SET_HEAD:      return { command: MAV_CMD_CONDITION_YAW, param1: wp.p1, param2: 0 }
     default:
       throw new Error(`iNav waypoint ${wp.number} has unknown action ${wp.action}.`)
@@ -214,7 +216,7 @@ export function translateFromInavWaypoints(wps: INavWaypoint[]): MissionItem[] {
     const frame = (wp.p3 & 1) === 1 ? MAV_FRAME_GLOBAL : MAV_FRAME_GLOBAL_RELATIVE_ALT
     const speed = inavLegSpeed(wp)
     if (speed !== undefined && speed !== carried) {
-      items.push(speedItem(speed, 0, frame))
+      items.push(speedItem(speed, 0))
       carried = speed
     }
     items.push({

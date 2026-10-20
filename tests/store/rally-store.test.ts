@@ -19,7 +19,7 @@ vi.mock('@/lib/storage', () => ({
   },
 }));
 
-import { useRallyStore, rallyContentHash } from '@/stores/rally-store';
+import { useRallyStore, rallyContentHash, rallyPointsFromVehicle, rallyUploadItems } from '@/stores/rally-store';
 import { useUploadReceiptsStore, receiptFor, receiptStatus } from '@/stores/upload-receipts-store';
 import { clearHistory, undoDepth, undoHistory } from '@/lib/planner-history';
 
@@ -73,7 +73,7 @@ describe('rally-store transfers', () => {
   });
 
   it('a successful download is one undo step back to the local points', async () => {
-    protocol = { downloadRallyPoints: vi.fn().mockResolvedValue([{ lat: 1, lon: 2, alt: 40 }]) };
+    protocol = { downloadRallyPoints: vi.fn().mockResolvedValue([{ lat: 1, lon: 2, alt: 40, frame: 6 }]) };
     const r = await useRallyStore.getState().downloadRallyPoints();
     expect(r.success).toBe(true);
     expect(useRallyStore.getState().points).toMatchObject([{ lat: 1, lon: 2, alt: 40 }]);
@@ -81,5 +81,20 @@ describe('rally-store transfers', () => {
     expect(undoDepth()).toBe(1);
     undoHistory();
     expect(useRallyStore.getState().points).toEqual([POINT]);
+  });
+
+  it('converts a sea-level rally point to above home, and refuses one when no home altitude is known', () => {
+    const amsl = [{ lat: 1, lon: 2, alt: 950, frame: 0 }];
+    expect(rallyPointsFromVehicle(amsl, 900, 'r')).toEqual({ points: [{ id: 'r-0', lat: 1, lon: 2, alt: 50 }] });
+    expect(rallyPointsFromVehicle(amsl, null, 'r')).toEqual({
+      error: 'Rally point 1 is stored above sea level and no home altitude is known',
+    });
+  });
+
+  it('keeps a terrain-frame rally point in the terrain frame on download and upload', () => {
+    const r = rallyPointsFromVehicle([{ lat: 1, lon: 2, alt: 30, frame: 10 }], null, 'r');
+    expect(r).toEqual({ points: [{ id: 'r-0', lat: 1, lon: 2, alt: 30, frame: 'terrain' }] });
+    if ('points' in r) expect(rallyUploadItems(r.points)[0].frame).toBe(10);
+    expect(rallyUploadItems([{ id: 'x', lat: 1, lon: 2, alt: 30 }])[0].frame).toBe(6);
   });
 });

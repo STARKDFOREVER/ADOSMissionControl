@@ -16,7 +16,7 @@ import type {
   DebugCallback, GimbalAttitudeCallback, ObstacleDistanceCallback,
   CameraImageCapturedCallback, ExtendedSysStateCallback, FencePointCallback,
   SystemTimeCallback, AutopilotVersionCallback,
-  CanFrameCallback, FenceElement, MspModeRange, MspAdjustmentRange,
+  CanFrameCallback, FenceElement, MspModeRange, MspAdjustmentRange, RallyPointItem,
 } from "@/lib/protocol/types";
 import { ArduCopterHandler, ArduPlaneHandler, ArduRoverHandler, ArduSubHandler } from "@/lib/protocol/firmware/ardupilot";
 import { PX4Handler } from "@/lib/protocol/firmware/px4";
@@ -36,6 +36,7 @@ import type { DisplayPortOp } from "@/lib/protocol/msp/decoders/config/displaypo
 import { MockRanges } from "./mock-protocol-ranges";
 import { MockBfStorage, startMockDisplayPort } from "./mock-protocol-bf-storage";
 import { MockMission } from "./mock-protocol-mission";
+import { px4MissionRejection } from "./mock-px4-mission-rules";
 import { MockFcFiles } from "./mock-protocol-files";
 import { createMockFrameFeed } from "./mock-mavlink-frames";
 import type { LinkInfo } from "@/lib/protocol/types";
@@ -75,7 +76,7 @@ export class MockProtocol implements DroneProtocol {
   private imageCounter = { value: 0 };
   private _rcChannelValues: number[] = Array(16).fill(1500);
   private _lastManualControl: ManualControlSample | null = null;
-  private rallyPoints: Array<{ lat: number; lon: number; alt: number }> = [];
+  private rallyPoints: RallyPointItem[] = [];
   private fenceElements: FenceElement[] = [];
   /** Arm / airborne / mode of this demo vehicle; see mock-protocol-flight. */
   readonly flight = new MockFlightState(
@@ -272,7 +273,14 @@ export class MockProtocol implements DroneProtocol {
       vertices: MOCK_FENCE_POLYGON.map((p) => ({ lat: p.lat, lon: p.lon })),
     }];
   }
-  async uploadRallyPoints(pts: Array<{ lat: number; lon: number; alt: number }>): Promise<CommandResult> { await new Promise((r) => setTimeout(r, 300)); this.rallyPoints = [...pts]; this.emitStatusText(6, `${pts.length} rally points uploaded`); return ok("Rally points uploaded"); }
+  async uploadRallyPoints(pts: RallyPointItem[]): Promise<CommandResult> {
+    const { promise, resolve } = Promise.withResolvers<void>();
+    setTimeout(resolve, 300);
+    await promise;
+    this.rallyPoints = pts.map((p) => ({ ...p }));
+    this.emitStatusText(6, `${pts.length} rally points uploaded`);
+    return ok("Rally points uploaded");
+  }
   async downloadRallyPoints() { return [...this.rallyPoints]; }
 
   // ── Parameters ─────────────────────────────────────────
@@ -314,7 +322,16 @@ export class MockProtocol implements DroneProtocol {
   private mission = new MockMission(() => this._vehicleInfo.firmwareType.startsWith("ardupilot-"));
   /** Seed the mission this vehicle holds without a transfer (the demo route it flies). */
   loadMission(items: readonly MissionItem[]): void { this.mission.load(items); }
-  async uploadMission(items: MissionItem[]): Promise<CommandResult> { return this.mission.upload(items); }
+  async uploadMission(items: MissionItem[]): Promise<CommandResult> {
+    // A PX4 vehicle refuses the first item it cannot parse and keeps its old mission.
+    if (this._vehicleInfo.firmwareType === "px4") {
+      const refused = px4MissionRejection(items, this._vehicleInfo.vehicleClass);
+      if (refused) {
+        return { success: false, resultCode: refused.result, message: `Mission rejected: item ${refused.seq}, MAV_MISSION_RESULT ${refused.result}` };
+      }
+    }
+    return this.mission.upload(items);
+  }
   async downloadMission(): Promise<MissionItem[]> { return this.mission.download(); }
   async setCurrentMissionItem(): Promise<CommandResult> { return ok("Mission item set"); }
 

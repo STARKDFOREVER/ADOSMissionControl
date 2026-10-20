@@ -36,37 +36,41 @@ export function holdsHomeSlot(protocol: MockProtocol): boolean {
  * The mission a demo loop is flown as: a NAV_WAYPOINT per path point and a
  * last one back on the first, so the route closes the loop the drone flies.
  * Each leg's speed rides a DO_CHANGE_SPEED where it changes, laid out exactly
- * as the planner writes one, so a download re-expands to these same items and
- * MISSION_CURRENT seqs map onto the right waypoint. With `homeSlot` the
- * ArduPilot layout: home (the loop start) at seq 0.
+ * as the planner writes one (the first mission item current, no heading set),
+ * so a download re-expands to these same items and MISSION_CURRENT seqs map
+ * onto the right waypoint. With `homeSlot` the ArduPilot layout: home (the
+ * loop start) at seq 0.
  */
 export function pathMissionItems(path: readonly PathWaypoint[], homeSlot: boolean): MissionItem[] {
   const points = path.length > 1 ? [...path, path[0]] : [...path];
   const items: MissionItem[] = [];
-  let seq = homeSlot ? 1 : 0;
+  const first = homeSlot ? 1 : 0;
+  let seq = first;
   let speed: number | undefined;
   points.forEach((p, k) => {
     // The engine flies each leg at the speed of the point it leaves.
     const legSpeed = k === 0 ? p.speed : points[k - 1].speed;
     if (legSpeed !== speed) {
-      items.push(speedItem(legSpeed, seq++, MAV_FRAME_GLOBAL_RELATIVE_ALT));
+      items.push({ ...speedItem(legSpeed, seq), current: seq === first ? 1 : 0 });
+      seq++;
       speed = legSpeed;
     }
     items.push({
-      seq: seq++,
+      seq,
       frame: MAV_FRAME_GLOBAL_RELATIVE_ALT,
       command: MAV_CMD_NAV_WAYPOINT,
-      current: k === 0 ? 1 : 0,
+      current: seq === first ? 1 : 0,
       autocontinue: 1,
-      param1: 0, param2: 0, param3: 0, param4: 0,
+      param1: 0, param2: 0, param3: 0, param4: NaN,
       x: Math.round(p.lat * 1e7),
       y: Math.round(p.lon * 1e7),
       z: p.alt,
     });
+    seq++;
   });
   if (!homeSlot || path.length === 0) return items;
   const start = items.find((it) => it.command === MAV_CMD_NAV_WAYPOINT)!;
-  return [{ ...start, seq: 0, frame: MAV_FRAME_GLOBAL, current: 0, z: 0 }, ...items];
+  return [{ ...start, seq: 0, frame: MAV_FRAME_GLOBAL, current: 0, param4: 0, z: 0 }, ...items];
 }
 
 /**

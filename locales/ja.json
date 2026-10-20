@@ -3237,7 +3237,8 @@
         "movement": "Movement",
         "payload": "Payload",
         "flow": "Flow control",
-        "system": "System"
+        "system": "System",
+        "gimbal": "ジンバルとROI"
       },
       "cmd": {
         "ROI": "Region of Interest",
@@ -3255,7 +3256,11 @@
         "DELAY": "Delay",
         "CONDITION_DISTANCE": "Wait for Distance",
         "DO_FENCE_ENABLE": "Fence Enable/Disable",
-        "DO_SET_HOME": "Set Home"
+        "DO_SET_HOME": "Set Home",
+        "PHOTO_INTERVAL": "N秒ごとに撮影",
+        "PHOTO_STOP": "撮影を停止",
+        "VIDEO_START": "録画を開始",
+        "VIDEO_STOP": "録画を停止"
       },
       "readOnly": "read-only"
     },
@@ -3412,7 +3417,10 @@
           "inavWaypointHint": "Flies through this position at its speed, or the mission speed when blank.",
           "inavLoiterHint": "Loiters at this position indefinitely. The mission does not advance automatically.",
           "inavRtlHint": "Returns to home and lands. The mission ends here.",
-          "inavLandHint": "Landing-site elevation in the waypoint's altitude frame. 0 uses the takeoff or home elevation. Approach direction and landing heading are set in the fixed-wing approach panel."
+          "inavLandHint": "Landing-site elevation in the waypoint's altitude frame. 0 uses the takeoff or home elevation. Approach direction and landing heading are set in the fixed-wing approach panel.",
+          "photoInterval": "間隔",
+          "photoCount": "枚数",
+          "photoCountUnlimited": "無制限"
         },
         "insertBefore": "Insert before",
         "insertAfter": "Insert after",

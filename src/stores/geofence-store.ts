@@ -11,8 +11,8 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import { indexedDBStorage } from "@/lib/storage";
 import { droneSelection, selectedDroneProtocol } from "./drone-selection";
 import { withPlannerHistory } from "@/lib/planner-history-adapter";
-import { polygonBounds } from "@/lib/drawing/geo-utils";
 import {
+  boundaryFencePolygon,
   nextZoneId,
   buildFenceElements,
   elementToZone,
@@ -20,6 +20,7 @@ import {
   writeFenceParams,
   readFenceParams,
 } from "@/lib/geofence-elements";
+import type { FenceZoneElement } from "@/lib/protocol/types";
 import { useUploadReceiptsStore } from "./upload-receipts-store";
 
 export type FenceType = "circle" | "polygon";
@@ -56,6 +57,14 @@ export interface GeofenceSnapshot {
   circleRadius: number;
   polygonPoints: [number, number][];
   zones: FenceZone[];
+  /**
+   * Radius (m) of ArduPilot's home-centred circle fence, read from
+   * FENCE_RADIUS when FENCE_TYPE has the circle bit set. Absent when the
+   * vehicle enforces no home circle or it was never read.
+   */
+  homeCircleRadiusM?: number;
+  /** The fence return point (NAV_FENCE_RETURN_POINT) held with the fence, when it has one. */
+  returnPoint?: { lat: number; lon: number };
 }
 
 /** Outcome of a fence upload or download, carrying the reason on failure so
@@ -74,6 +83,10 @@ interface GeofenceStoreState {
   circleCenter: [number, number] | null;
   circleRadius: number;
   polygonPoints: [number, number][];
+  /** See {@link GeofenceSnapshot.homeCircleRadiusM}; null when there is none. */
+  homeCircleRadiusM: number | null;
+  /** See {@link GeofenceSnapshot.returnPoint}; null when there is none. */
+  returnPoint: { lat: number; lon: number } | null;
   uploadState: "idle" | "uploading" | "uploaded" | "error";
   downloadState: "idle" | "downloading" | "downloaded" | "error";
 
@@ -149,6 +162,8 @@ export const useGeofenceStore = create<GeofenceStoreState>()(
   circleCenter: null,
   circleRadius: 200,
   polygonPoints: [],
+  homeCircleRadiusM: null,
+  returnPoint: null,
   uploadState: "idle",
   downloadState: "idle",
   zones: [],
@@ -174,20 +189,7 @@ export const useGeofenceStore = create<GeofenceStoreState>()(
 
   generateFromBoundary: (points, bufferMeters) => {
     if (points.length === 0) return;
-    const buffer = Number.isFinite(bufferMeters) && bufferMeters > 0 ? bufferMeters : 0;
-    const { minLat, maxLat, minLon, maxLon } = polygonBounds(points);
-    // meters -> degrees, matching the circle-geofence conversion below
-    // (~111320 m per degree of latitude; longitude scales with cos(latitude)).
-    const dLat = buffer / 111320;
-    const meanLat = (minLat + maxLat) / 2;
-    const cosLat = Math.cos((meanLat * Math.PI) / 180);
-    const dLon = buffer / (111320 * (Math.abs(cosLat) < 1e-6 ? 1e-6 : cosLat));
-    const polygonPoints: [number, number][] = [
-      [minLat - dLat, minLon - dLon],
-      [minLat - dLat, maxLon + dLon],
-      [maxLat + dLat, maxLon + dLon],
-      [maxLat + dLat, minLon - dLon],
-    ];
+    const polygonPoints = boundaryFencePolygon(points, bufferMeters);
     withPlannerHistory(() => set({ fenceType: "polygon", polygonPoints, enabled: true }));
   },
 
@@ -238,19 +240,18 @@ export const useGeofenceStore = create<GeofenceStoreState>()(
     }
 
     const snap = get().snapshot();
-    const { fenceType, polygonPoints, circleCenter, circleRadius, zones } = snap;
+    const { fenceType, polygonPoints, circleCenter, circleRadius, zones, returnPoint } = snap;
     const droneId = droneSelection().selectedDroneId;
     const firmware = protocol.getVehicleInfo()?.firmwareType;
 
     // Build the payload before flipping upload state so an empty fence is a
     // no-op. Removing the fence from the vehicle is the explicit
     // clearVehicleFence action, never a side effect of an empty upload.
-    const elements = buildFenceElements(fenceType, polygonPoints, circleCenter, circleRadius, zones);
+    const elements = buildFenceElements(fenceType, polygonPoints, circleCenter, circleRadius, zones, returnPoint);
     if (elements.length === 0) {
       return { success: false, message: "Nothing to upload — the fence is empty" };
     }
 
-    const isPx4 = firmware === "px4";
     const receipts = useUploadReceiptsStore.getState();
     set({ uploadState: "uploading" });
     let outcome: FenceTransferResult;
@@ -261,7 +262,7 @@ export const useGeofenceStore = create<GeofenceStoreState>()(
       // holds but does not enforce is not "uploaded", so any failed write
       // fails the upload.
       outcome = result.success
-        ? await writeFenceParams(protocol, isPx4, snap)
+        ? await writeFenceParams(protocol, firmware, snap)
         : { success: false, message: result.message };
       if (outcome.success) outcome = { success: true, message: result.message };
     } catch (err) {
@@ -316,7 +317,6 @@ export const useGeofenceStore = create<GeofenceStoreState>()(
     }
 
     const firmware = protocol.getVehicleInfo()?.firmwareType;
-    const isPx4 = firmware === "px4";
     const droneId = droneSelection().selectedDroneId;
     const noFence = { success: true, message: "No fence stored on the flight controller" };
 
@@ -325,16 +325,18 @@ export const useGeofenceStore = create<GeofenceStoreState>()(
       // Read everything before touching local state, so a failed read never
       // leaves a half-replaced fence.
       const elements = await protocol.downloadFenceMission();
-      if (elements.length === 0) {
+      const areas = elements.filter((e): e is FenceZoneElement => e.kind !== "returnPoint");
+      const stored = elements.find((e) => e.kind === "returnPoint");
+      if (areas.length === 0) {
         set({ downloadState: "downloaded" });
         return noFence;
       }
       // The first inclusion element (else the first element) is the primary
       // fence; every remaining element becomes an inclusion/exclusion zone.
-      const firstInclusion = elements.findIndex((e) => e.role === "inclusion");
+      const firstInclusion = areas.findIndex((e) => e.role === "inclusion");
       const primaryIdx = firstInclusion >= 0 ? firstInclusion : 0;
-      const primary = elements[primaryIdx];
-      const zones = elements.filter((_, i) => i !== primaryIdx).map(elementToZone);
+      const primary = areas[primaryIdx];
+      const zones = areas.filter((_, i) => i !== primaryIdx).map(elementToZone);
       const geometry: Partial<GeofenceSnapshot> =
         primary.kind === "polygon"
           ? {
@@ -348,8 +350,8 @@ export const useGeofenceStore = create<GeofenceStoreState>()(
               circleRadius: primary.radius,
               zones,
             };
-      const message = `Loaded ${elements.length} fence elements`;
-      const params = await readFenceParams(protocol, isPx4);
+      const message = `Loaded ${areas.length} fence elements`;
+      const params = await readFenceParams(protocol, firmware);
       // Replacing the operator's fence with the FC's is an edit like any
       // other: one undo step brings the local fence back.
       withPlannerHistory(() =>
@@ -359,6 +361,8 @@ export const useGeofenceStore = create<GeofenceStoreState>()(
           maxAltitude: params.maxAltitude,
           minAltitude: params.minAltitude,
           ...(params.breachAction ? { breachAction: params.breachAction } : {}),
+          homeCircleRadiusM: params.homeCircleRadiusM ?? null,
+          returnPoint: stored ? { lat: stored.lat, lon: stored.lon } : null,
         }),
       );
       set({ downloadState: "downloaded" });
@@ -391,6 +395,7 @@ export const useGeofenceStore = create<GeofenceStoreState>()(
         circleRadius: 200,
         polygonPoints: [],
         zones: [],
+        returnPoint: null,
         uploadState: "idle",
         downloadState: "idle",
         breachStatus: 0,
@@ -416,6 +421,8 @@ export const useGeofenceStore = create<GeofenceStoreState>()(
         polygonPoints: z.polygonPoints.map(([lat, lon]) => [lat, lon] as [number, number]),
         circleCenter: z.circleCenter ? [z.circleCenter[0], z.circleCenter[1]] as [number, number] : null,
       })),
+      ...(s.homeCircleRadiusM !== null ? { homeCircleRadiusM: s.homeCircleRadiusM } : {}),
+      ...(s.returnPoint ? { returnPoint: { ...s.returnPoint } } : {}),
     };
   },
 
@@ -434,12 +441,14 @@ export const useGeofenceStore = create<GeofenceStoreState>()(
         polygonPoints: z.polygonPoints.map(([lat, lon]) => [lat, lon] as [number, number]),
         circleCenter: z.circleCenter ? [z.circleCenter[0], z.circleCenter[1]] as [number, number] : null,
       })),
+      homeCircleRadiusM: snap.homeCircleRadiusM ?? null,
+      returnPoint: snap.returnPoint ? { ...snap.returnPoint } : null,
     }),
     }),
     {
       name: "altcmd:geofence-store",
       storage: createJSONStorage(indexedDBStorage.storage),
-      version: 1,
+      version: 2,
       // Only the operator-editable fence geometry persists. Live FENCE_STATUS
       // breach fields and async upload/download state are driven by the FC, so
       // restoring them would report a stale breach on a fresh session.
@@ -453,6 +462,8 @@ export const useGeofenceStore = create<GeofenceStoreState>()(
         circleRadius: state.circleRadius,
         polygonPoints: state.polygonPoints,
         zones: state.zones,
+        homeCircleRadiusM: state.homeCircleRadiusM,
+        returnPoint: state.returnPoint,
       }),
       migrate: (persisted, version) => {
         const state = persisted as Record<string, unknown>;
@@ -468,6 +479,12 @@ export const useGeofenceStore = create<GeofenceStoreState>()(
         }
         if (!Array.isArray(state.zones)) state.zones = [];
         if (!Array.isArray(state.polygonPoints)) state.polygonPoints = [];
+        if (version < 2) {
+          // v2 adds the vehicle's home-circle radius and the fence return
+          // point; a payload written before them carries neither.
+          state.homeCircleRadiusM = null;
+          state.returnPoint = null;
+        }
         return state as Partial<GeofenceStoreState>;
       },
     },

@@ -180,8 +180,9 @@ export function migrateMissionStore(
 /**
  * The home position written into ArduPilot's mission slot 0: the vehicle's
  * HOME_POSITION when this is the selected drone and one has been received,
- * else the first waypoint at 0 m. The flight controller replaces slot 0 with
- * its own home on arming, so the fallback only has to be a valid position.
+ * else the first waypoint at 0 m. ArduPilot never stores an uploaded slot 0
+ * (index zero is always home) and reads it back as its own AHRS home, so the
+ * slot only has to hold a valid position for the upload to be accepted.
  */
 export function uploadHome(protocol: DroneProtocol, waypoints: readonly Waypoint[]): HomeSlot {
   const isSelected = selectedDroneProtocol() === protocol;
@@ -497,11 +498,20 @@ export const useMissionStore = create<MissionStoreState>()(
     // mission at slot 1, so the home slot is reserved there.
     const info = protocol.getVehicleInfo();
     const isArduPilot = info?.firmwareType.startsWith("ardupilot-") ?? false;
-    const items: MissionItem[] = missionUploadItems(
-      waypoints,
-      profileFromVehicleInfo(info) ?? DEFAULT_PLAN_PROFILE,
-      isArduPilot ? uploadHome(protocol, waypoints) : undefined,
-    );
+    let items: MissionItem[];
+    try {
+      items = missionUploadItems(
+        waypoints,
+        profileFromVehicleInfo(info) ?? DEFAULT_PLAN_PROFILE,
+        isArduPilot ? uploadHome(protocol, waypoints) : undefined,
+      );
+    } catch (err) {
+      // The plan cannot be encoded for this autopilot (a PX4 target and a
+      // terrain-frame waypoint): nothing was sent, so the vehicle's mission
+      // and any receipt for it are unchanged.
+      set({ uploadState: "error", uploadError: err instanceof Error ? err.message : String(err) });
+      return false;
+    }
     // Hash what is being sent now: an edit made while the transfer runs must
     // not be vouched for by this upload's receipt.
     const uploadedHash = missionContentHash(waypoints);
@@ -558,7 +568,7 @@ export const useMissionStore = create<MissionStoreState>()(
       const downloadWarnings: string[] = [];
       const waypoints: Waypoint[] = collapseFromItems(items, (dropped) => {
         downloadWarnings.push(droppedItemWarning(dropped));
-      }, home);
+      }, home, profileFromVehicleInfo(protocol.getVehicleInfo())?.autopilot);
       // The vehicle holds no mission: report it and keep the open plan as it is.
       if (waypoints.length === 0) {
         set({ downloadState: "downloaded", downloadWarnings });

@@ -24,6 +24,7 @@ import { useFenceUploadStatus } from "@/hooks/use-upload-status";
 import { Upload, Download, Pentagon, Circle, Trash2, ShieldPlus } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { usePlannerStore } from "@/stores/planner-store";
+import { usePlanVehicleProfile } from "@/hooks/use-plan-profile";
 import { cn } from "@/lib/utils";
 
 const SECONDARY_BUTTON =
@@ -88,13 +89,20 @@ export function GeofenceEditor({ onDrawOnMap }: GeofenceEditorProps) {
     { value: "polygon", label: t("polygon"), icon: <Pentagon size={11} /> },
   ], [t]);
 
+  // ArduPlane has no "always land" breach response: its fence ignores it, so a
+  // breach would do nothing. Land is offered there only while it is the stored
+  // choice (uploaded as AUTOLAND_OR_RTL), so the control can still show it.
+  const profile = usePlanVehicleProfile();
+  const isArduPlane = profile.autopilot === "ardupilot" && (profile.vehicleClass === "plane" || profile.vehicleClass === "vtol");
   // Short segment labels so three options fit the inspector; the full text is
   // the tooltip.
   const actionOptions = useMemo<SegmentedOption<BreachAction>[]>(() => [
     { value: "RTL", label: tEditor("breachRtlShort"), title: t("rtlOrLand") },
-    { value: "LAND", label: tEditor("breachLandShort"), title: t("land") },
+    ...(isArduPlane && breachAction !== "LAND"
+      ? []
+      : [{ value: "LAND" as const, label: tEditor("breachLandShort"), title: t("land") }]),
     { value: "REPORT", label: tEditor("breachReportShort"), title: t("report") },
-  ], [t, tEditor]);
+  ], [t, tEditor, isArduPlane, breachAction]);
 
   const hasFenceGeometry =
     fenceType === "polygon" ? polygonPoints.length >= 3 : circleCenter !== null;

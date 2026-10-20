@@ -30,7 +30,7 @@ import type {
   OpticalFlowCallback, OpticalFlowRadCallback, OdometryCallback,
   VisionPositionEstimateCallback, VisionPositionDeltaCallback,
 } from './callbacks';
-import type { MissionItem, LogEntry, LogDownloadProgressCallback, FtpDownloadProgressCallback, FenceElement } from './mission';
+import type { MissionItem, LogEntry, LogDownloadProgressCallback, FtpDownloadProgressCallback, FenceElement, RallyPointItem } from './mission';
 import type { FirmwareHandler } from './firmware';
 import type { MAVLinkFrame } from '../mavlink-parser';
 // iNav-specific types : optional so MAVLink adapter needs no changes
@@ -232,8 +232,9 @@ export interface DroneProtocol {
   downloadFenceMission?(): Promise<FenceElement[]>;
 
   // ── Rally Point Operations ───────────────────────────────
-  uploadRallyPoints?(points: Array<{ lat: number; lon: number; alt: number }>): Promise<CommandResult>;
-  downloadRallyPoints?(): Promise<Array<{ lat: number; lon: number; alt: number }>>;
+  uploadRallyPoints?(points: RallyPointItem[]): Promise<CommandResult>;
+  /** Each point with the MAV_FRAME its altitude was stored in. */
+  downloadRallyPoints?(): Promise<RallyPointItem[]>;
 
   // ── iNav Navigation Features ──────────────────────────────
   uploadSafehomes?(safehomes: INavSafehome[]): Promise<CommandResult>;

@@ -14,6 +14,7 @@ import type {
   VehicleClass,
   ProtocolCapabilities,
 } from '../types'
+import type { ActionCommand } from '@/lib/types/mission'
 import { PX4_PARAM_MAP, PX4_REVERSE_MAP } from './px4-params'
 import { PX4_CAPABILITIES, px4VehicleClassFromMavType, PX4_UNSUPPORTED_MESSAGE } from './px4-capabilities'
 
@@ -230,47 +231,87 @@ class PX4Handler implements FirmwareHandler {
     return PX4_REVERSE_MAP[firmwareName] ?? firmwareName
   }
 
-  /** PX4 supported mission commands, filtered by vehicle class. */
+  /**
+   * Mission commands PX4 accepts, by vehicle class: the commands its mission
+   * parser (`parse_mavlink_mission_item`) reads and its feasibility checker
+   * allows. LOITER_TURNS, PAYLOAD_PLACE, DO_SET_SERVO, CONDITION_YAW,
+   * CONDITION_DISTANCE, DO_FENCE_ENABLE and DO_AUX_FUNCTION are refused in any
+   * frame, and NAV_SPLINE_WAYPOINT is ArduPilot-only. The VTOL commands are
+   * refused on any vehicle that is not a VTOL.
+   */
   getSupportedMissionCommands(): number[] {
-    // Base commands available to all vehicle types. NAV_SPLINE_WAYPOINT (82) is
-    // deliberately absent: it is an ArduPilot-only command PX4 does not support
-    // (the previous "82 // NAV_DELAY" entry was doubly wrong; NAV_DELAY is 93).
     const base = [
-      16,   // NAV_WAYPOINT
-      17,   // NAV_LOITER_UNLIM
-      19,   // NAV_LOITER_TIME
-      20,   // NAV_RETURN_TO_LAUNCH
-      21,   // NAV_LAND
-      22,   // NAV_TAKEOFF
-      31,   // NAV_LOITER_TO_ALT
-      93,   // NAV_DELAY
-      94,   // NAV_PAYLOAD_PLACE
-      177,  // DO_JUMP
-      178,  // DO_CHANGE_SPEED
-      183,  // DO_SET_SERVO
-      200,  // DO_CONTROL_VIDEO
-      201,  // DO_SET_ROI
-      203,  // DO_DIGICAM_CONTROL
-      206,  // DO_SET_CAM_TRIGG_DIST
-      2000, // IMAGE_START_CAPTURE
-      2001, // IMAGE_STOP_CAPTURE
-      2500, // VIDEO_START_CAPTURE
-      2501, // VIDEO_STOP_CAPTURE
+      16,    // NAV_WAYPOINT
+      17,    // NAV_LOITER_UNLIM
+      19,    // NAV_LOITER_TIME
+      20,    // NAV_RETURN_TO_LAUNCH
+      21,    // NAV_LAND
+      22,    // NAV_TAKEOFF
+      31,    // NAV_LOITER_TO_ALT
+      93,    // NAV_DELAY
+      177,   // DO_JUMP (backward only)
+      178,   // DO_CHANGE_SPEED
+      179,   // DO_SET_HOME
+      189,   // DO_LAND_START
+      195,   // DO_SET_ROI_LOCATION
+      197,   // DO_SET_ROI_NONE
+      200,   // DO_CONTROL_VIDEO
+      201,   // DO_SET_ROI
+      203,   // DO_DIGICAM_CONTROL
+      205,   // DO_MOUNT_CONTROL
+      206,   // DO_SET_CAM_TRIGG_DIST
+      211,   // DO_GRIPPER
+      2000,  // IMAGE_START_CAPTURE
+      2001,  // IMAGE_STOP_CAPTURE
+      2500,  // VIDEO_START_CAPTURE
+      2501,  // VIDEO_STOP_CAPTURE
+      42600, // DO_WINCH
     ]
-
-    // Plane/VTOL only commands
-    if (this.vehicleClass !== 'copter') {
+    if (this.vehicleClass === 'vtol') {
       base.push(
-        18,  // NAV_LOITER_TURNS
-        84,  // NAV_VTOL_TAKEOFF
-        85,  // NAV_VTOL_LAND
-        189, // DO_LAND_START
+        84,   // NAV_VTOL_TAKEOFF
+        85,   // NAV_VTOL_LAND
+        3000, // DO_VTOL_TRANSITION
       )
     }
-
     return base
   }
 }
+
+/**
+ * Whether PX4 flies each planner action as the planner encodes it. CONDITION_YAW,
+ * CONDITION_DISTANCE, DO_SET_SERVO, DO_FENCE_ENABLE and DO_AUX_FUNCTION are
+ * refused by PX4's mission parser. DO_SET_HOME is parsed only without a
+ * position frame, where PX4 reads the int32 latitude as a plain number, so the
+ * planner's located DO_SET_HOME cannot reach it intact.
+ */
+const PX4_ACTION_SUPPORT: Record<ActionCommand, boolean> = {
+  ROI: true,
+  DO_SET_ROI_NONE: true,
+  DO_SET_SPEED: true,
+  DO_SET_CAM_TRIGG: true,
+  DO_DIGICAM: true,
+  DO_MOUNT_CONTROL: true,
+  DO_JUMP: true,
+  DELAY: true,
+  DO_GRIPPER: true,
+  DO_WINCH: true,
+  PHOTO_INTERVAL: true,
+  PHOTO_STOP: true,
+  VIDEO_START: true,
+  VIDEO_STOP: true,
+  CONDITION_YAW: false,
+  CONDITION_DISTANCE: false,
+  DO_SET_SERVO: false,
+  DO_FENCE_ENABLE: false,
+  DO_AUX_FUNCTION: false,
+  DO_SET_HOME: false,
+}
+
+/** The planner actions a PX4 vehicle accepts in a mission. */
+export const px4AcceptedActions: ReadonlySet<ActionCommand> = new Set(
+  (Object.keys(PX4_ACTION_SUPPORT) as ActionCommand[]).filter((c) => PX4_ACTION_SUPPORT[c]),
+)
 
 // ---------------------------------------------------------------------------
 // Singleton export

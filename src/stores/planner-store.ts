@@ -80,7 +80,11 @@ interface PlannerStoreState {
   defaultAlt: number;
   /** Default speed (m/s) for new waypoints. */
   defaultSpeed: number;
-  /** Default waypoint acceptance radius (m). */
+  /**
+   * Default waypoint acceptance radius (m). 0 leaves it to the flight
+   * controller: ArduPlane then turns early by its WP_RADIUS turn distance,
+   * which any fixed radius disables.
+   */
   defaultAcceptRadius: number;
   /** Default altitude reference frame. */
   defaultFrame: AltitudeFrame;
@@ -195,7 +199,7 @@ export const usePlannerStore = create<PlannerStoreState>()(
   selectionMode: "single",
   defaultAlt: 50,
   defaultSpeed: 5,
-  defaultAcceptRadius: 2,
+  defaultAcceptRadius: 0,
   defaultFrame: "relative",
   fitRequestTs: 0,
   panRequest: null,

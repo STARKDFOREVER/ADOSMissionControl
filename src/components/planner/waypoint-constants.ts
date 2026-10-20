@@ -4,7 +4,7 @@
  * @license GPL-3.0-only
  */
 
-import type { ActionCommand, CommandMissionAction, NavCommand, WaypointCommand } from "@/lib/types";
+import type { ActionCommand, CommandMissionAction, NavCommand, Waypoint, WaypointCommand } from "@/lib/types";
 import type { VehicleClass } from "@/lib/protocol/types";
 
 /**
@@ -33,7 +33,8 @@ export const NAV_COMMAND_OPTIONS: { value: NavCommand; label: string }[] = [
  * only the structure lives here.
  */
 export const ACTION_COMMAND_GROUPS: { groupKey: string; commands: ActionCommand[] }[] = [
-  { groupKey: "camera", commands: ["DO_SET_CAM_TRIGG", "DO_DIGICAM", "DO_MOUNT_CONTROL", "ROI", "DO_SET_ROI_NONE"] },
+  { groupKey: "camera", commands: ["DO_DIGICAM", "PHOTO_INTERVAL", "PHOTO_STOP", "VIDEO_START", "VIDEO_STOP", "DO_SET_CAM_TRIGG"] },
+  { groupKey: "gimbal", commands: ["DO_MOUNT_CONTROL", "ROI", "DO_SET_ROI_NONE"] },
   { groupKey: "movement", commands: ["DO_SET_SPEED", "CONDITION_YAW"] },
   { groupKey: "payload", commands: ["DO_SET_SERVO", "DO_GRIPPER", "DO_WINCH", "DO_AUX_FUNCTION"] },
   { groupKey: "flow", commands: ["DO_JUMP", "DELAY", "CONDITION_DISTANCE"] },
@@ -74,6 +75,27 @@ export function acceptRadiusDefault(command: WaypointCommand, radius: number): {
   return (command === "WAYPOINT" || command === "SPLINE_WAYPOINT") && radius > 0 ? { param1: radius } : {};
 }
 
+/**
+ * The update that switches a waypoint to `command`. Every parameter slot
+ * starts clean and then takes the new command's defaults: each slot means
+ * something different per command, and a kept value turns into a different
+ * instruction (an acceptance radius becomes LAND's precision-landing mode or
+ * VTOL_TAKEOFF's transition heading on PX4).
+ */
+export function commandChangeUpdate(
+  command: NavCommand,
+  acceptRadius: number,
+): Pick<Waypoint, "command" | "holdTime" | "param1" | "param2" | "param3"> {
+  return {
+    command,
+    holdTime: undefined,
+    param1: undefined,
+    param2: undefined,
+    param3: undefined,
+    ...acceptRadiusDefault(command, acceptRadius),
+  };
+}
+
 /** MAV_CMD_DO_CHANGE_SPEED param1 (speed type). */
 export const SPEED_TYPE_AIRSPEED = 0;
 export const SPEED_TYPE_GROUND = 1;
@@ -99,9 +121,8 @@ export function defaultActionParams(
     }
     case "DO_SET_CAM_TRIGG": return { param1: 10 }; // trigger every 10 m
     case "DELAY": return { param1: 3 }; // 3 s
-    case "CONDITION_YAW": return { param1: 0, param2: 0, param3: 1 }; // heading 0, abs, CW
     case "CONDITION_DISTANCE": return { param1: 50 }; // 50 m
-    case "DO_JUMP": return { param2: 1 }; // repeat once
+    case "CONDITION_YAW": return { param1: 0, param2: 0, param3: 0 }; // heading 0, abs, shortest turn
     case "DO_SET_SERVO": return { param1: 5, param2: 1500 }; // servo 5, 1500 us
     case "DO_MOUNT_CONTROL": return { param1: -30 }; // pitch down 30°
     case "DO_GRIPPER": return { param1: 1, param2: 1 }; // gripper 1, grab
@@ -111,7 +132,8 @@ export function defaultActionParams(
     case "DO_AUX_FUNCTION": return { param1: 0, param2: 0 };
     case "ROI":
     case "DO_SET_HOME": return { lat: parent.lat, lon: parent.lon, alt: 0 };
-    default: return {}; // DO_SET_ROI_NONE
+    case "PHOTO_INTERVAL": return { param2: 2 }; // a photo every 2 s, no count limit
+    default: return {}; // DO_SET_ROI_NONE, PHOTO_STOP, VIDEO_START, VIDEO_STOP
   }
 }
 
@@ -132,6 +154,10 @@ export const CMD_LETTER: Record<string, string> = {
   CONDITION_DISTANCE: "D",
   DO_SET_CAM_TRIGG: "C",
   DO_DIGICAM: "C",
+  PHOTO_INTERVAL: "C",
+  PHOTO_STOP: "C",
+  VIDEO_START: "V",
+  VIDEO_STOP: "V",
   DO_JUMP: "J",
   DO_SET_SERVO: "V",
   DO_MOUNT_CONTROL: "G",

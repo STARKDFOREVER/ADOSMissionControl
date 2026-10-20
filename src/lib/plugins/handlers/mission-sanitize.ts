@@ -33,7 +33,8 @@ const ACTION_COMMANDS: Record<ActionCommand, true> = {
   DO_JUMP: true, DELAY: true, CONDITION_YAW: true, DO_SET_SERVO: true,
   DO_FENCE_ENABLE: true, DO_MOUNT_CONTROL: true, DO_GRIPPER: true, DO_WINCH: true,
   CONDITION_DISTANCE: true, DO_SET_HOME: true, DO_AUX_FUNCTION: true,
-  DO_SET_ROI_NONE: true,
+  DO_SET_ROI_NONE: true, PHOTO_INTERVAL: true, PHOTO_STOP: true, VIDEO_START: true,
+  VIDEO_STOP: true,
 };
 
 const FRAMES: Record<AltitudeFrame, true> = { relative: true, absolute: true, terrain: true };

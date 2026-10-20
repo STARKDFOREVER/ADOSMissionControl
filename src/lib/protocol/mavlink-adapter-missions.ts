@@ -6,7 +6,7 @@
  * @module protocol/mavlink-adapter-missions
  */
 
-import type { Transport, CommandResult, MissionItem, FirmwareHandler, FenceElement } from './types'
+import type { Transport, CommandResult, MissionItem, FirmwareHandler, FenceElement, RallyPointItem } from './types'
 import {
   encodeMissionCount, encodeMissionRequestList, encodeMissionClearAll,
   encodeMissionRequestInt,
@@ -15,7 +15,17 @@ import {
 import { encodeFenceMissionItems, type FenceMissionItem } from './fence-mission-codec'
 import { createDeadline, createUploadDeadline, sendOpening, type TransferDeadline } from './mission-transfer-deadline'
 
-export interface MissionUploadState extends TransferDeadline {
+/**
+ * What every upload tracks: the items it sends and the highest seq the
+ * vehicle has asked for, so ACCEPTED is only taken once the last item went out.
+ */
+export interface UploadProgress {
+  items: readonly unknown[]
+  /** Highest seq the vehicle has requested; -1 before the first request. */
+  highestRequested: number
+}
+
+export interface MissionUploadState extends TransferDeadline, UploadProgress {
   items: MissionItem[]
   resolve: (result: CommandResult) => void
   reject: (err: Error) => void
@@ -59,19 +69,19 @@ export interface MissionDownloadState extends TransferDeadline {
   reject: (err: Error) => void
 }
 
-export interface RallyUploadState extends TransferDeadline {
-  items: Array<{ lat: number; lon: number; alt: number }>
+export interface RallyUploadState extends TransferDeadline, UploadProgress {
+  items: RallyPointItem[]
   resolve: (result: CommandResult) => void
 }
 
 export interface RallyDownloadState extends TransferDeadline {
-  items: Map<number, { lat: number; lon: number; alt: number }>
+  items: Map<number, RallyPointItem>
   total: number
-  resolve: (items: Array<{ lat: number; lon: number; alt: number }>) => void
+  resolve: (items: RallyPointItem[]) => void
   reject: (err: Error) => void
 }
 
-export interface FenceUploadState extends TransferDeadline {
+export interface FenceUploadState extends TransferDeadline, UploadProgress {
   items: FenceMissionItem[]
   resolve: (result: CommandResult) => void
 }
@@ -165,7 +175,7 @@ async function startMissionUpload(ctx: MissionContext, items: MissionItem[]): Pr
   }
   const state: MissionUploadState = Object.assign(
     createUploadDeadline(onIdle, sendCount, () => ctx.missionUpload === state, onSendError),
-    { items, resolve, reject },
+    { items, resolve, reject, highestRequested: -1 },
   )
   ctx.missionUpload = state
   sendOpening(state, sendCount, onSendError)
@@ -216,32 +226,41 @@ export function clearMission(ctx: MissionContext): Promise<CommandResult> {
   return serialized(ctx, 0, () => startMissionClear(ctx))
 }
 
+/** Overall budget for a mission clear to be acknowledged. */
+const CLEAR_TIMEOUT_MS = 5000
+
 async function startMissionClear(ctx: MissionContext): Promise<CommandResult> {
   if (!ctx.transport?.isConnected) return { success: false, resultCode: -1, message: 'Not connected' }
 
   const { promise, resolve } = Promise.withResolvers<CommandResult>()
 
-  // A clear is a single MISSION_CLEAR_ALL awaiting one MISSION_ACK; there are
-  // no items, so there is nothing to re-arm the deadline on.
-  const state: MissionUploadState = {
-    items: [],
-    resolve,
-    reject: () => resolve({ success: false, resultCode: -1, message: 'Mission clear failed' }),
-    timer: setTimeout(() => {
-      if (ctx.missionUpload !== state) return
-      ctx.missionUpload = null
-      resolve({ success: false, resultCode: -1, message: 'Mission clear timed out' })
-    }, 5000),
-    restartTimer: () => {},
-    stop: () => clearTimeout(state.timer),
-  }
-  ctx.missionUpload = state
+  // A clear is a MISSION_CLEAR_ALL awaiting one MISSION_ACK. The frame is
+  // re-sent on the shared retry loop until the ACK arrives (a lost clear on a
+  // lossy link is retried, as the mission protocol requires), within a 5 s
+  // overall budget; there are no items, so nothing re-arms that budget.
   const transport = ctx.transport
-  sendOpening(state, () => transport.send(encodeMissionClearAll(ctx.targetSysId, ctx.targetCompId, ctx.sysId, ctx.compId)), (err) => {
+  const sendClear = () => transport.send(encodeMissionClearAll(ctx.targetSysId, ctx.targetCompId, ctx.sysId, ctx.compId))
+  const onSendError = (err: Error) => {
     if (ctx.missionUpload !== state) return
     ctx.missionUpload = null
     resolve({ success: false, resultCode: -1, message: err.message })
+  }
+  const onTimeout = () => {
+    if (ctx.missionUpload !== state) return
+    ctx.missionUpload = null
+    resolve({ success: false, resultCode: -1, message: 'Mission clear timed out' })
+  }
+  const deadline = createDeadline(onTimeout, sendClear, () => ctx.missionUpload === state, onSendError)
+  clearTimeout(deadline.timer)
+  deadline.timer = setTimeout(() => { deadline.stop(); onTimeout() }, CLEAR_TIMEOUT_MS)
+  const state: MissionUploadState = Object.assign(deadline, {
+    items: [],
+    highestRequested: -1,
+    resolve,
+    reject: () => resolve({ success: false, resultCode: -1, message: 'Mission clear failed' }),
   })
+  ctx.missionUpload = state
+  sendOpening(state, sendClear, onSendError)
   return promise
 }
 
@@ -277,7 +296,7 @@ async function startFenceUpload(ctx: MissionContext, elements: FenceElement[]): 
   }
   const state: FenceUploadState = Object.assign(
     createUploadDeadline(onIdle, sendCount, () => ctx.fenceUpload === state, onSendError),
-    { items, resolve },
+    { items, resolve, highestRequested: -1 },
   )
   ctx.fenceUpload = state
   sendOpening(state, sendCount, onSendError)
@@ -327,12 +346,15 @@ async function startFenceDownload(ctx: MissionContext): Promise<FenceElement[]> 
   return promise
 }
 
-/** Upload rally points; an empty list uploads a count of 0, which clears them on the vehicle. */
-export function uploadRallyPoints(ctx: MissionContext, points: Array<{ lat: number; lon: number; alt: number }>): Promise<CommandResult> {
+/**
+ * Upload rally points, each in its own altitude frame; an empty list uploads a
+ * count of 0, which clears them on the vehicle.
+ */
+export function uploadRallyPoints(ctx: MissionContext, points: RallyPointItem[]): Promise<CommandResult> {
   return serialized(ctx, 2, () => startRallyUpload(ctx, points))
 }
 
-async function startRallyUpload(ctx: MissionContext, points: Array<{ lat: number; lon: number; alt: number }>): Promise<CommandResult> {
+async function startRallyUpload(ctx: MissionContext, points: RallyPointItem[]): Promise<CommandResult> {
   if (!ctx.transport?.isConnected) return { success: false, resultCode: -1, message: 'Not connected' }
 
   const { promise, resolve } = Promise.withResolvers<CommandResult>()
@@ -352,22 +374,22 @@ async function startRallyUpload(ctx: MissionContext, points: Array<{ lat: number
   }
   const state: RallyUploadState = Object.assign(
     createUploadDeadline(onIdle, sendCount, () => ctx.rallyUpload === state, onSendError),
-    { items: points, resolve },
+    { items: points, resolve, highestRequested: -1 },
   )
   ctx.rallyUpload = state
   sendOpening(state, sendCount, onSendError)
   return promise
 }
 
-export function downloadRallyPoints(ctx: MissionContext): Promise<Array<{ lat: number; lon: number; alt: number }>> {
+/** Download rally points, each with the MAV_FRAME the vehicle stored its altitude in. */
+export function downloadRallyPoints(ctx: MissionContext): Promise<RallyPointItem[]> {
   return serialized(ctx, 2, () => startRallyDownload(ctx))
 }
 
-async function startRallyDownload(ctx: MissionContext): Promise<Array<{ lat: number; lon: number; alt: number }>> {
+async function startRallyDownload(ctx: MissionContext): Promise<RallyPointItem[]> {
   if (!ctx.transport?.isConnected) throw new Error('Not connected')
 
-  const { promise, resolve, reject } =
-    Promise.withResolvers<Array<{ lat: number; lon: number; alt: number }>>()
+  const { promise, resolve, reject } = Promise.withResolvers<RallyPointItem[]>()
 
   const onIdle = () => {
     const state = ctx.rallyDownload
@@ -388,7 +410,7 @@ async function startRallyDownload(ctx: MissionContext): Promise<Array<{ lat: num
   }
   const state: RallyDownloadState = Object.assign(
     createDeadline(onIdle, () => resendDownloadRequest(ctx, state, 2), () => ctx.rallyDownload === state, onSendError),
-    { items: new Map<number, { lat: number; lon: number; alt: number }>(), total: 0, resolve, reject },
+    { items: new Map<number, RallyPointItem>(), total: 0, resolve, reject },
   )
   ctx.rallyDownload = state
   const transport = ctx.transport

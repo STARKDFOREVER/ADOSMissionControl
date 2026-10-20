@@ -26,11 +26,21 @@ export type FenceRole = "inclusion" | "exclusion";
 /**
  * Firmware-agnostic geofence element the GCS edits.
  *
- * PX4 stores the geofence as a mission plan (mission_type = fence), so a
- * polygon or circle maps to a NAV_FENCE_* mission item. ArduPilot uses the
- * legacy FENCE_POINT protocol and only its inclusion-polygon vertices.
+ * The geofence is stored as a mission plan (mission_type = fence), so a
+ * polygon or circle maps to NAV_FENCE_* mission items and the fence return
+ * point to NAV_FENCE_RETURN_POINT.
  */
 export type FenceElement =
+  | FenceZoneElement
+  | {
+      /** NAV_FENCE_RETURN_POINT: where the vehicle flies after a breach (ArduPlane). */
+      kind: "returnPoint";
+      lat: number;
+      lon: number;
+    };
+
+/** A fence element that bounds an area: a polygon or a circle. */
+export type FenceZoneElement =
   | {
       kind: "polygon";
       role: FenceRole;
@@ -47,6 +57,18 @@ export type FenceElement =
       /** Inclusion group (inclusion circles only); ignored for exclusion. */
       group?: number;
     };
+
+/**
+ * One rally point as it travels in a rally-type mission. `frame` is the
+ * MAV_FRAME the altitude is measured in: 6 (relative to home) or 10 (above
+ * terrain) on upload; whatever the vehicle stored on download (0 = AMSL).
+ */
+export interface RallyPointItem {
+  lat: number;
+  lon: number;
+  alt: number;
+  frame: number;
+}
 
 /** Wire-format mission item for upload/download (INT variant). */
 export interface MissionItem {

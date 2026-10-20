@@ -154,8 +154,7 @@ describe("decodeFenceMissionItems (round-trip)", () => {
     expect(decoded).toHaveLength(3);
 
     const poly0 = decoded[0];
-    expect(poly0.kind).toBe("polygon");
-    expect(poly0.role).toBe("inclusion");
+    expect(poly0).toMatchObject({ kind: "polygon", role: "inclusion" });
     if (poly0.kind === "polygon") {
       expect(poly0.vertices).toHaveLength(4);
       expect(poly0.vertices[0].lat).toBeCloseTo(47.1, 5);
@@ -163,8 +162,7 @@ describe("decodeFenceMissionItems (round-trip)", () => {
     }
 
     const poly1 = decoded[1];
-    expect(poly1.kind).toBe("polygon");
-    expect(poly1.role).toBe("exclusion");
+    expect(poly1).toMatchObject({ kind: "polygon", role: "exclusion" });
     if (poly1.kind === "polygon") expect(poly1.vertices).toHaveLength(3);
 
     const circle = decoded[2];
@@ -176,8 +174,19 @@ describe("decodeFenceMissionItems (round-trip)", () => {
     }
   });
 
-  it("ignores a return-point (5000) item and sorts by seq before grouping", () => {
-    // Out-of-order items plus a return point that carries no modeled geometry.
+  it("keeps a fence return point through download and re-upload", () => {
+    const downloaded = decodeFenceMissionItems([
+      { seq: 0, frame: 0, command: 5000, param1: 0, param2: 0, x: 475000000, y: 85000000, z: 0 },
+      { seq: 1, frame: 0, command: 5003, param1: 300, param2: 0, x: 475100000, y: 85100000, z: 0 },
+    ]);
+    expect(downloaded).toContainEqual({ kind: "returnPoint", lat: 47.5, lon: 8.5 });
+    const reuploaded = encodeFenceMissionItems(downloaded);
+    expect(reuploaded.map((it) => it.command)).toEqual([5000, 5003]);
+    expect(reuploaded[0]).toMatchObject({ x: 475000000, y: 85000000 });
+  });
+
+  it("keeps a return-point (5000) item as its own element and sorts by seq before grouping", () => {
+    // Out-of-order items plus a return point.
     const items: FenceMissionItem[] = [
       { seq: 3, frame: 0, command: MAV_CMD_NAV_FENCE_CIRCLE_EXCLUSION, param1: 50, param2: 0, x: 60000000, y: 60000000, z: 0 },
       { seq: 0, frame: 0, command: MAV_CMD_NAV_FENCE_POLYGON_VERTEX_INCLUSION, param1: 3, param2: 0, x: 10000000, y: 10000000, z: 0 },
@@ -187,10 +196,8 @@ describe("decodeFenceMissionItems (round-trip)", () => {
     ];
     const decoded = decodeFenceMissionItems(items);
 
-    expect(decoded).toHaveLength(2); // one polygon + one circle; the return point is skipped
-    expect(decoded[0].kind).toBe("polygon");
+    expect(decoded.map((e) => e.kind)).toEqual(["polygon", "circle", "returnPoint"]);
     if (decoded[0].kind === "polygon") expect(decoded[0].vertices).toHaveLength(3);
-    expect(decoded[1].kind).toBe("circle");
   });
 });
 

@@ -25,8 +25,11 @@ import type {
 import { POSITION_BEARING_ACTIONS } from "@/lib/mission/command-classes";
 import { CommandSpecificEditors } from "./WaypointCommandEditors";
 
-/** Lucide icon per action command. */
-const ACTION_ICON: Record<ActionCommand, LucideIcon> = {
+/**
+ * Lucide icon per action command; a command without its own icon shows the
+ * camera icon.
+ */
+const ACTION_ICON: Partial<Record<ActionCommand, LucideIcon>> = {
   DO_SET_CAM_TRIGG: Camera,
   DO_DIGICAM: Camera,
   DO_MOUNT_CONTROL: Move3d,
@@ -68,6 +71,10 @@ function summarize(action: CommandMissionAction, targets: NavTarget[]): string {
     case "DO_MOUNT_CONTROL": return p1 !== undefined ? `pitch ${p1}°` : "";
     case "DO_SET_SERVO": return p1 !== undefined && p2 !== undefined ? `#${p1} · ${p2} us` : "";
     case "DO_FENCE_ENABLE": return p1 ? "enable" : "disable";
+    case "PHOTO_INTERVAL": return action.param3 === 1 ? "1 photo" : p2 ? `every ${p2} s` : "";
+    case "PHOTO_STOP": return "stop photos";
+    case "VIDEO_START": return "start video";
+    case "VIDEO_STOP": return "stop video";
     case "ROI":
     case "DO_SET_HOME":
       return action.lat !== undefined && action.lon !== undefined && (action.lat !== 0 || action.lon !== 0)
@@ -192,7 +199,7 @@ function CommandActionRow({
   onDragStart, onDragOver, onDragEnd, onDrop, dragOver,
 }: Omit<ActionRowProps, "action"> & { action: CommandMissionAction }) {
   const t = useTranslations("planner");
-  const Icon = ACTION_ICON[action.command];
+  const Icon = ACTION_ICON[action.command] ?? Camera;
   const label = t(`actions.cmd.${action.command}`);
   const summary = summarize(action, targets);
   return (

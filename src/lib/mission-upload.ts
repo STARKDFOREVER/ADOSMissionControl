@@ -20,12 +20,16 @@ import {
   type HomeSlot,
 } from "@/lib/mission/mission-expand";
 import { DEFAULT_PLAN_PROFILE } from "@/lib/mission/plan-profile";
+import { MAV_FRAME_GLOBAL_TERRAIN_ALT, MAV_FRAME_GLOBAL_TERRAIN_ALT_INT } from "@/lib/mission/altitude-frame";
 
 /**
  * Expand the planner waypoints into the wire items an upload sends to an
  * autopilot of `profile`. Each waypoint without its own frame takes the
  * planner's default frame, and each without its own speed flies the planner's
  * default speed.
+ *
+ * @throws Error when the profile is PX4 and an item is in the terrain frame:
+ * PX4 has no terrain altitude frame and refuses the whole upload.
  */
 export function missionUploadItems(
   waypoints: readonly Waypoint[],
@@ -33,13 +37,20 @@ export function missionUploadItems(
   reserveHomeSlot?: HomeSlot,
 ): MissionItem[] {
   const { defaultFrame, defaultSpeed } = usePlannerStore.getState();
-  return expandToItems(waypoints, {
+  const items = expandToItems(waypoints, {
     autopilot: profile.autopilot,
     vehicleClass: profile.vehicleClass,
     defaultFrame,
     defaultSpeed,
     reserveHomeSlot,
   });
+  if (
+    profile.autopilot === "px4" &&
+    items.some((it) => it.frame === MAV_FRAME_GLOBAL_TERRAIN_ALT || it.frame === MAV_FRAME_GLOBAL_TERRAIN_ALT_INT)
+  ) {
+    throw new Error("PX4 has no terrain altitude frame");
+  }
+  return items;
 }
 
 /**

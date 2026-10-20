@@ -12,6 +12,18 @@ import { bearing } from "@/lib/telemetry-utils";
 import type { MenuPosition, MenuReport } from "../types";
 
 /**
+ * The return-altitude parameters per firmware, newest name first, each with
+ * its scale to metres. Copter 4.7 renamed RTL_ALT (cm) to RTL_ALT_M (m) and
+ * Plane 4.5 renamed ALT_HOLD_RTL (cm) to RTL_ALTITUDE (m); a vehicle reports
+ * only one of each pair.
+ */
+const RETURN_ALT_PARAMS: Record<"px4" | "plane" | "copter", ReadonlyArray<[string, number]>> = {
+  px4: [["RTL_RETURN_ALT", 1]],
+  plane: [["RTL_ALTITUDE", 1], ["ALT_HOLD_RTL", 0.01]],
+  copter: [["RTL_ALT_M", 1], ["RTL_ALT", 0.01]],
+};
+
+/**
  * The vehicle's return altitude in metres, the default for a new rally point
  * (the FC loiters over a rally point at the point's own altitude). `null` when
  * the parameter cannot be read or means "current altitude" — the operator then
@@ -20,19 +32,18 @@ import type { MenuPosition, MenuReport } from "../types";
 export async function readReturnAltitude(protocol: DroneProtocol | null): Promise<number | null> {
   if (!protocol) return null;
   const firmware = protocol.getVehicleInfo()?.firmwareType;
-  // [parameter, scale to metres]
-  const source: [string, number] =
-    firmware === "px4"
-      ? ["RTL_RETURN_ALT", 1]
-      : firmware === "ardupilot-plane"
-        ? ["ALT_HOLD_RTL", 0.01]
-        : ["RTL_ALT", 0.01];
-  try {
-    const value = (await protocol.getParameter(source[0])).value * source[1];
+  const sources = RETURN_ALT_PARAMS[firmware === "px4" ? "px4" : firmware === "ardupilot-plane" ? "plane" : "copter"];
+  for (const [name, scale] of sources) {
+    let raw: number;
+    try {
+      raw = (await protocol.getParameter(name)).value;
+    } catch {
+      continue; // not on this firmware version: try the older name
+    }
+    const value = raw * scale;
     return Number.isFinite(value) && value > 0 ? value : null;
-  } catch {
-    return null;
   }
+  return null;
 }
 
 interface AddRallyArgs {

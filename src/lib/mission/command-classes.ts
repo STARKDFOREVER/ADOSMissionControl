@@ -50,6 +50,10 @@ const _classified: Record<WaypointCommand, "nav" | "action"> = {
   DO_SET_HOME: "action",
   DO_AUX_FUNCTION: "action",
   DO_SET_ROI_NONE: "action",
+  PHOTO_INTERVAL: "action",
+  PHOTO_STOP: "action",
+  VIDEO_START: "action",
+  VIDEO_STOP: "action",
 };
 
 /** All navigation commands (each owns a physical waypoint). */
@@ -99,4 +103,14 @@ export function isNavCommand(c?: WaypointCommand): boolean {
  */
 export function isActionCommand(c?: WaypointCommand): boolean {
   return ACTION_COMMANDS.has((c ?? "WAYPOINT") as ActionCommand);
+}
+
+/**
+ * True when the vehicle flies to this item's position. DO_LAND_START is
+ * ordered among the navigation items on the wire but is only a marker an RTL
+ * jumps to: the vehicle never flies to its coordinates, so the flight model,
+ * the launch point and the leg checks skip it.
+ */
+export function isFlownCommand(c?: WaypointCommand): boolean {
+  return isNavCommand(c) && c !== "DO_LAND_START";
 }

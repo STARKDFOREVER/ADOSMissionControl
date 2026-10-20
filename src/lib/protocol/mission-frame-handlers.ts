@@ -7,13 +7,18 @@
 
 import type { MissionItem } from './types'
 import type { MAVLinkFrame } from './mavlink-parser'
-import { firstMissingSeq, type MissionContext } from './mavlink-adapter-missions'
+import { firstMissingSeq, type MissionContext, type UploadProgress } from './mavlink-adapter-missions'
 import { decodeFenceMissionItems } from './fence-mission-codec'
 import {
   decodeMissionAck, decodeMissionRequestInt,
   decodeMissionCount, decodeMissionItemInt as decodeMissionItemIntMsg,
 } from './mavlink-messages'
 import { encodeMissionItemInt, encodeMissionRequestInt, encodeMissionAck } from './mavlink-encoder'
+
+/** MAV_MISSION_ACCEPTED. */
+const MAV_MISSION_ACCEPTED = 0
+/** MAV_MISSION_INVALID_SEQUENCE. */
+const MAV_MISSION_INVALID_SEQUENCE = 13
 
 /**
  * A MISSION_ACK error from the vehicle while a download of the same mission
@@ -34,10 +39,28 @@ function refuseDownload(s: MissionContext, missionType: number, result: number):
   return false
 }
 
+/**
+ * Whether a MISSION_ACK ends an active upload.
+ *
+ * - ArduPilot answers an item whose seq it was not expecting (a duplicate sent
+ *   after its own re-request on a slow link) with INVALID_SEQUENCE and keeps
+ *   receiving, re-requesting the item it wants; that ACK is not the end of
+ *   the transfer.
+ * - ACCEPTED only completes an upload once the vehicle has asked for the last
+ *   item (or the upload has no items). An earlier ACCEPTED is a stale reply to
+ *   a previous transaction; the vehicle still drives this one.
+ */
+function ackEndsUpload(s: MissionContext, upload: UploadProgress, type: number): boolean {
+  if (type === MAV_MISSION_INVALID_SEQUENCE && s.firmwareHandler?.firmwareType.startsWith('ardupilot-')) return false
+  if (type !== MAV_MISSION_ACCEPTED) return true
+  return upload.items.length === 0 || upload.highestRequested === upload.items.length - 1
+}
+
 export function handleMissionAckFrame(s: MissionContext, frame: MAVLinkFrame): void {
   const ack = decodeMissionAck(frame.payload)
   if (ack.type !== 0 && refuseDownload(s, ack.missionType, ack.type)) return
   if (ack.missionType === 2 && s.rallyUpload) {
+    if (!ackEndsUpload(s, s.rallyUpload, ack.type)) return
     s.rallyUpload.stop()
     s.rallyUpload.resolve({
       success: ack.type === 0, resultCode: ack.type,
@@ -47,6 +70,7 @@ export function handleMissionAckFrame(s: MissionContext, frame: MAVLinkFrame): v
     return
   }
   if (ack.missionType === 1 && s.fenceUpload) {
+    if (!ackEndsUpload(s, s.fenceUpload, ack.type)) return
     s.fenceUpload.stop()
     s.fenceUpload.resolve({
       success: ack.type === 0, resultCode: ack.type,
@@ -56,6 +80,7 @@ export function handleMissionAckFrame(s: MissionContext, frame: MAVLinkFrame): v
     return
   }
   if (ack.missionType === 0 && s.missionUpload) {
+    if (!ackEndsUpload(s, s.missionUpload, ack.type)) return
     s.missionUpload.stop()
     s.missionUpload.resolve({
       success: ack.type === 0, resultCode: ack.type,
@@ -69,9 +94,10 @@ export function handleMissionRequestFrame(s: MissionContext, frame: MAVLinkFrame
   const req = decodeMissionRequestInt(frame.payload)
   if (req.missionType === 2 && s.rallyUpload && req.seq < s.rallyUpload.items.length) {
     s.rallyUpload.restartTimer()
+    s.rallyUpload.highestRequested = Math.max(s.rallyUpload.highestRequested, req.seq)
     const pt = s.rallyUpload.items[req.seq]
     s.transport?.send(encodeMissionItemInt(
-      s.targetSysId, s.targetCompId, req.seq, 6, 5100, 0, 0,
+      s.targetSysId, s.targetCompId, req.seq, pt.frame, 5100, 0, 0,
       0, 0, 0, 0, Math.round(pt.lat * 1e7), Math.round(pt.lon * 1e7), pt.alt,
       s.sysId, s.compId, 2,
     ))
@@ -79,6 +105,7 @@ export function handleMissionRequestFrame(s: MissionContext, frame: MAVLinkFrame
   }
   if (req.missionType === 1 && s.fenceUpload && req.seq < s.fenceUpload.items.length) {
     s.fenceUpload.restartTimer()
+    s.fenceUpload.highestRequested = Math.max(s.fenceUpload.highestRequested, req.seq)
     const fi = s.fenceUpload.items[req.seq]
     s.transport?.send(encodeMissionItemInt(
       s.targetSysId, s.targetCompId, fi.seq, fi.frame, fi.command, 0, 1,
@@ -91,6 +118,7 @@ export function handleMissionRequestFrame(s: MissionContext, frame: MAVLinkFrame
     // The FC asking for the next item is progress: re-arm the inactivity
     // budget so a long mission over a slow radio is not abandoned mid-walk.
     s.missionUpload.restartTimer()
+    s.missionUpload.highestRequested = Math.max(s.missionUpload.highestRequested, req.seq)
     const item = s.missionUpload.items[req.seq]
     s.transport?.send(encodeMissionItemInt(
       s.targetSysId, s.targetCompId,
@@ -101,26 +129,38 @@ export function handleMissionRequestFrame(s: MissionContext, frame: MAVLinkFrame
   }
 }
 
+/**
+ * MISSION_COUNT answering a download's list request. A COUNT arriving once the
+ * count is known (a late reply to a re-sent request list on a slow link) is
+ * ignored: restarting the walk would re-request seq 0, which PX4 answers with
+ * an error. An empty list completes the download, and the GCS acknowledges it
+ * like any other completed download so the vehicle leaves its send state.
+ */
 export function handleMissionCountResponse(s: MissionContext, frame: MAVLinkFrame): void {
   const data = decodeMissionCount(frame.payload)
+  const ackEmpty = (missionType: number) =>
+    s.transport?.send(encodeMissionAck(s.targetSysId, s.targetCompId, MAV_MISSION_ACCEPTED, s.sysId, s.compId, missionType))
   if (data.missionType === 2 && s.rallyDownload) {
+    if (s.rallyDownload.total > 0) return
     s.rallyDownload.total = data.count
     s.rallyDownload.restartTimer()
-    if (data.count === 0) { s.rallyDownload.stop(); s.rallyDownload.resolve([]); s.rallyDownload = null; return }
+    if (data.count === 0) { s.rallyDownload.stop(); ackEmpty(2); s.rallyDownload.resolve([]); s.rallyDownload = null; return }
     s.transport?.send(encodeMissionRequestInt(s.targetSysId, s.targetCompId, 0, s.sysId, s.compId, 2))
     return
   }
   if (data.missionType === 1 && s.fenceDownload) {
+    if (s.fenceDownload.total > 0) return
     s.fenceDownload.total = data.count
     s.fenceDownload.restartTimer()
-    if (data.count === 0) { s.fenceDownload.stop(); s.fenceDownload.resolve([]); s.fenceDownload = null; return }
+    if (data.count === 0) { s.fenceDownload.stop(); ackEmpty(1); s.fenceDownload.resolve([]); s.fenceDownload = null; return }
     s.transport?.send(encodeMissionRequestInt(s.targetSysId, s.targetCompId, 0, s.sysId, s.compId, 1))
     return
   }
   if (data.missionType !== 0 || !s.missionDownload) return
+  if (s.missionDownload.total > 0) return
   s.missionDownload.total = data.count
   s.missionDownload.restartTimer()
-  if (data.count === 0) { s.missionDownload.stop(); s.missionDownload.resolve([]); s.missionDownload = null; return }
+  if (data.count === 0) { s.missionDownload.stop(); ackEmpty(0); s.missionDownload.resolve([]); s.missionDownload = null; return }
   s.transport?.send(encodeMissionRequestInt(s.targetSysId, s.targetCompId, 0, s.sysId, s.compId))
 }
 
@@ -131,7 +171,7 @@ export function handleMissionItemIntResponse(s: MissionContext, frame: MAVLinkFr
   // stale frame, or another GCS's exchange); storing it would pad the result.
   if (data.missionType === 2 && s.rallyDownload) {
     if (data.seq >= s.rallyDownload.total) return
-    s.rallyDownload.items.set(data.seq, { lat: data.x / 1e7, lon: data.y / 1e7, alt: data.z })
+    s.rallyDownload.items.set(data.seq, { lat: data.x / 1e7, lon: data.y / 1e7, alt: data.z, frame: data.frame })
     s.rallyDownload.restartTimer()
     const next = firstMissingSeq(s.rallyDownload.items, s.rallyDownload.total)
     if (next === null) {

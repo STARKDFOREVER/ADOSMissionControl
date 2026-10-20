@@ -3237,7 +3237,8 @@
         "movement": "Movement",
         "payload": "Payload",
         "flow": "Flow control",
-        "system": "System"
+        "system": "System",
+        "gimbal": "云台与兴趣点"
       },
       "cmd": {
         "ROI": "Region of Interest",
@@ -3255,7 +3256,11 @@
         "DELAY": "Delay",
         "CONDITION_DISTANCE": "Wait for Distance",
         "DO_FENCE_ENABLE": "Fence Enable/Disable",
-        "DO_SET_HOME": "Set Home"
+        "DO_SET_HOME": "Set Home",
+        "PHOTO_INTERVAL": "每 N 秒拍照",
+        "PHOTO_STOP": "停止拍照",
+        "VIDEO_START": "开始录像",
+        "VIDEO_STOP": "停止录像"
       },
       "readOnly": "read-only"
     },
@@ -3412,7 +3417,10 @@
           "inavWaypointHint": "Flies through this position at its speed, or the mission speed when blank.",
           "inavLoiterHint": "Loiters at this position indefinitely. The mission does not advance automatically.",
           "inavRtlHint": "Returns to home and lands. The mission ends here.",
-          "inavLandHint": "Landing-site elevation in the waypoint's altitude frame. 0 uses the takeoff or home elevation. Approach direction and landing heading are set in the fixed-wing approach panel."
+          "inavLandHint": "Landing-site elevation in the waypoint's altitude frame. 0 uses the takeoff or home elevation. Approach direction and landing heading are set in the fixed-wing approach panel.",
+          "photoInterval": "间隔",
+          "photoCount": "照片数",
+          "photoCountUnlimited": "不限"
         },
         "insertBefore": "Insert before",
         "insertAfter": "Insert after",

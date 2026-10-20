@@ -16,13 +16,15 @@ import { PropertySection } from "@/components/ui/property-section";
 import { Select } from "@/components/ui/select";
 import { DropdownMenu } from "@/components/ui/dropdown-menu";
 import { useSupportedMissionCommands } from "@/hooks/use-supported-mission-commands";
+import { usePlanVehicleProfile } from "@/hooks/use-plan-profile";
 import { usePlannerStore } from "@/stores/planner-store";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { cmdMap } from "@/lib/mission/command-map";
+import { px4AcceptedActions } from "@/lib/protocol/firmware/px4";
 import { setClipboard } from "@/lib/waypoint-clipboard";
-import type { NavCommand, Waypoint, WaypointCommand } from "@/lib/types";
+import type { ActionCommand, NavCommand, Waypoint } from "@/lib/types";
 import {
-  NAV_COMMAND_OPTIONS, INAV_ACTION_OPTIONS, INAV_ACTION_LABEL, INAV_ACTION_COMMANDS,
+  NAV_COMMAND_OPTIONS, INAV_ACTION_OPTIONS, INAV_ACTION_LABEL, INAV_ACTION_COMMANDS, commandChangeUpdate,
 } from "../waypoint-constants";
 import { CommandSpecificEditors, INavCommandEditors } from "../WaypointCommandEditors";
 import { WaypointActionTimeline } from "../WaypointActionTimeline";
@@ -33,6 +35,9 @@ interface WaypointInspectorProps {
   waypoint: Waypoint;
 }
 
+/** The PX4 action list in picker order. */
+const PX4_ACTIONS: readonly ActionCommand[] = [...px4AcceptedActions];
+
 export function WaypointInspector({ p, waypoint }: WaypointInspectorProps) {
   const t = useTranslations("planner.inspector.waypoint");
   const wpId = waypoint.id;
@@ -42,6 +47,7 @@ export function WaypointInspector({ p, waypoint }: WaypointInspectorProps) {
     [updateWaypoint, wpId],
   );
   const defaultSpeed = usePlannerStore((s) => s.defaultSpeed);
+  const defaultAcceptRadius = usePlannerStore((s) => s.defaultAcceptRadius);
   const cmd = waypoint.command ?? "WAYPOINT";
 
   // Hide nav commands the connected firmware would reject; the current command
@@ -54,10 +60,20 @@ export function WaypointInspector({ p, waypoint }: WaypointInspectorProps) {
 
   const protocol = useDroneManager(selectSelectedProtocol);
   const isInav = protocol?.getVehicleInfo()?.firmwareType === "inav";
+  const profile = usePlanVehicleProfile();
+  // The action picker offers only what the target autopilot flies.
+  const allowedActions = isInav ? INAV_ACTION_COMMANDS : profile.autopilot === "px4" ? PX4_ACTIONS : undefined;
   const inavOptions = INAV_ACTION_LABEL[cmd]
     ? INAV_ACTION_OPTIONS
     : [...INAV_ACTION_OPTIONS, { value: cmd as NavCommand, label: cmd }];
 
+  // A new command starts from clean slots plus its own defaults: a stale slot
+  // means something else under the new command (a hold time turns a WAYPOINT
+  // into a timed hold; an acceptance radius becomes LAND's precision mode).
+  const changeCommand = useCallback(
+    (v: string) => onUpdate(commandChangeUpdate(v as NavCommand, defaultAcceptRadius)),
+    [onUpdate, defaultAcceptRadius],
+  );
   const setHoldTime = useCallback((holdTime: number | undefined) => onUpdate({ holdTime }), [onUpdate]);
 
   return (
@@ -96,18 +112,14 @@ export function WaypointInspector({ p, waypoint }: WaypointInspectorProps) {
         {isInav ? (
           <>
             <PropertyRow label={t("action")}>
-              <Select options={inavOptions} value={cmd} ariaLabel={t("action")} compact onChange={(v) => {
-                // A new action starts from clean slots: a stale hold time would
-                // turn a WAYPOINT into a timed position hold on upload.
-                onUpdate({ command: v as NavCommand, holdTime: undefined, param1: undefined, param2: undefined, param3: undefined });
-              }} />
+              <Select options={inavOptions} value={cmd} ariaLabel={t("action")} compact onChange={changeCommand} />
             </PropertyRow>
             <INavCommandEditors cmd={cmd} params={waypoint} onUpdate={onUpdate} onHoldTime={setHoldTime} />
           </>
         ) : (
           <>
             <PropertyRow label={t("command")}>
-              <Select options={navOptions} value={cmd} searchable ariaLabel={t("command")} compact onChange={(v) => onUpdate({ command: v as WaypointCommand })} />
+              <Select options={navOptions} value={cmd} searchable ariaLabel={t("command")} compact onChange={changeCommand} />
             </PropertyRow>
             <CommandSpecificEditors cmd={cmd} params={waypoint} onUpdate={onUpdate} onHoldTime={setHoldTime} />
           </>
@@ -115,9 +127,7 @@ export function WaypointInspector({ p, waypoint }: WaypointInspectorProps) {
       </PropertySection>
 
       <PropertySection title={t("actions")}>
-        {isInav
-          ? <WaypointActionTimeline waypoint={waypoint} onUpdate={onUpdate} allowedCommands={INAV_ACTION_COMMANDS} />
-          : <WaypointActionTimeline waypoint={waypoint} onUpdate={onUpdate} />}
+        <WaypointActionTimeline waypoint={waypoint} onUpdate={onUpdate} allowedCommands={allowedActions} />
       </PropertySection>
     </>
   );

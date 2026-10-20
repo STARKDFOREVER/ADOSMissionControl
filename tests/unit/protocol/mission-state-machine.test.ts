@@ -5,6 +5,7 @@ import {
   uploadMission,
   downloadMission,
   downloadRallyPoints,
+  clearMission,
   type MissionContext,
 } from '@/lib/protocol/mavlink-adapter-missions';
 import type { MAVLinkFrame } from '@/lib/protocol/mavlink-parser';
@@ -562,5 +563,99 @@ describe('transfer retransmission on a lossy link', () => {
     const afterRequest = t.sent.length;
     vi.advanceTimersByTime(3200);
     expect(t.sent.slice(afterRequest).map(msgIdOf)).toEqual([]);
+  });
+});
+
+describe('transfer completion rules', () => {
+  const msgIdOf = (frame: Uint8Array) => frame[7] | (frame[8] << 8) | (frame[9] << 16);
+
+  it('keeps an ArduPilot upload going through an INVALID_SEQUENCE ack and finishes it', async () => {
+    const t = makeTransport();
+    const ctx = makeContext(t);
+    const items = [makeItem(0), makeItem(1), makeItem(2)];
+    const promise = uploadMission(ctx, items);
+    routeFrame(ctx, makeFrame(51, makeRequestPayload(0)), makeRequestPayload(0));
+    routeFrame(ctx, makeFrame(51, makeRequestPayload(1)), makeRequestPayload(1));
+    // A duplicate item 1 after ArduPilot's own re-request: it answers type 13 and keeps receiving.
+    routeFrame(ctx, makeFrame(47, makeAckPayload(13)), makeAckPayload(13));
+    expect(ctx.missionUpload).not.toBeNull();
+    routeFrame(ctx, makeFrame(51, makeRequestPayload(2)), makeRequestPayload(2));
+    routeFrame(ctx, makeFrame(47, makeAckPayload(0)), makeAckPayload(0));
+    expect((await promise).success).toBe(true);
+  });
+
+  it('ends a PX4 upload on INVALID_SEQUENCE', async () => {
+    const t = makeTransport();
+    const ctx = makeContext(t);
+    ctx.firmwareHandler = { ...makeFirmwareHandler(), firmwareType: 'px4' };
+    const promise = uploadMission(ctx, [makeItem(0), makeItem(1)]);
+    routeFrame(ctx, makeFrame(51, makeRequestPayload(0)), makeRequestPayload(0));
+    routeFrame(ctx, makeFrame(47, makeAckPayload(13)), makeAckPayload(13));
+    expect((await promise).resultCode).toBe(13);
+  });
+
+  it('ignores an ACCEPTED that arrives before the last item was requested', async () => {
+    const t = makeTransport();
+    const ctx = makeContext(t);
+    const promise = uploadMission(ctx, [makeItem(0), makeItem(1)]);
+    // A stale ACCEPTED from an earlier transaction, right after our MISSION_COUNT.
+    routeFrame(ctx, makeFrame(47, makeAckPayload(0)), makeAckPayload(0));
+    expect(ctx.missionUpload).not.toBeNull();
+    routeFrame(ctx, makeFrame(51, makeRequestPayload(0)), makeRequestPayload(0));
+    routeFrame(ctx, makeFrame(51, makeRequestPayload(1)), makeRequestPayload(1));
+    routeFrame(ctx, makeFrame(47, makeAckPayload(0)), makeAckPayload(0));
+    expect((await promise).success).toBe(true);
+  });
+
+  it('acknowledges an empty download before resolving', async () => {
+    const t = makeTransport();
+    const ctx = makeContext(t);
+    const promise = downloadMission(ctx);
+    routeFrame(ctx, makeFrame(44, makeCountPayload(0)), makeCountPayload(0));
+    expect(await promise).toEqual([]);
+    expect(msgIdOf(t.sent[t.sent.length - 1])).toBe(47);
+  });
+
+  it('ignores a late duplicate MISSION_COUNT once the download has its count', async () => {
+    const t = makeTransport();
+    const ctx = makeContext(t);
+    const promise = downloadMission(ctx);
+    routeFrame(ctx, makeFrame(44, makeCountPayload(2)), makeCountPayload(2));
+    const item0 = makeItem(0);
+    routeFrame(ctx, makeFrame(73, makeItemIntPayload(item0)), makeItemIntPayload(item0));
+    const before = t.sent.length;
+    routeFrame(ctx, makeFrame(44, makeCountPayload(2)), makeCountPayload(2));
+    expect(t.sent.length).toBe(before);
+    const item1 = makeItem(1);
+    routeFrame(ctx, makeFrame(73, makeItemIntPayload(item1)), makeItemIntPayload(item1));
+    expect((await promise).map((i) => i.seq)).toEqual([0, 1]);
+  });
+
+  it('re-sends MISSION_CLEAR_ALL until it is acknowledged', async () => {
+    const t = makeTransport();
+    const ctx = makeContext(t);
+    const promise = clearMission(ctx);
+    vi.advanceTimersByTime(3100);
+    expect(t.sent.map(msgIdOf)).toEqual([45, 45, 45]);
+    routeFrame(ctx, makeFrame(47, makeAckPayload(0)), makeAckPayload(0));
+    expect((await promise).success).toBe(true);
+  });
+
+  it('times a mission clear out after 5 s without an ack', async () => {
+    const t = makeTransport();
+    const ctx = makeContext(t);
+    const promise = clearMission(ctx);
+    vi.advanceTimersByTime(5000);
+    expect((await promise).message).toMatch(/timed out/);
+  });
+
+  it('keeps the altitude frame of each downloaded rally point', async () => {
+    const t = makeTransport();
+    const ctx = makeContext(t);
+    const promise = downloadRallyPoints(ctx);
+    routeFrame(ctx, makeFrame(44, makeCountPayload(1, 2)), makeCountPayload(1, 2));
+    const r0 = makeItem(0, { frame: 0, z: 950 });
+    routeFrame(ctx, makeFrame(73, makeItemIntPayload(r0, 2)), makeItemIntPayload(r0, 2));
+    expect((await promise)[0]).toMatchObject({ alt: 950, frame: 0 });
   });
 });

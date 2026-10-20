@@ -117,6 +117,15 @@ export function CommandSpecificEditors({ cmd, params, onUpdate, onHoldTime }: Cm
         <ParamNumberRow label={t("triggerDistance")} unit="m" placeholder="0" min={0}
           value={params.param1} onChange={slot("param1")} />
       )}
+      {/* IMAGE_START_CAPTURE: param2 interval, param3 photo count (0 = until stopped). */}
+      {cmd === "PHOTO_INTERVAL" && (
+        <>
+          <ParamNumberRow label={t("photoInterval")} unit="s" placeholder="0" min={0} step={0.5}
+            value={params.param2} onChange={slot("param2")} />
+          <ParamNumberRow label={t("photoCount")} placeholder={t("photoCountUnlimited")} min={0}
+            value={params.param3} onChange={slot("param3")} />
+        </>
+      )}
       {cmd === "DO_SET_SERVO" && (
         <>
           <ParamNumberRow label={t("servo")} placeholder="5" min={0} value={params.param1} onChange={slot("param1")} />

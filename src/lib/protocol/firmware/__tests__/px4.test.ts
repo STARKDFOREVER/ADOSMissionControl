@@ -162,15 +162,18 @@ describe("PX4 supported mission commands", () => {
     expect(cmds).not.toContain(82); // spline is ArduPilot-only
     expect(cmds).toContain(16); // NAV_WAYPOINT
     expect(cmds).toContain(93); // NAV_DELAY (was mislabeled as 82)
-    expect(cmds).toContain(94); // NAV_PAYLOAD_PLACE
+    expect(cmds).not.toContain(94); // NAV_PAYLOAD_PLACE: PX4's parser refuses it
   });
 
-  it("adds the VTOL commands for a plane/VTOL, not a copter", () => {
+  it("adds the VTOL commands only for a VTOL, and DO_LAND_START for every class", () => {
     const copter = createPX4Handler("copter").getSupportedMissionCommands?.() ?? [];
     const plane = createPX4Handler("plane").getSupportedMissionCommands?.() ?? [];
+    const vtol = createPX4Handler("vtol").getSupportedMissionCommands?.() ?? [];
     expect(copter).not.toContain(84); // NAV_VTOL_TAKEOFF
-    expect(plane).toContain(84); // NAV_VTOL_TAKEOFF
-    expect(plane).toContain(85); // NAV_VTOL_LAND
-    expect(plane).toContain(189); // DO_LAND_START
+    expect(plane).not.toContain(84); // refused on a vehicle that is not a VTOL
+    expect(vtol).toContain(84); // NAV_VTOL_TAKEOFF
+    expect(vtol).toContain(85); // NAV_VTOL_LAND
+    expect(copter).toContain(189); // DO_LAND_START
+    expect(plane).not.toContain(18); // NAV_LOITER_TURNS: refused by PX4
   });
 });

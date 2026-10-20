@@ -741,7 +741,7 @@ export const MOCK_PARAMS: MockParam[] = [
   { name: "FENCE_TOTAL", value: 5, type: 9 },
 
   // ── Terrain ───────────────────────────────────────
-  { name: "TERRAIN_ENABLE", value: 0, type: 9 },    // Disabled
+  { name: "TERRAIN_ENABLE", value: 1, type: 9 },    // Enabled (ArduPilot default)
 
   // ── Frame ──────────────────────────────────────────
   { name: "FRAME_CLASS", value: 1, type: 9 },      // Quad

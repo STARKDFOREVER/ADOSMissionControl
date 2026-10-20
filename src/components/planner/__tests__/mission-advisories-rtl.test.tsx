@@ -41,11 +41,14 @@ function wp(
 
 const noop = () => {};
 
-/** A copter whose RTL_ALT is 30 m (the parameter is in centimetres). */
+/** A copter whose RTL_ALT is 30 m (the parameter is in centimetres); it predates RTL_ALT_M. */
 function copterWithRtlAlt(cm = 3000) {
   const protocol = {
     getVehicleInfo: () => ({ firmwareType: "ardupilot-copter" }),
-    getParameter: vi.fn(async (name: string) => ({ name, value: cm, type: 9, index: 0, count: 1 })),
+    getParameter: vi.fn(async (name: string) => {
+      if (name !== "RTL_ALT") throw new Error(`no parameter ${name}`);
+      return { name, value: cm, type: 9, index: 0, count: 1 };
+    }),
   };
   selectTestProtocol(protocol);
   return protocol;

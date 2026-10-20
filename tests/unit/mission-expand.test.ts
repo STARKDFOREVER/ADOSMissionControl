@@ -138,11 +138,12 @@ describe("expandToItems — golden fixture", () => {
     expect([jump.x, jump.y, jump.z]).toEqual([0, 0, 0]);
   });
 
-  it("only the seq-0 nav item is current; actions inherit the parent frame", () => {
+  it("only the first item is current; nav items keep the waypoint frame, non-positional actions use frame 2", () => {
     const items = expandToItems(goldenWaypoints(), OPTS);
     expect(items.map((it) => it.current)).toEqual([1, 0, 0, 0, 0, 0, 0]);
     const relFrame = frameToMav("relative");
-    expect(items.every((it) => it.frame === relFrame)).toBe(true);
+    // TAKEOFF, WP, DO_SET_SPEED, CONDITION_YAW, WP, WP, DO_JUMP.
+    expect(items.map((it) => it.frame)).toEqual([relFrame, relFrame, 2, 2, relFrame, relFrame, 2]);
   });
 });
 
@@ -297,7 +298,8 @@ describe("NAV byte-identity vs the legacy one-slot-shift mapping", () => {
       param1: wp.holdTime ?? 0,
       param2: wp.param1 ?? 0,
       param3: wp.param2 ?? 0,
-      param4: wp.param3 ?? 0,
+      // An unset heading is NaN on the yaw-carrying commands (WAYPOINT here).
+      param4: wp.param3 ?? (wp.command === "WAYPOINT" ? NaN : 0),
       x: Math.round(wp.lat * 1e7),
       y: Math.round(wp.lon * 1e7),
       z: wp.alt,

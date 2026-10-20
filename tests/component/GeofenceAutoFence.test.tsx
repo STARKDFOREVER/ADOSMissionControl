@@ -37,6 +37,10 @@ vi.mock('@/stores/drone-manager', () => ({
 vi.mock('@/hooks/use-upload-status', () => ({
   useFenceUploadStatus: () => 'unknown',
 }));
+let profile = { autopilot: 'ardupilot', vehicleClass: 'copter' };
+vi.mock('@/hooks/use-plan-profile', () => ({
+  usePlanVehicleProfile: () => profile,
+}));
 
 import { GeofenceEditor } from '@/components/planner/GeofenceEditor';
 import { useGeofenceStore } from '@/stores/geofence-store';
@@ -48,6 +52,7 @@ describe('GeofenceEditor auto-fence control', () => {
     useGeofenceStore.getState().setFenceType('circle');
     patternState = { surveyConfig: {}, structureScanConfig: {}, corridorConfig: {} };
     missionWaypoints = [];
+    profile = { autopilot: 'ardupilot', vehicleClass: 'copter' };
     toastFn.mockClear();
   });
 
@@ -86,5 +91,23 @@ describe('GeofenceEditor auto-fence control', () => {
     expect(s.enabled).toBe(true);
     expect(s.fenceType).toBe('polygon');
     expect(toastFn).not.toHaveBeenCalled();
+  });
+});
+
+describe('GeofenceEditor breach action', () => {
+  beforeEach(() => {
+    useGeofenceStore.getState().clearFence();
+    useGeofenceStore.getState().setBreachAction('RTL');
+    useGeofenceStore.getState().setEnabled(true);
+  });
+
+  it('offers Land on a multirotor but not on ArduPlane, which ignores it', () => {
+    profile = { autopilot: 'ardupilot', vehicleClass: 'copter' };
+    const { unmount } = render(<GeofenceEditor />);
+    expect(screen.queryByText('breachLandShort')).not.toBeNull();
+    unmount();
+    profile = { autopilot: 'ardupilot', vehicleClass: 'plane' };
+    render(<GeofenceEditor />);
+    expect(screen.queryByText('breachLandShort')).toBeNull();
   });
 });

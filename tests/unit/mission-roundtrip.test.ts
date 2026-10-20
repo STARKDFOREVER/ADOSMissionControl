@@ -86,7 +86,9 @@ function canonical(wps: readonly Waypoint[]) {
     lat: round7(w.lat),
     lon: round7(w.lon),
     alt: w.alt,
-    frame: w.frame ?? DEFAULT_FRAME,
+    // RTL and DO_LAND_START go out in MAV_FRAME_MISSION: they carry no
+    // altitude datum of their own, so the frame is not part of their content.
+    frame: w.command === "RTL" || w.command === "DO_LAND_START" ? undefined : w.frame ?? DEFAULT_FRAME,
     holdTime: w.holdTime ?? 0,
     p1: w.param1 ?? 0,
     p2: w.param2 ?? 0,
@@ -214,8 +216,8 @@ describe("mission round-trip — plan -> .plan file -> plan", () => {
     const plan = JSON.parse(text) as {
       mission: { items: Array<{ command: number; params: number[] }> };
     };
-    // ROI (201) is the first action item; its params[3] is the action's param4.
-    const roi = plan.mission.items.find((it) => it.command === 201);
+    // ROI (DO_SET_ROI_LOCATION, 195) is the first action item; its params[3] is the action's param4.
+    const roi = plan.mission.items.find((it) => it.command === 195);
     expect(roi?.params[3]).toBe(14);
   });
 });

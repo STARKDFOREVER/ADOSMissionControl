@@ -320,7 +320,8 @@ describe('geofence-store', () => {
   });
 
   it('downloadFence takes enable, ceiling and action from the FC parameters', async () => {
-    const params: Record<string, number> = { FENCE_ENABLE: 0, FENCE_ALT_MAX: 45, FENCE_ACTION: 2 };
+    // FENCE_TYPE 5: polygon plus the altitude ceiling, so FENCE_ALT_MAX is enforced.
+    const params: Record<string, number> = { FENCE_ENABLE: 0, FENCE_TYPE: 5, FENCE_ALT_MAX: 45, FENCE_ACTION: 2 };
     stubProtocol({
       downloadFenceMission: vi.fn().mockResolvedValue([
         { kind: 'polygon', role: 'inclusion', vertices: [{ lat: 1, lon: 2 }, { lat: 1, lon: 3 }, { lat: 2, lon: 3 }] },
@@ -334,6 +335,22 @@ describe('geofence-store', () => {
     expect(s.maxAltitude).toBe(45);
     expect(s.breachAction).toBe('LAND');
     expect(fenceStatus()).toBe('on-aircraft');
+  });
+
+  it('downloadFence keeps the home circle radius and the return point in the snapshot', async () => {
+    const params: Record<string, number> = { FENCE_ENABLE: 1, FENCE_TYPE: 7, FENCE_ALT_MAX: 100, FENCE_RADIUS: 300, FENCE_ACTION: 1 };
+    stubProtocol({
+      downloadFenceMission: vi.fn().mockResolvedValue([
+        { kind: 'polygon', role: 'inclusion', vertices: [{ lat: 1, lon: 2 }, { lat: 1, lon: 3 }, { lat: 2, lon: 3 }] },
+        { kind: 'returnPoint', lat: 1.5, lon: 2.5 },
+      ]),
+      getParameter: vi.fn(async (name: string) => ({ name, value: params[name], type: 9, index: 0, count: 1 })),
+    });
+    await useGeofenceStore.getState().downloadFence();
+    const snap = useGeofenceStore.getState().snapshot();
+    expect(snap.homeCircleRadiusM).toBe(300);
+    expect(snap.returnPoint).toEqual({ lat: 1.5, lon: 2.5 });
+    expect(snap.zones).toEqual([]);
   });
 
   it('a failed parameter read on download keeps the local fence', async () => {

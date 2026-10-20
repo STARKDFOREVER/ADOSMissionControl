@@ -10,13 +10,23 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import { indexedDBStorage } from "@/lib/storage";
 import { droneSelection } from "./drone-selection";
 import { useUploadReceiptsStore, contentHash } from "./upload-receipts-store";
+import { useTelemetryStore } from "./telemetry-store";
 import { withPlannerHistory } from "@/lib/planner-history-adapter";
+import type { RallyPointItem } from "@/lib/protocol/types";
+import {
+  MAV_FRAME_GLOBAL, MAV_FRAME_GLOBAL_INT,
+  MAV_FRAME_GLOBAL_RELATIVE_ALT, MAV_FRAME_GLOBAL_RELATIVE_ALT_INT,
+  MAV_FRAME_GLOBAL_TERRAIN_ALT, MAV_FRAME_GLOBAL_TERRAIN_ALT_INT,
+} from "@/lib/mission/altitude-frame";
 
 export interface RallyPoint {
   id: string;
   lat: number;
   lon: number;
-  alt: number; // meters
+  /** Metres above home, or above the terrain below the point with `frame: "terrain"`. */
+  alt: number;
+  /** `"terrain"`: `alt` is above the terrain below the point. Absent: above home. */
+  frame?: "terrain";
 }
 
 /** Outcome of a rally transfer, with the reason on failure. */
@@ -27,7 +37,56 @@ export interface RallyTransferResult {
 
 /** Hash of the rally content an upload sends (ids are local handles). */
 export function rallyContentHash(points: readonly RallyPoint[]): string {
-  return contentHash(points.map((p) => [p.lat, p.lon, p.alt]));
+  // The frame joins the tuple only when set, so an above-home point hashes as before.
+  return contentHash(points.map((p) => (p.frame ? [p.lat, p.lon, p.alt, p.frame] : [p.lat, p.lon, p.alt])));
+}
+
+/** The wire items a rally upload sends: each point in its own altitude frame. */
+export function rallyUploadItems(points: readonly RallyPoint[]): RallyPointItem[] {
+  return points.map((p) => ({
+    lat: p.lat,
+    lon: p.lon,
+    alt: p.alt,
+    frame: p.frame === "terrain" ? MAV_FRAME_GLOBAL_TERRAIN_ALT : MAV_FRAME_GLOBAL_RELATIVE_ALT_INT,
+  }));
+}
+
+/**
+ * Convert downloaded rally items into planner points. The planner keeps rally
+ * altitudes above home (or above terrain): a point stored above sea level is
+ * converted with the home altitude, and refused when no home altitude is
+ * known, since showing a sea-level altitude as height above home would make
+ * the vehicle climb to it on the next upload.
+ */
+export function rallyPointsFromVehicle(
+  items: readonly RallyPointItem[],
+  homeAmsl: number | null,
+  idPrefix: string,
+): { points: RallyPoint[] } | { error: string } {
+  const points: RallyPoint[] = [];
+  for (const [i, it] of items.entries()) {
+    const base = { id: `${idPrefix}-${i}`, lat: it.lat, lon: it.lon };
+    switch (it.frame) {
+      case MAV_FRAME_GLOBAL_RELATIVE_ALT:
+      case MAV_FRAME_GLOBAL_RELATIVE_ALT_INT:
+        points.push({ ...base, alt: it.alt });
+        break;
+      case MAV_FRAME_GLOBAL_TERRAIN_ALT:
+      case MAV_FRAME_GLOBAL_TERRAIN_ALT_INT:
+        points.push({ ...base, alt: it.alt, frame: "terrain" });
+        break;
+      case MAV_FRAME_GLOBAL:
+      case MAV_FRAME_GLOBAL_INT:
+        if (homeAmsl === null) {
+          return { error: `Rally point ${i + 1} is stored above sea level and no home altitude is known` };
+        }
+        points.push({ ...base, alt: it.alt - homeAmsl });
+        break;
+      default:
+        return { error: `Rally point ${i + 1} uses altitude frame ${it.frame}, which the planner cannot show` };
+    }
+  }
+  return { points };
 }
 
 /**
@@ -92,9 +151,7 @@ export const useRallyStore = create<RallyStoreState>()(
     const hash = rallyContentHash(points);
     let result: RallyTransferResult;
     try {
-      const r = await protocol.uploadRallyPoints(
-        points.map((p) => ({ lat: p.lat, lon: p.lon, alt: p.alt })),
-      );
+      const r = await protocol.uploadRallyPoints(rallyUploadItems(points));
       result = { success: r.success, message: r.message };
     } catch (err) {
       result = { success: false, message: err instanceof Error ? err.message : String(err) };
@@ -116,18 +173,16 @@ export const useRallyStore = create<RallyStoreState>()(
     if (!protocol.downloadRallyPoints) {
       return { success: false, message: "This flight controller does not support rally points" };
     }
-    let downloaded: Array<{ lat: number; lon: number; alt: number }>;
+    let downloaded: RallyPointItem[];
     try {
       downloaded = await protocol.downloadRallyPoints();
     } catch (err) {
       return { success: false, message: err instanceof Error ? err.message : String(err) };
     }
-    const points = downloaded.map((p, i) => ({
-      id: `rally-${Date.now()}-${i}`,
-      lat: p.lat,
-      lon: p.lon,
-      alt: p.alt,
-    }));
+    const homeAmsl = useTelemetryStore.getState().homePosition.latest()?.alt ?? null;
+    const converted = rallyPointsFromVehicle(downloaded, homeAmsl, `rally-${Date.now()}`);
+    if ("error" in converted) return { success: false, message: converted.error };
+    const { points } = converted;
     withPlannerHistory(() => set({ points }));
     useUploadReceiptsStore.getState().record("rally", {
       droneId: selectedDroneId,

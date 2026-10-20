@@ -16,7 +16,7 @@ import type {
   DroneProtocol, Transport, VehicleInfo, CommandResult,
   MissionItem, FirmwareHandler, ProtocolCapabilities, UnifiedFlightMode,
   LogDownloadProgressCallback, FtpDownloadProgressCallback, LinkInfo, GuidedGotoOptions,
-  FenceElement,
+  FenceElement, RallyPointItem,
 } from './types'
 import type { MAVLinkFrame } from './mavlink-parser'
 import { encodeHeartbeat } from './mavlink-encoder'
@@ -388,7 +388,7 @@ export class MAVLinkAdapter implements DroneProtocol {
   async clearMission() { return msn.clearMission(this.st) }
   async uploadFenceMission(elements: FenceElement[]) { return msn.uploadFenceMission(this.st, elements) }
   async downloadFenceMission() { return msn.downloadFenceMission(this.st) }
-  async uploadRallyPoints(pts: Array<{ lat: number; lon: number; alt: number }>) { return msn.uploadRallyPoints(this.st, pts) }
+  async uploadRallyPoints(pts: RallyPointItem[]) { return msn.uploadRallyPoints(this.st, pts) }
   async downloadRallyPoints() { return msn.downloadRallyPoints(this.st) }
 
   // ── Delegated Logs ─────────────────────────────────────

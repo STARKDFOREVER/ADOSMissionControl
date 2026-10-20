@@ -89,12 +89,17 @@ export type NavCommand =
  * Action commands — non-navigation commands the flight controller executes at
  * or between waypoints. They attach to the preceding NAV waypoint as a
  * `MissionAction` and become their own sequenced mission items on the wire.
+ *
+ * PHOTO_INTERVAL / PHOTO_STOP start and stop timed photo capture
+ * (IMAGE_START_CAPTURE / IMAGE_STOP_CAPTURE); VIDEO_START / VIDEO_STOP start
+ * and stop recording (VIDEO_START_CAPTURE / VIDEO_STOP_CAPTURE).
  */
 export type ActionCommand =
   | "ROI" | "DO_SET_SPEED" | "DO_SET_CAM_TRIGG" | "DO_DIGICAM" | "DO_JUMP"
   | "DELAY" | "CONDITION_YAW" | "DO_SET_SERVO" | "DO_FENCE_ENABLE"
   | "DO_MOUNT_CONTROL" | "DO_GRIPPER" | "DO_WINCH" | "CONDITION_DISTANCE"
-  | "DO_SET_HOME" | "DO_AUX_FUNCTION" | "DO_SET_ROI_NONE";
+  | "DO_SET_HOME" | "DO_AUX_FUNCTION" | "DO_SET_ROI_NONE"
+  | "PHOTO_INTERVAL" | "PHOTO_STOP" | "VIDEO_START" | "VIDEO_STOP";
 
 /** MAVLink command types supported in mission waypoints. */
 export type WaypointCommand = NavCommand | ActionCommand;
