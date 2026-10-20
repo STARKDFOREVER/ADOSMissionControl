@@ -36,11 +36,11 @@ function Muted({ children }: { children: string }) {
   return <p className="text-xs text-text-tertiary">{children}</p>;
 }
 
-export function BatteryCard({ battery }: { battery: Reading<BatteryHealth> }) {
+export function BatteryCard({ battery, staleAt }: { battery: Reading<BatteryHealth>; staleAt?: number }) {
   const t = useTranslations("visor.overview");
   const pack = battery?.enabled ? battery.packs[0] : undefined;
   return (
-    <ReadingCard title={t("battery")}>
+    <ReadingCard title={t("battery")} staleAt={staleAt}>
       {battery === undefined || battery === null ? (
         <Muted>{t("notRead")}</Muted>
       ) : !pack ? (
@@ -69,7 +69,7 @@ export function BatteryCard({ battery }: { battery: Reading<BatteryHealth> }) {
   );
 }
 
-export function StorageCard({ storage }: { storage: Reading<StorageStatus> }) {
+export function StorageCard({ storage, staleAt }: { storage: Reading<StorageStatus>; staleAt?: number }) {
   const t = useTranslations("visor.overview");
   const vol = storage?.volumes.find((v) => v.is_capture) ?? storage?.volumes[0];
   const cap = storage?.capture ?? null;
@@ -77,6 +77,7 @@ export function StorageCard({ storage }: { storage: Reading<StorageStatus> }) {
   return (
     <ReadingCard
       title={t("storage")}
+      staleAt={staleAt}
       trailing={
         cap && level ? (
           <span className={cn("text-[11px] font-medium", LEVEL_TEXT[level])}>
@@ -110,12 +111,13 @@ export function StorageCard({ storage }: { storage: Reading<StorageStatus> }) {
   );
 }
 
-export function ClockCard({ clock }: { clock: Reading<ClockStatus> }) {
+export function ClockCard({ clock, staleAt }: { clock: Reading<ClockStatus>; staleAt?: number }) {
   const t = useTranslations("visor.overview");
   const sigma = clock?.present ? sigmaMs(clock.sigma_ns) : null;
   return (
     <ReadingCard
       title={t("clock")}
+      staleAt={staleAt}
       trailing={
         clock?.present ? (
           <span
@@ -156,11 +158,12 @@ export function ClockCard({ clock }: { clock: Reading<ClockStatus> }) {
   );
 }
 
-export function RigCard({ sensors }: { sensors: Reading<SensorsStatus> }) {
+export function RigCard({ sensors, staleAt }: { sensors: Reading<SensorsStatus>; staleAt?: number }) {
   const t = useTranslations("visor.overview");
   return (
     <ReadingCard
       title={t("rig")}
+      staleAt={staleAt}
       trailing={
         sensors?.present ? (
           <span className="font-mono text-[11px] text-text-tertiary">
@@ -197,13 +200,15 @@ export function RigCard({ sensors }: { sensors: Reading<SensorsStatus> }) {
 
 export function LastSessionCard({
   sessions,
+  staleAt,
 }: {
   sessions: Reading<CaptureSessionSummary[]>;
+  staleAt?: number;
 }) {
   const t = useTranslations("visor.overview");
   const last = sessions?.[0];
   return (
-    <ReadingCard title={t("lastSession")}>
+    <ReadingCard title={t("lastSession")} staleAt={staleAt}>
       {sessions === undefined ? (
         <Muted>{t("notRead")}</Muted>
       ) : sessions === null ? (

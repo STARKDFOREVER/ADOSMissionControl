@@ -20,11 +20,10 @@ export const NOT_A_FLIGHT_NODE =
   "This node's flight controller is a sensor hub: flight commands are not offered";
 
 /** Every protocol method that moves, arms or re-tasks the vehicle, or writes
- * a plan it would fly. */
+ * a plan it would fly. `disarm` and `killSwitch` are deliberately absent: a
+ * hub that is somehow armed must always be disarmable. */
 const FLIGHT_METHODS: Record<string, true> = {
   arm: true,
-  disarm: true,
-  killSwitch: true,
   setFlightMode: true,
   returnToLaunch: true,
   land: true,
@@ -62,7 +61,7 @@ export function guardFlightActions(
   protocol: DroneProtocol,
   profileOf: () => NodeProfile | undefined,
 ): DroneProtocol {
-  const guarded = new Proxy(protocol, {
+  return new Proxy(protocol, {
     get(target, prop) {
       const value: unknown = Reflect.get(target, prop, target);
       if (prop === "getManualControlBlockedReason") {
@@ -84,13 +83,4 @@ export function guardFlightActions(
       return value.bind(target);
     },
   });
-  sources.set(guarded, protocol);
-  return guarded;
-}
-
-const sources = new WeakMap<DroneProtocol, DroneProtocol>();
-
-/** The protocol a guarded session wraps (itself when it is not guarded). */
-export function unguardedProtocol(protocol: DroneProtocol): DroneProtocol {
-  return sources.get(protocol) ?? protocol;
 }

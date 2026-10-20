@@ -19,7 +19,7 @@ import type { SensorsStatus } from "@/lib/api/agent/sensors";
 import { cn } from "@/lib/utils";
 import { useNodeSensors } from "./use-node-sensors";
 import { LEVEL_TEXT, formatHz, gnssWithoutFix, rateLevel, sigmaMs } from "./sensor-format";
-import { ReadingCard, ReadingEmpty, ReadingRow } from "./reading-card";
+import { ReadingCard, ReadingEmpty, ReadingRow, StaleChip } from "./reading-card";
 
 export interface SensorsTabProps {
   nodeDeviceId: string | null;
@@ -27,7 +27,7 @@ export interface SensorsTabProps {
 
 export function SensorsTab({ nodeDeviceId }: SensorsTabProps) {
   const t = useTranslations("visor.sensors");
-  const { reachable, readings, error } = useNodeSensors(nodeDeviceId);
+  const { reachable, readings, error, staleAt } = useNodeSensors(nodeDeviceId);
   const sensors = readings?.sensors ?? null;
   const clockSigma = readings?.clock?.present ? sigmaMs(readings.clock.sigma_ns) : null;
 
@@ -36,7 +36,14 @@ export function SensorsTab({ nodeDeviceId }: SensorsTabProps) {
       <PageIntro
         title={t("title")}
         description={t("description")}
-        trailing={clockSigma !== null ? <HintChip>{t("clockSigma", { ms: clockSigma })}</HintChip> : undefined}
+        trailing={
+          staleAt.sensors !== undefined || clockSigma !== null ? (
+            <span className="flex items-center gap-2">
+              {staleAt.sensors !== undefined ? <StaleChip readAt={staleAt.sensors} /> : null}
+              {clockSigma !== null ? <HintChip>{t("clockSigma", { ms: clockSigma })}</HintChip> : null}
+            </span>
+          ) : undefined
+        }
       />
       {!reachable ? (
         <CloudModeLimitedNotice feature="sensors" />

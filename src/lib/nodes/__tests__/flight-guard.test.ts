@@ -17,6 +17,8 @@ function fakeProtocol() {
   const raw = {
     isConnected: true,
     arm: vi.fn(async () => OK),
+    disarm: vi.fn(async () => OK),
+    killSwitch: vi.fn(async () => OK),
     setFlightMode: vi.fn(async () => OK),
     uploadMission: vi.fn(async () => OK),
     motorTest: vi.fn(async () => OK),
@@ -64,6 +66,14 @@ describe("guardFlightActions", () => {
     expect(raw.getParameter).toHaveBeenCalledOnce();
     expect(raw.startCalibration).toHaveBeenCalledOnce();
     expect(p.isConnected).toBe(true);
+  });
+
+  it("always lets a Visor's hub be disarmed or killed", async () => {
+    const { raw, p } = guarded("visor");
+    expect((await p.disarm()).success).toBe(true);
+    expect((await p.killSwitch(true)).success).toBe(true);
+    expect(raw.disarm).toHaveBeenCalledOnce();
+    expect(raw.killSwitch).toHaveBeenCalledWith(true);
   });
 
   it("passes every flight action through on a drone", async () => {

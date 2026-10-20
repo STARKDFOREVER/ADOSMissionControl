@@ -8732,6 +8732,7 @@
     "bodyUnknown": "You are about to write {count, plural, one {# parameter} other {# parameters}} to the flight controller, which has not reported whether it is armed. Treat it as armed: the changes take effect immediately and may affect in-flight behavior."
   },
   "visor": {
+    "stale": "Stale · {age} old",
     "sensors": {
       "tabLabel": "Sensors",
       "title": "Sensors",

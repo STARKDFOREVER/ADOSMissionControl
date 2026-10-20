@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useDroneManager } from '@/stores/drone-manager';
 import { useNodeRegistryStore } from '@/stores/node-registry';
 import type { DroneProtocol, Transport, VehicleInfo } from '@/lib/protocol/types';
-import { unguardedProtocol } from '@/lib/nodes/flight-guard';
 
 // Mock the bridge and dependent stores to isolate drone-manager
 vi.mock('@/stores/drone-manager-bridge', () => ({
@@ -143,8 +142,11 @@ describe('drone-manager', () => {
 
     useDroneManager.getState().addDrone('drone-1', 'Test', protocol, transport, vehicleInfo);
     // Auto-selected
-    const selected = useDroneManager.getState().getSelectedProtocol();
-    expect(selected && unguardedProtocol(selected)).toBe(protocol);
+    // The selected session wraps this protocol behind the flight guard: a
+    // read through it reaches the mock.
+    const reads = vi.mocked(protocol.getAllParameters).mock.calls.length;
+    void useDroneManager.getState().getSelectedProtocol()?.getAllParameters();
+    expect(vi.mocked(protocol.getAllParameters).mock.calls.length).toBe(reads + 1);
   });
 
   it('multiple drones can be managed', () => {

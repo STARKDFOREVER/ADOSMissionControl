@@ -33,11 +33,21 @@ export interface NodeSensorsReadings {
 
 export type NodeSensorsError = "refused" | "unreachable";
 
+/** One route of the slice. */
+export type NodeSensorsRoute = keyof NodeSensorsReadings;
+
+/** Epoch ms each route's shown value was actually read; null when never. */
+export type NodeSensorsReadAt = Record<NodeSensorsRoute, number | null>;
+
 interface NodeSensorsState extends NodeSensorsReadings {
   /** The node the readings describe; null before the first load. */
   nodeId: string | null;
-  /** Epoch ms of the last completed load; null before the first one. */
+  /** Epoch ms of the last completed load; null before the first one. A route
+   * whose `readAt` is older failed on that load and shows a kept value. */
   fetchedAt: number | null;
+  /** When each route's shown value was read. A failed route keeps the same
+   * node's last good value with its ORIGINAL read time, never a fresh one. */
+  readAt: NodeSensorsReadAt;
   /** Why the last load lost a route, as an operator-facing kind: the node
    * answered with an error (`refused`) or did not answer (`unreachable`).
    * Null when every route answered. */
@@ -57,10 +67,16 @@ const EMPTY: NodeSensorsReadings = {
   sessions: undefined,
 };
 
-/** The route's fresh answer, or — when that one read failed — the last good
- * reading of the same node, so one failing route never blanks a card. */
-function settled<T>(r: PromiseSettledResult<T>, previous: T): T {
-  return r.status === "fulfilled" ? r.value : previous;
+const NEVER_READ: NodeSensorsReadAt = {
+  sensors: null,
+  clock: null,
+  storage: null,
+  battery: null,
+  sessions: null,
+};
+
+function readAtAll(at: number): NodeSensorsReadAt {
+  return { sensors: at, clock: at, storage: at, battery: at, sessions: at };
 }
 
 /** Bumped by every load and every wholesale write; a load whose token is no
@@ -73,6 +89,7 @@ export const useNodeSensorsStore = create<NodeSensorsState>()((set, get) => ({
   nodeId: null,
   fetchedAt: null,
   error: null,
+  readAt: NEVER_READ,
 
   load: async (nodeId, api) => {
     const token = ++loadSeq;
@@ -88,14 +105,28 @@ export const useNodeSensorsStore = create<NodeSensorsState>()((set, get) => ({
     const failed = results.find((r) => r.status === "rejected");
     const prev = get();
     const same = prev.nodeId === nodeId;
+    const now = Date.now();
+    // A route that answered is fresh as of now; one that failed keeps the
+    // same node's last good value AND the time that value was read, so a
+    // surface can mark it stale instead of passing it off as current.
+    const pick = <T,>(route: NodeSensorsRoute, r: PromiseSettledResult<T>, kept: T, none: T) => {
+      if (r.status === "fulfilled") return { value: r.value, at: now };
+      return same ? { value: kept, at: prev.readAt[route] } : { value: none, at: null };
+    };
+    const s = pick("sensors", sensors, prev.sensors, null);
+    const c = pick("clock", clock, prev.clock, null);
+    const st = pick("storage", storage, prev.storage, null);
+    const b = pick("battery", battery, prev.battery, null);
+    const se = pick("sessions", sessions, prev.sessions, undefined);
     set({
       nodeId,
-      sensors: settled(sensors, same ? prev.sensors : null),
-      clock: settled(clock, same ? prev.clock : null),
-      storage: settled(storage, same ? prev.storage : null),
-      battery: settled(battery, same ? prev.battery : null),
-      sessions: settled(sessions, same ? prev.sessions : undefined),
-      fetchedAt: Date.now(),
+      sensors: s.value,
+      clock: c.value,
+      storage: st.value,
+      battery: b.value,
+      sessions: se.value,
+      readAt: { sensors: s.at, clock: c.at, storage: st.at, battery: b.at, sessions: se.at },
+      fetchedAt: now,
       error:
         failed?.status !== "rejected"
           ? null
@@ -107,11 +138,12 @@ export const useNodeSensorsStore = create<NodeSensorsState>()((set, get) => ({
 
   setReadings: (nodeId, readings) => {
     loadSeq += 1;
-    set({ ...readings, nodeId, fetchedAt: Date.now(), error: null });
+    const now = Date.now();
+    set({ ...readings, nodeId, fetchedAt: now, readAt: readAtAll(now), error: null });
   },
 
   clear: () => {
     loadSeq += 1;
-    set({ ...EMPTY, nodeId: null, fetchedAt: null, error: null });
+    set({ ...EMPTY, nodeId: null, fetchedAt: null, readAt: NEVER_READ, error: null });
   },
 }));

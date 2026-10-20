@@ -8727,6 +8727,7 @@
     }
   },
   "visor": {
+    "stale": "Stale · {age} old",
     "sensors": {
       "tabLabel": "Sensors",
       "title": "Sensors",

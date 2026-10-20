@@ -99,11 +99,12 @@ export function showsFcSurfaces(profile: NodeProfile, fcReachable: boolean): boo
 }
 
 /**
- * Whether a node is a vehicle the GCS may fly: arm/disarm, mode changes,
+ * Whether a node is a vehicle the GCS may fly: arming, mode changes,
  * takeoff/land/RTL, guided and mission commands, uploads, motor and servo
  * tests, stick override. A Visor's flight controller is a sensor hub, never
- * a vehicle, so a Visor keeps only the read and configuration FC surfaces.
- * Every flight action, in the UI and at the protocol, asks this one rule.
+ * a vehicle, so a Visor keeps only the read and configuration FC surfaces
+ * (and disarm / kill, so a hub that is somehow armed can always be made
+ * safe). Every flight action, in the UI and at the protocol, asks this rule.
  * A node whose profile is not read yet (a bare FC) stays flyable.
  */
 export function nodeCanFly(profile: NodeProfile | null | undefined): boolean {

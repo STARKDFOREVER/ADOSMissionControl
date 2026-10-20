@@ -67,6 +67,35 @@ describe("node-sensors store load", () => {
     expect(useNodeSensorsStore.getState().sensors?.rig_id).toBe("new-rig");
   });
 
+  it("keeps a failed route's last good value with its original read time, never a fresh one", async () => {
+    const api = (sensorsFail: boolean) =>
+      ({
+        getSensors: async () => {
+          if (sensorsFail) throw new TypeError("Failed to fetch");
+          return DEMO_VISOR_SENSORS;
+        },
+        getClock: async () => DEMO_VISOR_CLOCK,
+        getStorage: async () => null,
+        getBattery: async () => null,
+        listCaptureSessions: async () => null,
+      }) as unknown as NodeSensorsApi;
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(1_000);
+      await useNodeSensorsStore.getState().load("visor-1", api(false));
+      vi.setSystemTime(9_000);
+      await useNodeSensorsStore.getState().load("visor-1", api(true));
+    } finally {
+      vi.useRealTimers();
+    }
+    const s = useNodeSensorsStore.getState();
+    expect(s.sensors?.rig_id).toBe(DEMO_VISOR_SENSORS.rig_id);
+    expect(s.readAt.sensors).toBe(1_000);
+    expect(s.readAt.clock).toBe(9_000);
+    expect(s.fetchedAt).toBe(9_000);
+    expect(s.error).toBe("unreachable");
+  });
+
   it("reports an unanswered read as unreachable, never raw error text", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => Promise.reject(new TypeError("Failed to fetch"))));
     await useNodeSensorsStore.getState().load("visor-1", new NodeSensorsApi(BASE));

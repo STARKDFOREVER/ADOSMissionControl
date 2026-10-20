@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * @module visor/reading-card
  * @description The small card, label/value row and empty state the Visor
@@ -6,16 +8,37 @@
  */
 
 import type { ReactNode } from "react";
+import { useTranslations } from "next-intl";
+import { useClockTick } from "@/lib/agent/freshness";
+import { formatDurationSeconds } from "@/lib/i18n/format";
 import { cn } from "@/lib/utils";
+import { useClockStore } from "@/stores/clock-store";
 import { LEVEL_TEXT, type RateLevel } from "./sensor-format";
+
+/** Marks a value kept from an earlier read because the latest read of its
+ * route failed, with the value's real age, so it never reads as current. */
+export function StaleChip({ readAt }: { readAt: number }) {
+  const t = useTranslations("visor");
+  useClockTick();
+  const now = useClockStore((s) => s.now);
+  const age = formatDurationSeconds(Math.max(0, Math.round((now - readAt) / 1000)));
+  return (
+    <span role="status" className="rounded border border-status-warning/40 px-1.5 py-0.5 text-[10px] text-status-warning">
+      {t("stale", { age })}
+    </span>
+  );
+}
 
 export function ReadingCard({
   title,
   trailing,
+  staleAt,
   children,
 }: {
   title: string;
   trailing?: ReactNode;
+  /** Read time of a kept value whose latest read failed. */
+  staleAt?: number;
   children: ReactNode;
 }) {
   return (
@@ -24,6 +47,7 @@ export function ReadingCard({
         <h3 className="text-[11px] font-semibold uppercase tracking-wider text-text-tertiary">
           {title}
         </h3>
+        {staleAt !== undefined ? <StaleChip readAt={staleAt} /> : null}
         {trailing}
       </div>
       {children}

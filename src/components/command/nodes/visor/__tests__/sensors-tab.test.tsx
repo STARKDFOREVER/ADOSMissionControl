@@ -94,4 +94,24 @@ describe("Visor SensorsTab", () => {
     expect(screen.queryByRole("table")).toBeNull();
     expect(screen.getByText("Reading the rig sensors…")).toBeTruthy();
   });
+
+  it("marks a kept reading stale with its age when the latest read failed", () => {
+    seedVisorReadings(0);
+    const { readAt } = useNodeSensorsStore.getState();
+    const now = Date.now();
+    useNodeSensorsStore.setState({
+      fetchedAt: now,
+      readAt: { ...readAt, sensors: now - 30_000 },
+      error: "unreachable",
+    });
+    renderTab();
+    expect(screen.getByText(/^Stale · .* old$/)).toBeTruthy();
+    expect(screen.getByRole("table")).toBeTruthy();
+  });
+
+  it("shows no stale chip while every read is current", () => {
+    seedVisorReadings(0);
+    renderTab();
+    expect(screen.queryByText(/^Stale · /)).toBeNull();
+  });
 });

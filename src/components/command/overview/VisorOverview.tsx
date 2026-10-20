@@ -53,7 +53,7 @@ export function VisorOverview({ name, nodeDeviceId }: VisorOverviewProps) {
   const restartService = useAgentSystemStore((s) => s.restartService);
   const restartAll = useAgentSystemStore((s) => s.restartAll);
   const selectedNodeId = usePairingStore((s) => s.selectedPairedId);
-  const { reachable, readings } = useNodeSensors(nodeDeviceId);
+  const { reachable, readings, staleAt } = useNodeSensors(nodeDeviceId);
 
   useEffect(() => {
     if (connected) {
@@ -95,19 +95,19 @@ export function VisorOverview({ name, nodeDeviceId }: VisorOverviewProps) {
           <AgentStatusCard status={status} profile="visor" />
         </OverviewTile>
         <OverviewTile span="quarter">
-          <BatteryCard battery={readings?.battery} />
+          <BatteryCard battery={readings?.battery} staleAt={staleAt.battery} />
         </OverviewTile>
         <OverviewTile span="quarter">
-          <StorageCard storage={readings?.storage} />
+          <StorageCard storage={readings?.storage} staleAt={staleAt.storage} />
         </OverviewTile>
         <OverviewTile span="quarter">
-          <ClockCard clock={readings?.clock} />
+          <ClockCard clock={readings?.clock} staleAt={staleAt.clock} />
         </OverviewTile>
         <OverviewTile span="quarter">
-          <LastSessionCard sessions={readings?.sessions} />
+          <LastSessionCard sessions={readings?.sessions} staleAt={staleAt.sessions} />
         </OverviewTile>
         <OverviewTile span="full">
-          <RigCard sensors={readings?.sensors} />
+          <RigCard sensors={readings?.sensors} staleAt={staleAt.sensors} />
         </OverviewTile>
         <OverviewTile span="half">
           {resources && <SystemResourceGauges resources={resources} />}

@@ -16,6 +16,7 @@ import {
   useNodeSensorsStore,
   type NodeSensorsError,
   type NodeSensorsReadings,
+  type NodeSensorsRoute,
 } from "@/stores/node-sensors-store";
 import { useAgentPoll } from "../ground-station/use-gs-poll";
 
@@ -27,6 +28,9 @@ export interface NodeSensorsView {
   /** This node's readings, or null until one has been read. */
   readings: NodeSensorsReadings | null;
   error: NodeSensorsError | null;
+  /** Per route: when its shown value was read, set only when the latest
+   * read of that route failed and an older value is still shown (stale). */
+  staleAt: Partial<Record<NodeSensorsRoute, number>>;
 }
 
 export function useNodeSensors(nodeDeviceId: string | null): NodeSensorsView {
@@ -50,6 +54,8 @@ export function useNodeSensors(nodeDeviceId: string | null): NodeSensorsView {
       battery: s.battery,
       sessions: s.sessions,
       error: s.error,
+      fetchedAt: s.fetchedAt,
+      readAt: s.readAt,
     })),
   );
   const mine = nodeDeviceId !== null && slice.nodeId === nodeDeviceId;
@@ -65,5 +71,18 @@ export function useNodeSensors(nodeDeviceId: string | null): NodeSensorsView {
         }
       : null,
     error: mine ? slice.error : null,
+    staleAt: mine ? staleRoutes(slice.readAt, slice.fetchedAt) : {},
   };
+}
+
+/** Routes whose latest read failed while an older value is still shown. */
+function staleRoutes(
+  readAt: Record<NodeSensorsRoute, number | null>,
+  fetchedAt: number | null,
+): Partial<Record<NodeSensorsRoute, number>> {
+  const out: Partial<Record<NodeSensorsRoute, number>> = {};
+  for (const [route, at] of Object.entries(readAt) as [NodeSensorsRoute, number | null][]) {
+    if (at !== null && fetchedAt !== null && at < fetchedAt) out[route] = at;
+  }
+  return out;
 }
