@@ -2850,7 +2850,7 @@
     "rtl": {
       "returnAltitudeFromVehicle": "RTL terrain checks use the vehicle's configured return altitude of {alt} m above home.",
       "returnAltitudeUnknown": "The vehicle's RTL return altitude has not been read, so return-leg terrain clearance is not checked. Connect the vehicle to check it.",
-      "landStartNeedsAutoland": "The FC has RTL_AUTOLAND = 0, so it will refuse to arm with a DO_LAND_START in the mission. Set RTL_AUTOLAND to 1 or 2 to land through it on RTL, or 3 to use it for go-around only."
+      "returnAltitudeCappedByFence": "RTL நிலப்பரப்பு சோதனைகள் ஹோமிலிருந்து {alt} m திரும்பும் உயரத்தைப் பயன்படுத்துகின்றன: வாகனத்தின் {configured} m, உயர வேலியால் வரம்பிடப்பட்டது."
     },
     "none": "எதுவுமில்லை",
     "waypoints": "Waypoint-கள்",
@@ -3108,18 +3108,16 @@
         "payloadSecure": "சுமை பொருத்தப்பட்டு பாதுகாப்பாக உள்ளது"
       }
     },
-    "itemCount": {
-      "advisory": "{limit} இல் {count} பணி உருப்படிகள்",
-      "warnNearLimit": "பணி {firmware} உருப்படி வரம்பை நெருங்குகிறது ({count}/{limit})",
-      "warnOverLimit": "பணி {firmware} உருப்படி வரம்பை மீறுகிறது ({count}/{limit}) — பதிவேற்றம் துண்டிக்கப்படலாம்"
-    },
     "energy": {
       "title": "ஆற்றல் மதிப்பீடு",
       "required": "தேவையான ஆற்றல்",
       "flightTime": "மதிப்பிட்ட பறப்பு நேரம்",
       "swaps": "பேட்டரி மாற்றங்கள்",
       "estimate": "மதிப்பீடு",
-      "note": "இயல்புநிலை மின் நுகர்வு மற்றும் பெயரளவு பேட்டரி அடிப்படையிலான தோராயமான மதிப்பு. உங்கள் சொந்த மின் வளைவுடன் சரிபார்க்கவும்."
+      "note": "இயல்புநிலை மின் நுகர்வு மற்றும் பெயரளவு பேட்டரி அடிப்படையிலான தோராயமான மதிப்பு. உங்கள் சொந்த மின் வளைவுடன் சரிபார்க்கவும்.",
+      "packRange": "பேட்டரி {n}: WP {from}–{to}",
+      "profileNote": "{pack} சுயவிவரம் ({capacity} Wh, {reserve} % இருப்பு) மற்றும் திட்டத்தின் பறப்பு நேரத்திலிருந்து மதிப்பீடு.",
+      "forecastNote": "காற்றும் வெப்பநிலையும் தள முன்னறிவிப்பிலிருந்து."
     },
     "validation": {
       "advisories": "அறிவுறுத்தல்கள்"
@@ -3611,10 +3609,12 @@
         "distanceTitle": "Total distance",
         "eta": "~{minutes} min",
         "etaTitle": "Estimated flight time",
-        "maxAlt": "{value} max",
-        "maxAltTitle": "Highest waypoint altitude",
         "avgSpeed": "{value} avg",
-        "avgSpeedTitle": "Mean speed over the route"
+        "avgSpeedTitle": "Mean speed over the route",
+        "etaOpen": "~{minutes}+ நிமி",
+        "etaOpenTitle": "வரம்பற்ற லாய்டரில் முடிகிறது",
+        "maxAboveHome": "ஹோமிலிருந்து அதிகபட்சம் {value}",
+        "maxAboveHomeTitle": "பறப்பின்போது ஹோமிலிருந்து மிக உயரமான புள்ளி"
       },
       "issueBadge": "{errors} errors, {warnings} warnings",
       "checklistBadge": "{checked} of {total} checked",

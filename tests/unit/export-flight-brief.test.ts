@@ -37,7 +37,7 @@ describe("computeBriefStats", () => {
       altMin: 0,
       altMax: 0,
       altFrame: null,
-      excludesJumpRepeats: false,
+      openEnded: null,
     });
   });
 
@@ -67,23 +67,39 @@ describe("computeBriefStats", () => {
     const stats = computeBriefStats(wps, "relative", 10);
     expect(stats.distanceM).toBeGreaterThan(900);
     expect(stats.distanceM).toBeLessThan(1100);
-    // duration = distance / speed (10 m/s) → ~100 s
-    expect(stats.durationS).toBeCloseTo(stats.distanceM / 10, 3);
+    // The 50 m climb at the launch point (2.5 m/s), then distance / speed (10 m/s).
+    expect(stats.durationS).toBeCloseTo(50 / 2.5 + stats.distanceM / 10, 3);
   });
 
-  it("gives no altitude range across frames and flags DO_JUMP repeats", () => {
+  it("gives no altitude range across frames", () => {
     const stats = computeBriefStats(
-      [
-        wp({ alt: 520, frame: "absolute" }),
-        wp({ alt: 50 }),
-        wp({ command: "DO_JUMP", param1: 1, param2: 3 }),
-      ],
+      [wp({ alt: 520, frame: "absolute" }), wp({ alt: 50 })],
       "relative",
     );
     expect(stats.altFrame).toBe("mixed");
-    expect(stats.excludesJumpRepeats).toBe(true);
     const uniform = computeBriefStats([wp({ alt: 50 }), wp({ alt: 60 })], "terrain");
     expect(uniform.altFrame).toBe("terrain");
+  });
+
+  it("unrolls DO_JUMP repeats and flags a plan that never ends with its reason", () => {
+    const loop = (repeat: number) => [
+      wp({ id: "a", lat: 1, lon: 0.001, alt: 50 }),
+      wp({
+        id: "b", lat: 1, lon: 0.01, alt: 50,
+        actions: [{ id: "j", command: "DO_JUMP", jumpTargetId: "a", param2: repeat }],
+      }),
+    ];
+    const once = computeBriefStats(loop(0), "relative", 10);
+    const thrice = computeBriefStats(loop(2), "relative", 10);
+    expect(thrice.distanceM).toBeCloseTo(once.distanceM * 5, 0);
+    expect(once.openEnded).toBeNull();
+    expect(computeBriefStats(loop(-1), "relative", 10).openEnded).toBe("loop");
+    const loiter = computeBriefStats(
+      [wp({ lat: 1, lon: 0.001, alt: 50 }), wp({ lat: 1, lon: 0.01, alt: 50, command: "LOITER" })],
+      "relative",
+      10,
+    );
+    expect(loiter.openEnded).toBe("loiter");
   });
 
   it("defaults the cruise speed when none is passed", () => {

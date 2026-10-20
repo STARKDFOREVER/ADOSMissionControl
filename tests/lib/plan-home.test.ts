@@ -43,4 +43,12 @@ describe("planLaunchPoint", () => {
     ];
     expect(planLaunchPoint(plan)).toEqual({ lat: 36.065, lon: -112.11 });
   });
+
+  it("skips a DO_LAND_START marker, which the vehicle never flies to", () => {
+    const plan: Waypoint[] = [
+      { id: "ls", lat: 36.1, lon: -112.2, alt: 0, command: "DO_LAND_START" },
+      { id: "w1", lat: 36.065, lon: -112.11, alt: 60, command: "WAYPOINT" },
+    ];
+    expect(planLaunchPoint(plan)).toEqual({ lat: 36.065, lon: -112.11 });
+  });
 });

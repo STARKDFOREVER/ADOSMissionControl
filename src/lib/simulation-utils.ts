@@ -1,45 +1,78 @@
 /**
  * @module simulation-utils
- * @description Flight plan computation and position interpolation for mission simulation.
- * Computes flight segments from waypoints and interpolates drone position at any elapsed time.
+ * @description The flight plan shapes (see `flight-plan` for how they are
+ * computed) and position interpolation for mission simulation playback.
  * @license GPL-3.0-only
  */
 
 import type { AltitudeFrame, Waypoint } from "@/lib/types";
-import { bearing, normalizeHeading } from "@/lib/telemetry-utils";
-import { isActionCommand } from "@/lib/mission/command-classes";
-import { haversineDistance } from "@/lib/geo/distance";
-import { isHomeNearPlan } from "@/lib/mission/plan-home";
+import type { RtlTarget } from "@/lib/mission/rtl-target";
 
 /** A resolved point the simulated vehicle flies to. */
 export interface SimPoint {
   lat: number;
   lon: number;
+  /** Metres above home. */
   alt: number;
 }
+
+/**
+ * What a segment is:
+ * - `climb` / `descent`: vertical, in place (takeoff climb, RTL climb, landing);
+ * - `leg`: toward a planner item;
+ * - `transit`: to or from the transit altitude;
+ * - `return`: the RTL leg to the return point;
+ * - `hold`: the final hold or loiter after the last leg.
+ */
+export type FlightSegmentKind = "climb" | "leg" | "transit" | "descent" | "return" | "hold";
 
 export interface FlightSegment {
   /** Planner index of the item this leg starts at. */
   fromIndex: number;
   /** Planner index of the item this leg flies to. */
   toIndex: number;
-  /** Where the leg starts and ends. An RTL leg ends at home, not at the RTL
-   * item's own (placeholder) coordinates. */
+  /** Where the leg starts and ends. */
   from: SimPoint;
   to: SimPoint;
   /** Seconds held at `from` before the leg is flown. */
   holdTime: number;
+  /** Horizontal length, metres. */
   distance: number;
+  /** Horizontal speed, or the vertical rate of a vertical segment, m/s. */
   speed: number;
+  /** Seconds, hold included. */
   duration: number;
   cumulativeDuration: number;
   heading: number;
+  kind: FlightSegmentKind;
+  /** True when the leg is not the straight line drawn between two planner
+   * items: the home-to-first-item leg, transit legs and the RTL return leg. */
+  implicit: boolean;
+  /** Seconds of this segment flown at hover power: holds, loiters and
+   * vertical climbs or descents of a multirotor or VTOL. 0 for fixed wing. */
+  hoverTime: number;
 }
 
 export interface FlightPlan {
   segments: FlightSegment[];
+  /** Seconds, holds included. */
   totalDuration: number;
+  /** Horizontal metres, including the legs from home and back. */
   totalDistance: number;
+  /** True when the plan does not end on its own (unlimited loiter, endless jump,
+   * fixed-wing RTL loiter); the duration then covers only the flight up to it. */
+  openEnded: boolean;
+  /** True when some altitude could not be resolved to height above home (no
+   * home or waypoint ground elevation) and its raw value was used. */
+  altitudesApproximate: boolean;
+  /** Highest point above home along the flight, metres. */
+  maxAboveHomeM: number;
+  /** Sum of the segments' hover time, seconds. */
+  hoverDuration: number;
+  /** Where the flight starts and lands, on the ground; null for an empty plan. */
+  home: SimPoint | null;
+  /** The point RTL returns to, when the plan has an RTL. */
+  returnTarget?: RtlTarget;
 }
 
 export interface InterpolatedPosition {
@@ -73,139 +106,10 @@ export function createSimulationMissionSignature(
       wp.param1 ?? null,
       wp.param2 ?? null,
       wp.param3 ?? null,
+      wp.groundElevation ?? null,
+      wp.actions ?? null,
     ]),
   });
-}
-
-/** Compute 3D distance between two points (haversine + altitude delta). */
-function distance3D(a: SimPoint, b: SimPoint): number {
-  const hDist = haversineDistance(a.lat, a.lon, b.lat, b.lon);
-  const dAlt = b.alt - a.alt;
-  return Math.sqrt(hDist * hDist + dAlt * dAlt);
-}
-
-/**
- * The navigation commands that wait `holdTime` seconds at the waypoint. An
- * unlimited LOITER never advances on its own, and LOITER_TURNS / PAYLOAD_PLACE
- * keep turns and a descent distance in that slot.
- */
-const HOLDING_COMMANDS: Record<string, true> = { WAYPOINT: true, SPLINE_WAYPOINT: true, LOITER_TIME: true };
-
-/** Altitude RTL climbs to before returning: the ArduPilot RTL_ALT default (15 m). */
-export const SIM_RTL_ALT_M = 15;
-
-function holdAt(wp: Waypoint): number {
-  return HOLDING_COMMANDS[wp.command ?? "WAYPOINT"] ? wp.holdTime ?? 0 : 0;
-}
-
-/**
- * The points a nav item is flown through from `prev`. RTL climbs to the RTL
- * altitude, returns to `home` at that altitude and descends there; its own
- * coordinates are a placeholder (the planner puts the last waypoint's, a
- * downloaded mission 0/0). Any other nav item at 0/0 carries no position and
- * acts where the vehicle already is.
- */
-function legPoints(wp: Waypoint, prev: SimPoint, home: SimPoint, rtlAlt: number): SimPoint[] {
-  if (wp.command === "RTL") {
-    const cruise = Math.max(prev.alt, rtlAlt);
-    const points: SimPoint[] = [];
-    if (cruise > prev.alt) points.push({ lat: prev.lat, lon: prev.lon, alt: cruise });
-    points.push({ lat: home.lat, lon: home.lon, alt: cruise });
-    points.push({ lat: home.lat, lon: home.lon, alt: home.alt });
-    return points;
-  }
-  if (wp.lat === 0 && wp.lon === 0) return [{ lat: prev.lat, lon: prev.lon, alt: wp.alt }];
-  return [{ lat: wp.lat, lon: wp.lon, alt: wp.alt }];
-}
-
-export interface FlightPlanOptions {
-  /** Where the vehicle launches and RTL returns to: the vehicle's home when
-   * known. Defaults to the first item with a position, at 0 m, the same
-   * launch point the mission upload falls back to. */
-  home?: { lat: number; lon: number };
-  /** Altitude RTL climbs to before returning: the vehicle's configured
-   * return altitude when known, else {@link SIM_RTL_ALT_M}. */
-  rtlAltM?: number;
-}
-
-/**
- * Compute the flight plan from the mission items. Action items carry no leg
- * of their own (they act at the preceding nav item), so they are skipped; RTL
- * is flown back to home.
- */
-export function computeFlightPlan(
-  waypoints: Waypoint[],
-  defaultSpeed: number,
-  options: FlightPlanOptions = {},
-): FlightPlan {
-  const flown: number[] = [];
-  for (let i = 0; i < waypoints.length; i++) {
-    if (!isActionCommand(waypoints[i].command)) flown.push(i);
-  }
-  if (flown.length < 2) {
-    return { segments: [], totalDuration: 0, totalDistance: 0 };
-  }
-
-  // A positionless first item (a TAKEOFF saved at 0/0) acts where the vehicle
-  // already is: at home, else at the first item that has a position. It never
-  // starts the flight from 0/0.
-  const first = waypoints[flown[0]];
-  const positioned = flown
-    .map((i) => waypoints[i])
-    .find((wp) => wp.command !== "RTL" && !(wp.lat === 0 && wp.lon === 0));
-  // A vehicle home from another site (a connected drone parked elsewhere)
-  // would route the RTL leg across the globe; only a home near the plan counts.
-  const usableHome = options.home && isHomeNearPlan(options.home, waypoints) ? options.home : undefined;
-  const homeLatLon = usableHome ?? (positioned ? { lat: positioned.lat, lon: positioned.lon } : undefined);
-  if (!homeLatLon) {
-    return { segments: [], totalDuration: 0, totalDistance: 0 };
-  }
-  const home: SimPoint = { ...homeLatLon, alt: 0 };
-  const rtlAlt = options.rtlAltM ?? SIM_RTL_ALT_M;
-
-  const segments: FlightSegment[] = [];
-  let cumDuration = 0;
-  let totalDistance = 0;
-  const start = first === positioned ? first : home;
-  let prev: SimPoint = { lat: start.lat, lon: start.lon, alt: first.alt };
-
-  for (let k = 1; k < flown.length; k++) {
-    const fromIndex = flown[k - 1];
-    const toIndex = flown[k];
-    const to = waypoints[toIndex];
-    // The uploaded speed of a leg: the destination's own speed, else the
-    // mission default (see the speed note in mission/mission-expand).
-    const speed = to.speed ?? defaultSpeed;
-    let hold = holdAt(waypoints[fromIndex]);
-    for (const point of legPoints(to, prev, home, rtlAlt)) {
-      const dist = distance3D(prev, point);
-      const duration = hold + (speed > 0 ? dist / speed : 0);
-      cumDuration += duration;
-      totalDistance += dist;
-      segments.push({
-        fromIndex,
-        toIndex,
-        from: prev,
-        to: point,
-        holdTime: hold,
-        distance: dist,
-        speed,
-        duration,
-        cumulativeDuration: cumDuration,
-        heading:
-          point.lat === prev.lat && point.lon === prev.lon
-            ? (segments[segments.length - 1]?.heading ?? 0)
-            : bearing(prev.lat, prev.lon, point.lat, point.lon),
-      });
-      prev = point;
-      hold = 0;
-    }
-  }
-
-  // Add the final item's hold, when its command holds at all
-  const totalDuration = cumDuration + holdAt(waypoints[flown[flown.length - 1]]);
-
-  return { segments, totalDuration, totalDistance };
 }
 
 /** Interpolate drone position at a given elapsed time. */
@@ -232,12 +136,9 @@ export function interpolatePosition(
   }
 
   const last = segments[segments.length - 1];
-  const segmentsDuration = last.cumulativeDuration;
-  const finalHold = holdAt(waypoints[last.toIndex]);
-  const totalDuration = segmentsDuration + finalHold;
+  const totalDuration = last.cumulativeDuration;
 
-  if (elapsedTime >= segmentsDuration) {
-    // Past all segments — holding at the final point or done
+  if (elapsedTime >= totalDuration) {
     return {
       lat: last.to.lat,
       lon: last.to.lon,
@@ -245,7 +146,7 @@ export function interpolatePosition(
       heading: last.heading,
       speed: 0,
       currentWaypointIndex: last.toIndex,
-      progress: totalDuration > 0 ? Math.min(elapsedTime / totalDuration, 1) : 1,
+      progress: 1,
     };
   }
 
@@ -290,26 +191,6 @@ export function interpolatePosition(
     currentWaypointIndex: t > 0.5 ? seg.toIndex : seg.fromIndex,
     progress: elapsedTime / totalDuration,
   };
-}
-
-/** Get altitude-based color for path visualization. */
-export function altitudeColor(alt: number, minAlt: number, maxAlt: number): string {
-  if (maxAlt <= minAlt) return "#3a82ff";
-  const t = (alt - minAlt) / (maxAlt - minAlt);
-  if (t < 0.5) {
-    // Blue to green
-    const s = t * 2;
-    const r = Math.round(0x3a * (1 - s) + 0x22 * s);
-    const g = Math.round(0x82 * (1 - s) + 0xc5 * s);
-    const b = Math.round(0xff * (1 - s) + 0x5e * s);
-    return `rgb(${r},${g},${b})`;
-  }
-  // Green to yellow
-  const s = (t - 0.5) * 2;
-  const r = Math.round(0x22 * (1 - s) + 0xea * s);
-  const g = Math.round(0xc5 * (1 - s) + 0xb3 * s);
-  const b = Math.round(0x5e * (1 - s) + 0x08 * s);
-  return `rgb(${r},${g},${b})`;
 }
 
 /** Format seconds as M:SS. */

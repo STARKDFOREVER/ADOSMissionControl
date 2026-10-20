@@ -13,14 +13,12 @@ import { useEffect, useMemo, useCallback, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { Viewer as CesiumViewer } from "cesium";
 import type { AltitudeFrame, Waypoint } from "@/lib/types";
-import {
-  computeFlightPlan,
-  createSimulationMissionSignature,
-} from "@/lib/simulation-utils";
+import { createSimulationMissionSignature } from "@/lib/simulation-utils";
+import { computeFlightPlan } from "@/lib/flight-plan";
 import { buildSampledProperties } from "@/lib/build-sampled-properties";
 import { makeKinematicViewerTrack, type ViewerTrack } from "@/lib/simulation/viewer-track";
 import { resolveAGLToAbsolute, type ResolvedPath } from "@/lib/terrain-utils";
-import { isHomeNearPlan, planLaunchPoint } from "@/lib/mission/plan-home";
+import { planLaunchPoint } from "@/lib/mission/plan-home";
 import { useSimulationStore } from "@/stores/simulation-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useSimClock } from "@/hooks/use-sim-clock";
@@ -99,15 +97,14 @@ export function SimulationViewer({ waypoints, defaultSpeed, defaultFrame }: Simu
   const showPathLabels = useSettingsStore((s) => s.showPathLabels);
   const showCameraTriggers = useSettingsStore((s) => s.showCameraTriggers);
 
-  // Relative-frame altitudes are measured from home: the vehicle's reported
-  // HOME_POSITION when it lies near this plan, else the launch point the
-  // upload uses (the first item with a position; a TAKEOFF saved at 0/0 has
-  // none).
+  // Relative-frame altitudes are measured from the plan's planned home, else
+  // the launch point the upload uses (the first item with a position; a
+  // TAKEOFF saved at 0/0 has none).
   const planOptions = useFlightPlanOptions();
-  const vehicleHome = planOptions.home && isHomeNearPlan(planOptions.home, waypoints) ? planOptions.home : undefined;
   const launch = planLaunchPoint(waypoints);
-  const homeLat = vehicleHome?.lat ?? launch?.lat;
-  const homeLon = vehicleHome?.lon ?? launch?.lon;
+  const homeLat = planOptions.home?.lat ?? launch?.lat;
+  const homeLon = planOptions.home?.lon ?? launch?.lon;
+  const homeGroundAmsl = planOptions.home?.groundAmsl;
 
   const missionSignature = useMemo(
     () => createSimulationMissionSignature(waypoints, defaultSpeed, defaultFrame),
@@ -150,7 +147,7 @@ export function SimulationViewer({ waypoints, defaultSpeed, defaultFrame }: Simu
     const signature = missionSignature;
 
     if (homeLat === undefined || homeLon === undefined) return;
-    resolveAGLToAbsolute(waypoints, terrainProvider, defaultFrame, { lat: homeLat, lon: homeLon })
+    resolveAGLToAbsolute(waypoints, terrainProvider, defaultFrame, { lat: homeLat, lon: homeLon, groundAmsl: homeGroundAmsl })
       .then((result) => {
         if (!cancelled) {
           setTerrainResult({ signature, path: result, failed: false });
@@ -164,7 +161,7 @@ export function SimulationViewer({ waypoints, defaultSpeed, defaultFrame }: Simu
       });
 
     return () => { cancelled = true; };
-  }, [viewer, missionSignature, waypoints, defaultFrame, terrainReady, terrainVersion, homeLat, homeLon]);
+  }, [viewer, missionSignature, waypoints, defaultFrame, terrainReady, terrainVersion, homeLat, homeLon, homeGroundAmsl]);
 
   // Extract waypoint-only resolved positions for WaypointEntities + camera
   const waypointPositions = useMemo(() => {

@@ -2850,7 +2850,7 @@
     "rtl": {
       "returnAltitudeFromVehicle": "RTL terrain checks use the vehicle's configured return altitude of {alt} m above home.",
       "returnAltitudeUnknown": "The vehicle's RTL return altitude has not been read, so return-leg terrain clearance is not checked. Connect the vehicle to check it.",
-      "landStartNeedsAutoland": "The FC has RTL_AUTOLAND = 0, so it will refuse to arm with a DO_LAND_START in the mission. Set RTL_AUTOLAND to 1 or 2 to land through it on RTL, or 3 to use it for go-around only."
+      "returnAltitudeCappedByFence": "As verificações de terreno do RTL usam uma altitude de retorno de {alt} m acima da base: os {configured} m do veículo, limitados pela cerca de altitude."
     },
     "none": "Nenhuma",
     "waypoints": "Waypoints",
@@ -3108,18 +3108,16 @@
         "payloadSecure": "Carga útil montada e fixada"
       }
     },
-    "itemCount": {
-      "advisory": "{count} de {limit} itens da missão",
-      "warnNearLimit": "A missão está próxima do limite de itens do {firmware} ({count}/{limit})",
-      "warnOverLimit": "A missão excede o limite de itens do {firmware} ({count}/{limit}) — o envio pode ser truncado"
-    },
     "energy": {
       "title": "Estimativa de energia",
       "required": "Energia necessária",
       "flightTime": "Tempo de voo est.",
       "swaps": "Trocas de bateria",
       "estimate": "estimativa",
-      "note": "Valor aproximado com base no consumo padrão e em uma bateria nominal. Confira com a sua própria curva de potência."
+      "note": "Valor aproximado com base no consumo padrão e em uma bateria nominal. Confira com a sua própria curva de potência.",
+      "packRange": "Bateria {n}: WP {from}–{to}",
+      "profileNote": "Estimativa a partir do perfil {pack} ({capacity} Wh, {reserve} % de reserva) e do tempo de voo do plano.",
+      "forecastNote": "Vento e temperatura da previsão do local."
     },
     "validation": {
       "advisories": "Avisos"
@@ -3611,10 +3609,12 @@
         "distanceTitle": "Total distance",
         "eta": "~{minutes} min",
         "etaTitle": "Estimated flight time",
-        "maxAlt": "{value} max",
-        "maxAltTitle": "Highest waypoint altitude",
         "avgSpeed": "{value} avg",
-        "avgSpeedTitle": "Mean speed over the route"
+        "avgSpeedTitle": "Mean speed over the route",
+        "etaOpen": "~{minutes}+ min",
+        "etaOpenTitle": "Termina numa espera ilimitada",
+        "maxAboveHome": "{value} máx. acima da base",
+        "maxAboveHomeTitle": "Ponto mais alto acima da base durante o voo"
       },
       "issueBadge": "{errors} errors, {warnings} warnings",
       "checklistBadge": "{checked} of {total} checked",

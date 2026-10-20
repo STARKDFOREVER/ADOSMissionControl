@@ -1,9 +1,9 @@
 /**
  * @module pdf/export-flight-brief
  * @description One-click flight-brief PDF export for the current mission plan.
- * Computes plan statistics (distance + duration via `computeFlightPlan`, which
- * does not unroll DO_JUMP repeats, so the brief says so; the altitude range
- * only within one altitude frame), renders
+ * Computes plan statistics (distance + duration via `computeFlightPlan`, with
+ * DO_JUMP repeats unrolled; a plan that never ends on its own is flagged; the
+ * altitude range only within one altitude frame), renders
  * the `FlightBriefDocument` to a Blob, and triggers a browser download. No
  * network I/O — the brief is built entirely from in-memory plan data, so there
  * is nothing to skip in demo mode. The heavy `@react-pdf/renderer` and document
@@ -12,7 +12,7 @@
  * @license GPL-3.0-only
  */
 
-import { computeFlightPlan, type FlightPlanOptions } from "@/lib/simulation-utils";
+import { computeFlightPlan, type FlightPlanOptions } from "@/lib/flight-plan";
 import type { AltitudeFrame, Waypoint } from "@/lib/types";
 import type { BriefWaypointRow, BriefStats } from "./flight-brief-document";
 import { downloadBlob } from "@/lib/download";
@@ -31,7 +31,7 @@ export interface FlightBriefInput {
   defaultSpeed?: number;
   /** The planner's default altitude frame, for waypoints without their own. */
   defaultFrame: AltitudeFrame;
-  /** Vehicle home and return altitude, when known, for distance and duration. */
+  /** Planned home, profile, transit altitude and vehicle values for distance and duration. */
   planOptions?: FlightPlanOptions;
 }
 
@@ -42,10 +42,10 @@ export interface FlightBriefStats extends BriefStats {
 
 /**
  * Derive the brief statistics from the plan. Distance and duration reuse the
- * simulation flight-plan computation, which flies each item once, so a mission
- * with a DO_JUMP is flagged rather than under-reported silently. The altitude
- * range is given only when every waypoint shares one frame. An empty plan
- * yields honest zeros.
+ * simulation flight-plan computation, which unrolls DO_JUMP repeats; a plan
+ * that never ends on its own (an endless jump, an unlimited loiter) is flagged
+ * with the reason. The altitude range is given only when every waypoint shares
+ * one frame. An empty plan yields honest zeros.
  */
 export function computeBriefStats(
   waypoints: Waypoint[],
@@ -64,7 +64,11 @@ export function computeBriefStats(
     altMax: alts.length > 0 ? Math.max(...alts) : 0,
     altFrame:
       frames.size === 0 ? null : frames.size === 1 ? [...frames][0] : "mixed",
-    excludesJumpRepeats: waypoints.some((w) => w.command === "DO_JUMP"),
+    openEnded: !plan.openEnded
+      ? null
+      : waypoints.some((w) => w.actions?.some((a) => a.command === "DO_JUMP" && a.param2 === -1))
+        ? "loop"
+        : "loiter",
   };
 }
 

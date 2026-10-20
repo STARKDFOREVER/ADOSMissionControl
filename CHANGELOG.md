@@ -189,6 +189,18 @@ the project follows [Semantic Versioning](https://semver.org/).
   back as RTL and LAND; a KML placemark with no altitude mode is read as
   clamped to the ground. CSV export writes the mission default frame for
   waypoints that have none.
+- Flight time, distance and the return leg follow what the autopilot flies.
+  Distance is horizontal and each leg takes as long as its climb or descent
+  needs, at the vehicle's own climb and descent rates when connected. Copters
+  climb straight up at home, landings fly across before descending, a
+  DO_SET_SPEED carries to later legs, jumps are repeated as flown, and an
+  unlimited loiter or looping jump marks the time as open-ended ("+").
+  Statistics measure from the plan's planned home instead of a vehicle home,
+  the dock shows the highest point above home, and RTL heads for the nearest
+  rally point inside the rally limit with its altitude capped by the fence.
+  The energy estimate splits hover from cruise time, uses the selected battery
+  pack and derates for the forecast wind and temperature. A DO_LAND_START on
+  ArduPlane with RTL_AUTOLAND = 0 now blocks the upload.
 
 ### Removed
 

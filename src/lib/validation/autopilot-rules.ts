@@ -77,6 +77,8 @@ export interface AutopilotRuleInput {
   profile: PlanVehicleProfile;
   /** The vehicle's TERRAIN_ENABLE, when connected and read. */
   terrainEnabled?: boolean;
+  /** The vehicle's RTL_AUTOLAND, when an ArduPlane is connected and it was read. */
+  rtlAutoland?: number;
   /** Mission default speed, for the speed items the upload writes. */
   defaultSpeed?: number;
   /** Fence items the fence upload writes. */
@@ -127,6 +129,24 @@ export function autopilotIssues(input: AutopilotRuleInput): {
         code: "TERRAIN_DATA_SOURCE",
         message: "Needs terrain data on the vehicle (TERRAIN_ENABLE and SD card or GCS terrain)",
         ...at,
+      });
+    }
+  }
+
+  // ArduPlane refuses to arm with a DO_LAND_START in the mission while
+  // RTL_AUTOLAND is 0 (QuadPlane included: it runs ArduPlane).
+  const fixedWing = profile.vehicleClass === "plane" || profile.vehicleClass === "vtol";
+  if (!px4 && fixedWing && input.rtlAutoland === 0) {
+    const i = waypoints.findIndex((w) => w.command === "DO_LAND_START");
+    if (i >= 0) {
+      errors.push({
+        severity: "blocking",
+        code: "LAND_START_NEEDS_AUTOLAND",
+        message:
+          "The vehicle has RTL_AUTOLAND = 0, so ArduPlane refuses to arm with a DO_LAND_START in the mission. " +
+          "Set RTL_AUTOLAND to 1 or 2 to land through it on RTL, or 3 to use it for go-around only",
+        waypointIndex: i,
+        waypointId: waypoints[i].id,
       });
     }
   }

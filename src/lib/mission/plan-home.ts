@@ -1,23 +1,26 @@
 /**
  * @module mission/plan-home
- * @description Decides whether a vehicle-reported home belongs to the plan on
- * screen. A connected vehicle reports the home of the site it sits at; a plan
- * for another site must not route its return leg, datums or link-range check
- * through that point.
+ * @description The plan's launch point, and whether a vehicle-reported home
+ * belongs to the plan on screen. A connected vehicle reports the home of the
+ * site it sits at; only a home near the plan may seed the plan's planned home.
  * @license GPL-3.0-only
  */
 
 import type { Waypoint } from "@/lib/types";
-import { isActionCommand } from "@/lib/mission/command-classes";
+import { isFlownCommand } from "@/lib/mission/command-classes";
 import { haversineDistance } from "@/lib/geo/distance";
 
 /** A reported home farther than this from the plan's launch point belongs to another site. */
 export const MAX_HOME_TO_PLAN_M = 50_000;
 
-/** First item with a real position that the vehicle flies to: not an action, not RTL, not 0/0. */
+/**
+ * First item the vehicle flies to that has a real position: not an action,
+ * not DO_LAND_START (a marker the vehicle never flies to), not RTL, not an
+ * item flown from wherever the vehicle is (0/0 or an inherited position).
+ */
 export function planLaunchPoint(waypoints: readonly Waypoint[]): { lat: number; lon: number } | undefined {
   const wp = waypoints.find(
-    (w) => !isActionCommand(w.command) && w.command !== "RTL" && !(w.lat === 0 && w.lon === 0),
+    (w) => isFlownCommand(w.command) && w.command !== "RTL" && !w.inheritsPosition && !(w.lat === 0 && w.lon === 0),
   );
   return wp ? { lat: wp.lat, lon: wp.lon } : undefined;
 }

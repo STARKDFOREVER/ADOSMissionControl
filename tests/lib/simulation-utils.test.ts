@@ -1,10 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Waypoint } from "@/lib/types";
-import {
-  computeFlightPlan,
-  createSimulationMissionSignature,
-  interpolatePosition,
-} from "@/lib/simulation-utils";
+import { createSimulationMissionSignature, interpolatePosition } from "@/lib/simulation-utils";
+import { computeFlightPlan } from "@/lib/flight-plan";
 import { haversineDistance } from "@/lib/geo/distance";
 
 const baseWaypoints: Waypoint[] = [
@@ -44,29 +41,6 @@ describe("createSimulationMissionSignature", () => {
   });
 });
 
-describe("computeFlightPlan hold time", () => {
-  // Two points ~111 m apart flown at 10 m/s: about 11 s of flying.
-  const leg = (command: Waypoint["command"]): Waypoint[] => [
-    { id: "a", lat: 1, lon: 1, alt: 20, command, holdTime: 30 },
-    { id: "b", lat: 1.001, lon: 1, alt: 20, command: "WAYPOINT" },
-  ];
-  const flying = computeFlightPlan(leg("LOITER_TURNS"), 10).totalDuration;
-
-  it("counts the hold of a waypoint and a timed loiter", () => {
-    expect(computeFlightPlan(leg("WAYPOINT"), 10).totalDuration).toBeCloseTo(flying + 30, 6);
-    expect(computeFlightPlan(leg("LOITER_TIME"), 10).totalDuration).toBeCloseTo(flying + 30, 6);
-  });
-
-  it("never counts a hold for an unlimited loiter, which does not advance on its own", () => {
-    expect(computeFlightPlan(leg("LOITER"), 10).totalDuration).toBeCloseTo(flying, 6);
-    const endsInLoiter: Waypoint[] = [
-      { id: "a", lat: 1, lon: 1, alt: 20, command: "WAYPOINT" },
-      { id: "b", lat: 1.001, lon: 1, alt: 20, command: "LOITER", holdTime: 30 },
-    ];
-    expect(computeFlightPlan(endsInLoiter, 10).totalDuration).toBeCloseTo(flying, 6);
-  });
-});
-
 describe("computeFlightPlan RTL and action items", () => {
   // Launch, then a waypoint about 2 km north, then RTL placed (as the planner
   // does) at the last waypoint's position at 0 m.
@@ -81,8 +55,8 @@ describe("computeFlightPlan RTL and action items", () => {
   it("flies RTL back to home instead of descending in place", () => {
     const plan = computeFlightPlan(mission, 10);
     const leg = haversineDistance(launch.lat, launch.lon, far.lat, far.lon);
-    // Out and back, plus the descent at home: never just the outbound leg.
-    expect(plan.totalDistance).toBeGreaterThan(2 * leg);
+    // Out and back: never just the outbound leg.
+    expect(plan.totalDistance).toBeCloseTo(2 * leg, 3);
     const end = interpolatePosition(plan.segments, mission, plan.totalDuration);
     expect(end.lat).toBeCloseTo(launch.lat, 6);
     expect(end.lon).toBeCloseTo(launch.lon, 6);
@@ -113,43 +87,21 @@ describe("computeFlightPlan launch point and return altitude", () => {
 
   it("never starts the flight from 0/0 for a positionless first item", () => {
     const plan = computeFlightPlan(downloaded, 10);
-    // Without a known home the flight starts at the first positioned item, so
+    // Without a planned home the flight starts at the first positioned item, so
     // nothing is flown from null island (thousands of km away).
     expect(plan.totalDistance).toBeLessThan(1000);
     expect(plan.segments[0].from.lat).toBeCloseTo(far.lat, 6);
   });
 
-  it("launches from and returns to the vehicle's home at its return altitude", () => {
+  it("launches from and returns to the planned home at the return altitude", () => {
     const plan = computeFlightPlan(downloaded, 10, { home: launch, rtlAltM: 60 });
     const leg = haversineDistance(launch.lat, launch.lon, far.lat, far.lon);
     expect(plan.segments[0].from.lat).toBeCloseTo(launch.lat, 6);
-    expect(plan.totalDistance).toBeGreaterThan(2 * leg);
-    expect(plan.totalDistance).toBeLessThan(2 * leg + 200);
+    // Out and back, horizontally.
+    expect(plan.totalDistance).toBeCloseTo(2 * leg, 3);
     expect(Math.max(...plan.segments.map((s) => s.to.alt))).toBe(60);
     const end = interpolatePosition(plan.segments, downloaded, plan.totalDuration);
     expect(end.lat).toBeCloseTo(launch.lat, 6);
     expect(end.alt).toBe(0);
-  });
-});
-
-describe("computeFlightPlan vehicle home", () => {
-  const canyon: Waypoint[] = [
-    { id: "t", lat: 36.0602, lon: -112.1155, alt: 30, command: "TAKEOFF" },
-    { id: "w1", lat: 36.065, lon: -112.11, alt: 60, command: "WAYPOINT" },
-    { id: "r", lat: 36.065, lon: -112.11, alt: 60, command: "RTL" },
-  ];
-
-  it("ignores a home reported from another site", () => {
-    const noHome = computeFlightPlan(canyon, 10, {});
-    const foreign = computeFlightPlan(canyon, 10, { home: { lat: 12.95, lon: 77.666 } });
-    expect(foreign.totalDistance).toBe(noHome.totalDistance);
-    expect(foreign.totalDistance).toBeLessThan(10_000);
-  });
-
-  it("returns to a home near the plan", () => {
-    const noHome = computeFlightPlan(canyon, 10, {});
-    // About 2 km south of the launch point.
-    const near = computeFlightPlan(canyon, 10, { home: { lat: 36.0422, lon: -112.1155 } });
-    expect(near.totalDistance - noHome.totalDistance).toBeGreaterThanOrEqual(1500);
   });
 });

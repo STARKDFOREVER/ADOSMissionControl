@@ -33,7 +33,7 @@ export const FRAME_LABEL: Record<AltitudeFrame, string> = {
 
 /** Pre-computed plan statistics shown in the brief header block. */
 export interface BriefStats {
-  /** Total 3D path distance in meters. */
+  /** Horizontal route distance in meters, the legs from home and back included. */
   distanceM: number;
   /** Estimated flight duration in seconds. */
   durationS: number;
@@ -44,8 +44,9 @@ export interface BriefStats {
   /** The one frame every altitude is in, or "mixed" when the rows differ (a
    * range across frames compares unlike numbers, so none is printed). */
   altFrame: AltitudeFrame | "mixed" | null;
-  /** DO_JUMP repeats are not in the duration or distance estimate. */
-  excludesJumpRepeats: boolean;
+  /** Why the plan never ends on its own, so the duration covers only the flight
+   * up to that point: an endless DO_JUMP loop or an unlimited loiter. Null when it ends. */
+  openEnded: "loop" | "loiter" | null;
 }
 
 export interface FlightBriefDocumentProps {
@@ -260,7 +261,7 @@ export function FlightBriefDocument({
             <Text style={styles.metaLabel}>Est. duration</Text>
             <Text style={styles.metaValue}>
               {fmtDuration(stats.durationS)}
-              {stats.excludesJumpRepeats ? " (excl. DO_JUMP repeats)" : ""}
+              {stats.openEnded === "loop" ? "+ (endless DO_JUMP loop)" : stats.openEnded === "loiter" ? "+ (ends in an unlimited loiter)" : ""}
             </Text>
           </View>
           <View style={styles.metaCell}>

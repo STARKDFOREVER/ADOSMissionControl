@@ -2850,7 +2850,7 @@
     "rtl": {
       "returnAltitudeFromVehicle": "RTL terrain checks use the vehicle's configured return altitude of {alt} m above home.",
       "returnAltitudeUnknown": "The vehicle's RTL return altitude has not been read, so return-leg terrain clearance is not checked. Connect the vehicle to check it.",
-      "landStartNeedsAutoland": "The FC has RTL_AUTOLAND = 0, so it will refuse to arm with a DO_LAND_START in the mission. Set RTL_AUTOLAND to 1 or 2 to land through it on RTL, or 3 to use it for go-around only."
+      "returnAltitudeCappedByFence": "RTL ਭੂਮੀ ਜਾਂਚਾਂ ਹੋਮ ਤੋਂ {alt} m ਦੀ ਵਾਪਸੀ ਉਚਾਈ ਵਰਤਦੀਆਂ ਹਨ: ਵਾਹਨ ਦੇ {configured} m, ਉਚਾਈ ਵਾੜ ਦੁਆਰਾ ਸੀਮਤ।"
     },
     "none": "None",
     "waypoints": "Waypoints",
@@ -3108,18 +3108,16 @@
         "payloadSecure": "ਪੇਲੋਡ ਲੱਗਿਆ ਅਤੇ ਸੁਰੱਖਿਅਤ ਹੈ"
       }
     },
-    "itemCount": {
-      "advisory": "{limit} ਵਿੱਚੋਂ {count} ਮਿਸ਼ਨ ਆਈਟਮਾਂ",
-      "warnNearLimit": "ਮਿਸ਼ਨ {firmware} ਆਈਟਮ ਹੱਦ ਦੇ ਨੇੜੇ ਹੈ ({count}/{limit})",
-      "warnOverLimit": "ਮਿਸ਼ਨ {firmware} ਆਈਟਮ ਹੱਦ ਤੋਂ ਵੱਧ ਹੈ ({count}/{limit}) — ਅੱਪਲੋਡ ਕੱਟਿਆ ਜਾ ਸਕਦਾ ਹੈ"
-    },
     "energy": {
       "title": "ਊਰਜਾ ਅਨੁਮਾਨ",
       "required": "ਲੋੜੀਂਦੀ ਊਰਜਾ",
       "flightTime": "ਅਨੁਮਾਨਿਤ ਉਡਾਣ ਸਮਾਂ",
       "swaps": "ਬੈਟਰੀ ਬਦਲੀਆਂ",
       "estimate": "ਅਨੁਮਾਨ",
-      "note": "ਮੂਲ ਪਾਵਰ ਖਪਤ ਅਤੇ ਇੱਕ ਆਮ ਪੈਕ ਤੋਂ ਮੋਟਾ ਅੰਦਾਜ਼ਾ। ਆਪਣੇ ਖੁਦ ਦੇ ਪਾਵਰ ਕਰਵ ਨਾਲ ਜਾਂਚ ਕਰੋ।"
+      "note": "ਮੂਲ ਪਾਵਰ ਖਪਤ ਅਤੇ ਇੱਕ ਆਮ ਪੈਕ ਤੋਂ ਮੋਟਾ ਅੰਦਾਜ਼ਾ। ਆਪਣੇ ਖੁਦ ਦੇ ਪਾਵਰ ਕਰਵ ਨਾਲ ਜਾਂਚ ਕਰੋ।",
+      "packRange": "ਬੈਟਰੀ {n}: WP {from}–{to}",
+      "profileNote": "{pack} ਪ੍ਰੋਫਾਈਲ ({capacity} Wh, {reserve} % ਰਿਜ਼ਰਵ) ਅਤੇ ਯੋਜਨਾ ਦੇ ਉਡਾਣ ਸਮੇਂ ਤੋਂ ਅੰਦਾਜ਼ਾ।",
+      "forecastNote": "ਹਵਾ ਅਤੇ ਤਾਪਮਾਨ ਸਾਈਟ ਦੀ ਭਵਿੱਖਬਾਣੀ ਤੋਂ।"
     },
     "validation": {
       "advisories": "ਸਲਾਹਾਂ"
@@ -3611,10 +3609,12 @@
         "distanceTitle": "Total distance",
         "eta": "~{minutes} min",
         "etaTitle": "Estimated flight time",
-        "maxAlt": "{value} max",
-        "maxAltTitle": "Highest waypoint altitude",
         "avgSpeed": "{value} avg",
-        "avgSpeedTitle": "Mean speed over the route"
+        "avgSpeedTitle": "Mean speed over the route",
+        "etaOpen": "~{minutes}+ ਮਿੰਟ",
+        "etaOpenTitle": "ਅਸੀਮਤ ਲੌਇਟਰ ਵਿੱਚ ਖ਼ਤਮ ਹੁੰਦਾ ਹੈ",
+        "maxAboveHome": "ਹੋਮ ਤੋਂ ਵੱਧ ਤੋਂ ਵੱਧ {value}",
+        "maxAboveHomeTitle": "ਉਡਾਣ ਦੌਰਾਨ ਹੋਮ ਤੋਂ ਸਭ ਤੋਂ ਉੱਚਾ ਬਿੰਦੂ"
       },
       "issueBadge": "{errors} errors, {warnings} warnings",
       "checklistBadge": "{checked} of {total} checked",

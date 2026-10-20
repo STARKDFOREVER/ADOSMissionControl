@@ -13,9 +13,15 @@ import { renderWithIntl } from "../../helpers/intl-wrapper";
 
 // Pin the plan's distance and duration so the summary is deterministic:
 // 1500 m over 150 s is a 10 m/s route mean, unlike the 5 m/s default passed in.
-vi.mock("@/lib/simulation-utils", () => ({
-  computeFlightPlan: () => ({ totalDistance: 1500, totalDuration: 150 }),
+const flightPlan = vi.hoisted(() => ({
+  segments: [],
+  totalDistance: 1500,
+  totalDuration: 150,
+  maxAboveHomeM: 100,
+  openEnded: false,
+  altitudesApproximate: false,
 }));
+vi.mock("@/lib/flight-plan", () => ({ computeFlightPlan: () => flightPlan }));
 const planOptions = vi.hoisted(() => ({}));
 vi.mock("@/hooks/use-rtl-return-context", () => ({ useFlightPlanOptions: () => planOptions }));
 const validationOptions = vi.hoisted(() => ({}));
@@ -65,6 +71,8 @@ function setDock(dockTab: DockTab, open?: boolean) {
 }
 
 beforeEach(() => {
+  flightPlan.openEnded = false;
+  flightPlan.altitudesApproximate = false;
   usePlannerStore.setState({ dockOpen: false, dockTab: "altitude" });
   usePreflightChecklistStore.getState().clear();
   useSettingsStore.setState({ units: "metric" });
@@ -76,7 +84,7 @@ describe("PlannerDock strip", () => {
     expect(screen.getByText("2 WP")).toBeDefined();
     expect(screen.getByText("1.50 km")).toBeDefined();
     expect(screen.getByText("~3 min")).toBeDefined();
-    expect(screen.getByText("100 m max")).toBeDefined();
+    expect(screen.getByText("100 m max above home")).toBeDefined();
     expect(screen.getByText("10.0 m/s avg")).toBeDefined();
   });
 
@@ -85,9 +93,18 @@ describe("PlannerDock strip", () => {
     renderWithIntl(<PlannerDock p={makeP()} />);
     // 1500 m < 1 mi → feet; 100 m → 328 ft; 10 m/s → 22.4 mph.
     expect(screen.getByText("4921 ft")).toBeDefined();
-    expect(screen.getByText("328 ft max")).toBeDefined();
+    expect(screen.getByText("328 ft max above home")).toBeDefined();
     expect(screen.getByText("22.4 mph avg")).toBeDefined();
     expect(screen.queryByText("1.50 km")).toBeNull();
+  });
+
+  it("marks an open-ended ETA and an approximate height", () => {
+    flightPlan.openEnded = true;
+    flightPlan.altitudesApproximate = true;
+    renderWithIntl(<PlannerDock p={makeP()} />);
+    expect(screen.getByText("~3+ min")).toBeDefined();
+    expect(screen.getByTitle("Ends in an unlimited loiter")).toBeDefined();
+    expect(screen.getByText("~100 m max above home")).toBeDefined();
   });
 
   it("shows no summary for an empty plan but keeps the tabs", () => {

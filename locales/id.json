@@ -2850,7 +2850,7 @@
     "rtl": {
       "returnAltitudeFromVehicle": "RTL terrain checks use the vehicle's configured return altitude of {alt} m above home.",
       "returnAltitudeUnknown": "The vehicle's RTL return altitude has not been read, so return-leg terrain clearance is not checked. Connect the vehicle to check it.",
-      "landStartNeedsAutoland": "The FC has RTL_AUTOLAND = 0, so it will refuse to arm with a DO_LAND_START in the mission. Set RTL_AUTOLAND to 1 or 2 to land through it on RTL, or 3 to use it for go-around only."
+      "returnAltitudeCappedByFence": "Pemeriksaan medan RTL memakai ketinggian kembali {alt} m di atas home: {configured} m milik wahana, dibatasi pagar ketinggian."
     },
     "none": "Tidak ada",
     "waypoints": "Waypoint",
@@ -3108,18 +3108,16 @@
         "payloadSecure": "Muatan terpasang dan aman"
       }
     },
-    "itemCount": {
-      "advisory": "{count} dari {limit} item misi",
-      "warnNearLimit": "Misi mendekati batas item {firmware} ({count}/{limit})",
-      "warnOverLimit": "Misi melebihi batas item {firmware} ({count}/{limit}) — unggahan mungkin terpotong"
-    },
     "energy": {
       "title": "Perkiraan energi",
       "required": "Energi diperlukan",
       "flightTime": "Perk. waktu terbang",
       "swaps": "Penggantian baterai",
       "estimate": "perkiraan",
-      "note": "Angka kasar dari konsumsi daya bawaan dan paket baterai nominal. Verifikasi dengan kurva daya Anda sendiri."
+      "note": "Angka kasar dari konsumsi daya bawaan dan paket baterai nominal. Verifikasi dengan kurva daya Anda sendiri.",
+      "packRange": "Baterai {n}: WP {from}–{to}",
+      "profileNote": "Perkiraan dari profil {pack} ({capacity} Wh, cadangan {reserve} %) dan waktu terbang rencana.",
+      "forecastNote": "Angin dan suhu dari prakiraan lokasi."
     },
     "validation": {
       "advisories": "Anjuran"
@@ -3611,10 +3609,12 @@
         "distanceTitle": "Total distance",
         "eta": "~{minutes} min",
         "etaTitle": "Estimated flight time",
-        "maxAlt": "{value} max",
-        "maxAltTitle": "Highest waypoint altitude",
         "avgSpeed": "{value} avg",
-        "avgSpeedTitle": "Mean speed over the route"
+        "avgSpeedTitle": "Mean speed over the route",
+        "etaOpen": "~{minutes}+ mnt",
+        "etaOpenTitle": "Berakhir dengan loiter tanpa batas",
+        "maxAboveHome": "{value} maks di atas home",
+        "maxAboveHomeTitle": "Titik tertinggi di atas home selama penerbangan"
       },
       "issueBadge": "{errors} errors, {warnings} warnings",
       "checklistBadge": "{checked} of {total} checked",

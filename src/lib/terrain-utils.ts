@@ -36,6 +36,9 @@ export interface ResolvedPath {
 export interface HomePoint {
   lat: number;
   lon: number;
+  /** Ground elevation at home (metres MSL) from the planner's own elevation
+   * source; when given it is used instead of the 3D terrain sample. */
+  groundAmsl?: number;
 }
 
 /** A sampled terrain height, or a thrown error when the sample has none. */
@@ -57,13 +60,18 @@ function sampledHeight(carto: Cartographic | undefined): number {
  *    `mslToEllipsoidal(alt)` and terrain is NOT added — the same height
  *    regardless of the ground below.
  *  - `relative` is height above HOME, so it is placed at
- *    `homeTerrainHeight + alt`, with the terrain sampled at `home` (the
- *    vehicle's home when it has reported one, else the launch point the
- *    upload uses). It does NOT follow terrain. Drawing it as
+ *    `homeTerrainHeight + alt`, with the terrain at `home` (the plan's
+ *    planned home, else the launch point the upload uses). It does NOT
+ *    follow terrain. Drawing it as
  *    `terrainHeight + alt` hid every terrain conflict in the 3D view: the
  *    path was painted riding over each hill it would actually fly into.
  *  - `terrain` is height above the ground below the point, so it is
  *    `terrainHeight + alt` — the only frame that follows the contour.
+ *
+ * The ground at a waypoint that carries its own `groundElevation`, and at a
+ * home with `groundAmsl`, is the planner's own elevation (the one the 2D
+ * terrain checks use), so the 3D path and the 2D checks agree there. Only
+ * points without one (sub-samples, unsampled waypoints) use the 3D terrain.
  *
  * A waypoint without its own frame is in the mission default frame, the same
  * one the upload encodes it in. A segment's sub-samples inherit the frame of
@@ -95,6 +103,8 @@ export async function resolveAGLToAbsolute(
   const altValues: number[] = [];
   const frames: AltitudeFrame[] = [];
   const waypointIndices: number[] = [];
+  /** Ellipsoidal ground from the planner's elevation source, per point, when known. */
+  const groundOverride: Array<number | undefined> = [];
 
   for (let i = 0; i < waypoints.length; i++) {
     const wp = waypoints[i];
@@ -106,6 +116,11 @@ export async function resolveAGLToAbsolute(
     lonLatDeg.push({ lat: wp.lat, lon: wp.lon });
     altValues.push(wp.alt);
     frames.push(frame);
+    groundOverride.push(
+      wp.groundElevation !== undefined && Number.isFinite(wp.groundElevation)
+        ? mslToEllipsoidal(wp.groundElevation, wp.lat, wp.lon)
+        : undefined,
+    );
 
     // Add intermediate points to next waypoint for smooth terrain following
     if (i < waypoints.length - 1) {
@@ -122,6 +137,7 @@ export async function resolveAGLToAbsolute(
         lonLatDeg.push({ lat, lon });
         altValues.push(alt);
         frames.push(frame); // sub-samples inherit the segment's start frame
+        groundOverride.push(undefined);
       }
     }
   }
@@ -135,7 +151,11 @@ export async function resolveAGLToAbsolute(
   // Home's terrain height is the datum every relative-frame altitude is
   // measured from. Everything here is in ellipsoidal height, so no geoid
   // conversion is needed for the two offset frames.
-  const homeTerrainHeight = sampledHeight(sampled[cartographics.length]);
+  const homeTerrainHeight =
+    home.groundAmsl !== undefined && Number.isFinite(home.groundAmsl)
+      ? mslToEllipsoidal(home.groundAmsl, home.lat, home.lon)
+      : sampledHeight(sampled[cartographics.length]);
+  const groundAt = (i: number) => groundOverride[i] ?? sampledHeight(sampled[i]);
 
   const positions = cartographics.map((_, i) => {
     const carto = sampled[i];
@@ -149,14 +169,14 @@ export async function resolveAGLToAbsolute(
         absoluteAlt = homeTerrainHeight + altValues[i];
         break;
       case "waypointGround":
-        absoluteAlt = sampledHeight(carto) + altValues[i];
+        absoluteAlt = groundAt(i) + altValues[i];
         break;
     }
     return Cartesian3.fromRadians(carto.longitude, carto.latitude, absoluteAlt);
   });
 
   // Extract terrain heights at original waypoint positions only
-  const terrainHeights = waypointIndices.map((idx) => sampledHeight(sampled[idx]));
+  const terrainHeights = waypointIndices.map((idx) => groundAt(idx));
 
   return { positions, waypointIndices, terrainHeights, homeTerrainHeight };
 }

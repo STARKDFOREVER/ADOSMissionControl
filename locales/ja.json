@@ -2850,7 +2850,7 @@
     "rtl": {
       "returnAltitudeFromVehicle": "RTL terrain checks use the vehicle's configured return altitude of {alt} m above home.",
       "returnAltitudeUnknown": "The vehicle's RTL return altitude has not been read, so return-leg terrain clearance is not checked. Connect the vehicle to check it.",
-      "landStartNeedsAutoland": "The FC has RTL_AUTOLAND = 0, so it will refuse to arm with a DO_LAND_START in the mission. Set RTL_AUTOLAND to 1 or 2 to land through it on RTL, or 3 to use it for go-around only."
+      "returnAltitudeCappedByFence": "RTL 地形チェックはホーム上空 {alt} m の帰還高度を使います: 機体設定の {configured} m を高度フェンスで制限した値です。"
     },
     "none": "なし",
     "waypoints": "ウェイポイント",
@@ -3108,18 +3108,16 @@
         "payloadSecure": "ペイロード装着・固定済み"
       }
     },
-    "itemCount": {
-      "advisory": "ミッションアイテム {count}/{limit}",
-      "warnNearLimit": "ミッションが{firmware}のアイテム上限に近づいています（{count}/{limit}）",
-      "warnOverLimit": "ミッションが{firmware}のアイテム上限を超えています（{count}/{limit}） — アップロードが切り詰められる可能性があります"
-    },
     "energy": {
       "title": "エネルギー見積もり",
       "required": "必要電力量",
       "flightTime": "推定飛行時間",
       "swaps": "バッテリー交換回数",
       "estimate": "概算",
-      "note": "デフォルトの消費電力と標準的なバッテリーによる概算値です。実際の電力曲線で確認してください。"
+      "note": "デフォルトの消費電力と標準的なバッテリーによる概算値です。実際の電力曲線で確認してください。",
+      "packRange": "バッテリー {n}: WP {from}–{to}",
+      "profileNote": "{pack} プロファイル ({capacity} Wh、予備 {reserve} %) と計画の飛行時間からの推定値です。",
+      "forecastNote": "風と気温はサイト予報から取得しています。"
     },
     "validation": {
       "advisories": "注意事項"
@@ -3611,10 +3609,12 @@
         "distanceTitle": "Total distance",
         "eta": "~{minutes} min",
         "etaTitle": "Estimated flight time",
-        "maxAlt": "{value} max",
-        "maxAltTitle": "Highest waypoint altitude",
         "avgSpeed": "{value} avg",
-        "avgSpeedTitle": "Mean speed over the route"
+        "avgSpeedTitle": "Mean speed over the route",
+        "etaOpen": "約{minutes}+ 分",
+        "etaOpenTitle": "無制限ロイターで終了します",
+        "maxAboveHome": "ホーム上空 最大 {value}",
+        "maxAboveHomeTitle": "飛行中のホームからの最高点"
       },
       "issueBadge": "{errors} errors, {warnings} warnings",
       "checklistBadge": "{checked} of {total} checked",

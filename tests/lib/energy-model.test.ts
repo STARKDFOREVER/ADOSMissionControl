@@ -1,128 +1,57 @@
 import { describe, it, expect } from "vitest";
-import {
-  estimateEnergyWh,
-  segmentByBattery,
-  windDerate,
-  tempDerate,
-} from "@/lib/energy-model";
+import type { Waypoint } from "@/lib/types";
+import { deratedPack, estimatePlanEnergy, tempDerate, windDerate } from "@/lib/energy-model";
+import { computeFlightPlan } from "@/lib/flight-plan";
+import type { BatteryProfile } from "@/lib/energy/battery-split";
 
-describe("estimateEnergyWh", () => {
-  it("gives a sane Wh and flight time for a known distance and power", () => {
-    // 3600 m at 10 m/s = 360 s = 0.1 h of cruise at 200 W = 20 Wh.
-    const est = estimateEnergyWh({
-      distanceM: 3600,
-      cruiseSpeedMps: 10,
-      hoverWatts: 300,
-      cruiseWatts: 200,
-    });
-    expect(est.cruiseSeconds).toBeCloseTo(360, 6);
-    expect(est.totalWh).toBeCloseTo(20, 6);
-    expect(est.cruiseWh).toBeCloseTo(20, 6);
-    expect(est.hoverWh).toBe(0);
-    expect(est.flightMinutes).toBeCloseTo(6, 6);
-    expect(est.effectiveCruiseWatts).toBe(200);
+const PACK: BatteryProfile = {
+  id: "p", name: "Test pack", capacityWh: 100, cruisePowerW: 180, hoverPowerW: 360, reservePct: 20,
+};
+const HOME = { lat: 12.9716, lon: 77.5946 };
+const north = (m: number) => ({ lat: HOME.lat + m / 111_195, lon: HOME.lon });
+
+describe("estimatePlanEnergy", () => {
+  // TAKEOFF to 30 m (12 s climb), a 1 km leg at 10 m/s with a 60 s hold at its
+  // start, then RTL: the hover time is the climb, the hold, the RTL loiter and
+  // the descent; the rest is cruise.
+  const mission: Waypoint[] = [
+    { id: "t", ...HOME, alt: 30, command: "TAKEOFF" },
+    { id: "a", ...north(10), alt: 30, holdTime: 60 },
+    { id: "b", ...north(1010), alt: 30 },
+    { id: "r", ...north(1010), alt: 0, command: "RTL" },
+  ];
+
+  it("takes its time from the flight plan, hover-class time at hover power", () => {
+    const plan = computeFlightPlan(mission, 10, { home: HOME });
+    const est = estimatePlanEnergy(plan, mission, PACK)!;
+    expect(est.hoverSeconds + est.cruiseSeconds).toBeCloseTo(plan.totalDuration, 6);
+    expect(est.hoverSeconds).toBeCloseTo(plan.hoverDuration, 6);
+    expect(est.hoverSeconds).toBeGreaterThanOrEqual(60 + 12);
+    expect(est.totalWh).toBeCloseTo((est.hoverSeconds * 360 + est.cruiseSeconds * 180) / 3600, 6);
+    expect(est.flightMinutes).toBeCloseTo(plan.totalDuration / 60, 6);
+    expect(est.usablePerPackWh).toBeCloseTo(80, 6);
+    expect(est.packs.length).toBe(1);
   });
 
-  it("adds hover energy and hover time", () => {
-    // 60 s hover at 300 W = 5 Wh on top of the 20 Wh cruise.
-    const est = estimateEnergyWh({
-      distanceM: 3600,
-      cruiseSpeedMps: 10,
-      hoverWatts: 300,
-      cruiseWatts: 200,
-      hoverSeconds: 60,
-    });
-    expect(est.hoverWh).toBeCloseTo(5, 6);
-    expect(est.totalWh).toBeCloseTo(25, 6);
-    expect(est.flightMinutes).toBeCloseTo(7, 6);
+  it("raises cruise power for wind and cuts capacity for cold", () => {
+    const plan = computeFlightPlan(mission, 10, { home: HOME });
+    const still = estimatePlanEnergy(plan, mission, PACK)!;
+    const windy = estimatePlanEnergy(plan, mission, PACK, { windMps: 5 })!;
+    const cold = estimatePlanEnergy(plan, mission, PACK, { tempC: 5 })!;
+    expect(windy.cruiseWh).toBeCloseTo(still.cruiseWh * 1.15, 6);
+    expect(windy.hoverWh).toBeCloseTo(still.hoverWh, 6);
+    expect(cold.usablePerPackWh).toBeCloseTo(80 * 0.8, 6);
   });
 
-  it("raises cruise energy for a headwind", () => {
-    const still = estimateEnergyWh({
-      distanceM: 3600,
-      cruiseSpeedMps: 10,
-      hoverWatts: 300,
-      cruiseWatts: 200,
-    });
-    const headwind = estimateEnergyWh({
-      distanceM: 3600,
-      cruiseSpeedMps: 10,
-      hoverWatts: 300,
-      cruiseWatts: 200,
-      windMps: 5,
-      headwind: true,
-    });
-    // 3% per m/s * 5 m/s = +15% cruise power.
-    expect(headwind.effectiveCruiseWatts).toBeCloseTo(230, 6);
-    expect(headwind.totalWh).toBeGreaterThan(still.totalWh);
-    expect(headwind.cruiseWh).toBeCloseTo(23, 6);
-  });
-
-  it("yields zero cruise energy when the speed is non-positive", () => {
-    const est = estimateEnergyWh({
-      distanceM: 3600,
-      cruiseSpeedMps: 0,
-      hoverWatts: 300,
-      cruiseWatts: 200,
-      hoverSeconds: 120,
-    });
-    expect(est.cruiseSeconds).toBe(0);
-    expect(est.cruiseWh).toBe(0);
-    // Only the hover contribution remains: 120 s at 300 W = 10 Wh.
-    expect(est.totalWh).toBeCloseTo(10, 6);
-    expect(est.flightMinutes).toBeCloseTo(2, 6);
+  it("is null for a plan with no flight", () => {
+    const plan = computeFlightPlan([{ id: "a", ...HOME, alt: 0 }], 10, { home: HOME });
+    expect(estimatePlanEnergy(plan, [], PACK)).toBeNull();
   });
 });
 
-describe("segmentByBattery", () => {
-  it("splits energy across packs holding back the reserve", () => {
-    // 100 Wh pack, 20% reserve -> 80 Wh usable each. 200 Wh needs 3 packs.
-    const seg = segmentByBattery(200, 100, 0.2);
-    expect(seg.usablePerBatteryWh).toBeCloseTo(80, 6);
-    expect(seg.batteriesNeeded).toBe(3);
-    expect(seg.swaps).toBe(2);
-    expect(seg.segments).toHaveLength(3);
-    expect(seg.segments[0]).toBeCloseTo(80, 6);
-    expect(seg.segments[1]).toBeCloseTo(80, 6);
-    expect(seg.segments[2]).toBeCloseTo(40, 6);
-    // Segments sum back to the total demand.
-    const sum = seg.segments.reduce((a, b) => a + b, 0);
-    expect(sum).toBeCloseTo(200, 6);
-  });
-
-  it("needs a single pack and no swaps when demand fits the usable capacity", () => {
-    const seg = segmentByBattery(80, 100, 0.2);
-    expect(seg.batteriesNeeded).toBe(1);
-    expect(seg.swaps).toBe(0);
-    expect(seg.segments).toEqual([80]);
-  });
-
-  it("uses the default 20% reserve when none is given", () => {
-    const seg = segmentByBattery(80, 100);
-    expect(seg.usablePerBatteryWh).toBeCloseTo(80, 6);
-    expect(seg.batteriesNeeded).toBe(1);
-  });
-
-  it("needs more packs as the reserve grows", () => {
-    const low = segmentByBattery(200, 100, 0.2);
-    const high = segmentByBattery(200, 100, 0.5);
-    expect(high.batteriesNeeded).toBeGreaterThan(low.batteriesNeeded);
-    expect(high.usablePerBatteryWh).toBeCloseTo(50, 6);
-    expect(high.batteriesNeeded).toBe(4);
-  });
-
-  it("returns no packs for zero energy demand", () => {
-    const seg = segmentByBattery(0, 100, 0.2);
-    expect(seg.batteriesNeeded).toBe(0);
-    expect(seg.swaps).toBe(0);
-    expect(seg.segments).toEqual([]);
-  });
-
-  it("signals infeasibility with a zero-capacity pack", () => {
-    const seg = segmentByBattery(200, 0, 0.2);
-    expect(Number.isFinite(seg.batteriesNeeded)).toBe(false);
-    expect(seg.usablePerBatteryWh).toBe(0);
-    expect(seg.segments).toEqual([]);
+describe("deratedPack", () => {
+  it("leaves the pack unchanged without a forecast", () => {
+    expect(deratedPack(PACK, { windMps: null, tempC: null })).toEqual(PACK);
   });
 });
 

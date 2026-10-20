@@ -2850,7 +2850,7 @@
     "rtl": {
       "returnAltitudeFromVehicle": "RTL terrain checks use the vehicle's configured return altitude of {alt} m above home.",
       "returnAltitudeUnknown": "The vehicle's RTL return altitude has not been read, so return-leg terrain clearance is not checked. Connect the vehicle to check it.",
-      "landStartNeedsAutoland": "The FC has RTL_AUTOLAND = 0, so it will refuse to arm with a DO_LAND_START in the mission. Set RTL_AUTOLAND to 1 or 2 to land through it on RTL, or 3 to use it for go-around only."
+      "returnAltitudeCappedByFence": "RTL ಭೂಪ್ರದೇಶ ಪರಿಶೀಲನೆಗಳು ಹೋಮ್‌ನಿಂದ {alt} m ಹಿಂತಿರುಗುವ ಎತ್ತರವನ್ನು ಬಳಸುತ್ತವೆ: ವಾಹನದ {configured} m, ಎತ್ತರದ ಬೇಲಿಯಿಂದ ಮಿತಿಗೊಳಿಸಲಾಗಿದೆ."
     },
     "none": "None",
     "waypoints": "Waypoints",
@@ -3108,18 +3108,16 @@
         "payloadSecure": "ಪೇಲೋಡ್ ಅಳವಡಿಸಿ ಭದ್ರಪಡಿಸಲಾಗಿದೆ"
       }
     },
-    "itemCount": {
-      "advisory": "{limit} ರಲ್ಲಿ {count} ಕಾರ್ಯಾಚರಣೆ ಐಟಂಗಳು",
-      "warnNearLimit": "ಕಾರ್ಯಾಚರಣೆಯು {firmware} ಐಟಂ ಮಿತಿಗೆ ಹತ್ತಿರವಿದೆ ({count}/{limit})",
-      "warnOverLimit": "ಕಾರ್ಯಾಚರಣೆಯು {firmware} ಐಟಂ ಮಿತಿಯನ್ನು ಮೀರಿದೆ ({count}/{limit}) — ಅಪ್‌ಲೋಡ್ ಕತ್ತರಿಸಲ್ಪಡಬಹುದು"
-    },
     "energy": {
       "title": "ಶಕ್ತಿ ಅಂದಾಜು",
       "required": "ಅಗತ್ಯ ಶಕ್ತಿ",
       "flightTime": "ಅಂದಾಜು ಹಾರಾಟ ಸಮಯ",
       "swaps": "ಬ್ಯಾಟರಿ ಬದಲಾವಣೆಗಳು",
       "estimate": "ಅಂದಾಜು",
-      "note": "ಡೀಫಾಲ್ಟ್ ವಿದ್ಯುತ್ ಬಳಕೆ ಮತ್ತು ನಾಮಮಾತ್ರ ಪ್ಯಾಕ್‌ನಿಂದ ಸ್ಥೂಲ ಅಂದಾಜು. ನಿಮ್ಮದೇ ವಿದ್ಯುತ್ ರೇಖೆಯೊಂದಿಗೆ ಪರಿಶೀಲಿಸಿ."
+      "note": "ಡೀಫಾಲ್ಟ್ ವಿದ್ಯುತ್ ಬಳಕೆ ಮತ್ತು ನಾಮಮಾತ್ರ ಪ್ಯಾಕ್‌ನಿಂದ ಸ್ಥೂಲ ಅಂದಾಜು. ನಿಮ್ಮದೇ ವಿದ್ಯುತ್ ರೇಖೆಯೊಂದಿಗೆ ಪರಿಶೀಲಿಸಿ.",
+      "packRange": "ಬ್ಯಾಟರಿ {n}: WP {from}–{to}",
+      "profileNote": "{pack} ಪ್ರೊಫೈಲ್ ({capacity} Wh, {reserve} % ಮೀಸಲು) ಮತ್ತು ಯೋಜನೆಯ ಹಾರಾಟ ಸಮಯದಿಂದ ಅಂದಾಜು.",
+      "forecastNote": "ಗಾಳಿ ಮತ್ತು ತಾಪಮಾನ ಸ್ಥಳದ ಮುನ್ಸೂಚನೆಯಿಂದ."
     },
     "validation": {
       "advisories": "ಸಲಹೆಗಳು"
@@ -3611,10 +3609,12 @@
         "distanceTitle": "Total distance",
         "eta": "~{minutes} min",
         "etaTitle": "Estimated flight time",
-        "maxAlt": "{value} max",
-        "maxAltTitle": "Highest waypoint altitude",
         "avgSpeed": "{value} avg",
-        "avgSpeedTitle": "Mean speed over the route"
+        "avgSpeedTitle": "Mean speed over the route",
+        "etaOpen": "~{minutes}+ ನಿಮಿಷ",
+        "etaOpenTitle": "ಅಮಿತ ಲಾಯ್ಟರ್‌ನಲ್ಲಿ ಮುಗಿಯುತ್ತದೆ",
+        "maxAboveHome": "ಹೋಮ್‌ನಿಂದ ಗರಿಷ್ಠ {value}",
+        "maxAboveHomeTitle": "ಹಾರಾಟದಲ್ಲಿ ಹೋಮ್‌ನಿಂದ ಅತಿ ಎತ್ತರದ ಬಿಂದು"
       },
       "issueBadge": "{errors} errors, {warnings} warnings",
       "checklistBadge": "{checked} of {total} checked",

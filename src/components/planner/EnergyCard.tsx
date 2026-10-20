@@ -1,13 +1,15 @@
 /**
  * @module EnergyCard
- * @description Compact planner review card estimating a mission's energy budget:
- * total watt-hours, flight time, and how many mid-mission battery swaps the plan
- * implies. Distance comes from the real waypoint path (haversine sum); power and
- * pack capacity are first-order defaults documented below, so the card labels
- * itself an estimate and no more precision is implied than the inputs justify.
+ * @description Planner review card estimating a mission's energy budget from
+ * the same flight plan the dock statistics and the simulation use: hover-class
+ * time (holds, loiters, climbs and descents) at the pack's hover power, the
+ * rest at its cruise power, derated for the site forecast's wind and
+ * temperature when the Site tab has one. The plan is split across packs of the
+ * selected battery profile, each ending where the next waypoint would leave
+ * too little charge to fly home with the reserve intact.
  *
- * When the path has no length yet (fewer than two waypoints) every figure shows
- * an honest em-dash rather than a fabricated number.
+ * With no flight yet every figure shows an honest em-dash rather than a
+ * fabricated number.
  * @license GPL-3.0-only
  */
 "use client";
@@ -15,27 +17,21 @@
 import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { Zap, Clock, BatteryCharging } from "lucide-react";
-import { totalPathDistance } from "@/lib/telemetry-utils";
-import { estimateEnergyWh, segmentByBattery } from "@/lib/energy-model";
-
-/**
- * First-order planning defaults for a ~2 kg class multirotor carrying the ADOS
- * companion stack. These are deliberate stand-ins for a measured power curve,
- * not calibrated telemetry; the card is labelled an estimate accordingly.
- */
-const DEFAULT_CRUISE_MPS = 8; // typical small-multirotor forward cruise
-const HOVER_WATTS = 220; // hover-in-place draw estimate
-const CRUISE_WATTS = 180; // forward-cruise draw estimate
-const BATTERY_WH = 185; // rated pack energy estimate (6S Li-ion class)
-const RESERVE_FRACTION = 0.2; // landing reserve held back per pack
+import type { Waypoint } from "@/lib/types";
+import { computeFlightPlan } from "@/lib/flight-plan";
+import { estimatePlanEnergy } from "@/lib/energy-model";
+import { useFlightPlanOptions } from "@/hooks/use-rtl-return-context";
+import { useSettingsStore } from "@/stores/settings-store";
+import { DEFAULT_BATTERY_PROFILE } from "@/stores/settings/planning-slice";
+import { useSiteWeatherStore } from "@/stores/site-weather-store";
 
 const PLACEHOLDER = "—";
 
 interface EnergyCardProps {
-  /** Ordered mission waypoints; only lat/lon are read for the path length. */
-  waypoints: { lat: number; lon: number }[];
-  /** Cruise speed in m/s; falls back to a default when non-positive. */
-  cruiseSpeedMps?: number;
+  /** The planner's waypoints. */
+  waypoints: Waypoint[];
+  /** Mission default speed, m/s. */
+  defaultSpeed: number;
 }
 
 /** "42m" under an hour, "1h 12m" at or above it. */
@@ -45,45 +41,41 @@ function fmtMinutes(minutes: number): string {
   return `${Math.floor(total / 60)}h ${total % 60}m`;
 }
 
-export function EnergyCard({ waypoints, cruiseSpeedMps }: EnergyCardProps) {
+export function EnergyCard({ waypoints, defaultSpeed }: EnergyCardProps) {
   const t = useTranslations("planner.energy");
-  const cruise =
-    cruiseSpeedMps && cruiseSpeedMps > 0 ? cruiseSpeedMps : DEFAULT_CRUISE_MPS;
+  const planOptions = useFlightPlanOptions();
+  const packs = useSettingsStore((s) => s.batteryProfiles);
+  const selectedId = useSettingsStore((s) => s.selectedBatteryProfileId);
+  const forecast = useSiteWeatherStore((s) => s.report);
+  const pack = packs.find((p) => p.id === selectedId) ?? DEFAULT_BATTERY_PROFILE;
+  const windMps = forecast?.windSpeedMps ?? null;
+  const tempC = forecast?.temperatureC ?? null;
 
   const est = useMemo(() => {
-    const distanceM = totalPathDistance(waypoints);
-    if (distanceM <= 0) return null;
-    const energy = estimateEnergyWh({
-      distanceM,
-      cruiseSpeedMps: cruise,
-      hoverWatts: HOVER_WATTS,
-      cruiseWatts: CRUISE_WATTS,
-    });
-    const batt = segmentByBattery(energy.totalWh, BATTERY_WH, RESERVE_FRACTION);
-    return { energy, batt };
-  }, [waypoints, cruise]);
+    const plan = computeFlightPlan(waypoints, defaultSpeed, planOptions);
+    const energy = estimatePlanEnergy(plan, waypoints, pack, { windMps, tempC });
+    return energy ? { plan, energy } : null;
+  }, [waypoints, defaultSpeed, planOptions, pack, windMps, tempC]);
 
-  const swapsValue =
-    est && Number.isFinite(est.batt.swaps) ? String(est.batt.swaps) : PLACEHOLDER;
-
+  const openEnded = est?.plan.openEnded ?? false;
   const rows: { key: string; label: string; icon: typeof Zap; value: string }[] = [
     {
       key: "energy",
       label: t("required"),
       icon: Zap,
-      value: est ? `${Math.round(est.energy.totalWh)} Wh` : PLACEHOLDER,
+      value: est ? `${Math.round(est.energy.totalWh)}${openEnded ? "+" : ""} Wh` : PLACEHOLDER,
     },
     {
       key: "time",
       label: t("flightTime"),
       icon: Clock,
-      value: est ? fmtMinutes(est.energy.flightMinutes) : PLACEHOLDER,
+      value: est ? `${fmtMinutes(est.energy.flightMinutes)}${openEnded ? "+" : ""}` : PLACEHOLDER,
     },
     {
       key: "swaps",
       label: t("swaps"),
       icon: BatteryCharging,
-      value: swapsValue,
+      value: est ? String(Math.max(0, est.energy.packs.length - 1)) : PLACEHOLDER,
     },
   ];
 
@@ -96,15 +88,29 @@ export function EnergyCard({ waypoints, cruiseSpeedMps }: EnergyCardProps) {
             <div key={r.key} className="flex items-center gap-2">
               <Icon className="w-3.5 h-3.5 text-text-secondary shrink-0" />
               <span className="text-text-secondary">{r.label}</span>
-              <span className="ml-auto font-mono text-text-primary tabular-nums">
-                {r.value}
-              </span>
+              <span className="ml-auto font-mono text-text-primary tabular-nums">{r.value}</span>
             </div>
           );
         })}
       </div>
 
-      <p className="mt-2 text-[11px] leading-snug text-text-tertiary">{t("note")}</p>
+      {est && est.energy.packs.length > 1 && (
+        <ul className="mt-2 flex flex-col gap-0.5">
+          {est.energy.packs.map((p, i) => (
+            <li key={`${p.fromIndex}-${p.toIndex}-${i}`} className="flex items-center gap-2 text-text-secondary">
+              <span>{t("packRange", { n: i + 1, from: p.fromIndex + 1, to: p.toIndex + 1 })}</span>
+              <span className="ml-auto font-mono tabular-nums text-text-primary">
+                {Math.round(p.energyWh)} Wh · {fmtMinutes(p.durationS / 60)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <p className="mt-2 text-[11px] leading-snug text-text-tertiary">
+        {t("profileNote", { pack: pack.name, capacity: Math.round(pack.capacityWh), reserve: Math.round(pack.reservePct) })}
+        {windMps !== null || tempC !== null ? ` ${t("forecastNote")}` : ""}
+      </p>
     </div>
   );
 }

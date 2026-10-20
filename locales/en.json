@@ -3126,7 +3126,7 @@
     "rtl": {
       "returnAltitudeFromVehicle": "RTL terrain checks use the vehicle's configured return altitude of {alt} m above home.",
       "returnAltitudeUnknown": "The vehicle's RTL return altitude has not been read, so return-leg terrain clearance is not checked. Connect the vehicle to check it.",
-      "landStartNeedsAutoland": "The FC has RTL_AUTOLAND = 0, so it will refuse to arm with a DO_LAND_START in the mission. Set RTL_AUTOLAND to 1 or 2 to land through it on RTL, or 3 to use it for go-around only."
+      "returnAltitudeCappedByFence": "RTL terrain checks use a return altitude of {alt} m above home: the vehicle's {configured} m, capped by the altitude fence."
     },
     "none": "None",
     "waypoints": "Waypoints",
@@ -3377,10 +3377,12 @@
         "distanceTitle": "Total distance",
         "eta": "~{minutes} min",
         "etaTitle": "Estimated flight time",
-        "maxAlt": "{value} max",
-        "maxAltTitle": "Highest waypoint altitude",
         "avgSpeed": "{value} avg",
-        "avgSpeedTitle": "Mean speed over the route"
+        "avgSpeedTitle": "Mean speed over the route",
+        "etaOpen": "~{minutes}+ min",
+        "etaOpenTitle": "Ends in an unlimited loiter",
+        "maxAboveHome": "{value} max above home",
+        "maxAboveHomeTitle": "Highest point above home along the flight"
       },
       "issueBadge": "{errors} errors, {warnings} warnings",
       "checklistBadge": "{checked} of {total} checked",
@@ -3416,18 +3418,16 @@
         "payloadSecure": "Payload mounted and secure"
       }
     },
-    "itemCount": {
-      "advisory": "{count} of {limit} mission items",
-      "warnNearLimit": "Mission is near the {firmware} item limit ({count}/{limit})",
-      "warnOverLimit": "Mission exceeds the {firmware} item limit ({count}/{limit}) — upload may be truncated"
-    },
     "energy": {
       "title": "Energy estimate",
       "required": "Energy required",
       "flightTime": "Est. flight time",
       "swaps": "Battery swaps",
       "estimate": "estimate",
-      "note": "Rough figure from default power draw and a nominal pack. Verify against your own power curve."
+      "note": "Rough figure from default power draw and a nominal pack. Verify against your own power curve.",
+      "packRange": "Pack {n}: WP {from}–{to}",
+      "profileNote": "Estimate from the {pack} profile ({capacity} Wh, {reserve} % reserve) and the plan's flight time.",
+      "forecastNote": "Wind and temperature from the site forecast."
     },
     "validation": {
       "advisories": "Advisories"

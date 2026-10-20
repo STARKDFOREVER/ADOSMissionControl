@@ -2850,7 +2850,7 @@
     "rtl": {
       "returnAltitudeFromVehicle": "RTL terrain checks use the vehicle's configured return altitude of {alt} m above home.",
       "returnAltitudeUnknown": "The vehicle's RTL return altitude has not been read, so return-leg terrain clearance is not checked. Connect the vehicle to check it.",
-      "landStartNeedsAutoland": "The FC has RTL_AUTOLAND = 0, so it will refuse to arm with a DO_LAND_START in the mission. Set RTL_AUTOLAND to 1 or 2 to land through it on RTL, or 3 to use it for go-around only."
+      "returnAltitudeCappedByFence": "RTL భూభాగ తనిఖీలు హోమ్ నుండి {alt} m తిరుగు ఎత్తును వాడతాయి: వాహనం యొక్క {configured} m, ఎత్తు కంచెతో పరిమితం."
     },
     "none": "ఏదీ లేదు",
     "waypoints": "Waypoint లు",
@@ -3108,18 +3108,16 @@
         "payloadSecure": "పేలోడ్ అమర్చి, భద్రంగా ఉంది"
       }
     },
-    "itemCount": {
-      "advisory": "{limit} మిషన్ అంశాలలో {count}",
-      "warnNearLimit": "మిషన్ {firmware} అంశ పరిమితికి దగ్గరగా ఉంది ({count}/{limit})",
-      "warnOverLimit": "మిషన్ {firmware} అంశ పరిమితిని మించింది ({count}/{limit}) — అప్‌లోడ్ కత్తిరించబడవచ్చు"
-    },
     "energy": {
       "title": "శక్తి అంచనా",
       "required": "అవసరమైన శక్తి",
       "flightTime": "అంచనా విమాన సమయం",
       "swaps": "బ్యాటరీ మార్పులు",
       "estimate": "అంచనా",
-      "note": "డిఫాల్ట్ పవర్ డ్రా మరియు నామమాత్ర ప్యాక్ ఆధారంగా స్థూల అంచనా. మీ స్వంత పవర్ కర్వ్‌తో సరిచూసుకోండి."
+      "note": "డిఫాల్ట్ పవర్ డ్రా మరియు నామమాత్ర ప్యాక్ ఆధారంగా స్థూల అంచనా. మీ స్వంత పవర్ కర్వ్‌తో సరిచూసుకోండి.",
+      "packRange": "బ్యాటరీ {n}: WP {from}–{to}",
+      "profileNote": "{pack} ప్రొఫైల్ ({capacity} Wh, {reserve} % రిజర్వ్) మరియు ప్లాన్ ఎగిరే సమయం నుండి అంచనా.",
+      "forecastNote": "గాలి మరియు ఉష్ణోగ్రత సైట్ అంచనా నుండి."
     },
     "validation": {
       "advisories": "సూచనలు"
@@ -3611,10 +3609,12 @@
         "distanceTitle": "Total distance",
         "eta": "~{minutes} min",
         "etaTitle": "Estimated flight time",
-        "maxAlt": "{value} max",
-        "maxAltTitle": "Highest waypoint altitude",
         "avgSpeed": "{value} avg",
-        "avgSpeedTitle": "Mean speed over the route"
+        "avgSpeedTitle": "Mean speed over the route",
+        "etaOpen": "~{minutes}+ నిమి",
+        "etaOpenTitle": "అపరిమిత లాయిటర్‌తో ముగుస్తుంది",
+        "maxAboveHome": "హోమ్ నుండి గరిష్ఠం {value}",
+        "maxAboveHomeTitle": "ఎగురుతున్నప్పుడు హోమ్ నుండి అత్యంత ఎత్తైన బిందువు"
       },
       "issueBadge": "{errors} errors, {warnings} warnings",
       "checklistBadge": "{checked} of {total} checked",

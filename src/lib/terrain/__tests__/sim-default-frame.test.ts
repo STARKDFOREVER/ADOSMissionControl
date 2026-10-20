@@ -114,4 +114,16 @@ describe("resolveAGLToAbsolute default frame", () => {
       /no height/,
     );
   });
+
+  it("uses the planner's own ground under a waypoint and at home instead of the 3D terrain", async () => {
+    // The 2D source reads 280 m under the ridge and 90 m at home, where the 3D
+    // terrain says 300 m and 100 m: the path follows the ground the 2D checks use.
+    const sampled: Waypoint[] = [MISSION[0], { ...MISSION[1], groundElevation: 280 }];
+    const terrain = await resolveAGLToAbsolute(sampled, provider, "terrain", LAUNCH);
+    expect(heightOf(terrain.positions[1])).toBeCloseTo(mslToEllipsoidal(280, 12.0009, 77.0) + 50, 6);
+    expect(terrain.terrainHeights[1]).toBeCloseTo(mslToEllipsoidal(280, 12.0009, 77.0), 6);
+    const relative = await resolveAGLToAbsolute(MISSION, provider, "relative", { ...LAUNCH, groundAmsl: 90 });
+    expect(relative.homeTerrainHeight).toBeCloseTo(mslToEllipsoidal(90, 12.0, 77.0), 6);
+    expect(heightOf(relative.positions[1])).toBeCloseTo(mslToEllipsoidal(90, 12.0, 77.0) + 50, 6);
+  });
 });

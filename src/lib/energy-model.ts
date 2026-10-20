@@ -1,8 +1,9 @@
 /**
  * @module energy-model
  * @description Simple, transparent flight-energy estimation for mission planning.
- * Estimates watt-hours and flight time from distance and power draw, splits a
- * mission across battery packs with a safety reserve, and derates power for wind
+ * Estimates watt-hours from the flight plan's own timing (hover-class time at
+ * hover power, the rest at cruise power), splits the plan across battery packs
+ * with a safety reserve (see `energy/battery-split`), and derates power for wind
  * and battery capacity for temperature.
  *
  * The formulas are deliberately first-order approximations with documented
@@ -10,6 +11,10 @@
  * curve, so no more precision is implied than the inputs justify.
  * @license GPL-3.0-only
  */
+
+import type { FlightPlan } from "@/lib/simulation-utils";
+import type { Waypoint } from "@/lib/types";
+import { splitByBattery, type BatteryProfile, type BatterySplit } from "@/lib/energy/battery-split";
 
 /** Watt-hours per joule-hour helper: seconds -> hours divisor. */
 const SECONDS_PER_HOUR = 3600;
@@ -83,148 +88,81 @@ export function tempDerate(capacityWh: number, tempC: number): number {
   return capacityWh * clamp(factor, TEMP_MIN_FACTOR, 1);
 }
 
-/** Inputs to {@link estimateEnergyWh}. */
-export interface EnergyEstimateParams {
-  /** Path distance to fly, in meters. */
-  distanceM: number;
-  /** Forward cruise speed, in m/s. Non-positive means no forward progress. */
-  cruiseSpeedMps: number;
-  /** Power drawn while hovering, in watts. */
-  hoverWatts: number;
-  /** Power drawn while cruising forward, in watts. */
-  cruiseWatts: number;
-  /** Seconds spent hovering (waypoint holds, takeoff/landing loiter). Default 0. */
-  hoverSeconds?: number;
-  /** Ambient wind speed, in m/s. When > 0, cruise power is derated. Default 0. */
-  windMps?: number;
-  /** True if the wind is a net headwind, false for a tailwind. Default true. */
-  headwind?: boolean;
-}
-
-/** Result of {@link estimateEnergyWh}. */
-export interface EnergyEstimate {
-  /** Total energy required for the flight, in watt-hours. */
-  totalWh: number;
-  /** Total flight time (cruise + hover), in minutes. */
-  flightMinutes: number;
-  /** Energy attributable to forward cruise, in watt-hours. */
-  cruiseWh: number;
-  /** Energy attributable to hovering, in watt-hours. */
-  hoverWh: number;
-  /** Cruise power after the wind derate, in watts. */
-  effectiveCruiseWatts: number;
-  /** Seconds spent cruising forward. */
-  cruiseSeconds: number;
+/** Site conditions the estimate derates for; null or absent = not known. */
+export interface EnergyEnvironment {
+  /** Sustained surface wind, m/s. */
+  windMps?: number | null;
+  /** Air temperature, degrees Celsius. */
+  tempC?: number | null;
 }
 
 /**
- * Estimate the energy and flight time for a leg of known distance.
- *
- * Cruise energy is (effective cruise power) x (distance / speed); hover energy is
- * hover power x hover time. Wind, when supplied, derates only the cruise power
- * (where ground-vs-air speed matters); hover-in-place power is left as given.
- * A non-positive cruise speed yields zero cruise time (the leg cannot be flown
- * forward), so the caller should validate speed separately.
+ * The pack as it flies in `env`: cruise power raised for the wind (taken as a
+ * headwind, the conservative case for a route flown in every direction) and
+ * capacity lowered for the temperature.
  */
-export function estimateEnergyWh(params: EnergyEstimateParams): EnergyEstimate {
-  const {
-    distanceM,
-    cruiseSpeedMps,
-    hoverWatts,
-    cruiseWatts,
-    hoverSeconds = 0,
-    windMps = 0,
-    headwind = true,
-  } = params;
-
-  const effectiveCruiseWatts =
-    windMps > 0 ? windDerate(cruiseWatts, windMps, headwind) : cruiseWatts;
-
-  const cruiseSeconds =
-    cruiseSpeedMps > 0 && distanceM > 0 ? distanceM / cruiseSpeedMps : 0;
-  const hoverSecs = Math.max(0, hoverSeconds);
-
-  const cruiseWh = (effectiveCruiseWatts * cruiseSeconds) / SECONDS_PER_HOUR;
-  const hoverWh = (hoverWatts * hoverSecs) / SECONDS_PER_HOUR;
-  const totalWh = cruiseWh + hoverWh;
-
+export function deratedPack(pack: BatteryProfile, env: EnergyEnvironment = {}): BatteryProfile {
+  const wind = env.windMps ?? 0;
+  const temp = env.tempC;
   return {
-    totalWh,
-    flightMinutes: (cruiseSeconds + hoverSecs) / 60,
-    cruiseWh,
-    hoverWh,
-    effectiveCruiseWatts,
-    cruiseSeconds,
+    ...pack,
+    cruisePowerW: wind > 0 ? windDerate(pack.cruisePowerW, wind, true) : pack.cruisePowerW,
+    capacityWh: temp !== null && temp !== undefined && Number.isFinite(temp) ? tempDerate(pack.capacityWh, temp) : pack.capacityWh,
   };
-}
-
-/** Result of {@link segmentByBattery}. */
-export interface BatterySegmentation {
-  /** Full battery packs required. Infinity signals an infeasible pack/reserve. */
-  batteriesNeeded: number;
-  /** Mid-mission battery swaps (batteriesNeeded - 1, never below 0). */
-  swaps: number;
-  /** Watt-hours drawn from each battery, in order; the last entry is the remainder. */
-  segments: number[];
-  /** Usable watt-hours per battery once the reserve is held back. */
-  usablePerBatteryWh: number;
 }
 
 /** Reserve is clamped below this so at least some capacity is always usable. */
 const MAX_RESERVE_FRACTION = 0.99;
 
+/** Result of {@link estimatePlanEnergy}. */
+export interface PlanEnergyEstimate {
+  /** Energy for the whole flight, watt-hours. */
+  totalWh: number;
+  /** Energy spent hovering, climbing or holding, watt-hours. */
+  hoverWh: number;
+  /** Energy spent in forward flight, watt-hours. */
+  cruiseWh: number;
+  /** Seconds at hover power. */
+  hoverSeconds: number;
+  /** Seconds at cruise power. */
+  cruiseSeconds: number;
+  /** Total flight time, minutes. */
+  flightMinutes: number;
+  /** Usable watt-hours per pack once the reserve is held back, after derating. */
+  usablePerPackWh: number;
+  /** Where each pack starts and ends; one entry per pack. */
+  packs: BatterySplit[];
+  /** The pack after the wind and temperature derates. */
+  pack: BatteryProfile;
+}
+
 /**
- * Split a mission's energy demand across battery packs, holding back a reserve.
- *
- * Each pack is treated as delivering (1 - reserve) of its rated capacity before a
- * swap. The number of packs is ceil(totalWh / usablePerBattery); swaps is one
- * fewer. The per-battery segments record the Wh drawn from each pack, the final
- * one being the remainder.
- *
- * @param totalWh Total flight energy required, in watt-hours.
- * @param batteryWh Rated capacity of one pack, in watt-hours.
- * @param reserveFraction Fraction of each pack kept in reserve. Default 0.2.
+ * Energy budget of a computed flight plan flown on `pack` in `env`. Hover-class
+ * time (holds, loiters, vertical climbs and descents) draws hover power and
+ * the rest cruise power. Null when the plan has no flight.
  */
-export function segmentByBattery(
-  totalWh: number,
-  batteryWh: number,
-  reserveFraction = 0.2
-): BatterySegmentation {
-  const reserve = clamp(reserveFraction, 0, MAX_RESERVE_FRACTION);
-  const usable = batteryWh * (1 - reserve);
-
-  if (totalWh <= 0) {
-    return {
-      batteriesNeeded: 0,
-      swaps: 0,
-      segments: [],
-      usablePerBatteryWh: Math.max(0, usable),
-    };
-  }
-
-  if (usable <= 0) {
-    // No pack under this reserve can hold any energy: the mission cannot be flown.
-    return {
-      batteriesNeeded: Infinity,
-      swaps: Infinity,
-      segments: [],
-      usablePerBatteryWh: 0,
-    };
-  }
-
-  const batteriesNeeded = Math.ceil(totalWh / usable);
-  const segments: number[] = [];
-  let remaining = totalWh;
-  for (let i = 0; i < batteriesNeeded; i++) {
-    const draw = Math.min(usable, remaining);
-    segments.push(draw);
-    remaining -= draw;
-  }
-
+export function estimatePlanEnergy(
+  plan: FlightPlan,
+  waypoints: Waypoint[],
+  pack: BatteryProfile,
+  env: EnergyEnvironment = {},
+): PlanEnergyEstimate | null {
+  if (plan.segments.length === 0 || plan.totalDuration <= 0 || !plan.home) return null;
+  const flown = deratedPack(pack, env);
+  const hoverSeconds = Math.min(plan.hoverDuration, plan.totalDuration);
+  const cruiseSeconds = plan.totalDuration - hoverSeconds;
+  const hoverWh = (hoverSeconds * flown.hoverPowerW) / SECONDS_PER_HOUR;
+  const cruiseWh = (cruiseSeconds * flown.cruisePowerW) / SECONDS_PER_HOUR;
+  const reserve = clamp(flown.reservePct / 100, 0, MAX_RESERVE_FRACTION);
   return {
-    batteriesNeeded,
-    swaps: batteriesNeeded - 1,
-    segments,
-    usablePerBatteryWh: usable,
+    totalWh: hoverWh + cruiseWh,
+    hoverWh,
+    cruiseWh,
+    hoverSeconds,
+    cruiseSeconds,
+    flightMinutes: plan.totalDuration / 60,
+    usablePerPackWh: Math.max(0, flown.capacityWh * (1 - reserve)),
+    packs: splitByBattery(plan, waypoints, flown, plan.home),
+    pack: flown,
   };
 }

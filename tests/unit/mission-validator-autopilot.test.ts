@@ -308,3 +308,31 @@ describe('validateMission — ArduPilot rules', () => {
     expect(result.warnings.find((w) => w.code === 'LOITER_RADIUS_COARSE')?.message).toContain('stored in 10 m steps');
   });
 });
+
+describe('validateMission — ArduPlane DO_LAND_START', () => {
+  function landing(): Waypoint[] {
+    return [
+      wp({ lat: 12.97, lon: 77.59, alt: 30, command: 'TAKEOFF' }),
+      wp({ lat: 12.975, lon: 77.59, alt: 60 }),
+      wp({ lat: 12.98, lon: 77.59, alt: 0, command: 'DO_LAND_START' }),
+      wp({ lat: 12.975, lon: 77.595, alt: 30 }),
+      wp({ lat: 12.97, lon: 77.59, alt: 0, command: 'LAND' }),
+    ];
+  }
+
+  it('blocks the upload when the plane reports RTL_AUTOLAND = 0', () => {
+    const result = validateMission(landing(), { profile: ARDUPLANE, rtlAutoland: 0 });
+    const issue = result.errors.find((e) => e.code === 'LAND_START_NEEDS_AUTOLAND');
+    expect(issue?.severity).toBe('blocking');
+    expect(issue?.waypointIndex).toBe(2);
+    expect(result.valid).toBe(false);
+  });
+
+  it('stays quiet when RTL_AUTOLAND lands through the marker, is unknown, or the vehicle is a copter', () => {
+    const quiet = (options: ValidationOptions) =>
+      codes(validateMission(landing(), options).errors).includes('LAND_START_NEEDS_AUTOLAND');
+    expect(quiet({ profile: ARDUPLANE, rtlAutoland: 2 })).toBe(false);
+    expect(quiet({ profile: ARDUPLANE })).toBe(false);
+    expect(quiet({ profile: ARDUCOPTER, rtlAutoland: 0 })).toBe(false);
+  });
+});

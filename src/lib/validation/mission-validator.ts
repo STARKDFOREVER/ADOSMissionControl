@@ -125,6 +125,8 @@ export interface ValidationOptions {
   profile?: PlanVehicleProfile;
   /** The connected ArduPilot vehicle's TERRAIN_ENABLE; absent when unknown. */
   terrainEnabled?: boolean;
+  /** The connected ArduPlane's RTL_AUTOLAND; absent when unknown. */
+  rtlAutoland?: number;
   /** Radius of ArduPilot's home-centred circle fence (`FENCE_RADIUS`), metres. */
   homeCircleRadiusM?: number;
   /** Ground AMSL sampled along each flown leg, keyed `${fromId}>${toId}`. */
@@ -471,6 +473,7 @@ export function validateMission(
       resolved,
       profile,
       terrainEnabled: options?.terrainEnabled,
+      rtlAutoland: options?.rtlAutoland,
       defaultSpeed: options?.defaultSpeed,
       fenceItemCount: fenceItemCount(options?.geofence),
       rallyCount: options?.rally?.length ?? 0,

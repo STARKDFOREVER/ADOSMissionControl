@@ -2850,7 +2850,7 @@
     "rtl": {
       "returnAltitudeFromVehicle": "RTL terrain checks use the vehicle's configured return altitude of {alt} m above home.",
       "returnAltitudeUnknown": "The vehicle's RTL return altitude has not been read, so return-leg terrain clearance is not checked. Connect the vehicle to check it.",
-      "landStartNeedsAutoland": "The FC has RTL_AUTOLAND = 0, so it will refuse to arm with a DO_LAND_START in the mission. Set RTL_AUTOLAND to 1 or 2 to land through it on RTL, or 3 to use it for go-around only."
+      "returnAltitudeCappedByFence": "RTL भूप्रदेश तपासण्या होमपासून {alt} m परतीची उंची वापरतात: वाहनाचे {configured} m, उंची कुंपणाने मर्यादित."
     },
     "none": "काहीही नाही",
     "waypoints": "वेपॉइंट्स",
@@ -3108,18 +3108,16 @@
         "payloadSecure": "पेलोड बसवलेले व सुरक्षित"
       }
     },
-    "itemCount": {
-      "advisory": "{limit} पैकी {count} मोहीम घटक",
-      "warnNearLimit": "मोहीम {firmware} घटक मर्यादेजवळ आहे ({count}/{limit})",
-      "warnOverLimit": "मोहीम {firmware} घटक मर्यादा ओलांडते ({count}/{limit}) — अपलोड कापला जाऊ शकतो"
-    },
     "energy": {
       "title": "ऊर्जा अंदाज",
       "required": "आवश्यक ऊर्जा",
       "flightTime": "अंदाजे उड्डाण वेळ",
       "swaps": "बॅटरी बदल",
       "estimate": "अंदाज",
-      "note": "डीफॉल्ट पॉवर वापर आणि सामान्य पॅकवरून ढोबळ आकडा. तुमच्या स्वतःच्या पॉवर कर्व्हशी पडताळून पहा."
+      "note": "डीफॉल्ट पॉवर वापर आणि सामान्य पॅकवरून ढोबळ आकडा. तुमच्या स्वतःच्या पॉवर कर्व्हशी पडताळून पहा.",
+      "packRange": "बॅटरी {n}: WP {from}–{to}",
+      "profileNote": "{pack} प्रोफाइल ({capacity} Wh, {reserve} % राखीव) आणि योजनेच्या उड्डाण वेळेवरून अंदाज.",
+      "forecastNote": "वारा आणि तापमान साइटच्या अंदाजावरून."
     },
     "validation": {
       "advisories": "सूचना"
@@ -3611,10 +3609,12 @@
         "distanceTitle": "Total distance",
         "eta": "~{minutes} min",
         "etaTitle": "Estimated flight time",
-        "maxAlt": "{value} max",
-        "maxAltTitle": "Highest waypoint altitude",
         "avgSpeed": "{value} avg",
-        "avgSpeedTitle": "Mean speed over the route"
+        "avgSpeedTitle": "Mean speed over the route",
+        "etaOpen": "~{minutes}+ मिनिटे",
+        "etaOpenTitle": "अमर्यादित लॉयटरमध्ये संपते",
+        "maxAboveHome": "होमपासून कमाल {value}",
+        "maxAboveHomeTitle": "उड्डाणादरम्यान होमपासून सर्वात उंच बिंदू"
       },
       "issueBadge": "{errors} errors, {warnings} warnings",
       "checklistBadge": "{checked} of {total} checked",

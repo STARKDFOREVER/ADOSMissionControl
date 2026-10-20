@@ -673,6 +673,8 @@ export const MOCK_PARAMS: MockParam[] = [
   { name: "RTL_LOIT_TIME", value: 5000, type: 9 },
   { name: "RTL_SPEED", value: 0, type: 9 },
   { name: "RTL_CONE_SLOPE", value: 3, type: 9 },
+  { name: "RALLY_LIMIT_KM", value: 0.3, type: 9 },
+  { name: "RALLY_INCL_HOME", value: 1, type: 9 },
 
   // ── Serial Ports ─────────────────────────────────────
   { name: "SERIAL0_PROTOCOL", value: 2, type: 9 },   // MAVLink2
@@ -988,6 +990,10 @@ export const ARDUPLANE_MOCK_PARAMS: MockParam[] = [
   { name: "THR_FS_VALUE", value: 950, type: 9 },
   { name: "BATT_FS_LOW_ACT", value: 1, type: 9 }, // RTL
   { name: "BATT_FS_CRT_ACT", value: 2, type: 9 }, // Land
+  { name: "RTL_ALTITUDE", value: 100, type: 9 },  // metres (Plane 4.5+ name)
+  { name: "RTL_AUTOLAND", value: 0, type: 9 },
+  { name: "RALLY_LIMIT_KM", value: 5, type: 9 },
+  { name: "RALLY_INCL_HOME", value: 0, type: 9 },
 ];
 
 // QuadPlane VTOL: the ArduPlane base set plus the Q_* quadplane lift group.
@@ -1246,6 +1252,7 @@ export const PX4_MOCK_PARAMS: MockParam[] = [
   { name: "MPC_ACC_UP_MAX", value: 4, type: 9 },
   { name: "MPC_LAND_SPEED", value: 0.7, type: 9 },
   { name: "RTL_RETURN_ALT", value: 30, type: 9 },
+  { name: "RTL_TYPE", value: 0, type: 9 },
 
   // ── General ───────────────────────────────────────────
   { name: "COM_ARM_CHK_MODE", value: 1, type: 9 },

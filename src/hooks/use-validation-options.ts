@@ -19,7 +19,7 @@
  * Home is the plan's planned home with its ground elevation; with none the
  * validator falls back to the plan's launch point. The vehicle profile picks
  * the autopilot-specific rules. The hook also passes the vehicle's configured
- * RTL altitude and TERRAIN_ENABLE when connected, and the ground profile
+ * RTL altitude, TERRAIN_ENABLE and (ArduPlane) RTL_AUTOLAND when connected, and the ground profile
  * sampled along every flown leg.
  * @license GPL-3.0-only
  */
@@ -155,6 +155,28 @@ function useTerrainEnabled(): boolean | undefined {
   return read && read.protocol === protocol ? read.value : undefined;
 }
 
+/**
+ * The selected ArduPlane's RTL_AUTOLAND, kept with the link it was read from;
+ * `undefined` until read, or for any other vehicle.
+ */
+function useRtlAutoland(): number | undefined {
+  const protocol = useDroneManager(selectSelectedProtocol);
+  const firmware = protocol?.getVehicleInfo()?.firmwareType;
+  const [read, setRead] = useState<{ protocol: DroneProtocol; value: number } | null>(null);
+  useEffect(() => {
+    if (!protocol || firmware !== "ardupilot-plane") return;
+    let live = true;
+    protocol.getParameter("RTL_AUTOLAND").then(
+      (param) => {
+        if (live && Number.isFinite(param.value)) setRead({ protocol, value: param.value });
+      },
+      () => undefined,
+    );
+    return () => { live = false; };
+  }, [protocol, firmware]);
+  return read && read.protocol === protocol ? read.value : undefined;
+}
+
 export function useValidationOptions(): ValidationOptions {
   const enabled = useGeofenceStore((s) => s.enabled);
   const fenceType = useGeofenceStore((s) => s.fenceType);
@@ -178,6 +200,7 @@ export function useValidationOptions(): ValidationOptions {
   const profile = !ownProfile && mspTarget ? null : planProfile;
   const { rtlAltitude } = useRtlReturnContext();
   const terrainEnabled = useTerrainEnabled();
+  const rtlAutoland = useRtlAutoland();
   const legGroundProfiles = useLegGroundProfiles(waypoints);
 
   return useMemo(
@@ -200,12 +223,13 @@ export function useValidationOptions(): ValidationOptions {
       }),
       rtlAltitude,
       terrainEnabled,
+      rtlAutoland,
       legGroundProfiles,
     }),
     [
       enabled, fenceType, maxAltitude, minAltitude, polygonPoints, circleCenter, circleRadius, zones,
       rallyPoints, defaultFrame, defaultSpeed, homeCircleRadiusM, plannedHome, profile, rtlAltitude,
-      terrainEnabled, legGroundProfiles,
+      terrainEnabled, rtlAutoland, legGroundProfiles,
     ],
   );
 }

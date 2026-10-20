@@ -20,7 +20,8 @@ interface SimulationWaypointListProps {
   waypoints: Waypoint[];
   pos: InterpolatedPosition;
   elapsed: number;
-  cumulativeTimes: number[];
+  /** Seconds into the flight each waypoint is first reached; undefined when it is never flown to. */
+  arrivalTimes: Array<number | undefined>;
   playbackState: string;
   onSeekToWaypoint: (wpIndex: number) => void;
 }
@@ -29,7 +30,7 @@ export function SimulationWaypointList({
   waypoints,
   pos,
   elapsed,
-  cumulativeTimes,
+  arrivalTimes,
   playbackState,
   onSeekToWaypoint,
 }: SimulationWaypointListProps) {
@@ -88,13 +89,8 @@ export function SimulationWaypointList({
             const isUpcoming = i > pos.currentWaypointIndex;
 
             // Calculate ETA for upcoming waypoints
-            let eta: number | null = null;
-            if (isUpcoming && cumulativeTimes.length > 0) {
-              const segIdx = Math.min(i - 1, cumulativeTimes.length - 1);
-              if (segIdx >= 0) {
-                eta = Math.max(0, cumulativeTimes[segIdx] - elapsed);
-              }
-            }
+            const arrival = arrivalTimes[i];
+            const eta = isUpcoming && arrival !== undefined ? Math.max(0, arrival - elapsed) : null;
 
             return (
               <button

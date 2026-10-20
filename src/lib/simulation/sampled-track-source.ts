@@ -12,7 +12,8 @@
  */
 
 import type { Waypoint } from "@/lib/types";
-import { computeFlightPlan, interpolatePosition } from "@/lib/simulation-utils";
+import { computeFlightPlan } from "@/lib/flight-plan";
+import { interpolatePosition } from "@/lib/simulation-utils";
 
 /** A single position/attitude sample at one instant along a track. */
 export interface TrackSample {
@@ -64,9 +65,9 @@ export interface SampledTrackSource {
  * `speedMps` is the default cruise speed; per-waypoint `speed` and `holdTime`
  * overrides still apply exactly as in the underlying flight plan.
  *
- * `sampleAt` clamps to the first waypoint at or before t=0 and to the last
- * waypoint at or after `duration`, matching the viewer's clamped playback. It
- * returns `null` only when there are no waypoints.
+ * `sampleAt` clamps to the start of the flight (on the ground at the launch
+ * point) at or before t=0 and to its end at or after `duration`, matching the
+ * viewer's clamped playback. It returns `null` only when there are no waypoints.
  */
 export function makeKinematicTrackSource(
   waypoints: Waypoint[],

@@ -1,10 +1,11 @@
 /**
  * @module MissionAdvisories
  * @description Advisory checks that sit alongside hard mission validation:
- * airport-proximity rings, soft geofence-buffer approach, and FC mission
- * item-count headroom. Advisories never block an upload — they inform the
- * operator before a hard limit is reached. Each row that maps to a waypoint is
- * clickable to select it, matching the ValidationPanel issue rows.
+ * airport-proximity rings, soft geofence-buffer approach, and the RTL return
+ * leg's terrain clearance. Advisories never block an upload — they inform the
+ * operator before a hard limit is reached (blocking autopilot rules, the
+ * mission item count among them, live in the validator). Each row that maps
+ * to a waypoint is clickable to select it, matching the ValidationPanel issue rows.
  * @license GPL-3.0-only
  */
 "use client";
@@ -13,23 +14,16 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { AlertTriangle, XCircle, Info } from "lucide-react";
 import type { Waypoint } from "@/lib/types";
-import type { FirmwareType } from "@/lib/protocol/types/enums";
-import type { DroneProtocol } from "@/lib/protocol/types";
 import { useGeofenceStore } from "@/stores/geofence-store";
-import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { checkAirportProximity } from "@/lib/airspace/airspace-check";
 import {
   checkSoftBuffer,
   DEFAULT_SOFT_BUFFER_M,
   type SoftGeofence,
 } from "@/lib/validation/soft-geofence";
-import {
-  checkItemCount,
-  fcFamilyFromFirmware,
-} from "@/lib/validation/fc-item-count";
-import { checkRtlTerrainClearance } from "@/lib/terrain/rtl-advisory";
-import { isHomeNearPlan } from "@/lib/mission/plan-home";
+import { checkRtlTerrainClearance, effectiveReturnAltitude } from "@/lib/terrain/rtl-advisory";
 import { DEFAULT_MIN_TERRAIN_CLEARANCE } from "@/lib/terrain/terrain-clearance";
+import { getElevations } from "@/lib/terrain/terrain-provider";
 import { useRtlReturnContext } from "@/hooks/use-rtl-return-context";
 
 interface MissionAdvisoriesProps {
@@ -47,13 +41,19 @@ interface AdvisoryRowData {
   waypointIndex?: number;
 }
 
-/** Human-readable firmware family label for the item-count advisory copy. */
-const FIRMWARE_LABEL: Record<string, string> = {
-  ardupilot: "ArduPilot",
-  px4: "PX4",
-  betaflight: "Betaflight",
-  inav: "iNav",
-};
+/** Ground elevation (metres MSL) under each rally point, kept with the points it was sampled for. */
+function useRallyGround(rally: ReadonlyArray<{ lat: number; lon: number }>): Array<number | undefined> {
+  const [sampled, setSampled] = useState<{ rally: typeof rally; ground: Array<number | undefined> } | null>(null);
+  useEffect(() => {
+    if (rally.length === 0) return;
+    const controller = new AbortController();
+    void getElevations(rally.map((p) => ({ lat: p.lat, lon: p.lon })), controller.signal).then((ground) => {
+      if (!controller.signal.aborted) setSampled({ rally, ground: ground.map((g) => g ?? undefined) });
+    });
+    return () => controller.abort();
+  }, [rally]);
+  return sampled && sampled.rally === rally ? sampled.ground : [];
+}
 
 export function MissionAdvisories({
   waypoints,
@@ -67,36 +67,16 @@ export function MissionAdvisories({
   const circleCenter = useGeofenceStore((s) => s.circleCenter);
   const circleRadius = useGeofenceStore((s) => s.circleRadius);
 
-  const selectedProtocol = useDroneManager(selectSelectedProtocol);
-  const firmware: FirmwareType | undefined = selectedProtocol?.getVehicleInfo()
-    ?.firmwareType;
-
-  // The RTL return-leg datums from the connected vehicle: the telemetry home
-  // with the terrain under it, and the configured return altitude. Neither is
-  // ever assumed.
-  const { home: telemetryHome, rtlAltitude } = useRtlReturnContext();
-
-  // ArduPlane refuses to arm when the mission holds a DO_LAND_START while
-  // RTL_AUTOLAND is 0, so the connected plane's value is read whenever the
-  // plan has one. The reading is kept with the link it came from.
-  const landStartIndex = waypoints.findIndex((w) => w.command === "DO_LAND_START");
-  const [rtlAutoland, setRtlAutoland] = useState<{ protocol: DroneProtocol; value: number } | null>(null);
-  const needsAutoland = landStartIndex >= 0 && firmware === "ardupilot-plane";
-  useEffect(() => {
-    if (!needsAutoland) return;
-    const protocol = selectedProtocol;
-    if (!protocol) return;
-    let live = true;
-    protocol.getParameter("RTL_AUTOLAND").then(
-      (param) => { if (live) setRtlAutoland({ protocol, value: param.value }); },
-      () => {},
-    );
-    return () => { live = false; };
-  }, [needsAutoland, selectedProtocol]);
+  // The RTL return leg: the planned home (else the launch point) with the
+  // terrain under it, the vehicle's configured return altitude capped by an
+  // altitude fence, and the rally points the autopilot may return to. The
+  // return altitude is never assumed.
+  const { home, rtlAltitude, returnCeilingM, rally, rules } = useRtlReturnContext(waypoints);
+  const rallyGround = useRallyGround(rally);
 
   // Pure module checks only — the translation function is intentionally kept
   // out of the memo so its render-to-render identity never re-runs the checks.
-  const { airport, soft, itemCount, rtl, rtlUnchecked } = useMemo(() => {
+  const { airport, soft, rtl, rtlUnchecked } = useMemo(() => {
     const fence: SoftGeofence = {};
     if (enabled) {
       if (fenceType === "polygon" && polygonPoints.length >= 3) {
@@ -107,32 +87,21 @@ export function MissionAdvisories({
       }
     }
 
-    // RTL / failsafe return-leg terrain clearance. Home is the telemetry home
-    // with the terrain sampled beneath it, when it lies near this plan (a
-    // vehicle at another site reports that site's home); otherwise both the
-    // coordinates and the elevation come from the first waypoint, never a mix.
-    // With no terrain at all the pure module returns [] and no RTL rows render.
-    // Without the vehicle's own return altitude the check does not run.
-    const first = waypoints[0];
-    const home = (telemetryHome && isHomeNearPlan(telemetryHome, waypoints) ? telemetryHome : undefined)
-      ?? (first && first.groundElevation !== undefined
-        ? { lat: first.lat, lon: first.lon, groundElevation: first.groundElevation }
-        : null);
+    // With no ground under home the pure module returns [] and no RTL rows
+    // render. Without the vehicle's own return altitude the check does not run.
     const rtl = home && rtlAltitude !== undefined
-      ? checkRtlTerrainClearance(
-          waypoints,
-          home,
-          rtlAltitude,
-          DEFAULT_MIN_TERRAIN_CLEARANCE,
-        )
+      ? checkRtlTerrainClearance(waypoints, home, rtlAltitude, DEFAULT_MIN_TERRAIN_CLEARANCE, {
+          rally: rally.map((p, i) => ({ lat: p.lat, lon: p.lon, groundElevation: rallyGround[i] })),
+          rules,
+          ceilingM: returnCeilingM,
+        })
       : [];
 
     return {
       airport: checkAirportProximity(waypoints, {}),
       soft: checkSoftBuffer(waypoints, fence, DEFAULT_SOFT_BUFFER_M),
-      itemCount: checkItemCount(waypoints, firmware ? { firmware } : {}),
       rtl,
-      rtlUnchecked: home !== null && rtlAltitude === undefined,
+      rtlUnchecked: home !== undefined && rtlAltitude === undefined,
     };
   }, [
     waypoints,
@@ -141,9 +110,12 @@ export function MissionAdvisories({
     polygonPoints,
     circleCenter,
     circleRadius,
-    firmware,
-    telemetryHome,
+    home,
     rtlAltitude,
+    returnCeilingM,
+    rally,
+    rallyGround,
+    rules,
   ]);
 
   const rows: AdvisoryRowData[] = [];
@@ -166,55 +138,19 @@ export function MissionAdvisories({
     });
   }
 
-  // Item-count headroom is always informative: it reports the plan size against
-  // the FC storage ceiling even when comfortably under it.
-  let itemCountMessage: string;
-  if (itemCount.level === "warn") {
-    const family = firmware ? fcFamilyFromFirmware(firmware) : null;
-    const label = (family && FIRMWARE_LABEL[family]) || "FC";
-    itemCountMessage =
-      itemCount.count >= itemCount.limit
-        ? t("itemCount.warnOverLimit", {
-            firmware: label,
-            count: itemCount.count,
-            limit: itemCount.limit,
-          })
-        : t("itemCount.warnNearLimit", {
-            firmware: label,
-            count: itemCount.count,
-            limit: itemCount.limit,
-          });
-  } else {
-    itemCountMessage = t("itemCount.advisory", {
-      count: itemCount.count,
-      limit: itemCount.limit,
-    });
-  }
-  rows.push({
-    key: "item-count",
-    level: itemCount.level === "warn" ? "warn" : "info",
-    message: itemCountMessage,
-  });
-
-  if (needsAutoland && rtlAutoland?.protocol === selectedProtocol && rtlAutoland.value === 0) {
-    rows.push({
-      key: "rtl-autoland",
-      level: "warn",
-      message: t("rtl.landStartNeedsAutoland"),
-      waypointIndex: landStartIndex,
-    });
-  }
-
   // RTL / failsafe return-leg terrain advisories, against the vehicle's own
   // configured return altitude. Without that value the check is reported as
   // not run, never filled in with a guess.
   if (rtlUnchecked) {
     rows.push({ key: "rtl-note", level: "info", message: t("rtl.returnAltitudeUnknown") });
   } else if (rtl.length > 0 && rtlAltitude !== undefined) {
+    const flown = effectiveReturnAltitude(rtlAltitude, returnCeilingM);
     rows.push({
       key: "rtl-note",
       level: "info",
-      message: t("rtl.returnAltitudeFromVehicle", { alt: Math.round(rtlAltitude) }),
+      message: flown < rtlAltitude
+        ? t("rtl.returnAltitudeCappedByFence", { alt: Math.round(flown), configured: Math.round(rtlAltitude) })
+        : t("rtl.returnAltitudeFromVehicle", { alt: Math.round(rtlAltitude) }),
     });
     for (const issue of rtl) {
       rows.push({

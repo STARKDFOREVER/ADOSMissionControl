@@ -1,8 +1,9 @@
 /**
  * @module AltitudeProfile
  * @description SVG-based mini altitude chart for the simulation panel.
- * Shows the flight path altitude profile and a moving position indicator
- * driven by playback elapsed time.
+ * Shows the flown profile (height above home against horizontal distance,
+ * from the flight plan's segments, takeoff climb and return legs included)
+ * and a moving position indicator driven by playback elapsed time.
  * @license GPL-3.0-only
  */
 
@@ -32,7 +33,7 @@ export function AltitudeProfile({ waypoints, flightPlan }: AltitudeProfileProps)
   // datum each altitude is measured from.
   const defaultFrame = usePlannerStore((s) => s.defaultFrame);
 
-  // Cumulative distances at each waypoint, from the computed flight segments.
+  // Horizontal distance flown before each segment (one more entry than segments).
   const cumulativeDistances = useMemo(() => {
     const dists = [0];
     for (const seg of flightPlan.segments) {
@@ -41,11 +42,23 @@ export function AltitudeProfile({ waypoints, flightPlan }: AltitudeProfileProps)
     return dists;
   }, [flightPlan]);
 
-  // Altitude range with padding.
+  // Altitude range with padding, over the heights actually flown.
   const { minAlt, maxAlt } = useMemo(
-    () => altitudeRange(waypoints.map((wp) => wp.alt)),
-    [waypoints],
+    () => altitudeRange(flightPlan.segments.flatMap((s) => [s.from.alt, s.to.alt])),
+    [flightPlan],
   );
+
+  // Where each waypoint is first reached along the profile.
+  const waypointMarks = useMemo(() => {
+    const marks: Array<{ index: number; dist: number; alt: number }> = [];
+    const seen = new Set<number>();
+    flightPlan.segments.forEach((seg, k) => {
+      if (seen.has(seg.toIndex) || seg.kind === "hold") return;
+      seen.add(seg.toIndex);
+      marks.push({ index: seg.toIndex, dist: cumulativeDistances[k + 1], alt: seg.to.alt });
+    });
+    return marks;
+  }, [flightPlan, cumulativeDistances]);
 
   const totalDist = flightPlan.totalDistance;
 
@@ -72,8 +85,8 @@ export function AltitudeProfile({ waypoints, flightPlan }: AltitudeProfileProps)
     const seg = segments[segIdx];
     const segStart = segIdx > 0 ? segments[segIdx - 1].cumulativeDuration : 0;
     const timeInSeg = elapsed - segStart;
-    const holdTime = waypoints[seg.fromIndex].holdTime ?? 0;
-    const base = cumulativeDistances[seg.fromIndex];
+    const holdTime = seg.holdTime;
+    const base = cumulativeDistances[segIdx];
 
     // Still holding at the from-waypoint — the drone has not moved along the segment.
     if (timeInSeg <= holdTime) return base;
@@ -82,7 +95,7 @@ export function AltitudeProfile({ waypoints, flightPlan }: AltitudeProfileProps)
     const travelDuration = seg.duration - holdTime;
     const frac = travelDuration > 0 ? Math.min(travelTime / travelDuration, 1) : 1;
     return base + frac * seg.distance;
-  }, [flightPlan.segments, elapsed, waypoints, cumulativeDistances, totalDist]);
+  }, [flightPlan.segments, elapsed, cumulativeDistances, totalDist]);
 
   if (waypoints.length < 2 || totalDist <= 0) return null;
 
@@ -94,9 +107,11 @@ export function AltitudeProfile({ waypoints, flightPlan }: AltitudeProfileProps)
   const toY = linearScale(minAlt, maxAlt, PAD_TOP, innerH, true);
 
   // Flight path polyline points
-  const pathPoints = waypoints
-    .map((wp, i) => `${toX(cumulativeDistances[i])},${toY(wp.alt)}`)
-    .join(" ");
+  const segments = flightPlan.segments;
+  const pathPoints = [
+    `${toX(0)},${toY(segments[0]?.from.alt ?? 0)}`,
+    ...segments.map((seg, k) => `${toX(cumulativeDistances[k + 1])},${toY(seg.to.alt)}`),
+  ].join(" ");
 
   // Current position along the X axis, from the along-track distance.
   const posX = toX(currentDist);
@@ -122,17 +137,20 @@ export function AltitudeProfile({ waypoints, flightPlan }: AltitudeProfileProps)
       />
 
       {/* Waypoint dots */}
-      {waypoints.map((wp, i) => (
-        <circle
-          key={wp.id}
-          cx={toX(cumulativeDistances[i])}
-          cy={toY(wp.alt)}
-          r={2.5}
-          fill="#3a82ff"
-        >
-          <title>WP {i + 1}: {formatAltitudeWithDatum(wp.alt, wp.frame ?? defaultFrame)}</title>
-        </circle>
-      ))}
+      {waypointMarks.map((mark) => {
+        const wp = waypoints[mark.index];
+        return (
+          <circle
+            key={`${wp?.id ?? mark.index}-${mark.dist}`}
+            cx={toX(mark.dist)}
+            cy={toY(mark.alt)}
+            r={2.5}
+            fill="#3a82ff"
+          >
+            {wp && <title>WP {mark.index + 1}: {formatAltitudeWithDatum(wp.alt, wp.frame ?? defaultFrame)}</title>}
+          </circle>
+        );
+      })}
 
       {/* Current position indicator */}
       <line

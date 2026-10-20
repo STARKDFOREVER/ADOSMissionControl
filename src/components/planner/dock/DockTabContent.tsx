@@ -68,7 +68,7 @@ export function DockTabContent({
       return (
         <Scroll>
           <div className="max-w-sm">
-            <EnergyCard waypoints={waypoints} cruiseSpeedMps={defaultSpeed} />
+            <EnergyCard waypoints={waypoints} defaultSpeed={defaultSpeed} />
           </div>
         </Scroll>
       );

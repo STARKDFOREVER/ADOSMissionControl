@@ -12,8 +12,8 @@ import { usePlannerStore } from "@/stores/planner-store";
 import { useSimulationStore } from "@/stores/simulation-store";
 import { useThrottledElapsed } from "./use-throttled-elapsed";
 import { useFlightPlanOptions } from "./use-rtl-return-context";
+import { computeFlightPlan } from "@/lib/flight-plan";
 import {
-  computeFlightPlan,
   interpolatePosition,
   type FlightPlan,
   type FlightSegment,

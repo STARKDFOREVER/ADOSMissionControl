@@ -6,8 +6,7 @@ vi.mock("next-intl", () => ({
 }));
 
 // Keep the drone-manager mock light so the test never pulls the protocol stack.
-// No connected protocol → firmware is undefined → the item-count advisory falls
-// back to the default FC ceiling.
+// No connected protocol → no return altitude, so no RTL rows.
 vi.mock("@/stores/drone-manager", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/stores/drone-manager")>()),
   useDroneManager: (sel: (s: unknown) => unknown) =>
@@ -39,14 +38,15 @@ describe("MissionAdvisories", () => {
     expect(screen.getByText(/San Francisco International/i)).toBeTruthy();
   });
 
-  it("always surfaces the item-count advisory line", () => {
-    render(
+  it("leaves the mission item count to the validator", () => {
+    const { container } = render(
       <MissionAdvisories
         waypoints={[wp("a", 12.0, 77.0)]}
         onSelectWaypoint={() => {}}
       />,
     );
-    // Identity-mocked i18n renders the key verbatim.
-    expect(screen.getByText("itemCount.advisory")).toBeTruthy();
+    // Identity-mocked i18n would render the key verbatim; no advisory applies here.
+    expect(screen.queryByText(/itemCount/)).toBeNull();
+    expect(container.textContent).toBe("");
   });
 });

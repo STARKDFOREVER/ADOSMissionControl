@@ -2850,7 +2850,7 @@
     "rtl": {
       "returnAltitudeFromVehicle": "RTL terrain checks use the vehicle's configured return altitude of {alt} m above home.",
       "returnAltitudeUnknown": "The vehicle's RTL return altitude has not been read, so return-leg terrain clearance is not checked. Connect the vehicle to check it.",
-      "landStartNeedsAutoland": "The FC has RTL_AUTOLAND = 0, so it will refuse to arm with a DO_LAND_START in the mission. Set RTL_AUTOLAND to 1 or 2 to land through it on RTL, or 3 to use it for go-around only."
+      "returnAltitudeCappedByFence": "RTL 地形检查使用相对起飞点 {alt} m 的返航高度：飞行器设置的 {configured} m 受高度围栏限制。"
     },
     "none": "无",
     "waypoints": "航点",
@@ -3108,18 +3108,16 @@
         "payloadSecure": "载荷已安装并固定"
       }
     },
-    "itemCount": {
-      "advisory": "{count} / {limit} 个任务项",
-      "warnNearLimit": "任务接近 {firmware} 的任务项上限（{count}/{limit}）",
-      "warnOverLimit": "任务超出 {firmware} 的任务项上限（{count}/{limit}）——上传时可能被截断"
-    },
     "energy": {
       "title": "能量估算",
       "required": "所需能量",
       "flightTime": "预计飞行时间",
       "swaps": "换电次数",
       "estimate": "估算值",
-      "note": "基于默认功耗和标称电池的粗略估算。请对照您自己的功率曲线核实。"
+      "note": "基于默认功耗和标称电池的粗略估算。请对照您自己的功率曲线核实。",
+      "packRange": "电池 {n}：WP {from}–{to}",
+      "profileNote": "根据 {pack} 配置（{capacity} Wh，{reserve} % 储备）和计划飞行时间估算。",
+      "forecastNote": "风和温度来自场地预报。"
     },
     "validation": {
       "advisories": "注意事项"
@@ -3611,10 +3609,12 @@
         "distanceTitle": "Total distance",
         "eta": "~{minutes} min",
         "etaTitle": "Estimated flight time",
-        "maxAlt": "{value} max",
-        "maxAltTitle": "Highest waypoint altitude",
         "avgSpeed": "{value} avg",
-        "avgSpeedTitle": "Mean speed over the route"
+        "avgSpeedTitle": "Mean speed over the route",
+        "etaOpen": "约 {minutes}+ 分钟",
+        "etaOpenTitle": "以无限盘旋结束",
+        "maxAboveHome": "距起飞点最高 {value}",
+        "maxAboveHomeTitle": "飞行中相对起飞点的最高点"
       },
       "issueBadge": "{errors} errors, {warnings} warnings",
       "checklistBadge": "{checked} of {total} checked",

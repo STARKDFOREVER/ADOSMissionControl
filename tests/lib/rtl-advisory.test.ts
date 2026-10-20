@@ -111,3 +111,41 @@ describe("checkRtlTerrainClearance", () => {
     expect(issues[0].message).toContain("30 m below");
   });
 });
+
+describe("checkRtlTerrainClearance return point and altitude", () => {
+  it("checks the leg to the rally point the autopilot picks and names it", () => {
+    // A 200 m ridge under the waypoint; the copter returns to a rally point
+    // 200 m away (inside RALLY_LIMIT_KM 0.3, closer than home) on 200 m ground.
+    const wps = [wp("a", NORTH_10KM.lat, NORTH_10KM.lon, 200)];
+    const rally = [{ lat: NORTH_10KM.lat + 0.0018, lon: 0, groundElevation: 200 }];
+    const issues = checkRtlTerrainClearance(wps, HOME, 50, DEFAULT_MIN_TERRAIN_CLEARANCE, {
+      rally,
+      rules: { autopilot: "ardupilot", vehicleClass: "copter" },
+    });
+    expect(issues).toHaveLength(1);
+    expect(issues[0].target).toMatchObject({ kind: "rally", rallyIndex: 0 });
+    expect(issues[0].distanceKm).toBe(0.2);
+    expect(issues[0].message).toContain("return to rally point 1");
+    expect(issues[0].message).toContain("direct leg to rally point 1");
+  });
+
+  it("returns home when the rally point is beyond Copter's rally limit", () => {
+    const wps = [wp("a", NORTH_10KM.lat, NORTH_10KM.lon, 200)];
+    const rally = [{ lat: NORTH_10KM.lat + 0.01, lon: 0, groundElevation: 200 }];
+    const issues = checkRtlTerrainClearance(wps, HOME, 50, DEFAULT_MIN_TERRAIN_CLEARANCE, {
+      rally,
+      rules: { autopilot: "ardupilot", vehicleClass: "copter" },
+    });
+    expect(issues[0].target.kind).toBe("home");
+    expect(issues[0].message).toContain("return to home");
+  });
+
+  it("checks at the fence-capped return altitude", () => {
+    // RTL 120 m but the fence ceiling is 98 m: cruise 198 m MSL, below a 200 m ridge.
+    const wps = [wp("a", NORTH_10KM.lat, NORTH_10KM.lon, 200)];
+    expect(checkRtlTerrainClearance(wps, HOME, 120)[0]?.level).not.toBe("error");
+    const capped = checkRtlTerrainClearance(wps, HOME, 120, DEFAULT_MIN_TERRAIN_CLEARANCE, { ceilingM: 98 });
+    expect(capped[0].level).toBe("error");
+    expect(capped[0].message).toContain("198 m MSL");
+  });
+});

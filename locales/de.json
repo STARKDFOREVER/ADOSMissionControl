@@ -2850,7 +2850,7 @@
     "rtl": {
       "returnAltitudeFromVehicle": "RTL terrain checks use the vehicle's configured return altitude of {alt} m above home.",
       "returnAltitudeUnknown": "The vehicle's RTL return altitude has not been read, so return-leg terrain clearance is not checked. Connect the vehicle to check it.",
-      "landStartNeedsAutoland": "The FC has RTL_AUTOLAND = 0, so it will refuse to arm with a DO_LAND_START in the mission. Set RTL_AUTOLAND to 1 or 2 to land through it on RTL, or 3 to use it for go-around only."
+      "returnAltitudeCappedByFence": "Die RTL-Geländeprüfungen nutzen eine Rückkehrhöhe von {alt} m über Home: die {configured} m des Fahrzeugs, begrenzt durch den Höhenzaun."
     },
     "none": "Keine",
     "waypoints": "Wegpunkte",
@@ -3108,18 +3108,16 @@
         "payloadSecure": "Nutzlast montiert und gesichert"
       }
     },
-    "itemCount": {
-      "advisory": "{count} von {limit} Missionselementen",
-      "warnNearLimit": "Mission nähert sich dem Elementlimit von {firmware} ({count}/{limit})",
-      "warnOverLimit": "Mission überschreitet das Elementlimit von {firmware} ({count}/{limit}) – Upload wird möglicherweise abgeschnitten"
-    },
     "energy": {
       "title": "Energieschätzung",
       "required": "Benötigte Energie",
       "flightTime": "Gesch. Flugzeit",
       "swaps": "Akkuwechsel",
       "estimate": "Schätzung",
-      "note": "Grober Wert aus Standard-Stromaufnahme und einem nominalen Akku. Mit Ihrer eigenen Leistungskurve abgleichen."
+      "note": "Grober Wert aus Standard-Stromaufnahme und einem nominalen Akku. Mit Ihrer eigenen Leistungskurve abgleichen.",
+      "packRange": "Akku {n}: WP {from}–{to}",
+      "profileNote": "Schätzung aus dem Profil {pack} ({capacity} Wh, {reserve} % Reserve) und der Flugzeit des Plans.",
+      "forecastNote": "Wind und Temperatur aus der Standortvorhersage."
     },
     "validation": {
       "advisories": "Hinweise"
@@ -3611,10 +3609,12 @@
         "distanceTitle": "Total distance",
         "eta": "~{minutes} min",
         "etaTitle": "Estimated flight time",
-        "maxAlt": "{value} max",
-        "maxAltTitle": "Highest waypoint altitude",
         "avgSpeed": "{value} avg",
-        "avgSpeedTitle": "Mean speed over the route"
+        "avgSpeedTitle": "Mean speed over the route",
+        "etaOpen": "~{minutes}+ min",
+        "etaOpenTitle": "Endet in einem unbegrenzten Kreisflug",
+        "maxAboveHome": "{value} max. über Home",
+        "maxAboveHomeTitle": "Höchster Punkt über Home während des Flugs"
       },
       "issueBadge": "{errors} errors, {warnings} warnings",
       "checklistBadge": "{checked} of {total} checked",

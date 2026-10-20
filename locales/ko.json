@@ -2850,7 +2850,7 @@
     "rtl": {
       "returnAltitudeFromVehicle": "RTL terrain checks use the vehicle's configured return altitude of {alt} m above home.",
       "returnAltitudeUnknown": "The vehicle's RTL return altitude has not been read, so return-leg terrain clearance is not checked. Connect the vehicle to check it.",
-      "landStartNeedsAutoland": "The FC has RTL_AUTOLAND = 0, so it will refuse to arm with a DO_LAND_START in the mission. Set RTL_AUTOLAND to 1 or 2 to land through it on RTL, or 3 to use it for go-around only."
+      "returnAltitudeCappedByFence": "RTL 지형 점검은 홈 기준 {alt} m 귀환 고도를 사용합니다: 기체 설정 {configured} m를 고도 펜스로 제한한 값입니다."
     },
     "none": "없음",
     "waypoints": "웨이포인트",
@@ -3108,18 +3108,16 @@
         "payloadSecure": "탑재체 장착 및 고정"
       }
     },
-    "itemCount": {
-      "advisory": "미션 항목 {count}/{limit}개",
-      "warnNearLimit": "미션이 {firmware} 항목 한도에 근접했습니다 ({count}/{limit})",
-      "warnOverLimit": "미션이 {firmware} 항목 한도를 초과했습니다 ({count}/{limit}) — 업로드 시 잘릴 수 있습니다"
-    },
     "energy": {
       "title": "에너지 추정치",
       "required": "필요 에너지",
       "flightTime": "예상 비행 시간",
       "swaps": "배터리 교체",
       "estimate": "추정치",
-      "note": "기본 소비 전력과 표준 배터리를 기준으로 한 대략적인 값입니다. 실제 전력 곡선으로 확인하세요."
+      "note": "기본 소비 전력과 표준 배터리를 기준으로 한 대략적인 값입니다. 실제 전력 곡선으로 확인하세요.",
+      "packRange": "배터리 {n}: WP {from}–{to}",
+      "profileNote": "{pack} 프로필({capacity} Wh, 예비 {reserve} %)과 계획 비행 시간으로 추정한 값입니다.",
+      "forecastNote": "바람과 기온은 현장 예보에서 가져왔습니다."
     },
     "validation": {
       "advisories": "권고 사항"
@@ -3611,10 +3609,12 @@
         "distanceTitle": "Total distance",
         "eta": "~{minutes} min",
         "etaTitle": "Estimated flight time",
-        "maxAlt": "{value} max",
-        "maxAltTitle": "Highest waypoint altitude",
         "avgSpeed": "{value} avg",
-        "avgSpeedTitle": "Mean speed over the route"
+        "avgSpeedTitle": "Mean speed over the route",
+        "etaOpen": "~{minutes}+ 분",
+        "etaOpenTitle": "무제한 선회로 끝납니다",
+        "maxAboveHome": "홈 기준 최대 {value}",
+        "maxAboveHomeTitle": "비행 중 홈 기준 최고 지점"
       },
       "issueBadge": "{errors} errors, {warnings} warnings",
       "checklistBadge": "{checked} of {total} checked",

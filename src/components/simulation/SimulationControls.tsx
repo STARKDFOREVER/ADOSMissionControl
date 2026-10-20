@@ -24,7 +24,7 @@ import {
 import type { SimHistoryEntry } from "@/lib/types";
 import { formatDuration } from "@/lib/utils";
 import { timeAgo } from "@/lib/plan-library";
-import { computeFlightPlan } from "@/lib/simulation-utils";
+import { computeFlightPlan } from "@/lib/flight-plan";
 import { useFlightPlanOptions } from "@/hooks/use-rtl-return-context";
 import { usePlanLibraryStore } from "@/stores/plan-library-store";
 import { usePlannerStore } from "@/stores/planner-store";
