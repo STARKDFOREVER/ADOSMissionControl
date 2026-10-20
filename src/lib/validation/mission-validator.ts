@@ -333,7 +333,9 @@ export function validateMission(
       const prev = waypoints[prevPositioned];
       const legName = `WP${prevPositioned + 1} to WP${i + 1}`;
       const dist = haversineDistance(prev.lat, prev.lon, wp.lat, wp.lon);
-      if (dist < 0.5) {
+      // The vehicle climbs at a takeoff and then flies to the next point, so a
+      // shared position is not a duplicate.
+      if (dist < 0.5 && !TAKEOFF_COMMANDS[prev.command ?? "WAYPOINT"]) {
         warnings.push({
           severity: "advisory",
           code: "DUPLICATE_WAYPOINT",

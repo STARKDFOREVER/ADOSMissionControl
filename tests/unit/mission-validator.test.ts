@@ -121,10 +121,23 @@ describe('validateMission', () => {
 
   it('returns DUPLICATE_WAYPOINT warning for waypoints < 0.5m apart', () => {
     const result = validateMission([
-      wp({ lat: 12.970000, lon: 77.590000, command: 'TAKEOFF' }),
-      wp({ lat: 12.970000, lon: 77.590000, command: 'LAND' }), // same point
+      wp({ lat: 12.960000, lon: 77.590000, command: 'TAKEOFF' }),
+      wp({ lat: 12.970000, lon: 77.590000, command: 'WAYPOINT' }),
+      wp({ lat: 12.970000, lon: 77.590000, command: 'WAYPOINT' }), // same point
+      wp({ lat: 12.970000, lon: 77.590000, alt: 0, command: 'RTL' }),
     ]);
-    expect(result.warnings.some((w) => w.code === 'DUPLICATE_WAYPOINT')).toBe(true);
+    const dupes = result.warnings.filter((w) => w.code === 'DUPLICATE_WAYPOINT');
+    expect(dupes).toHaveLength(1);
+    expect(dupes[0].waypointIndex).toBe(2);
+  });
+
+  it('does not call the first waypoint a duplicate of the takeoff it climbs from', () => {
+    const result = validateMission([
+      wp({ lat: 12.970000, lon: 77.590000, command: 'TAKEOFF' }),
+      wp({ lat: 12.970000, lon: 77.590000, command: 'WAYPOINT' }),
+      wp({ lat: 12.970000, lon: 77.590000, alt: 0, command: 'RTL' }),
+    ]);
+    expect(result.warnings.some((w) => w.code === 'DUPLICATE_WAYPOINT')).toBe(false);
   });
 
   it('returns EXCESSIVE_DISTANCE warning for waypoints far apart', () => {

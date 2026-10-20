@@ -74,6 +74,16 @@ describe("patternToMission", () => {
     const rtl = waypoints[waypoints.length - 1];
     expect(rtl).toMatchObject({ command: "RTL", alt: 0, frame: "relative" });
   });
+
+  it("does not flag the takeoff and the first survey point as duplicates", () => {
+    const rows = generateSurvey({
+      polygon: [[12.970, 77.590], [12.970, 77.594], [12.974, 77.594], [12.974, 77.590]],
+      gridAngle: 90, lineSpacing: 80, turnAroundDistance: 10, entryLocation: "topLeft",
+      flyAlternateTransects: false, cameraTriggerDistance: 20, altitude: 50, speed: 5,
+    }).waypoints;
+    const { warnings } = validateMission(patternToMission(rows), { defaultFrame: "relative" });
+    expect(warnings.map((w) => w.code)).not.toContain("DUPLICATE_WAYPOINT");
+  });
 });
 
 describe("applied patterns validate and sequence their actions after their waypoint", () => {
