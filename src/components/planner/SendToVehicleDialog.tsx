@@ -4,9 +4,10 @@
  * mission and, when present and supported, the geofence and rally points.
  * Items run in order; a failure is reported on its row and the rest still run.
  *
- * The mission row is blocked while the vehicle is armed and flying a mission
+ * Every row is blocked while the target vehicle is armed and flying a mission
  * (AUTO / MISSION): a new mission replaces the one being flown under the
- * vehicle, which keeps flying whatever lands at its current index. In resume
+ * vehicle, which keeps flying whatever lands at its current index, and a
+ * fence or rally swap changes its limits mid-flight. In resume
  * mode the mission row uploads the mission that picks the plan up at a
  * waypoint, in place of the plan itself.
  * @license GPL-3.0-only
@@ -26,11 +27,12 @@ import { useGeofenceStore } from "@/stores/geofence-store";
 import { useRallyStore } from "@/stores/rally-store";
 import { usePlannerStore } from "@/stores/planner-store";
 import { useDroneManager } from "@/stores/drone-manager";
-import { useDroneStore } from "@/stores/drone-store";
+import { useNodeRegistryStore } from "@/stores/node-registry";
 import { useMissionStore } from "@/stores/mission-store";
 import { useReportedVehicleProfile } from "@/hooks/use-plan-profile";
 import { sameProfile } from "@/lib/mission/plan-profile";
-import type { ArmState, FlightMode, PlanVehicleProfile } from "@/lib/types";
+import type { PlanVehicleProfile } from "@/lib/types";
+import { isFlyingMission } from "@/lib/mission/upload-guard";
 import { usePreflightChecklistStore } from "@/stores/preflight-checklist-store";
 import { PREFLIGHT_ITEM_IDS, countCheckedPreflightItems } from "@/components/planner/preflight-items";
 import type { Planner } from "@/app/plan/use-planner";
@@ -57,14 +59,6 @@ interface SendToVehicleDialogProps {
   resumeFromIndex?: number;
 }
 
-/**
- * True while the vehicle is armed and flying its mission. An upload then
- * replaces the mission under it, so the planner refuses, as QGroundControl does.
- */
-export function isFlyingMission(armState: ArmState, flightMode: FlightMode): boolean {
-  return armState === "armed" && (flightMode === "AUTO" || flightMode === "MISSION");
-}
-
 export function SendToVehicleDialog({ open, onClose, p, showGeofence, showRally, resumeFromIndex }: SendToVehicleDialogProps) {
   const t = useTranslations("planner.send");
   const setDock = usePlannerStore((s) => s.setDock);
@@ -77,8 +71,11 @@ export function SendToVehicleDialog({ open, onClose, p, showGeofence, showRally,
   const nameOf = (id: string) => p.drones.find((d) => d.id === id)?.name ?? id;
   const targetName = targetId ? nameOf(targetId) : null;
   const mismatch = !!targetId && !!planDroneId && planDroneId !== targetId && planDroneConnected;
-  // The drone store follows the selected drone, which is the upload target.
-  const flyingMission = useDroneStore((s) => !!targetId && isFlyingMission(s.armState, s.flightMode));
+  // Read per target from the node registry: the drone store holds the
+  // selected drone's last reading only.
+  const flyingMission = useNodeRegistryStore(
+    (s) => !!targetId && isFlyingMission(s.nodes[targetId]?.fc.armState, s.nodes[targetId]?.fc.flightMode),
+  );
   // A plan written for one autopilot or vehicle class, sent to another.
   const planProfile = useMissionStore((s) => s.vehicleProfile);
   const targetProfile = useReportedVehicleProfile(targetId);
@@ -110,7 +107,11 @@ export function SendToVehicleDialog({ open, onClose, p, showGeofence, showRally,
     geofence: showGeofence && fenceHasGeometry,
     rally: showRally && rallyCount > 0,
   };
-  const blocked: Record<SendItem, boolean> = { mission: errorCount > 0 || flyingMission, geofence: false, rally: false };
+  const blocked: Record<SendItem, boolean> = {
+    mission: errorCount > 0 || flyingMission,
+    geofence: flyingMission,
+    rally: flyingMission,
+  };
   const items = ORDER.filter((item) => available[item]);
 
   const [deselected, setDeselected] = useState<Partial<Record<SendItem, boolean>>>({});
@@ -246,8 +247,8 @@ export function SendToVehicleDialog({ open, onClose, p, showGeofence, showRally,
                         </span>
                       )}
                     </div>
-                    {item === "mission" && flyingMission && (
-                      <p className="pl-6 text-[11px] text-status-error" data-testid="send-mission-flying">
+                    {flyingMission && (
+                      <p className="pl-6 text-[11px] text-status-error" data-testid={`send-${item}-flying`}>
                         {t("missionInFlight")}
                       </p>
                     )}

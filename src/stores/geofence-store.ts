@@ -11,6 +11,7 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import { indexedDBStorage } from "@/lib/storage";
 import { droneSelection, selectedDroneProtocol } from "./drone-selection";
 import { withPlannerHistory } from "@/lib/planner-history-adapter";
+import { flyingMissionRefusal } from "@/lib/mission/upload-guard";
 import {
   boundaryFencePolygon,
   nextZoneId,
@@ -238,10 +239,12 @@ export const useGeofenceStore = create<GeofenceStoreState>()(
     if (!protocol.uploadFenceMission) {
       return { success: false, message: "This flight controller does not support fence upload" };
     }
+    const droneId = droneSelection().selectedDroneId;
+    const refusal = flyingMissionRefusal(droneId);
+    if (refusal) return { success: false, message: refusal };
 
     const snap = get().snapshot();
     const { fenceType, polygonPoints, circleCenter, circleRadius, zones, returnPoint } = snap;
-    const droneId = droneSelection().selectedDroneId;
     const firmware = protocol.getVehicleInfo()?.firmwareType;
 
     // Build the payload before flipping upload state so an empty fence is a

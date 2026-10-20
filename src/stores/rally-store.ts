@@ -12,6 +12,7 @@ import { droneSelection } from "./drone-selection";
 import { useUploadReceiptsStore, contentHash } from "./upload-receipts-store";
 import { useTelemetryStore } from "./telemetry-store";
 import { withPlannerHistory } from "@/lib/planner-history-adapter";
+import { flyingMissionRefusal } from "@/lib/mission/upload-guard";
 import type { RallyPointItem } from "@/lib/protocol/types";
 import {
   MAV_FRAME_GLOBAL, MAV_FRAME_GLOBAL_INT,
@@ -146,6 +147,8 @@ export const useRallyStore = create<RallyStoreState>()(
     if (!protocol.uploadRallyPoints) {
       return { success: false, message: "This flight controller does not support rally points" };
     }
+    const refusal = flyingMissionRefusal(selectedDroneId);
+    if (refusal) return { success: false, message: refusal };
     const { points } = get();
     if (points.length === 0) return { success: false, message: "No rally points to upload" };
     const hash = rallyContentHash(points);

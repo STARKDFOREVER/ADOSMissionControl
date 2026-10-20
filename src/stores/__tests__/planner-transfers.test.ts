@@ -13,8 +13,10 @@ import type { DroneProtocol, FenceElement, MissionItem } from "@/lib/protocol/ty
 import { useDroneManager, type ManagedDrone } from "../drone-manager";
 import { useGeofenceStore } from "../geofence-store";
 import { useMissionStore } from "../mission-store";
+import { useNodeRegistryStore } from "../node-registry";
+import { useRallyStore, type RallyPoint } from "../rally-store";
 import { useUploadReceiptsStore } from "../upload-receipts-store";
-import type { Waypoint } from "@/lib/types";
+import type { ArmState, FlightMode, Waypoint } from "@/lib/types";
 
 const DRONE = "node:d1";
 
@@ -133,5 +135,108 @@ describe("mission download", () => {
     useMissionStore.getState().undo();
 
     expect(useMissionStore.getState().waypoints.map((w) => w.id)).toEqual(["wp-local"]);
+  });
+});
+
+describe("uploads while the vehicle flies its mission", () => {
+  const REFUSAL = "Pause the mission before uploading";
+  const OTHER = "node:d2";
+  const plan: Waypoint[] = [
+    { id: "a", lat: 47, lon: 8, alt: 30, command: "TAKEOFF" } as Waypoint,
+    { id: "b", lat: 47.001, lon: 8, alt: 30, command: "WAYPOINT" } as Waypoint,
+  ];
+
+  /** The registry entry the heartbeat writes for `id`. */
+  function report(id: string, armState: ArmState, flightMode: FlightMode): void {
+    const registry = useNodeRegistryStore.getState();
+    registry.attachFc(id, id);
+    registry.updateFcTelemetry(id, { armState, flightMode });
+  }
+
+  function missionProtocol() {
+    const uploadMission = vi.fn(async (_items: MissionItem[]) => ({ success: true, resultCode: 0, message: "ok" }));
+    return { protocol: baseProtocol({ uploadMission }), uploadMission };
+  }
+
+  beforeEach(() => {
+    useNodeRegistryStore.getState().clear();
+    useUploadReceiptsStore.getState().clearForDrone(OTHER);
+    useMissionStore.setState({ waypoints: plan, uploadState: "idle", uploadError: null });
+  });
+
+  it.each([
+    ["armed in AUTO", "armed", "AUTO"],
+    ["armed in MISSION", "armed", "MISSION"],
+  ] as const)("refuses a mission upload %s and sends nothing", async (_label, arm, mode) => {
+    const { protocol, uploadMission } = missionProtocol();
+    selectProtocol(protocol);
+    report(DRONE, arm, mode);
+
+    await expect(useMissionStore.getState().uploadMission(protocol)).resolves.toBe(false);
+    expect(useMissionStore.getState()).toMatchObject({ uploadState: "error", uploadError: REFUSAL });
+    expect(uploadMission).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["armed in LOITER", "armed", "LOITER"],
+    ["disarmed in AUTO", "disarmed", "AUTO"],
+    ["of unknown arm state in AUTO", "unknown", "AUTO"],
+  ] as const)("uploads a mission to a vehicle %s", async (_label, arm, mode) => {
+    const { protocol, uploadMission } = missionProtocol();
+    selectProtocol(protocol);
+    report(DRONE, arm, mode);
+
+    await expect(useMissionStore.getState().uploadMission(protocol)).resolves.toBe(true);
+    expect(uploadMission).toHaveBeenCalledTimes(1);
+  });
+
+  function selectTwo(selected: DroneProtocol, target: DroneProtocol): void {
+    const d1 = { id: DRONE, name: "Drone 1", protocol: selected } as Partial<ManagedDrone> as ManagedDrone;
+    const d2 = { id: OTHER, name: "Drone 2", protocol: target } as Partial<ManagedDrone> as ManagedDrone;
+    useDroneManager.setState({ drones: new Map([[DRONE, d1], [OTHER, d2]]), selectedDroneId: DRONE });
+  }
+
+  it("reads the target's state, not the selected drone's", async () => {
+    const selected = missionProtocol();
+    const target = missionProtocol();
+    selectTwo(selected.protocol, target.protocol);
+    report(DRONE, "disarmed", "STABILIZE");
+    report(OTHER, "armed", "AUTO");
+
+    await expect(useMissionStore.getState().uploadMission(target.protocol)).resolves.toBe(false);
+    expect(target.uploadMission).not.toHaveBeenCalled();
+  });
+
+  it("uploads to a grounded target while the selected drone flies its mission", async () => {
+    const selected = missionProtocol();
+    const target = missionProtocol();
+    selectTwo(selected.protocol, target.protocol);
+    report(DRONE, "armed", "AUTO");
+    report(OTHER, "disarmed", "AUTO");
+
+    await expect(useMissionStore.getState().uploadMission(target.protocol)).resolves.toBe(true);
+    expect(target.uploadMission).toHaveBeenCalledTimes(1);
+  });
+
+  it("refuses a fence upload", async () => {
+    const uploadFenceMission = vi.fn(async (_elements: FenceElement[]) => ({ success: true, resultCode: 0, message: "ok" }));
+    selectProtocol(baseProtocol({ uploadFenceMission }));
+    report(DRONE, "armed", "AUTO");
+    const fence = useGeofenceStore.getState();
+    fence.setFenceType("polygon");
+    fence.setPolygonPoints(square);
+
+    await expect(useGeofenceStore.getState().uploadFence()).resolves.toEqual({ success: false, message: REFUSAL });
+    expect(uploadFenceMission).not.toHaveBeenCalled();
+  });
+
+  it("refuses a rally upload", async () => {
+    const uploadRallyPoints = vi.fn(async () => ({ success: true, resultCode: 0, message: "ok" }));
+    selectProtocol(baseProtocol({ uploadRallyPoints }));
+    report(DRONE, "armed", "AUTO");
+    useRallyStore.setState({ points: [{ id: "r1", lat: 47, lon: 8, alt: 30 } as RallyPoint] });
+
+    await expect(useRallyStore.getState().uploadRallyPoints()).resolves.toEqual({ success: false, message: REFUSAL });
+    expect(uploadRallyPoints).not.toHaveBeenCalled();
   });
 });

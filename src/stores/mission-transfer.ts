@@ -14,6 +14,7 @@ import { droneSelection, selectedDroneProtocol } from "./drone-selection";
 import { useTelemetryStore } from "./telemetry-store";
 import { useUploadReceiptsStore } from "./upload-receipts-store";
 import { withPlannerHistory } from "@/lib/planner-history";
+import { flyingMissionRefusal } from "@/lib/mission/upload-guard";
 // The pure mission ⇄ wire collapser: re-nests a downloaded flat item list into
 // the waypoint model. The upload side goes through `mission-upload`, which also
 // owns the receipt hash and the seq → waypoint mapping, so the three agree.
@@ -75,6 +76,7 @@ export async function uploadPlanMission(
   // it defaults to the selected drone for the planner's own Upload button.
   const protocol = target ?? selectedDroneProtocol();
   if (!protocol) return false;
+  const droneId = droneIdOf(protocol);
   const state = get();
   // An override list (a resume mission) is sent in place of the plan.
   const override = opts?.waypoints;
@@ -83,6 +85,13 @@ export async function uploadPlanMission(
   // The vehicle flies the plan with its transit legs.
   const wire = planWireSettings(state);
   const flown = missionWireWaypoints(planned, wire);
+
+  // Never replace the mission under a vehicle that is flying it.
+  const refusal = flyingMissionRefusal(droneId);
+  if (refusal) {
+    set({ uploadState: "error", uploadError: refusal });
+    return false;
+  }
 
   set({ uploadState: "uploading", uploadError: null });
 
@@ -111,7 +120,6 @@ export async function uploadPlanMission(
   // not be vouched for by this upload's receipt. An override is not the
   // plan, so nothing vouches for it.
   const uploadedHash = override ? null : missionContentHash(planned, wire);
-  const droneId = droneIdOf(protocol);
   const receipts = useUploadReceiptsStore.getState();
 
   let success = false;
