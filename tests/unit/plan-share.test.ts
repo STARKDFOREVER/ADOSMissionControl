@@ -85,8 +85,16 @@ describe("plan-share round-trip", () => {
 
   it("reads a plan from a URL hash string", () => {
     const encoded = encodePlan(buildMissionFile(WPS, META));
-    expect(readPlanFromHash(`#plan=${encoded}`)).not.toBeNull();
-    expect(readPlanFromHash(`plan=${encoded}`)).not.toBeNull();
+    expect(readPlanFromHash(`#plan=${encoded}`).status).toBe("ok");
+    expect(readPlanFromHash(`plan=${encoded}`).status).toBe("ok");
+  });
+
+  it("tells a damaged link apart from no link", () => {
+    expect(readPlanFromHash("#other=1")).toEqual({ status: "none" });
+    expect(readPlanFromHash("")).toEqual({ status: "none" });
+    const encoded = encodePlan(buildMissionFile(WPS, META));
+    expect(readPlanFromHash(`#plan=${encoded.slice(0, 20)}`)).toEqual({ status: "damaged" });
+    expect(readPlanFromHash("#plan=")).toEqual({ status: "damaged" });
   });
 
   it("builds a share URL", () => {

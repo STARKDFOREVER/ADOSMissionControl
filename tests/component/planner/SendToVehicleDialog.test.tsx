@@ -20,6 +20,8 @@ import { usePlannerStore } from "@/stores/planner-store";
 import { usePreflightChecklistStore } from "@/stores/preflight-checklist-store";
 import { PREFLIGHT_ITEM_IDS } from "@/components/planner/preflight-items";
 import { useDroneManager, type DroneManagerState } from "@/stores/drone-manager";
+import { useDroneStore } from "@/stores/drone-store";
+import { useMissionStore } from "@/stores/mission-store";
 
 const initialDroneManager = useDroneManager.getState();
 
@@ -79,6 +81,8 @@ beforeEach(() => {
   usePlannerStore.setState({ dockOpen: false, dockTab: "altitude" });
   usePreflightChecklistStore.setState({ checked: {} });
   useDroneManager.setState(initialDroneManager, true);
+  useDroneStore.setState({ armState: "disarmed", flightMode: "STABILIZE" });
+  useMissionStore.setState({ vehicleProfile: null });
 });
 afterEach(cleanup);
 
@@ -166,5 +170,49 @@ describe("SendToVehicleDialog", () => {
     expect(screen.getByText("This plan is assigned to Alpha. Sending goes to Bravo.")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Switch to Alpha" }));
     expect(selectDrone).toHaveBeenCalledWith("d1");
+  });
+
+  it("blocks the mission while the target is armed and flying its mission", async () => {
+    seedDrones(["d1"], "d1");
+    useDroneStore.setState({ armState: "armed", flightMode: "AUTO" });
+    renderDialog();
+    const mission = screen.getByLabelText("Mission (2 items)");
+    expect(mission).toBeDisabled();
+    expect(mission).not.toBeChecked();
+    expect(screen.getByText("Pause the mission before uploading")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    await waitFor(() => expect(calls).toEqual(["geofence", "rally"]));
+  });
+
+  it("allows the mission once the vehicle leaves its mission", () => {
+    seedDrones(["d1"], "d1");
+    useDroneStore.setState({ armState: "armed", flightMode: "LOITER" });
+    renderDialog();
+    expect(screen.getByLabelText("Mission (2 items)")).toBeChecked();
+    expect(screen.queryByTestId("send-mission-flying")).toBeNull();
+  });
+
+  it("names a plan written for another autopilot and vehicle class", () => {
+    const protocol = { getVehicleInfo: () => ({ firmwareType: "ardupilot-plane", vehicleClass: "plane" }) };
+    const drones = new Map([["d1", { id: "d1", protocol }]]) as unknown as DroneManagerState["drones"];
+    useDroneManager.setState({ drones, selectedDroneId: "d1" });
+    useMissionStore.setState({ vehicleProfile: { autopilot: "px4", vehicleClass: "copter" } });
+    renderDialog();
+    expect(screen.getByTestId("send-profile-mismatch")).toHaveTextContent(
+      "Planned for PX4 multirotor; target is ArduPilot plane",
+    );
+  });
+
+  it("in resume mode uploads the resume mission from the chosen waypoint", async () => {
+    const handleUpload = vi.fn(async (_resumeFromIndex?: number) => ({ success: true, message: "Resume mission from WP 2 uploaded" }));
+    renderDialog({ p: makePlanner(handleUpload), resumeFromIndex: 1 });
+    const row = screen.getByLabelText(
+      "Uploads a mission that takes off, restores speed and camera, and continues from WP 2",
+    );
+    expect(row).toBeChecked();
+    fireEvent.click(screen.getByLabelText("Geofence"));
+    fireEvent.click(screen.getByLabelText("Rally points (1)"));
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    await waitFor(() => expect(handleUpload).toHaveBeenCalledWith(1));
   });
 });

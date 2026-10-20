@@ -5,6 +5,7 @@
  */
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
+import { IntlWrapper } from "../../../../tests/helpers/intl-wrapper";
 
 // planner-store / plan-library-store (pulled in transitively) persist to
 // IndexedDB — stub the storage engine so import does not hit the real one.
@@ -78,7 +79,7 @@ beforeEach(() => {
 describe("handlePatternApply gate", () => {
   it("existing waypoints → opens the confirm and does not replace", () => {
     const deps = makeDeps({ waypoints: EXISTING });
-    const { result } = renderHook(() => usePlannerActions(deps));
+    const { result } = renderHook(() => usePlannerActions(deps), { wrapper: IntlWrapper });
     result.current.handlePatternApply();
     expect(deps.setShowPatternApplyConfirm).toHaveBeenCalledWith(true);
     expect(deps.setWaypoints).not.toHaveBeenCalled();
@@ -86,7 +87,7 @@ describe("handlePatternApply gate", () => {
 
   it("empty mission → applies directly with no confirm", () => {
     const deps = makeDeps({ waypoints: [] });
-    const { result } = renderHook(() => usePlannerActions(deps));
+    const { result } = renderHook(() => usePlannerActions(deps), { wrapper: IntlWrapper });
     result.current.handlePatternApply();
     expect(deps.setShowPatternApplyConfirm).not.toHaveBeenCalled();
     expect(deps.setWaypoints).toHaveBeenCalledTimes(1);
@@ -94,7 +95,7 @@ describe("handlePatternApply gate", () => {
 
   it("applyPatternConfirmed → closes the confirm and applies", () => {
     const deps = makeDeps({ waypoints: EXISTING });
-    const { result } = renderHook(() => usePlannerActions(deps));
+    const { result } = renderHook(() => usePlannerActions(deps), { wrapper: IntlWrapper });
     result.current.applyPatternConfirmed();
     expect(deps.setShowPatternApplyConfirm).toHaveBeenCalledWith(false);
     expect(deps.setWaypoints).toHaveBeenCalledTimes(1);
@@ -103,7 +104,7 @@ describe("handlePatternApply gate", () => {
   it("no pattern generated → neither confirms nor applies", () => {
     usePatternStore.setState({ patternResult: null });
     const deps = makeDeps({ waypoints: EXISTING });
-    const { result } = renderHook(() => usePlannerActions(deps));
+    const { result } = renderHook(() => usePlannerActions(deps), { wrapper: IntlWrapper });
     result.current.handlePatternApply();
     expect(deps.setShowPatternApplyConfirm).not.toHaveBeenCalled();
     expect(deps.setWaypoints).not.toHaveBeenCalled();

@@ -214,7 +214,11 @@
     "vehicleHasNoMission": "The vehicle has no mission",
     "droneMissionName": "Drone Mission ({time})",
     "loadedFromDrone": "Loaded {count} waypoints from drone",
-    "connectDroneFirst": "Connect a drone first"
+    "connectDroneFirst": "Connect a drone first",
+    "sharedPlanSaved": "सामायिक योजना तुमच्या लायब्ररीत “{name}” म्हणून जतन केली",
+    "sharedPlanOpen": "उघडा",
+    "sharedPlanOpened": "सामायिक योजना उघडली",
+    "sharedPlanDamaged": "ही सामायिक लिंक खराब आहे किंवा नवीन आवृत्तीची आहे"
   },
   "panelCommit": {
     "saved": "Saved to flight controller",
@@ -3589,7 +3593,20 @@
       "statusFailed": "Failed",
       "target": "Sends to {name}",
       "targetMismatch": "This plan is assigned to {plan}. Sending goes to {target}.",
-      "switchTarget": "Switch to {plan}"
+      "switchTarget": "Switch to {plan}",
+      "missionInFlight": "अपलोड करण्यापूर्वी मिशन थांबवा",
+      "profileMismatch": "{plan} साठी योजना; लक्ष्य {target} आहे",
+      "resumeMission": "असे मिशन अपलोड करते जे उड्डाण घेते, वेग आणि कॅमेरा पुनर्स्थापित करते आणि WP {n} पासून पुढे जाते",
+      "autopilot": {
+        "ardupilot": "ArduPilot",
+        "px4": "PX4"
+      },
+      "vehicleClass": {
+        "copter": "मल्टीरोटर",
+        "plane": "विमान",
+        "vtol": "VTOL",
+        "rover": "रोव्हर"
+      }
     },
     "dock": {
       "ariaLabel": "Mission review",
@@ -3736,6 +3753,39 @@
         "topAlt": "वरची रांग",
         "rowSpacing": "रांगांमधील अंतर"
       }
+    },
+    "toast": {
+      "openPlanFirst": "आधी योजना उघडा किंवा तयार करा",
+      "rallyPlaced": "रॅली बिंदू ठेवला",
+      "datumSet": "डेटम बिंदू सेट केला",
+      "startPointSet": "सुरुवातीचा बिंदू सेट केला",
+      "areaByDrawing": "या पॅटर्नचे क्षेत्र रेखाटून सेट होते",
+      "roiAttached": "ROI शेवटच्या वेपॉइंटला जोडला",
+      "roiNeedsWaypoint": "ROI सेट करण्यापूर्वी वेपॉइंट जोडा",
+      "missionCleared": "मिशन साफ केले",
+      "waypointsReversed": "वेपॉइंटचा क्रम उलटला",
+      "missionUploaded": "मिशन FC वर अपलोड झाले",
+      "uploadFailedReason": "मिशन अपलोड अयशस्वी: {reason}",
+      "uploadFailed": "मिशन अपलोड अयशस्वी",
+      "resumeUploaded": "WP {n} पासून पुढे चालणारे मिशन अपलोड झाले",
+      "corridorPathSet": "कॉरिडॉर मार्ग सेट केला (बिंदू: {count})",
+      "facadeLineSet": "दर्शनी रेषा सेट केली",
+      "lineDrawn": "रेषा काढली (बिंदू: {count})",
+      "fencePolygonSet": "जिओफेन्स बहुभुज सेट केला (शिरोबिंदू: {count})",
+      "surveyAreaSet": "सर्वेक्षण क्षेत्र सेट केले (शिरोबिंदू: {count})",
+      "structureSet": "संरचनेची सीमा सेट केली (शिरोबिंदू: {count})",
+      "polygonDrawn": "बहुभुज काढला (शिरोबिंदू: {count})",
+      "fenceCircleSet": "जिओफेन्स वर्तुळ सेट केले (r = {radius} m)",
+      "orbitSet": "ऑर्बिट क्षेत्र सेट केले (r = {radius} m)",
+      "circleDrawn": "वर्तुळ काढले (r = {radius} m)",
+      "noPattern": "अजून कोणताही पॅटर्न तयार झालेला नाही",
+      "patternEmpty": "पॅटर्नमधून कोणतेही नेव्हिगेशन वेपॉइंट तयार झाले नाहीत",
+      "patternApplied": "पॅटर्न लागू केला: {count} वेपॉइंट, {distance}, ~{time}",
+      "distanceKm": "{value} किमी",
+      "distanceM": "{value} मी",
+      "timeMin": "{value} मिनिटे",
+      "timeSec": "{value} सेकंद",
+      "pasteDroppedJumps": "चिकटवलेल्या संचाबाहेरील वेपॉइंटवर जाणारे जंप काढले: {count}"
     }
   },
   "geofence": {

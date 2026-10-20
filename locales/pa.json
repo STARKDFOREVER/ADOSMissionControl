@@ -214,7 +214,11 @@
     "vehicleHasNoMission": "The vehicle has no mission",
     "droneMissionName": "Drone Mission ({time})",
     "loadedFromDrone": "Loaded {count} waypoints from drone",
-    "connectDroneFirst": "Connect a drone first"
+    "connectDroneFirst": "Connect a drone first",
+    "sharedPlanSaved": "ਸਾਂਝੀ ਯੋਜਨਾ ਤੁਹਾਡੀ ਲਾਇਬ੍ਰੇਰੀ ਵਿੱਚ “{name}” ਵਜੋਂ ਸੰਭਾਲੀ ਗਈ",
+    "sharedPlanOpen": "ਖੋਲ੍ਹੋ",
+    "sharedPlanOpened": "ਸਾਂਝੀ ਯੋਜਨਾ ਖੋਲ੍ਹੀ",
+    "sharedPlanDamaged": "ਇਹ ਸਾਂਝਾ ਲਿੰਕ ਖਰਾਬ ਹੈ ਜਾਂ ਨਵੇਂ ਸੰਸਕਰਣ ਦਾ ਹੈ"
   },
   "panelCommit": {
     "saved": "Saved to flight controller",
@@ -3589,7 +3593,20 @@
       "statusFailed": "Failed",
       "target": "Sends to {name}",
       "targetMismatch": "This plan is assigned to {plan}. Sending goes to {target}.",
-      "switchTarget": "Switch to {plan}"
+      "switchTarget": "Switch to {plan}",
+      "missionInFlight": "ਅੱਪਲੋਡ ਕਰਨ ਤੋਂ ਪਹਿਲਾਂ ਮਿਸ਼ਨ ਰੋਕੋ",
+      "profileMismatch": "{plan} ਲਈ ਯੋਜਨਾ; ਟੀਚਾ {target} ਹੈ",
+      "resumeMission": "ਅਜਿਹਾ ਮਿਸ਼ਨ ਅੱਪਲੋਡ ਕਰਦਾ ਹੈ ਜੋ ਉਡਾਣ ਭਰਦਾ ਹੈ, ਗਤੀ ਅਤੇ ਕੈਮਰਾ ਬਹਾਲ ਕਰਦਾ ਹੈ ਅਤੇ WP {n} ਤੋਂ ਜਾਰੀ ਰੱਖਦਾ ਹੈ",
+      "autopilot": {
+        "ardupilot": "ArduPilot",
+        "px4": "PX4"
+      },
+      "vehicleClass": {
+        "copter": "ਮਲਟੀਰੋਟਰ",
+        "plane": "ਜਹਾਜ਼",
+        "vtol": "VTOL",
+        "rover": "ਰੋਵਰ"
+      }
     },
     "dock": {
       "ariaLabel": "Mission review",
@@ -3736,6 +3753,39 @@
         "topAlt": "ਉੱਪਰਲੀ ਕਤਾਰ",
         "rowSpacing": "ਕਤਾਰ ਵਿੱਥ"
       }
+    },
+    "toast": {
+      "openPlanFirst": "ਪਹਿਲਾਂ ਯੋਜਨਾ ਖੋਲ੍ਹੋ ਜਾਂ ਬਣਾਓ",
+      "rallyPlaced": "ਰੈਲੀ ਬਿੰਦੂ ਰੱਖਿਆ ਗਿਆ",
+      "datumSet": "ਡੇਟਮ ਬਿੰਦੂ ਸੈੱਟ ਕੀਤਾ",
+      "startPointSet": "ਸ਼ੁਰੂਆਤੀ ਬਿੰਦੂ ਸੈੱਟ ਕੀਤਾ",
+      "areaByDrawing": "ਇਸ ਪੈਟਰਨ ਦਾ ਖੇਤਰ ਖਿੱਚ ਕੇ ਸੈੱਟ ਹੁੰਦਾ ਹੈ",
+      "roiAttached": "ROI ਆਖਰੀ ਵੇਪੁਆਇੰਟ ਨਾਲ ਜੋੜਿਆ ਗਿਆ",
+      "roiNeedsWaypoint": "ROI ਸੈੱਟ ਕਰਨ ਤੋਂ ਪਹਿਲਾਂ ਵੇਪੁਆਇੰਟ ਜੋੜੋ",
+      "missionCleared": "ਮਿਸ਼ਨ ਸਾਫ਼ ਕੀਤਾ",
+      "waypointsReversed": "ਵੇਪੁਆਇੰਟਾਂ ਦਾ ਕ੍ਰਮ ਉਲਟਾਇਆ",
+      "missionUploaded": "ਮਿਸ਼ਨ FC 'ਤੇ ਅੱਪਲੋਡ ਹੋਇਆ",
+      "uploadFailedReason": "ਮਿਸ਼ਨ ਅੱਪਲੋਡ ਅਸਫਲ: {reason}",
+      "uploadFailed": "ਮਿਸ਼ਨ ਅੱਪਲੋਡ ਅਸਫਲ",
+      "resumeUploaded": "WP {n} ਤੋਂ ਮੁੜ ਸ਼ੁਰੂ ਹੋਣ ਵਾਲਾ ਮਿਸ਼ਨ ਅੱਪਲੋਡ ਹੋਇਆ",
+      "corridorPathSet": "ਕੋਰੀਡੋਰ ਰਸਤਾ ਸੈੱਟ ਕੀਤਾ (ਬਿੰਦੂ: {count})",
+      "facadeLineSet": "ਮੁਹਾਂਦਰਾ ਰੇਖਾ ਸੈੱਟ ਕੀਤੀ",
+      "lineDrawn": "ਰੇਖਾ ਖਿੱਚੀ (ਬਿੰਦੂ: {count})",
+      "fencePolygonSet": "ਜੀਓਫੈਂਸ ਬਹੁਭੁਜ ਸੈੱਟ ਕੀਤਾ (ਸਿਖਰ: {count})",
+      "surveyAreaSet": "ਸਰਵੇਖਣ ਖੇਤਰ ਸੈੱਟ ਕੀਤਾ (ਸਿਖਰ: {count})",
+      "structureSet": "ਢਾਂਚੇ ਦੀ ਸੀਮਾ ਸੈੱਟ ਕੀਤੀ (ਸਿਖਰ: {count})",
+      "polygonDrawn": "ਬਹੁਭੁਜ ਖਿੱਚਿਆ (ਸਿਖਰ: {count})",
+      "fenceCircleSet": "ਜੀਓਫੈਂਸ ਚੱਕਰ ਸੈੱਟ ਕੀਤਾ (r = {radius} m)",
+      "orbitSet": "ਆਰਬਿਟ ਖੇਤਰ ਸੈੱਟ ਕੀਤਾ (r = {radius} m)",
+      "circleDrawn": "ਚੱਕਰ ਖਿੱਚਿਆ (r = {radius} m)",
+      "noPattern": "ਹਾਲੇ ਕੋਈ ਪੈਟਰਨ ਨਹੀਂ ਬਣਿਆ",
+      "patternEmpty": "ਪੈਟਰਨ ਤੋਂ ਕੋਈ ਨੈਵੀਗੇਸ਼ਨ ਵੇਪੁਆਇੰਟ ਨਹੀਂ ਬਣਿਆ",
+      "patternApplied": "ਪੈਟਰਨ ਲਾਗੂ ਕੀਤਾ: {count} ਵੇਪੁਆਇੰਟ, {distance}, ~{time}",
+      "distanceKm": "{value} ਕਿਮੀ",
+      "distanceM": "{value} ਮੀ",
+      "timeMin": "{value} ਮਿੰਟ",
+      "timeSec": "{value} ਸਕਿੰਟ",
+      "pasteDroppedJumps": "ਪੇਸਟ ਕੀਤੇ ਸਮੂਹ ਤੋਂ ਬਾਹਰਲੇ ਵੇਪੁਆਇੰਟਾਂ ਵੱਲ ਜਾਣ ਵਾਲੇ ਜੰਪ ਹਟਾਏ: {count}"
     }
   },
   "geofence": {

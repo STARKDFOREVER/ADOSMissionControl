@@ -190,7 +190,7 @@ describe("checklist readiness is live and per drone", () => {
     act(() => {
       useUploadReceiptsStore.getState().record("mission", {
         droneId: "drone-a",
-        contentHash: missionContentHash(waypoints),
+        contentHash: missionContentHash(waypoints, { transitAltM: null }),
         at: NOW,
       });
     });

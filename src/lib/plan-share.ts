@@ -297,13 +297,21 @@ export function decodePlan(encoded: string): MissionFile | null {
   }
 }
 
+/** What a URL hash holds: no share link, a link that does not decode, or a plan. */
+export type SharedPlanLink =
+  | { status: "none" }
+  | { status: "damaged" }
+  | { status: "ok"; file: MissionFile };
+
 /**
- * Read a `#plan=<encoded>` value from a URL hash string (e.g. `window.location.hash`),
- * returning the decoded mission file or null. The hash may include the leading `#`.
+ * Read a `#plan=<encoded>` value from a URL hash string (e.g. `window.location.hash`).
+ * The hash may include the leading `#`. A `plan` value that does not decode
+ * (truncated, tampered, or written by a newer version) is `damaged`.
  */
-export function readPlanFromHash(hash: string): MissionFile | null {
+export function readPlanFromHash(hash: string): SharedPlanLink {
   const raw = hash.startsWith("#") ? hash.slice(1) : hash;
-  const params = new URLSearchParams(raw);
-  const encoded = params.get(SHARE_HASH_KEY);
-  return encoded ? decodePlan(encoded) : null;
+  const encoded = new URLSearchParams(raw).get(SHARE_HASH_KEY);
+  if (encoded === null) return { status: "none" };
+  const file = decodePlan(encoded);
+  return file ? { status: "ok", file } : { status: "damaged" };
 }

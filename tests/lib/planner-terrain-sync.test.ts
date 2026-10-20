@@ -32,7 +32,8 @@ vi.mock("@/lib/storage", () => ({
   },
 }));
 
-import { useMissionStore, migrateMissionStore } from "@/stores/mission-store";
+import { useMissionStore } from "@/stores/mission-store";
+import { migrateMissionStore } from "@/stores/mission-store-persist";
 import { migratePlanLibrary } from "@/stores/plan-library-store";
 import { startGroundElevationSync } from "@/lib/mission/sample-ground-elevations";
 import { validateMission } from "@/lib/validation/mission-validator";

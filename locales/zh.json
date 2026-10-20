@@ -214,7 +214,11 @@
     "vehicleHasNoMission": "The vehicle has no mission",
     "droneMissionName": "Drone Mission ({time})",
     "loadedFromDrone": "Loaded {count} waypoints from drone",
-    "connectDroneFirst": "Connect a drone first"
+    "connectDroneFirst": "Connect a drone first",
+    "sharedPlanSaved": "共享计划已以“{name}”保存到你的计划库",
+    "sharedPlanOpen": "打开",
+    "sharedPlanOpened": "已打开共享计划",
+    "sharedPlanDamaged": "此分享链接已损坏或来自更新的版本"
   },
   "panelCommit": {
     "saved": "Saved to flight controller",
@@ -3589,7 +3593,20 @@
       "statusFailed": "Failed",
       "target": "Sends to {name}",
       "targetMismatch": "This plan is assigned to {plan}. Sending goes to {target}.",
-      "switchTarget": "Switch to {plan}"
+      "switchTarget": "Switch to {plan}",
+      "missionInFlight": "上传前请先暂停任务",
+      "profileMismatch": "计划针对 {plan}；目标为 {target}",
+      "resumeMission": "上传一个任务：起飞、恢复速度和相机设置，并从 WP {n} 继续",
+      "autopilot": {
+        "ardupilot": "ArduPilot",
+        "px4": "PX4"
+      },
+      "vehicleClass": {
+        "copter": "多旋翼",
+        "plane": "固定翼",
+        "vtol": "垂直起降",
+        "rover": "地面车"
+      }
     },
     "dock": {
       "ariaLabel": "Mission review",
@@ -3736,6 +3753,39 @@
         "topAlt": "最高一行",
         "rowSpacing": "行间距"
       }
+    },
+    "toast": {
+      "openPlanFirst": "请先打开或创建一个计划",
+      "rallyPlaced": "已放置集结点",
+      "datumSet": "已设置基准点",
+      "startPointSet": "已设置起点",
+      "areaByDrawing": "此模式的区域通过绘制设定",
+      "roiAttached": "已将 ROI 附加到最后一个航点",
+      "roiNeedsWaypoint": "设置 ROI 前请先添加航点",
+      "missionCleared": "任务已清除",
+      "waypointsReversed": "航点顺序已反转",
+      "missionUploaded": "任务已上传到飞控",
+      "uploadFailedReason": "任务上传失败：{reason}",
+      "uploadFailed": "任务上传失败",
+      "resumeUploaded": "已上传从 WP {n} 继续的任务",
+      "corridorPathSet": "已设置走廊路径（{count} 个点）",
+      "facadeLineSet": "已设置立面线",
+      "lineDrawn": "已绘制线（{count} 个点）",
+      "fencePolygonSet": "已设置地理围栏多边形（{count} 个顶点）",
+      "surveyAreaSet": "已设置测绘区域（{count} 个顶点）",
+      "structureSet": "已设置结构边界（{count} 个顶点）",
+      "polygonDrawn": "已绘制多边形（{count} 个顶点）",
+      "fenceCircleSet": "已设置地理围栏圆（r = {radius} m）",
+      "orbitSet": "已设置环绕区域（r = {radius} m）",
+      "circleDrawn": "已绘制圆（r = {radius} m）",
+      "noPattern": "尚未生成模式",
+      "patternEmpty": "该模式未生成导航航点",
+      "patternApplied": "已应用模式：{count} 个航点，{distance}，约 {time}",
+      "distanceKm": "{value} 公里",
+      "distanceM": "{value} 米",
+      "timeMin": "{value} 分钟",
+      "timeSec": "{value} 秒",
+      "pasteDroppedJumps": "已删除 {count} 个跳转到粘贴范围外航点的跳转"
     }
   },
   "geofence": {

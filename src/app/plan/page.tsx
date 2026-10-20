@@ -30,6 +30,7 @@ import { SendToVehicleDialog } from "@/components/planner/SendToVehicleDialog";
 import { FlightPlanLibrary } from "@/components/library/FlightPlanLibrary";
 import { UnsavedChangesDialog } from "@/components/library/UnsavedChangesDialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useToast } from "@/components/ui/toast";
 import { SidePanel } from "@/components/ui/side-panel";
 import { useDroneManager } from "@/stores/drone-manager";
 import { usePlannerStore, type DockTab } from "@/stores/planner-store";
@@ -37,13 +38,10 @@ import { useMissionStore } from "@/stores/mission-store";
 import { usePlanLibraryStore } from "@/stores/plan-library-store";
 import { usePreflightChecklistStore } from "@/stores/preflight-checklist-store";
 import { usePatternStore } from "@/stores/pattern-store";
-import { readPlanFromHash } from "@/lib/plan-share";
-import { restoreSharedPlanExtras } from "@/lib/plan-workspace";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
 import { registerCommandProvider } from "@/lib/command-palette-registry";
 import { setClipboard, getClipboard } from "@/lib/waypoint-clipboard";
-import { randomId } from "@/lib/utils";
 import { MAP_OVERLAY_Z } from "@/lib/map-overlay-z";
 import { startGroundElevationSync } from "@/lib/mission/sample-ground-elevations";
 import { usePlanner } from "./use-planner";
@@ -51,6 +49,9 @@ import { useKeyboardShortcuts } from "./use-keyboard-shortcuts";
 import { buildPlannerCommands, type PlannerCommandHandlers } from "./planner-commands";
 import { PlannerBar, useSendable } from "./PlannerBar";
 import { usePlannerShareImport } from "./use-planner-share-import";
+import { useSharedPlanLink } from "./use-shared-plan-link";
+import { usePlannedHomeSeed } from "./use-planned-home-seed";
+import { nudgeWaypoints, pasteWaypoints } from "./waypoint-edits";
 
 const PlannerMap = dynamic(() => import("@/components/planner/PlannerMap").then((m) => m.PlannerMap), { ssr: false });
 
@@ -62,6 +63,8 @@ const DOCK_GAP = 8;
 
 export default function MissionPlannerPage() {
   const t = useTranslations("planner");
+  const tToast = useTranslations("planner.toast");
+  const { toast } = useToast();
   const router = useRouter();
   const p = usePlanner();
   const droneCount = useDroneManager((s) => s.drones.size);
@@ -85,7 +88,7 @@ export default function MissionPlannerPage() {
 
   const [overlayPanelOpen, setOverlayPanelOpen] = useState(false);
   const [downloadPanelOpen, setDownloadPanelOpen] = useState(false);
-  const [sendOpen, setSendOpen] = useState(false);
+  const sendDialog = usePlannerStore((s) => s.sendDialog);
   // Panel toggles from the keyboard snap; from the pointer they slide. The flag
   // is false only for the render that applies a keyboard toggle.
   const [panelAnimate, setPanelAnimate] = useState(true);
@@ -105,23 +108,12 @@ export default function MissionPlannerPage() {
   // the sync looks up the ground under the new spot.
   useEffect(() => startGroundElevationSync(), []);
 
-  // Load a shared plan from the URL fragment (#plan=...) on first mount. Non-destructive:
-  // it only applies when the current mission is empty, so a share link can never clobber
-  // in-progress work. The fragment is then cleared so a refresh does not reload it.
-  useEffect(() => {
-    if (typeof window === "undefined" || !window.location.hash) return;
-    const shared = readPlanFromHash(window.location.hash);
-    if (shared) {
-      const ms = useMissionStore.getState();
-      if (ms.waypoints.length === 0) {
-        ms.setWaypoints(shared.waypoints);
-        p.setMissionName(shared.metadata.name);
-        restoreSharedPlanExtras(shared);
-      }
-    }
-    window.history.replaceState(null, "", window.location.pathname + window.location.search);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // A plan without a planned home gets one, and the home's ground is sampled.
+  usePlannedHomeSeed();
+
+  // Open a plan shared by link (#plan=...): saved to the library, opened when
+  // nothing unsaved would be lost, and the fragment cleared.
+  useSharedPlanLink(p.handlePlanLoaded);
 
   // Opening, creating or closing a plan always dismisses the library sheet and
   // returns the inspector to that plan's mission settings.
@@ -168,7 +160,7 @@ export default function MissionPlannerPage() {
     if (!s.inspectorOpen) s.toggleInspector();
   }, []);
   const simulate = useCallback(() => router.push("/simulate"), [router]);
-  const openSend = useCallback(() => setSendOpen(true), []);
+  const openSend = useCallback(() => usePlannerStore.getState().openSendDialog(), []);
   const keyboardToggle = useCallback((toggle: () => void) => () => {
     setPanelAnimate(false);
     toggle();
@@ -194,7 +186,7 @@ export default function MissionPlannerPage() {
     const ids = selectedIds.length >= 2 ? selectedIds : selectedWaypointId ? [selectedWaypointId] : [];
     if (ids.length === 0) return;
     const ms = useMissionStore.getState();
-    ms.setWaypoints(ms.waypoints.map((w) => (ids.includes(w.id) ? { ...w, lat: w.lat + dLat, lon: w.lon + dLon } : w)));
+    ms.setWaypoints(nudgeWaypoints(ms.waypoints, ids, dLat, dLon));
   }, [selectedIds, selectedWaypointId]);
   const onCopy = useCallback(() => {
     const waypoints = useMissionStore.getState().waypoints;
@@ -206,15 +198,14 @@ export default function MissionPlannerPage() {
   const onPaste = useCallback(() => {
     const clip = getClipboard();
     if (clip.length === 0) return;
-    // Paste copies slightly offset so they are visible and selectable. The
-    // copy sits over different ground, so the original's terrain sample is
-    // dropped and resampled.
-    const pasted = clip.map(({ groundElevation: _moved, ...wp }) => ({
-      ...wp, id: randomId(), lat: wp.lat + 0.0002, lon: wp.lon + 0.0002,
-    }));
+    // Paste copies slightly offset so they are visible and selectable, with
+    // jumps re-pointed at the pasted copies of their targets.
+    const { waypoints: pasted, droppedJumps } = pasteWaypoints(clip);
     const ms = useMissionStore.getState();
     ms.setWaypoints([...ms.waypoints, ...pasted]);
-  }, []);
+    if (droppedJumps > 0) toast(tToast("pasteDroppedJumps", { count: droppedJumps }), "warning");
+  }, [toast, tToast]);
+  const onNoActivePlan = useCallback(() => toast(tToast("openPlanFirst"), "info"), [toast, tToast]);
 
   useKeyboardShortcuts({
     activeTool: p.activeTool, setActiveTool: p.setActiveTool, undo: p.undo, redo: p.redo,
@@ -229,7 +220,7 @@ export default function MissionPlannerPage() {
     onToggleTerrain: toggleAltitude, onTogglePatternEditor: togglePattern, onToggleValidation: toggleIssues,
     onToggleOverlays: toggleOverlayPanel,
     onFocusPlaceSearch: focusPlaceSearch,
-    onNudgeSelected, onCopy, onPaste,
+    onNudgeSelected, onCopy, onPaste, onNoActivePlan,
   });
 
   // Contribute planner verbs to the ⌘K command palette while this page is
@@ -343,8 +334,8 @@ export default function MissionPlannerPage() {
       </div>
 
       {shareIo.boundaryInput}
-      <SendToVehicleDialog open={sendOpen} onClose={() => setSendOpen(false)} p={p}
-        showGeofence={showGeofence} showRally={showRally} />
+      <SendToVehicleDialog open={sendDialog !== null} onClose={() => usePlannerStore.getState().closeSendDialog()} p={p}
+        showGeofence={showGeofence} showRally={showRally} resumeFromIndex={sendDialog?.resumeFromIndex} />
       <ConfirmDialog open={p.showClearConfirm} onConfirm={p.confirmClear} onCancel={() => p.setShowClearConfirm(false)}
         title={t("discardChanges")} message={t("discardChangesBody")}
         confirmLabel={t("discard")} variant="danger" />

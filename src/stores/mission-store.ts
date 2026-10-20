@@ -20,13 +20,10 @@ import type {
   Mission,
   Waypoint,
   MissionState,
-  AltitudeFrame,
   PlannedHome,
   PlanVehicleProfile,
 } from "@/lib/types";
-import type { DroneProtocol, MissionItem } from "@/lib/protocol/types";
-import { droneSelection, selectedDroneProtocol } from "./drone-selection";
-import { useTelemetryStore } from "./telemetry-store";
+import type { DroneProtocol } from "@/lib/protocol/types";
 import { indexedDBStorage } from "@/lib/storage";
 import {
   withPlannerHistory,
@@ -41,155 +38,11 @@ import {
 // module's top-level registration runs mid-cycle. The leaf module imports
 // nothing, so its bindings are always ready.
 import { registerWaypointAdapter } from "@/lib/planner-history-adapter";
-// The pure mission ⇄ wire collapser: re-nests a downloaded flat item list into
-// the waypoint model. The upload side goes through `mission-upload`, which also
-// owns the receipt hash and the seq → waypoint mapping, so the three agree.
-import { collapseFromItems, type HomeSlot } from "@/lib/mission/mission-expand";
-import {
-  missionUploadItems,
-  missionContentHash,
-  missionSeqToWaypointIndex,
-} from "@/lib/mission-upload";
-import { DEFAULT_PLAN_PROFILE, profileFromVehicleInfo } from "@/lib/mission/plan-profile";
-import { useUploadReceiptsStore, receiptFor } from "./upload-receipts-store";
-import { foldLegacyWaypoints } from "@/lib/mission/flat-rows";
-import { migrateWaypointSlots } from "@/lib/mission/waypoint-slot-migration";
-import { readPersistedDefaultFrame, stampWaypointFrames } from "@/lib/mission/mission-frame";
-import { DEFAULT_ALTITUDE_FRAME } from "@/lib/mission/altitude-frame";
-import { droppedItemWarning } from "@/lib/mission-io-formats";
-
-/**
- * The execution half of a {@link Mission}, reset to "not running".
- *
- * A persisted mission is a plan. Anything describing what the vehicle is
- * currently doing has to be re-derived from live telemetry, never restored, so
- * these fields are neutralised both on the way out (`partialize`) and on the
- * way in for a payload written before that rule existed (`migrate` v4).
- */
-const IDLE_EXECUTION = {
-  state: "planning",
-  progress: 0,
-  currentWaypoint: 0,
-  startedAt: undefined,
-  completedAt: undefined,
-} as const satisfies Partial<Mission>;
-
-/** The subset of mission state written to IndexedDB. */
-export interface PersistedMissionState {
-  waypoints: Waypoint[];
-  activeMission: Mission | null;
-  plannedHome: PlannedHome | null;
-  vehicleProfile: PlanVehicleProfile | null;
-  transitAltM: number | null;
-}
-
-/**
- * Select what persists.
- *
- * The PLAN half of the mission persists; the EXECUTION half does not.
- * `Mission` carries `state` / `progress` / `currentWaypoint` / `startedAt`
- * alongside the plan, and persisting them verbatim meant a reload with
- * `state: "running"` put `MissionExecutionOverlay` and `OverviewMap`'s mission
- * controls on screen for a mission that is not running, with nothing
- * connected — while the top-level `progress` and `currentWaypoint` (correctly
- * not persisted) read 0. Two surfaces, two answers. `flight-lifecycle` would
- * also stamp the stale mission id and name onto the next flight's record.
- *
- * Exported so the shape is testable without driving the persist middleware.
- */
-export function missionPartialize(
-  state: MissionStoreState,
-): PersistedMissionState {
-  return {
-    waypoints: state.waypoints,
-    activeMission: state.activeMission
-      ? { ...state.activeMission, ...IDLE_EXECUTION }
-      : null,
-    plannedHome: state.plannedHome,
-    vehicleProfile: state.vehicleProfile,
-    transitAltM: state.transitAltM,
-  };
-}
-
-/**
- * Migrate a persisted mission payload forward. Exported so each branch is
- * unit-testable in isolation. `defaultFrame` is the planner default frame that
- * was in effect when the payload was written; v6 stamps it onto frameless
- * waypoints.
- */
-export function migrateMissionStore(
-  persisted: unknown,
-  version: number,
-  defaultFrame: AltitudeFrame = DEFAULT_ALTITUDE_FRAME,
-): Partial<MissionStoreState> {
-  const state = persisted as Record<string, unknown>;
-  if (version < 2) {
-    // v2 retired the suite framework. Strip the dropped ``suiteType`` field off
-    // ``activeMission`` so the persisted shape matches the TypeScript
-    // interface verbatim rather than relying on excess-property tolerance.
-    const active = state.activeMission as Record<string, unknown> | null;
-    if (active && "suiteType" in active) {
-      delete active.suiteType;
-      state.activeMission = active;
-    }
-  }
-  if (version < 3) {
-    // v3 nests action commands (DO_/CONDITION_) under the navigation waypoint
-    // they fire at. Fold a legacy flat list, where actions were their own
-    // top-level rows, into the per-waypoint ``actions[]`` model.
-    if (Array.isArray(state.waypoints)) {
-      state.waypoints = foldLegacyWaypoints(state.waypoints as Waypoint[]);
-    }
-  }
-  if (version < 4) {
-    // v4 stopped persisting live mission-execution state. A payload written by
-    // v3 or earlier can still name a running mission, so reset the execution
-    // fields on the way in — a persisted record is a plan, never a report of
-    // what the vehicle is doing.
-    const active = state.activeMission as Record<string, unknown> | null;
-    if (active) {
-      state.activeMission = { ...active, ...IDLE_EXECUTION };
-    }
-  }
-  if (version < 5) {
-    // v5 maps the iNav action onto `command` and moves the LOITER_TURNS /
-    // PAYLOAD_PLACE editor values into the slots that reach the right
-    // MAVLink parameter.
-    if (Array.isArray(state.waypoints)) {
-      state.waypoints = migrateWaypointSlots(state.waypoints as Waypoint[]);
-    }
-  }
-  if (version < 6) {
-    // v6 stores an explicit frame on every waypoint. A frameless waypoint was
-    // flown in the default frame of the day, so pin that frame now; a later
-    // change of the default no longer changes what the waypoint means.
-    if (Array.isArray(state.waypoints)) {
-      state.waypoints = stampWaypointFrames(state.waypoints as Waypoint[], defaultFrame);
-    }
-  }
-  if (version < 7) {
-    // v7 adds the plan settings: planned home, vehicle profile and transit
-    // altitude. A payload written before them carries none.
-    state.plannedHome = null;
-    state.vehicleProfile = null;
-    state.transitAltM = null;
-  }
-  return state as Partial<MissionStoreState>;
-}
-
-/**
- * The home position written into ArduPilot's mission slot 0: the vehicle's
- * HOME_POSITION when this is the selected drone and one has been received,
- * else the first waypoint at 0 m. ArduPilot never stores an uploaded slot 0
- * (index zero is always home) and reads it back as its own AHRS home, so the
- * slot only has to hold a valid position for the upload to be accepted.
- */
-export function uploadHome(protocol: DroneProtocol, waypoints: readonly Waypoint[]): HomeSlot {
-  const isSelected = selectedDroneProtocol() === protocol;
-  const home = isSelected ? useTelemetryStore.getState().homePosition.latest() : undefined;
-  if (home) return { lat: home.lat, lon: home.lon, alt: home.alt };
-  return { lat: waypoints[0]?.lat ?? 0, lon: waypoints[0]?.lon ?? 0, alt: 0 };
-}
+import { missionContentHash, missionSeqToWaypointIndex } from "@/lib/mission-upload";
+import { receiptFor } from "./upload-receipts-store";
+import { readPersistedDefaultFrame } from "@/lib/mission/mission-frame";
+import { missionPartialize, migrateMissionStore } from "./mission-store-persist";
+import { downloadPlanMission, planWireSettings, uploadPlanMission } from "./mission-transfer";
 
 /** A terrain sample taken at a waypoint's position (metres MSL). */
 export interface GroundElevationSample {
@@ -212,7 +65,7 @@ function dropMovedGround(prev: Waypoint | undefined, next: Waypoint): Waypoint {
   return rest;
 }
 
-interface MissionStoreState {
+export interface MissionStoreState {
   activeMission: Mission | null;
   waypoints: Waypoint[];
   /** Mission progress 0-100 from the FC's current item; 0 when unknown. */
@@ -282,26 +135,24 @@ interface MissionStoreState {
   setVehicleProfile: (profile: PlanVehicleProfile | null) => void;
   /** Set the transit altitude in metres above home; `null` or ≤ 0 turns it off (one undo step). */
   setTransitAlt: (altM: number | null) => void;
-  /** Upload the current waypoints. `target` pins the destination drone; when
-   *  omitted the operator's selected drone is used. A caller scoped to one
-   *  drone MUST pass `target` — the selection fallback sent a plugin's mission
-   *  write to whichever aircraft the operator happened to be watching. */
-  uploadMission: (target?: DroneProtocol) => Promise<boolean>;
+  /** Upload the current waypoints, with the plan's transit legs. `target`
+   *  pins the destination drone; when omitted the operator's selected drone
+   *  is used. A caller scoped to one drone MUST pass `target` — the selection
+   *  fallback sent a plugin's mission write to whichever aircraft the
+   *  operator happened to be watching. `waypoints` uploads that list in place
+   *  of the plan (a resume mission); it records no upload receipt, and the
+   *  vehicle no longer counts as holding the plan. */
+  uploadMission: (target?: DroneProtocol, opts?: { waypoints?: Waypoint[] }) => Promise<boolean>;
   /** Download the selected drone's mission and replace the plan with it. A
    *  failed or unsupported download sets `downloadState: "error"` and leaves
    *  the plan untouched; so does an empty download, because the vehicle having
-   *  no mission is no reason to wipe the open plan. */
+   *  no mission is no reason to wipe the open plan. A download replaces the
+   *  plan settings too: ArduPilot's home slot becomes the planned home, the
+   *  transit altitude goes (the vehicle's items hold any transit legs) and the
+   *  plan follows the vehicle's own profile. */
   downloadMission: () => Promise<Waypoint[]>;
   undo: () => void;
   redo: () => void;
-}
-
-/** The drone id a protocol instance belongs to, if it is still managed. */
-function droneIdOf(protocol: DroneProtocol): string | null {
-  for (const [id, drone] of droneSelection().drones) {
-    if (drone.protocol === protocol) return id;
-  }
-  return null;
 }
 
 export const useMissionStore = create<MissionStoreState>()(
@@ -402,12 +253,14 @@ export const useMissionStore = create<MissionStoreState>()(
     ),
 
   applyMissionCurrent: (droneId, seq) => {
-    const { waypoints } = get();
+    const state = get();
+    const { waypoints } = state;
+    const wire = planWireSettings(state);
     const receipt = receiptFor("mission", droneId);
     const matches =
-      receipt !== undefined && receipt.contentHash === missionContentHash(waypoints);
+      receipt !== undefined && receipt.contentHash === missionContentHash(waypoints, wire);
     const index = matches
-      ? missionSeqToWaypointIndex(waypoints, seq, receipt.homeSlot ?? false)
+      ? missionSeqToWaypointIndex(waypoints, seq, receipt.homeSlot ?? false, wire)
       : null;
     set({
       currentWaypoint: index,
@@ -480,124 +333,9 @@ export const useMissionStore = create<MissionStoreState>()(
 
   redo: () => redoHistory(),
 
-  uploadMission: async (target) => {
-    // The target is explicit for callers scoped to a specific drone (the
-    // plugin host, which must never fall back to the operator's selection);
-    // it defaults to the selected drone for the planner's own Upload button.
-    const protocol = target ?? selectedDroneProtocol();
-    if (!protocol) return false;
-    const { waypoints } = get();
-    if (waypoints.length === 0) return false;
+  uploadMission: (target, opts) => uploadPlanMission(get, set, target, opts),
 
-    set({ uploadState: "uploading", uploadError: null });
-
-    // Flatten the waypoint model (NAV waypoints + their attached actions) into
-    // the FC's contiguous `seq` item list, with each frame-less waypoint taking
-    // the mission's default frame, encoded for the autopilot and vehicle class
-    // the target reports. ArduPilot keeps home in slot 0 and starts the
-    // mission at slot 1, so the home slot is reserved there.
-    const info = protocol.getVehicleInfo();
-    const isArduPilot = info?.firmwareType.startsWith("ardupilot-") ?? false;
-    let items: MissionItem[];
-    try {
-      items = missionUploadItems(
-        waypoints,
-        profileFromVehicleInfo(info) ?? DEFAULT_PLAN_PROFILE,
-        isArduPilot ? uploadHome(protocol, waypoints) : undefined,
-      );
-    } catch (err) {
-      // The plan cannot be encoded for this autopilot (a PX4 target and a
-      // terrain-frame waypoint): nothing was sent, so the vehicle's mission
-      // and any receipt for it are unchanged.
-      set({ uploadState: "error", uploadError: err instanceof Error ? err.message : String(err) });
-      return false;
-    }
-    // Hash what is being sent now: an edit made while the transfer runs must
-    // not be vouched for by this upload's receipt.
-    const uploadedHash = missionContentHash(waypoints);
-    const droneId = droneIdOf(protocol);
-    const receipts = useUploadReceiptsStore.getState();
-
-    let success = false;
-    let failure: string | null = null;
-    try {
-      const result = await protocol.uploadMission(items);
-      success = result.success;
-      if (!success) failure = result.message || "The flight controller did not accept the mission";
-    } catch (err) {
-      failure = err instanceof Error && err.message ? err.message : "The mission transfer failed";
-    }
-    set({ uploadState: success ? "uploaded" : "error", uploadError: failure });
-    if (droneId) {
-      // A failed transfer may have left the FC with a partial or cleared
-      // mission, so what it holds is no longer known.
-      if (success) {
-        receipts.record("mission", {
-          droneId,
-          contentHash: uploadedHash,
-          at: Date.now(),
-          homeSlot: isArduPilot,
-        });
-      } else {
-        receipts.clearKindForDrone("mission", droneId);
-      }
-    }
-    return success;
-  },
-
-  downloadMission: async () => {
-    const protocol = selectedDroneProtocol();
-    if (!protocol) return [];
-
-    set({ downloadState: "downloading", downloadWarnings: [], downloadError: null });
-
-    try {
-      const downloaded = await protocol.downloadMission();
-      // ArduPilot's slot 0 is the home position, not a mission item. Jump
-      // targets keep their absolute seq, which collapse resolves directly.
-      const isArduPilot = protocol.getVehicleInfo()?.firmwareType.startsWith("ardupilot-") ?? false;
-      const items = isArduPilot ? downloaded.filter((it) => it.seq !== 0) : downloaded;
-      // The home slot anchors items the vehicle flies "from here" (RTL, 0,0
-      // TAKEOFF/LAND/LOITER) when no waypoint precedes them.
-      const homeItem = isArduPilot ? downloaded.find((it) => it.seq === 0) : undefined;
-      const home = homeItem && (homeItem.x !== 0 || homeItem.y !== 0)
-        ? { lat: homeItem.x / 1e7, lon: homeItem.y / 1e7 }
-        : undefined;
-      // Re-nest the flat FC item list back into NAV waypoints with attached
-      // actions, resolving each DO_JUMP's target seq to its owning waypoint id.
-      const downloadWarnings: string[] = [];
-      const waypoints: Waypoint[] = collapseFromItems(items, (dropped) => {
-        downloadWarnings.push(droppedItemWarning(dropped));
-      }, home, profileFromVehicleInfo(protocol.getVehicleInfo())?.autopilot);
-      // The vehicle holds no mission: report it and keep the open plan as it is.
-      if (waypoints.length === 0) {
-        set({ downloadState: "downloaded", downloadWarnings });
-        return waypoints;
-      }
-      // Replacing the operator's plan with the FC's is a planner edit: one
-      // undo step brings the local plan back.
-      withPlannerHistory(() => set({ waypoints }));
-      set({ downloadState: "downloaded", downloadWarnings });
-      // The planner now shows what the FC holds, unless an item could not be
-      // kept (then the two differ and nothing vouches for the plan).
-      const droneId = droneIdOf(protocol);
-      if (droneId && downloadWarnings.length === 0) {
-        useUploadReceiptsStore.getState().record("mission", {
-          droneId,
-          contentHash: missionContentHash(waypoints),
-          at: Date.now(),
-          homeSlot: isArduPilot,
-        });
-      }
-      return waypoints;
-    } catch (err) {
-      set({
-        downloadState: "error",
-        downloadError: err instanceof Error && err.message ? err.message : "The mission transfer failed",
-      });
-      return [];
-    }
-  },
+  downloadMission: () => downloadPlanMission(set),
     }),
     {
       name: "altcmd:mission-store",

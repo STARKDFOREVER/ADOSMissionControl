@@ -201,6 +201,18 @@ the project follows [Semantic Versioning](https://semver.org/).
   The energy estimate splits hover from cruise time, uses the selected battery
   pack and derates for the forecast wind and temperature. A DO_LAND_START on
   ArduPlane with RTL_AUTOLAND = 0 now blocks the upload.
+- Uploading is refused while the target is armed and flying a mission, and the
+  Send dialog warns when the plan was made for a different autopilot or
+  vehicle type. A mission can be resumed from a chosen waypoint: the planner
+  uploads a mission that takes off, restores the speed and camera trigger in
+  effect, and continues from there. Every plan keeps a planned home, seeded
+  from the vehicle when it is near the plan and filled from a mission download
+  or an imported file. Share links always land in the library, never over
+  unsaved work. Reverse keeps the takeoff and the return in place, inserted
+  waypoints copy the previous altitude and frame, pasted jumps point at the
+  pasted copies, Enter finishes a drawing, and the east-west nudge moves the
+  same distance at every latitude. Battery packs can be saved and picked for
+  the energy estimate.
 
 ### Removed
 

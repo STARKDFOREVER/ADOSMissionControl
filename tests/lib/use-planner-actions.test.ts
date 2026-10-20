@@ -31,13 +31,16 @@ vi.mock("@/lib/mission-io", () => ({
   clearAutoSave: vi.fn().mockResolvedValue(undefined),
 }));
 
-import { usePlannerActions } from "@/app/plan/use-planner-actions";
+import { usePlannerActions, reverseWaypoints, waypointForInsert } from "@/app/plan/use-planner-actions";
 import { usePlannerStore } from "@/stores/planner-store";
 import { usePatternStore } from "@/stores/pattern-store";
 import { useGeofenceStore } from "@/stores/geofence-store";
 import { useDrawingStore } from "@/stores/drawing-store";
+import { useMissionStore } from "@/stores/mission-store";
 import type { DrawnPolygon, DrawnCircle } from "@/lib/drawing/types";
 import type { DrawingFor } from "@/lib/planner-mode";
+import type { Waypoint } from "@/lib/types";
+import { IntlWrapper } from "../helpers/intl-wrapper";
 
 /** A square polygon in explicit [lat, lon] vertex order. */
 function makePolygon(id = "poly-1"): DrawnPolygon {
@@ -57,49 +60,46 @@ function makeCircle(id = "circ-1"): DrawnCircle {
   return { id, center: [12.97, 77.59], radius: 150 };
 }
 
+type Deps = Parameters<typeof usePlannerActions>[0];
+
 /**
  * Build the planner actions hook with no-op deps. handleDrawingComplete reads
  * the live stores directly (mode, pattern, geofence, drawing) and only needs the
  * toast callback off the deps, so the rest are stubs.
  */
-function buildActions(activeTool = "polygon") {
+function buildActions(activeTool = "polygon", over: Partial<Deps> = {}) {
   const toast = vi.fn();
   const addWaypoint = vi.fn();
-  const { result } = renderHook(() =>
-    usePlannerActions({
-      waypoints: [],
-      activePlanId: "plan-1",
-      isDirty: false,
-      activeTool,
-      defaultAlt: 50,
-      defaultSpeed: 5,
-      defaultAcceptRadius: 0,
-      selectedDroneId: "",
-      missionName: "",
-      contextMenu: null,
-      addWaypoint,
-      removeWaypoint: vi.fn(),
-      insertWaypoint: vi.fn(),
-      clearMission: vi.fn(),
-      setWaypoints: vi.fn(),
-      downloadMission: vi.fn().mockResolvedValue([]),
-      uploadMission: vi.fn().mockResolvedValue(true),
-      addRallyPoint: vi.fn(),
-      setContextMenu: vi.fn(),
-      setSelectedWaypoint: vi.fn(),
-      setShowClearConfirm: vi.fn(),
-      setShowDownloadConfirm: vi.fn(),
-      setMissionName: vi.fn(),
-      setSelectedDroneId: vi.fn(),
-      toast,
-    }),
-  );
-  return {
-    handleDrawingComplete: result.current.handleDrawingComplete,
-    handleMapClick: result.current.handleMapClick,
+  const deps: Deps = {
+    waypoints: [],
+    activePlanId: "plan-1",
+    isDirty: false,
+    activeTool,
+    defaultAlt: 50,
+    defaultSpeed: 5,
+    defaultAcceptRadius: 0,
+    selectedDroneId: "",
+    missionName: "",
+    contextMenu: null,
     addWaypoint,
+    removeWaypoint: vi.fn(),
+    insertWaypoint: vi.fn(),
+    clearMission: vi.fn(),
+    setWaypoints: vi.fn(),
+    downloadMission: vi.fn().mockResolvedValue([]),
+    uploadMission: vi.fn().mockResolvedValue(true),
+    addRallyPoint: vi.fn(),
+    setContextMenu: vi.fn(),
+    setSelectedWaypoint: vi.fn(),
+    setShowClearConfirm: vi.fn(),
+    setShowDownloadConfirm: vi.fn(),
+    setMissionName: vi.fn(),
+    setSelectedDroneId: vi.fn(),
     toast,
+    ...over,
   };
+  const { result } = renderHook(() => usePlannerActions(deps), { wrapper: IntlWrapper });
+  return { ...result.current, deps, addWaypoint, toast };
 }
 
 /** Arm the planner into a draw mode with the given destination tag. */
@@ -373,5 +373,92 @@ describe("handleMapClick waypoint tools", () => {
     handleMapClick(12.97, 77.59);
     expect(addWaypoint).toHaveBeenCalledTimes(1);
     expect(addWaypoint.mock.calls[0][0].command).toBe("LOITER_TIME");
+  });
+});
+
+function wp(id: string, command: Waypoint["command"], extra: Partial<Waypoint> = {}): Waypoint {
+  return { id, lat: 12.9, lon: 77.5, alt: 50, command, ...extra };
+}
+
+describe("Reverse waypoints", () => {
+  it("keeps a leading TAKEOFF and a trailing RTL in place", () => {
+    const plan = [wp("t", "TAKEOFF"), wp("a", "WAYPOINT"), wp("b", "WAYPOINT"), wp("r", "RTL")];
+    expect(reverseWaypoints(plan).map((w) => w.id)).toEqual(["t", "b", "a", "r"]);
+    const setWaypoints = vi.fn();
+    const { handleReverseWaypoints } = buildActions("select", { waypoints: plan, setWaypoints });
+    handleReverseWaypoints();
+    expect(setWaypoints.mock.calls[0][0].map((w: Waypoint) => w.id)).toEqual(["t", "b", "a", "r"]);
+  });
+
+  it("reverses everything when the plan has no takeoff or landing", () => {
+    const plan = [wp("a", "WAYPOINT"), wp("b", "WAYPOINT"), wp("c", "LOITER_TIME")];
+    expect(reverseWaypoints(plan).map((w) => w.id)).toEqual(["c", "b", "a"]);
+  });
+
+  it("keeps VTOL takeoff and LAND bookends", () => {
+    const plan = [wp("t", "VTOL_TAKEOFF"), wp("a", "WAYPOINT"), wp("b", "WAYPOINT"), wp("l", "LAND")];
+    expect(reverseWaypoints(plan).map((w) => w.id)).toEqual(["t", "b", "a", "l"]);
+  });
+});
+
+describe("rally placement", () => {
+  it("refuses to place a rally point with no plan open", () => {
+    const addRallyPoint = vi.fn();
+    const { handleMapClick, toast } = buildActions("rally", { activePlanId: null, addRallyPoint });
+    handleMapClick(12.97, 77.59);
+    expect(addRallyPoint).not.toHaveBeenCalled();
+    expect(toast).toHaveBeenCalledWith("Open or create a plan first", "info");
+  });
+});
+
+describe("inserting between waypoints", () => {
+  beforeEach(() => {
+    usePlannerStore.setState({ defaultAlt: 50, defaultFrame: "relative" });
+  });
+
+  it("copies the preceding waypoint's altitude and frame instead of averaging datums", () => {
+    const before = wp("a", "WAYPOINT", { alt: 50, frame: "relative", lat: 12.9 });
+    const after = wp("b", "WAYPOINT", { alt: 500, frame: "absolute", lat: 12.91 });
+    useMissionStore.setState({ waypoints: [before, after] });
+    const { handleInsertAt } = buildActions("select");
+    handleInsertAt(1);
+    const inserted = useMissionStore.getState().waypoints[1];
+    expect(inserted).toMatchObject({ command: "WAYPOINT", alt: 50, frame: "relative" });
+    expect(inserted.lat).toBeCloseTo(12.905);
+  });
+
+  it("after a landing, a new waypoint takes the default height instead of 0", () => {
+    const inserted = waypointForInsert(wp("l", "LAND", { alt: 0, frame: "absolute" }), { lat: 1, lon: 2 });
+    expect(inserted).toMatchObject({ lat: 1, lon: 2, alt: 50, frame: "relative" });
+  });
+});
+
+describe("resume upload", () => {
+  it("uploads the resume mission in place of the plan and names the resume point", async () => {
+    const plan = [
+      wp("t", "TAKEOFF", { alt: 30 }),
+      wp("a", "WAYPOINT"),
+      wp("b", "WAYPOINT"),
+      wp("c", "WAYPOINT"),
+      wp("r", "RTL", { lat: 0, lon: 0, alt: 0 }),
+    ];
+    const uploadMission = vi.fn<Deps["uploadMission"]>().mockResolvedValue(true);
+    const { handleUpload, toast } = buildActions("select", { waypoints: plan, uploadMission });
+    const result = await handleUpload(3);
+    expect(result.success).toBe(true);
+    const [target, opts] = uploadMission.mock.calls[0];
+    expect(target).toBeUndefined();
+    const sent = opts?.waypoints ?? [];
+    expect(sent.map((w) => w.command)).toEqual(["TAKEOFF", "WAYPOINT", "WAYPOINT", "RTL"]);
+    expect(sent.slice(2).map((w) => w.id)).toEqual(["c", "r"]);
+    expect(toast).toHaveBeenCalledWith("Resume mission from WP 4 uploaded", "success");
+  });
+
+  it("a plain upload sends the plan", async () => {
+    const uploadMission = vi.fn().mockResolvedValue(true);
+    const { handleUpload, toast } = buildActions("select", { uploadMission });
+    await handleUpload();
+    expect(uploadMission).toHaveBeenCalledWith(undefined, undefined);
+    expect(toast).toHaveBeenCalledWith("Mission uploaded to FC", "success");
   });
 });

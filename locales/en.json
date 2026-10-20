@@ -214,7 +214,11 @@
     "vehicleHasNoMission": "The vehicle has no mission",
     "droneMissionName": "Drone Mission ({time})",
     "loadedFromDrone": "Loaded {count} waypoints from drone",
-    "connectDroneFirst": "Connect a drone first"
+    "connectDroneFirst": "Connect a drone first",
+    "sharedPlanSaved": "Shared plan saved to your library as “{name}”",
+    "sharedPlanOpen": "Open",
+    "sharedPlanOpened": "Opened shared plan",
+    "sharedPlanDamaged": "This share link is damaged or from a newer version"
   },
   "panelCommit": {
     "saved": "Saved to flight controller",
@@ -3055,7 +3059,20 @@
       "close": "Close",
       "statusRunning": "Sending",
       "statusOk": "Sent",
-      "statusFailed": "Failed"
+      "statusFailed": "Failed",
+      "missionInFlight": "Pause the mission before uploading",
+      "profileMismatch": "Planned for {plan}; target is {target}",
+      "resumeMission": "Uploads a mission that takes off, restores speed and camera, and continues from WP {n}",
+      "autopilot": {
+        "ardupilot": "ArduPilot",
+        "px4": "PX4"
+      },
+      "vehicleClass": {
+        "copter": "multirotor",
+        "plane": "plane",
+        "vtol": "VTOL",
+        "rover": "rover"
+      }
     },
     "shortcuts": {
       "select": "Select tool",
@@ -3736,6 +3753,39 @@
         "topAlt": "Top row",
         "rowSpacing": "Row spacing"
       }
+    },
+    "toast": {
+      "openPlanFirst": "Open or create a plan first",
+      "rallyPlaced": "Rally point placed",
+      "datumSet": "Datum point set",
+      "startPointSet": "Start point set",
+      "areaByDrawing": "This pattern's area is set by drawing",
+      "roiAttached": "ROI attached to the last waypoint",
+      "roiNeedsWaypoint": "Add a waypoint before setting an ROI",
+      "missionCleared": "Mission cleared",
+      "waypointsReversed": "Waypoints reversed",
+      "missionUploaded": "Mission uploaded to FC",
+      "uploadFailedReason": "Mission upload failed: {reason}",
+      "uploadFailed": "Mission upload failed",
+      "resumeUploaded": "Resume mission from WP {n} uploaded",
+      "corridorPathSet": "Corridor path set ({count, plural, one {# point} other {# points}})",
+      "facadeLineSet": "Facade line set",
+      "lineDrawn": "Line drawn ({count, plural, one {# point} other {# points}})",
+      "fencePolygonSet": "Geofence polygon set ({count} vertices)",
+      "surveyAreaSet": "Survey area set ({count} vertices)",
+      "structureSet": "Structure boundary set ({count} vertices)",
+      "polygonDrawn": "Polygon drawn ({count} vertices)",
+      "fenceCircleSet": "Geofence circle set (r = {radius} m)",
+      "orbitSet": "Orbit area set (r = {radius} m)",
+      "circleDrawn": "Circle drawn (r = {radius} m)",
+      "noPattern": "No pattern generated yet",
+      "patternEmpty": "Pattern produced no navigation waypoints",
+      "patternApplied": "Pattern applied: {count} waypoints, {distance}, ~{time}",
+      "distanceKm": "{value} km",
+      "distanceM": "{value} m",
+      "timeMin": "{value} min",
+      "timeSec": "{value} s",
+      "pasteDroppedJumps": "{count, plural, one {Dropped # jump} other {Dropped # jumps}} to waypoints outside the pasted set"
     }
   },
   "basemap": {

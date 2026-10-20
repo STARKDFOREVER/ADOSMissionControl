@@ -214,7 +214,11 @@
     "vehicleHasNoMission": "The vehicle has no mission",
     "droneMissionName": "Drone Mission ({time})",
     "loadedFromDrone": "Loaded {count} waypoints from drone",
-    "connectDroneFirst": "Connect a drone first"
+    "connectDroneFirst": "Connect a drone first",
+    "sharedPlanSaved": "షేర్ చేసిన ప్లాన్ మీ లైబ్రరీలో “{name}”గా సేవ్ చేయబడింది",
+    "sharedPlanOpen": "తెరవండి",
+    "sharedPlanOpened": "షేర్ చేసిన ప్లాన్ తెరవబడింది",
+    "sharedPlanDamaged": "ఈ షేర్ లింక్ పాడైంది లేదా కొత్త వెర్షన్‌కు చెందినది"
   },
   "panelCommit": {
     "saved": "Saved to flight controller",
@@ -3589,7 +3593,20 @@
       "statusFailed": "Failed",
       "target": "Sends to {name}",
       "targetMismatch": "This plan is assigned to {plan}. Sending goes to {target}.",
-      "switchTarget": "Switch to {plan}"
+      "switchTarget": "Switch to {plan}",
+      "missionInFlight": "అప్‌లోడ్ చేసే ముందు మిషన్‌ను పాజ్ చేయండి",
+      "profileMismatch": "{plan} కోసం ప్లాన్ చేయబడింది; లక్ష్యం {target}",
+      "resumeMission": "టేకాఫ్ అయి, వేగం మరియు కెమెరాను పునరుద్ధరించి, WP {n} నుండి కొనసాగే మిషన్‌ను అప్‌లోడ్ చేస్తుంది",
+      "autopilot": {
+        "ardupilot": "ArduPilot",
+        "px4": "PX4"
+      },
+      "vehicleClass": {
+        "copter": "మల్టీరోటర్",
+        "plane": "విమానం",
+        "vtol": "VTOL",
+        "rover": "రోవర్"
+      }
     },
     "dock": {
       "ariaLabel": "Mission review",
@@ -3736,6 +3753,39 @@
         "topAlt": "పై వరుస",
         "rowSpacing": "వరుసల మధ్య దూరం"
       }
+    },
+    "toast": {
+      "openPlanFirst": "ముందుగా ఒక ప్లాన్‌ను తెరవండి లేదా సృష్టించండి",
+      "rallyPlaced": "ర్యాలీ పాయింట్ ఉంచబడింది",
+      "datumSet": "డేటమ్ పాయింట్ సెట్ చేయబడింది",
+      "startPointSet": "ప్రారంభ పాయింట్ సెట్ చేయబడింది",
+      "areaByDrawing": "ఈ ప్యాటర్న్ ప్రాంతం గీయడం ద్వారా సెట్ అవుతుంది",
+      "roiAttached": "ROI చివరి వేపాయింట్‌కు జోడించబడింది",
+      "roiNeedsWaypoint": "ROI సెట్ చేసే ముందు ఒక వేపాయింట్ జోడించండి",
+      "missionCleared": "మిషన్ క్లియర్ చేయబడింది",
+      "waypointsReversed": "వేపాయింట్‌ల క్రమం తిప్పబడింది",
+      "missionUploaded": "మిషన్ FCకి అప్‌లోడ్ అయింది",
+      "uploadFailedReason": "మిషన్ అప్‌లోడ్ విఫలమైంది: {reason}",
+      "uploadFailed": "మిషన్ అప్‌లోడ్ విఫలమైంది",
+      "resumeUploaded": "WP {n} నుండి కొనసాగే మిషన్ అప్‌లోడ్ అయింది",
+      "corridorPathSet": "కారిడార్ మార్గం సెట్ చేయబడింది (పాయింట్లు: {count})",
+      "facadeLineSet": "ముఖభాగ రేఖ సెట్ చేయబడింది",
+      "lineDrawn": "రేఖ గీయబడింది (పాయింట్లు: {count})",
+      "fencePolygonSet": "జియోఫెన్స్ బహుభుజి సెట్ చేయబడింది (శీర్షాలు: {count})",
+      "surveyAreaSet": "సర్వే ప్రాంతం సెట్ చేయబడింది (శీర్షాలు: {count})",
+      "structureSet": "నిర్మాణ సరిహద్దు సెట్ చేయబడింది (శీర్షాలు: {count})",
+      "polygonDrawn": "బహుభుజి గీయబడింది (శీర్షాలు: {count})",
+      "fenceCircleSet": "జియోఫెన్స్ వృత్తం సెట్ చేయబడింది (r = {radius} m)",
+      "orbitSet": "ఆర్బిట్ ప్రాంతం సెట్ చేయబడింది (r = {radius} m)",
+      "circleDrawn": "వృత్తం గీయబడింది (r = {radius} m)",
+      "noPattern": "ఇంకా ఏ ప్యాటర్న్ సృష్టించబడలేదు",
+      "patternEmpty": "ప్యాటర్న్ నుండి నావిగేషన్ వేపాయింట్‌లు ఏవీ రాలేదు",
+      "patternApplied": "ప్యాటర్న్ వర్తింపజేయబడింది: {count} వేపాయింట్‌లు, {distance}, ~{time}",
+      "distanceKm": "{value} కి.మీ",
+      "distanceM": "{value} మీ",
+      "timeMin": "{value} నిమి",
+      "timeSec": "{value} సె",
+      "pasteDroppedJumps": "అతికించిన సమూహం వెలుపలి వేపాయింట్‌లకు వెళ్లే జంప్‌లు తొలగించబడ్డాయి: {count}"
     }
   },
   "geofence": {

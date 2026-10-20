@@ -46,6 +46,7 @@ import { computeAdherence } from "./flight-analysis/mission-adherence";
 import { detectGeofenceBreaches } from "./flight-analysis/geofence-forensics";
 import { estimateWind } from "./flight-analysis/wind-estimator";
 import { useMissionStore } from "@/stores/mission-store";
+import { planWireSettings } from "@/stores/mission-transfer";
 import { usePlanLibraryStore } from "@/stores/plan-library-store";
 import { receiptFor } from "@/stores/upload-receipts-store";
 import { missionContentHash } from "./mission-upload";
@@ -190,12 +191,13 @@ function handleArm(droneId: string, droneName: string, snapshot: ArmSnapshot): v
   // mid-flight or the app crashes. Only a plan this drone acknowledged
   // uploading (its receipt matches the plan's content hash) is the flown
   // mission; anything else would compare the flight against the wrong route.
-  const plannedWaypoints = useMissionStore.getState().waypoints;
+  const mission = useMissionStore.getState();
+  const plannedWaypoints = mission.waypoints;
   const receipt = receiptFor("mission", droneId);
   const onVehicle =
     receipt !== undefined &&
     plannedWaypoints.length > 0 &&
-    receipt.contentHash === missionContentHash(plannedWaypoints);
+    receipt.contentHash === missionContentHash(plannedWaypoints, planWireSettings(mission));
   const library = usePlanLibraryStore.getState();
   const missionId = onVehicle ? receipt.contentHash : undefined;
   const missionName = onVehicle

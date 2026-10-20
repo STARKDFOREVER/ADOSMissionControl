@@ -179,16 +179,37 @@ describe("planner keyboard dispatcher", () => {
     expect(params.setActiveTool).not.toHaveBeenCalled();
   });
 
-  it("keeps panel keys inert on Plans home but tool letters working", () => {
-    const params = makeParams({ hasActivePlan: false });
+  it("keeps panel and tool keys inert on Plans home, and says why for a tool", () => {
+    const onNoActivePlan = vi.fn();
+    const params = makeParams({ hasActivePlan: false, onNoActivePlan });
     renderHook(() => useKeyboardShortcuts(params));
     const bracket = press("[");
     expect(params.onToggleOutline).not.toHaveBeenCalled();
     expect(bracket.defaultPrevented).toBe(false);
     press("t");
     expect(params.onToggleTerrain).not.toHaveBeenCalled();
+    press("y");
     press("w");
-    expect(params.setActiveTool).toHaveBeenCalledWith("waypoint");
+    expect(params.setActiveTool).not.toHaveBeenCalled();
+    expect(onNoActivePlan).toHaveBeenCalledTimes(2);
+  });
+
+  it("Enter finishes the active draw", () => {
+    const api = drawApi(true);
+    getActiveDrawApi.mockReturnValue(api);
+    const params = makeParams({ activeTool: "polygon" });
+    renderHook(() => useKeyboardShortcuts(params));
+    const enter = press("Enter");
+    expect(api.complete).toHaveBeenCalledTimes(1);
+    expect(enter.defaultPrevented).toBe(true);
+  });
+
+  it("Enter does nothing when no draw is in progress", () => {
+    const api = drawApi(false);
+    getActiveDrawApi.mockReturnValue(api);
+    renderHook(() => useKeyboardShortcuts(makeParams()));
+    expect(press("Enter").defaultPrevented).toBe(false);
+    expect(api.complete).not.toHaveBeenCalled();
   });
 
   it("Backspace deletes every selected waypoint in one batch", () => {

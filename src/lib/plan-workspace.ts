@@ -149,19 +149,3 @@ function capturePlanSettings(): PlanSettings | undefined {
     ...(transitAltM !== null ? { transitAltM } : {}),
   };
 }
-
-/**
- * Restore the fence, rally points and POIs a shared plan link carries. Each
- * domain is restored only when the workspace has none of its own, so opening a
- * link never overwrites geometry the operator already drew.
- */
-export function restoreSharedPlanExtras(shared: PlanExtras): void {
-  const current = capturePlanExtras();
-  if (shared.geofence && !current.geofence) useGeofenceStore.getState().restore(shared.geofence);
-  if (shared.rally && shared.rally.length > 0 && !current.rally) {
-    useRallyStore.getState().restore({ points: shared.rally });
-  }
-  if (shared.pois && shared.pois.length > 0 && !current.pois) {
-    usePlanPoiStore.getState().restore({ points: shared.pois, selectedId: null });
-  }
-}

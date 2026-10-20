@@ -14,7 +14,9 @@ import { useGeofenceStore } from "@/stores/geofence-store";
 import { useRallyStore } from "@/stores/rally-store";
 import { usePlanPoiStore } from "@/stores/plan-poi-store";
 import { useMissionStore } from "@/stores/mission-store";
+import { planWireSettings } from "@/stores/mission-transfer";
 import { capturePlanExtras, clearPlanWorkspace } from "@/lib/plan-workspace";
+import { missionWireWaypoints } from "@/lib/mission-upload";
 import { planSnapshotString } from "@/lib/plan-snapshot";
 import { usePlanIdentitySeed } from "./use-plan-identity-seed";
 import {
@@ -46,6 +48,15 @@ interface IODeps {
   toast: (message: string, status?: "success" | "warning" | "error" | "info") => void;
 }
 
+/**
+ * The waypoints an interchange export writes: the plan with its transit legs,
+ * since the file's reader knows nothing of a transit altitude. The native
+ * `.altmission` file keeps the plan itself and its transit setting.
+ */
+function exportedWaypoints(waypoints: readonly Waypoint[]): Waypoint[] {
+  return missionWireWaypoints(waypoints, planWireSettings(useMissionStore.getState()));
+}
+
 export function usePlannerIO(deps: IODeps) {
   const {
     waypoints, missionName, selectedDroneId, activePlanId, isDirty,
@@ -69,13 +80,16 @@ export function usePlannerIO(deps: IODeps) {
   const fenceZones = useGeofenceStore((s) => s.zones);
   const rallyPoints = useRallyStore((s) => s.points);
   const poiPoints = usePlanPoiStore((s) => s.points);
+  const plannedHome = useMissionStore((s) => s.plannedHome);
+  const vehicleProfile = useMissionStore((s) => s.vehicleProfile);
+  const transitAltM = useMissionStore((s) => s.transitAltM);
 
   const extras = useMemo(
     () => capturePlanExtras(),
     [
       fenceEnabled, fenceType, fenceMaxAltitude, fenceMinAltitude, fenceBreachAction,
       fencePolygonPoints, fenceCircleCenter, fenceCircleRadius, fenceZones,
-      rallyPoints, poiPoints,
+      rallyPoints, poiPoints, plannedHome, vehicleProfile, transitAltM,
     ],
   );
 
@@ -110,6 +124,13 @@ export function usePlannerIO(deps: IODeps) {
       }
       if (saved.pois && saved.pois.length > 0) {
         usePlanPoiStore.getState().restore({ points: saved.pois, selectedId: null });
+      }
+      if (saved.settings) {
+        useMissionStore.setState({
+          plannedHome: saved.settings.plannedHome ?? null,
+          vehicleProfile: saved.settings.vehicle ?? null,
+          transitAltM: saved.settings.transitAltM ?? null,
+        });
       }
     })();
   }, [setWaypoints, toast, t, setMissionName, setSelectedDroneId]);
@@ -204,27 +225,27 @@ export function usePlannerIO(deps: IODeps) {
   }, [waypoints, missionName, selectedDroneId, toast, t]);
 
   const handleExportWaypoints = useCallback(() => {
-    exportWaypointsFormat(waypoints, missionName || "mission", currentExportOptions());
+    exportWaypointsFormat(exportedWaypoints(waypoints), missionName || "mission", currentExportOptions());
     toast(t("exported", { format: ".waypoints" }), "success");
   }, [waypoints, missionName, toast, t]);
 
   const handleExportPlan = useCallback(() => {
-    exportQGCPlan(waypoints, missionName || "mission", capturePlanExtras(), currentExportOptions());
+    exportQGCPlan(exportedWaypoints(waypoints), missionName || "mission", capturePlanExtras(), currentExportOptions());
     toast(t("exported", { format: ".plan" }), "success");
   }, [waypoints, missionName, toast, t]);
 
   const handleExportKML = useCallback(() => {
-    exportMissionKML(waypoints, missionName || "mission");
+    exportMissionKML(exportedWaypoints(waypoints), missionName || "mission");
     toast(t("exported", { format: ".kml" }), "success");
   }, [waypoints, missionName, toast, t]);
 
   const handleExportCSV = useCallback(() => {
-    exportMissionCSV(waypoints, missionName || "mission", usePlannerStore.getState().defaultFrame);
+    exportMissionCSV(exportedWaypoints(waypoints), missionName || "mission", usePlannerStore.getState().defaultFrame);
     toast(t("exported", { format: ".csv" }), "success");
   }, [waypoints, missionName, toast, t]);
 
   const handleExportKMZ = useCallback(async () => {
-    await exportMissionKMZ(waypoints, missionName || "mission");
+    await exportMissionKMZ(exportedWaypoints(waypoints), missionName || "mission");
     toast(t("exported", { format: ".kmz" }), "success");
   }, [waypoints, missionName, toast, t]);
 
@@ -284,7 +305,11 @@ export function usePlannerIO(deps: IODeps) {
     const time = new Date().toLocaleTimeString("en-US", { hour12: false });
     const name = t("droneMissionName", { time });
     const libStore = usePlanLibraryStore.getState();
-    libStore.createPlan(name, downloaded, { droneId: selectedDroneId || undefined });
+    // The download replaced the plan settings too (planned home from the
+    // vehicle's home slot); the new plan is saved with them.
+    libStore.createPlan(name, downloaded, { droneId: selectedDroneId || undefined }, {
+      settings: capturePlanExtras().settings,
+    });
     setMissionName(name);
     setSelectedDroneId(selectedDroneId);
     usePlannerStore.getState().requestFit();

@@ -214,7 +214,11 @@
     "vehicleHasNoMission": "The vehicle has no mission",
     "droneMissionName": "Drone Mission ({time})",
     "loadedFromDrone": "Loaded {count} waypoints from drone",
-    "connectDroneFirst": "Connect a drone first"
+    "connectDroneFirst": "Connect a drone first",
+    "sharedPlanSaved": "ಹಂಚಿಕೊಂಡ ಯೋಜನೆಯನ್ನು ನಿಮ್ಮ ಲೈಬ್ರರಿಯಲ್ಲಿ “{name}” ಎಂದು ಉಳಿಸಲಾಗಿದೆ",
+    "sharedPlanOpen": "ತೆರೆಯಿರಿ",
+    "sharedPlanOpened": "ಹಂಚಿಕೊಂಡ ಯೋಜನೆಯನ್ನು ತೆರೆಯಲಾಗಿದೆ",
+    "sharedPlanDamaged": "ಈ ಹಂಚಿಕೆ ಲಿಂಕ್ ಹಾಳಾಗಿದೆ ಅಥವಾ ಹೊಸ ಆವೃತ್ತಿಯದ್ದಾಗಿದೆ"
   },
   "panelCommit": {
     "saved": "Saved to flight controller",
@@ -3589,7 +3593,20 @@
       "statusFailed": "Failed",
       "target": "Sends to {name}",
       "targetMismatch": "This plan is assigned to {plan}. Sending goes to {target}.",
-      "switchTarget": "Switch to {plan}"
+      "switchTarget": "Switch to {plan}",
+      "missionInFlight": "ಅಪ್‌ಲೋಡ್ ಮಾಡುವ ಮೊದಲು ಮಿಷನ್ ಅನ್ನು ವಿರಾಮಗೊಳಿಸಿ",
+      "profileMismatch": "{plan} ಗಾಗಿ ಯೋಜಿಸಲಾಗಿದೆ; ಗುರಿ {target}",
+      "resumeMission": "ಟೇಕಾಫ್ ಆಗಿ, ವೇಗ ಮತ್ತು ಕ್ಯಾಮೆರಾವನ್ನು ಮರುಸ್ಥಾಪಿಸಿ, WP {n} ರಿಂದ ಮುಂದುವರಿಯುವ ಮಿಷನ್ ಅನ್ನು ಅಪ್‌ಲೋಡ್ ಮಾಡುತ್ತದೆ",
+      "autopilot": {
+        "ardupilot": "ArduPilot",
+        "px4": "PX4"
+      },
+      "vehicleClass": {
+        "copter": "ಮಲ್ಟಿರೋಟರ್",
+        "plane": "ವಿಮಾನ",
+        "vtol": "VTOL",
+        "rover": "ರೋವರ್"
+      }
     },
     "dock": {
       "ariaLabel": "Mission review",
@@ -3736,6 +3753,39 @@
         "topAlt": "ಮೇಲಿನ ಸಾಲು",
         "rowSpacing": "ಸಾಲು ಅಂತರ"
       }
+    },
+    "toast": {
+      "openPlanFirst": "ಮೊದಲು ಒಂದು ಯೋಜನೆಯನ್ನು ತೆರೆಯಿರಿ ಅಥವಾ ರಚಿಸಿ",
+      "rallyPlaced": "ರ್ಯಾಲಿ ಬಿಂದುವನ್ನು ಇರಿಸಲಾಗಿದೆ",
+      "datumSet": "ಡೇಟಮ್ ಬಿಂದುವನ್ನು ಹೊಂದಿಸಲಾಗಿದೆ",
+      "startPointSet": "ಆರಂಭಿಕ ಬಿಂದುವನ್ನು ಹೊಂದಿಸಲಾಗಿದೆ",
+      "areaByDrawing": "ಈ ಮಾದರಿಯ ಪ್ರದೇಶವನ್ನು ಚಿತ್ರಿಸಿ ಹೊಂದಿಸಲಾಗುತ್ತದೆ",
+      "roiAttached": "ROI ಅನ್ನು ಕೊನೆಯ ವೇಪಾಯಿಂಟ್‌ಗೆ ಜೋಡಿಸಲಾಗಿದೆ",
+      "roiNeedsWaypoint": "ROI ಹೊಂದಿಸುವ ಮೊದಲು ಒಂದು ವೇಪಾಯಿಂಟ್ ಸೇರಿಸಿ",
+      "missionCleared": "ಮಿಷನ್ ತೆರವುಗೊಳಿಸಲಾಗಿದೆ",
+      "waypointsReversed": "ವೇಪಾಯಿಂಟ್‌ಗಳ ಕ್ರಮವನ್ನು ತಿರುಗಿಸಲಾಗಿದೆ",
+      "missionUploaded": "ಮಿಷನ್ FC ಗೆ ಅಪ್‌ಲೋಡ್ ಆಗಿದೆ",
+      "uploadFailedReason": "ಮಿಷನ್ ಅಪ್‌ಲೋಡ್ ವಿಫಲವಾಗಿದೆ: {reason}",
+      "uploadFailed": "ಮಿಷನ್ ಅಪ್‌ಲೋಡ್ ವಿಫಲವಾಗಿದೆ",
+      "resumeUploaded": "WP {n} ರಿಂದ ಮುಂದುವರಿಯುವ ಮಿಷನ್ ಅಪ್‌ಲೋಡ್ ಆಗಿದೆ",
+      "corridorPathSet": "ಕಾರಿಡಾರ್ ಮಾರ್ಗವನ್ನು ಹೊಂದಿಸಲಾಗಿದೆ (ಬಿಂದುಗಳು: {count})",
+      "facadeLineSet": "ಮುಂಭಾಗದ ರೇಖೆಯನ್ನು ಹೊಂದಿಸಲಾಗಿದೆ",
+      "lineDrawn": "ರೇಖೆಯನ್ನು ಚಿತ್ರಿಸಲಾಗಿದೆ (ಬಿಂದುಗಳು: {count})",
+      "fencePolygonSet": "ಜಿಯೋಫೆನ್ಸ್ ಬಹುಭುಜವನ್ನು ಹೊಂದಿಸಲಾಗಿದೆ (ಶೃಂಗಗಳು: {count})",
+      "surveyAreaSet": "ಸಮೀಕ್ಷಾ ಪ್ರದೇಶವನ್ನು ಹೊಂದಿಸಲಾಗಿದೆ (ಶೃಂಗಗಳು: {count})",
+      "structureSet": "ರಚನೆಯ ಗಡಿಯನ್ನು ಹೊಂದಿಸಲಾಗಿದೆ (ಶೃಂಗಗಳು: {count})",
+      "polygonDrawn": "ಬಹುಭುಜವನ್ನು ಚಿತ್ರಿಸಲಾಗಿದೆ (ಶೃಂಗಗಳು: {count})",
+      "fenceCircleSet": "ಜಿಯೋಫೆನ್ಸ್ ವೃತ್ತವನ್ನು ಹೊಂದಿಸಲಾಗಿದೆ (r = {radius} m)",
+      "orbitSet": "ಆರ್ಬಿಟ್ ಪ್ರದೇಶವನ್ನು ಹೊಂದಿಸಲಾಗಿದೆ (r = {radius} m)",
+      "circleDrawn": "ವೃತ್ತವನ್ನು ಚಿತ್ರಿಸಲಾಗಿದೆ (r = {radius} m)",
+      "noPattern": "ಇನ್ನೂ ಯಾವುದೇ ಮಾದರಿ ರಚಿಸಲಾಗಿಲ್ಲ",
+      "patternEmpty": "ಮಾದರಿಯಿಂದ ಯಾವುದೇ ನ್ಯಾವಿಗೇಶನ್ ವೇಪಾಯಿಂಟ್‌ಗಳು ಬಂದಿಲ್ಲ",
+      "patternApplied": "ಮಾದರಿ ಅನ್ವಯಿಸಲಾಗಿದೆ: {count} ವೇಪಾಯಿಂಟ್‌ಗಳು, {distance}, ~{time}",
+      "distanceKm": "{value} ಕಿಮೀ",
+      "distanceM": "{value} ಮೀ",
+      "timeMin": "{value} ನಿಮಿ",
+      "timeSec": "{value} ಸೆ",
+      "pasteDroppedJumps": "ಅಂಟಿಸಿದ ಗುಂಪಿನ ಹೊರಗಿನ ವೇಪಾಯಿಂಟ್‌ಗಳಿಗೆ ಹೋಗುವ ಜಂಪ್‌ಗಳನ್ನು ತೆಗೆದುಹಾಕಲಾಗಿದೆ: {count}"
     }
   },
   "geofence": {

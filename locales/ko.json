@@ -214,7 +214,11 @@
     "vehicleHasNoMission": "The vehicle has no mission",
     "droneMissionName": "Drone Mission ({time})",
     "loadedFromDrone": "Loaded {count} waypoints from drone",
-    "connectDroneFirst": "Connect a drone first"
+    "connectDroneFirst": "Connect a drone first",
+    "sharedPlanSaved": "공유된 계획을 라이브러리에 “{name}”(으)로 저장했습니다",
+    "sharedPlanOpen": "열기",
+    "sharedPlanOpened": "공유된 계획을 열었습니다",
+    "sharedPlanDamaged": "이 공유 링크는 손상되었거나 최신 버전에서 만든 것입니다"
   },
   "panelCommit": {
     "saved": "Saved to flight controller",
@@ -3589,7 +3593,20 @@
       "statusFailed": "Failed",
       "target": "Sends to {name}",
       "targetMismatch": "This plan is assigned to {plan}. Sending goes to {target}.",
-      "switchTarget": "Switch to {plan}"
+      "switchTarget": "Switch to {plan}",
+      "missionInFlight": "업로드하기 전에 미션을 일시 정지하세요",
+      "profileMismatch": "{plan}용으로 계획됨; 대상은 {target}입니다",
+      "resumeMission": "이륙 후 속도와 카메라를 복원하고 WP {n}부터 이어서 비행하는 미션을 업로드합니다",
+      "autopilot": {
+        "ardupilot": "ArduPilot",
+        "px4": "PX4"
+      },
+      "vehicleClass": {
+        "copter": "멀티로터",
+        "plane": "고정익",
+        "vtol": "VTOL",
+        "rover": "로버"
+      }
     },
     "dock": {
       "ariaLabel": "Mission review",
@@ -3736,6 +3753,39 @@
         "topAlt": "맨 위 줄",
         "rowSpacing": "줄 간격"
       }
+    },
+    "toast": {
+      "openPlanFirst": "먼저 계획을 열거나 만드세요",
+      "rallyPlaced": "랠리 지점을 배치했습니다",
+      "datumSet": "기준점을 설정했습니다",
+      "startPointSet": "시작 지점을 설정했습니다",
+      "areaByDrawing": "이 패턴의 영역은 그려서 설정합니다",
+      "roiAttached": "ROI를 마지막 웨이포인트에 추가했습니다",
+      "roiNeedsWaypoint": "ROI를 설정하기 전에 웨이포인트를 추가하세요",
+      "missionCleared": "미션을 지웠습니다",
+      "waypointsReversed": "웨이포인트 순서를 뒤집었습니다",
+      "missionUploaded": "미션을 FC에 업로드했습니다",
+      "uploadFailedReason": "미션 업로드 실패: {reason}",
+      "uploadFailed": "미션 업로드 실패",
+      "resumeUploaded": "WP {n}부터 재개하는 미션을 업로드했습니다",
+      "corridorPathSet": "회랑 경로를 설정했습니다 ({count}개 지점)",
+      "facadeLineSet": "외벽 선을 설정했습니다",
+      "lineDrawn": "선을 그렸습니다 ({count}개 지점)",
+      "fencePolygonSet": "지오펜스 다각형을 설정했습니다 (꼭짓점 {count}개)",
+      "surveyAreaSet": "측량 영역을 설정했습니다 (꼭짓점 {count}개)",
+      "structureSet": "구조물 경계를 설정했습니다 (꼭짓점 {count}개)",
+      "polygonDrawn": "다각형을 그렸습니다 (꼭짓점 {count}개)",
+      "fenceCircleSet": "지오펜스 원을 설정했습니다 (r = {radius} m)",
+      "orbitSet": "선회 영역을 설정했습니다 (r = {radius} m)",
+      "circleDrawn": "원을 그렸습니다 (r = {radius} m)",
+      "noPattern": "아직 생성된 패턴이 없습니다",
+      "patternEmpty": "패턴에서 항법 웨이포인트가 생성되지 않았습니다",
+      "patternApplied": "패턴 적용: 웨이포인트 {count}개, {distance}, 약 {time}",
+      "distanceKm": "{value} km",
+      "distanceM": "{value} m",
+      "timeMin": "{value}분",
+      "timeSec": "{value}초",
+      "pasteDroppedJumps": "붙여넣은 범위 밖의 웨이포인트로 가는 점프 {count}개를 삭제했습니다"
     }
   },
   "geofence": {

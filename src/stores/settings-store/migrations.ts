@@ -25,6 +25,10 @@ import {
   cloneDefaultTelemetryDeckPages,
   normalizeTelemetryDeckPages,
 } from "./constants";
+import {
+  DEFAULT_BATTERY_PROFILE_ID,
+  defaultBatteryProfiles,
+} from "@/stores/settings/planning-slice";
 
 export function migrateSettings(
   persisted: unknown,
@@ -338,6 +342,16 @@ export function migrateSettings(
   if (version < 55) {
     // v55: operator-added camera profiles for the planner's camera patterns.
     if (!Array.isArray(state.customCameras)) state.customCameras = [];
+  }
+  if (version < 56) {
+    // v56: battery packs for the planner's energy estimate and battery split,
+    // seeded with the pack the estimate assumed before it was configurable.
+    if (!Array.isArray(state.batteryProfiles) || state.batteryProfiles.length === 0) {
+      state.batteryProfiles = defaultBatteryProfiles();
+    }
+    if (typeof state.selectedBatteryProfileId !== "string") {
+      state.selectedBatteryProfileId = DEFAULT_BATTERY_PROFILE_ID;
+    }
   }
   return state as Partial<SettingsStoreState>;
 }

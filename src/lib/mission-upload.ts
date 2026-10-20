@@ -5,7 +5,8 @@
  * `seq` reported by the FC back to a planner waypoint.
  *
  * Upload, receipt comparison and progress tracking all go through here, so the
- * hash and the seq mapping always describe the exact items that were sent.
+ * hash and the seq mapping always describe the exact items that were sent:
+ * the plan with its transit legs added (see `mission/transit`).
  *
  * @license GPL-3.0-only
  */
@@ -21,6 +22,29 @@ import {
 } from "@/lib/mission/mission-expand";
 import { DEFAULT_PLAN_PROFILE } from "@/lib/mission/plan-profile";
 import { MAV_FRAME_GLOBAL_TERRAIN_ALT, MAV_FRAME_GLOBAL_TERRAIN_ALT_INT } from "@/lib/mission/altitude-frame";
+import { applyTransit } from "@/lib/mission/transit";
+
+/** The plan settings, besides the waypoints, that change what an upload sends. */
+export interface MissionWireSettings {
+  /** Transit altitude above home; `null` = off. */
+  transitAltM: number | null;
+  /** Ground elevation at the planned home, metres MSL, when known. */
+  homeGroundElevation?: number;
+}
+
+/**
+ * The waypoints an upload flies: the plan with its transit legs. The
+ * generated legs exist only here, never in the planner model.
+ */
+export function missionWireWaypoints(
+  waypoints: readonly Waypoint[],
+  settings: MissionWireSettings,
+): Waypoint[] {
+  return applyTransit(waypoints as Waypoint[], settings.transitAltM, {
+    homeGroundElevation: settings.homeGroundElevation,
+    defaultFrame: usePlannerStore.getState().defaultFrame,
+  });
+}
 
 /**
  * Expand the planner waypoints into the wire items an upload sends to an
@@ -60,14 +84,18 @@ export function missionUploadItems(
  * The hash identifies the plan, so it is taken over one fixed encoding: the
  * upload and every later comparison agree whatever the target autopilot.
  */
-export function missionContentHash(waypoints: readonly Waypoint[]): string {
-  return contentHash(missionUploadItems(waypoints, DEFAULT_PLAN_PROFILE));
+export function missionContentHash(
+  waypoints: readonly Waypoint[],
+  settings: MissionWireSettings,
+): string {
+  return contentHash(missionUploadItems(missionWireWaypoints(waypoints, settings), DEFAULT_PLAN_PROFILE));
 }
 
 /**
  * Planner waypoint index for a mission `seq` reported by the FC, or `null` when
  * the seq is the home slot or lies outside the mission. An action item maps to
- * the waypoint it is attached to.
+ * the waypoint it is attached to; a generated transit leg maps to the planner
+ * waypoint it leads to.
  *
  * @param homeSlot the upload reserved ArduPilot's seq 0 for home.
  */
@@ -75,9 +103,18 @@ export function missionSeqToWaypointIndex(
   waypoints: readonly Waypoint[],
   seq: number,
   homeSlot: boolean,
+  settings: MissionWireSettings,
 ): number | null {
   const itemIndex = homeSlot ? seq - 1 : seq;
   if (!Number.isInteger(itemIndex) || itemIndex < 0) return null;
   const { defaultSpeed } = usePlannerStore.getState();
-  return expandedItemOwners(waypoints, { defaultSpeed })[itemIndex] ?? null;
+  const flown = missionWireWaypoints(waypoints, settings);
+  const owner = expandedItemOwners(flown, { defaultSpeed })[itemIndex];
+  if (owner === undefined) return null;
+  if (flown === waypoints) return owner;
+  for (let i = owner; i < flown.length; i++) {
+    const index = waypoints.findIndex((w) => w.id === flown[i].id);
+    if (index !== -1) return index;
+  }
+  return null;
 }

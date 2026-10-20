@@ -55,4 +55,22 @@ describe("usePlanIdentitySeed", () => {
     const { result } = renderHook(() => useHarness("A", "Shared"));
     expect(result.current.name).toBe("Shared");
   });
+
+  it("keeps a name the page holds when the library hydrates after mount", () => {
+    const { result, rerender } = renderHook(({ id }) => useHarness(id, "Shared"), {
+      initialProps: { id: null as string | null },
+    });
+    rerender({ id: "A" });
+    expect(result.current).toEqual({ name: "Shared", drone: "d1" });
+  });
+
+  it("an active id the library does not hold leaves the identity alone", () => {
+    const { result, rerender } = renderHook(({ id }) => useHarness(id, "Kept"), {
+      initialProps: { id: "gone" as string | null },
+    });
+    expect(result.current.name).toBe("Kept");
+    // The missing plan is not retried: a later switch is a plan-to-plan change.
+    rerender({ id: "B" });
+    expect(result.current).toEqual({ name: "Bravo", drone: "" });
+  });
 });

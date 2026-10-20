@@ -28,6 +28,9 @@ export interface ContextMenuState {
   waypointId?: string;
 }
 
+/** The planner's toast callback: a message and its status. */
+export type PlannerToast = (message: string, status?: "success" | "warning" | "error" | "info") => void;
+
 /** Clamp a latitude to [-90, 90]. */
 export function clampLat(lat: number): number {
   return Math.max(-90, Math.min(90, lat));

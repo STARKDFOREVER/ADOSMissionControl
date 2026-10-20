@@ -214,7 +214,11 @@
     "vehicleHasNoMission": "The vehicle has no mission",
     "droneMissionName": "Drone Mission ({time})",
     "loadedFromDrone": "Loaded {count} waypoints from drone",
-    "connectDroneFirst": "Connect a drone first"
+    "connectDroneFirst": "Connect a drone first",
+    "sharedPlanSaved": "Plan partagé enregistré dans votre bibliothèque sous « {name} »",
+    "sharedPlanOpen": "Ouvrir",
+    "sharedPlanOpened": "Plan partagé ouvert",
+    "sharedPlanDamaged": "Ce lien de partage est endommagé ou provient d'une version plus récente"
   },
   "panelCommit": {
     "saved": "Saved to flight controller",
@@ -3589,7 +3593,20 @@
       "statusFailed": "Failed",
       "target": "Sends to {name}",
       "targetMismatch": "This plan is assigned to {plan}. Sending goes to {target}.",
-      "switchTarget": "Switch to {plan}"
+      "switchTarget": "Switch to {plan}",
+      "missionInFlight": "Mettez la mission en pause avant l'envoi",
+      "profileMismatch": "Planifié pour {plan} ; la cible est {target}",
+      "resumeMission": "Envoie une mission qui décolle, rétablit la vitesse et la caméra, puis reprend au WP {n}",
+      "autopilot": {
+        "ardupilot": "ArduPilot",
+        "px4": "PX4"
+      },
+      "vehicleClass": {
+        "copter": "multirotor",
+        "plane": "avion",
+        "vtol": "VTOL",
+        "rover": "rover"
+      }
     },
     "dock": {
       "ariaLabel": "Mission review",
@@ -3736,6 +3753,39 @@
         "topAlt": "Rangée haute",
         "rowSpacing": "Espacement des rangées"
       }
+    },
+    "toast": {
+      "openPlanFirst": "Ouvrez ou créez d'abord un plan",
+      "rallyPlaced": "Point de ralliement placé",
+      "datumSet": "Point de référence défini",
+      "startPointSet": "Point de départ défini",
+      "areaByDrawing": "La zone de ce motif se définit en dessinant",
+      "roiAttached": "ROI rattaché au dernier waypoint",
+      "roiNeedsWaypoint": "Ajoutez un waypoint avant de définir un ROI",
+      "missionCleared": "Mission effacée",
+      "waypointsReversed": "Waypoints inversés",
+      "missionUploaded": "Mission envoyée au FC",
+      "uploadFailedReason": "Échec de l'envoi de la mission : {reason}",
+      "uploadFailed": "Échec de l'envoi de la mission",
+      "resumeUploaded": "Mission de reprise depuis le WP {n} envoyée",
+      "corridorPathSet": "Tracé du corridor défini ({count, plural, one {# point} other {# points}})",
+      "facadeLineSet": "Ligne de façade définie",
+      "lineDrawn": "Ligne dessinée ({count, plural, one {# point} other {# points}})",
+      "fencePolygonSet": "Polygone de géobarrière défini ({count} sommets)",
+      "surveyAreaSet": "Zone de relevé définie ({count} sommets)",
+      "structureSet": "Contour de la structure défini ({count} sommets)",
+      "polygonDrawn": "Polygone dessiné ({count} sommets)",
+      "fenceCircleSet": "Cercle de géobarrière défini (r = {radius} m)",
+      "orbitSet": "Zone d'orbite définie (r = {radius} m)",
+      "circleDrawn": "Cercle dessiné (r = {radius} m)",
+      "noPattern": "Aucun motif généré pour l'instant",
+      "patternEmpty": "Le motif n'a produit aucun waypoint de navigation",
+      "patternApplied": "Motif appliqué : {count} waypoints, {distance}, ~{time}",
+      "distanceKm": "{value} km",
+      "distanceM": "{value} m",
+      "timeMin": "{value} min",
+      "timeSec": "{value} s",
+      "pasteDroppedJumps": "{count, plural, one {# saut supprimé} other {# sauts supprimés}} vers des waypoints hors de la sélection collée"
     }
   },
   "geofence": {

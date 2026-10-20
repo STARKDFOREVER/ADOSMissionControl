@@ -19,6 +19,7 @@ import { speedItem } from "@/lib/mission/mission-expand";
 import { missionContentHash } from "@/lib/mission-upload";
 import { workspaceHasUnsavedChanges } from "@/lib/plan-workspace";
 import { useMissionStore } from "@/stores/mission-store";
+import { planWireSettings } from "@/stores/mission-transfer";
 import { usePlanLibraryStore } from "@/stores/plan-library-store";
 import type { PathWaypoint } from "./flight-paths";
 import type { MockProtocol } from "./mock-protocol";
@@ -106,16 +107,17 @@ export class DemoMissionLoader {
   }
 
   private async load(): Promise<void> {
+    const mission = useMissionStore.getState();
     const ownDownload =
       this.loading ||
       (this.loadedHash !== null &&
-        missionContentHash(useMissionStore.getState().waypoints) === this.loadedHash);
+        missionContentHash(mission.waypoints, planWireSettings(mission)) === this.loadedHash);
     if (!ownDownload && workspaceHasUnsavedChanges()) return;
     usePlanLibraryStore.getState().setActivePlan(null);
     this.loading = true;
     try {
       const waypoints = await useMissionStore.getState().downloadMission();
-      if (waypoints.length > 0) this.loadedHash = missionContentHash(waypoints);
+      if (waypoints.length > 0) this.loadedHash = missionContentHash(waypoints, planWireSettings(useMissionStore.getState()));
     } finally {
       this.loading = false;
     }

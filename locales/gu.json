@@ -214,7 +214,11 @@
     "vehicleHasNoMission": "The vehicle has no mission",
     "droneMissionName": "Drone Mission ({time})",
     "loadedFromDrone": "Loaded {count} waypoints from drone",
-    "connectDroneFirst": "Connect a drone first"
+    "connectDroneFirst": "Connect a drone first",
+    "sharedPlanSaved": "શેર કરેલી યોજના તમારી લાઇબ્રેરીમાં “{name}” તરીકે સાચવી",
+    "sharedPlanOpen": "ખોલો",
+    "sharedPlanOpened": "શેર કરેલી યોજના ખોલી",
+    "sharedPlanDamaged": "આ શેર લિંક ખરાબ છે અથવા નવા સંસ્કરણની છે"
   },
   "panelCommit": {
     "saved": "Saved to flight controller",
@@ -3589,7 +3593,20 @@
       "statusFailed": "Failed",
       "target": "Sends to {name}",
       "targetMismatch": "This plan is assigned to {plan}. Sending goes to {target}.",
-      "switchTarget": "Switch to {plan}"
+      "switchTarget": "Switch to {plan}",
+      "missionInFlight": "અપલોડ કરતા પહેલા મિશન થોભાવો",
+      "profileMismatch": "{plan} માટે યોજના; લક્ષ્ય {target} છે",
+      "resumeMission": "એવું મિશન અપલોડ કરે છે જે ઉડાન ભરે, ઝડપ અને કેમેરા પુનઃસ્થાપિત કરે અને WP {n} થી આગળ વધે",
+      "autopilot": {
+        "ardupilot": "ArduPilot",
+        "px4": "PX4"
+      },
+      "vehicleClass": {
+        "copter": "મલ્ટીરોટર",
+        "plane": "વિમાન",
+        "vtol": "VTOL",
+        "rover": "રોવર"
+      }
     },
     "dock": {
       "ariaLabel": "Mission review",
@@ -3736,6 +3753,39 @@
         "topAlt": "ઉપરની હરોળ",
         "rowSpacing": "હરોળ અંતર"
       }
+    },
+    "toast": {
+      "openPlanFirst": "પહેલા યોજના ખોલો અથવા બનાવો",
+      "rallyPlaced": "રેલી બિંદુ મૂક્યું",
+      "datumSet": "ડેટમ બિંદુ સેટ કર્યું",
+      "startPointSet": "શરૂઆતનું બિંદુ સેટ કર્યું",
+      "areaByDrawing": "આ પેટર્નનો વિસ્તાર દોરીને સેટ થાય છે",
+      "roiAttached": "ROI છેલ્લા વેપોઇન્ટ સાથે જોડ્યું",
+      "roiNeedsWaypoint": "ROI સેટ કરતા પહેલા વેપોઇન્ટ ઉમેરો",
+      "missionCleared": "મિશન સાફ કર્યું",
+      "waypointsReversed": "વેપોઇન્ટનો ક્રમ ઉલટાવ્યો",
+      "missionUploaded": "મિશન FC પર અપલોડ થયું",
+      "uploadFailedReason": "મિશન અપલોડ નિષ્ફળ: {reason}",
+      "uploadFailed": "મિશન અપલોડ નિષ્ફળ",
+      "resumeUploaded": "WP {n} થી ફરી શરૂ થતું મિશન અપલોડ થયું",
+      "corridorPathSet": "કોરિડોર માર્ગ સેટ કર્યો (બિંદુ: {count})",
+      "facadeLineSet": "અગ્રભાગ રેખા સેટ કરી",
+      "lineDrawn": "રેખા દોરી (બિંદુ: {count})",
+      "fencePolygonSet": "જિયોફેન્સ બહુકોણ સેટ કર્યો (શિરોબિંદુ: {count})",
+      "surveyAreaSet": "સર્વે વિસ્તાર સેટ કર્યો (શિરોબિંદુ: {count})",
+      "structureSet": "માળખાની સીમા સેટ કરી (શિરોબિંદુ: {count})",
+      "polygonDrawn": "બહુકોણ દોર્યો (શિરોબિંદુ: {count})",
+      "fenceCircleSet": "જિયોફેન્સ વર્તુળ સેટ કર્યું (r = {radius} m)",
+      "orbitSet": "ઓર્બિટ વિસ્તાર સેટ કર્યો (r = {radius} m)",
+      "circleDrawn": "વર્તુળ દોર્યું (r = {radius} m)",
+      "noPattern": "હજી કોઈ પેટર્ન બની નથી",
+      "patternEmpty": "પેટર્નમાંથી કોઈ નેવિગેશન વેપોઇન્ટ બન્યા નથી",
+      "patternApplied": "પેટર્ન લાગુ કરી: {count} વેપોઇન્ટ, {distance}, ~{time}",
+      "distanceKm": "{value} કિમી",
+      "distanceM": "{value} મી",
+      "timeMin": "{value} મિનિટ",
+      "timeSec": "{value} સેકન્ડ",
+      "pasteDroppedJumps": "પેસ્ટ કરેલા સમૂહની બહારના વેપોઇન્ટ પર જતા જમ્પ દૂર કર્યા: {count}"
     }
   },
   "geofence": {

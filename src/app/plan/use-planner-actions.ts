@@ -5,25 +5,27 @@
  */
 
 import { useCallback } from "react";
-import { usePlanLibraryStore } from "@/stores/plan-library-store";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useTranslations } from "next-intl";
 import { useMissionStore } from "@/stores/mission-store";
 import { usePatternStore } from "@/stores/pattern-store";
 import { usePlannerStore } from "@/stores/planner-store";
 import { useGeofenceStore } from "@/stores/geofence-store";
+import { selectedDroneProtocol } from "@/stores/drone-selection";
 import { randomId } from "@/lib/utils";
 import { acceptRadiusDefault } from "@/components/planner/waypoint-constants";
 import { clearAutoSave } from "@/lib/mission-io";
 import { useDrawingStore } from "@/stores/drawing-store";
 import { useRallyStore } from "@/stores/rally-store";
 import { withPlannerHistory } from "@/lib/planner-history";
+import { buildResumeMission } from "@/lib/mission/resume";
+import { DEFAULT_PLAN_PROFILE, profileFromVehicleInfo } from "@/lib/mission/plan-profile";
 import { clampLat, clampLon, clampAlt } from "./use-planner-state";
-import type { ContextMenuState } from "./use-planner-state";
+import type { ContextMenuState, PlannerToast } from "./use-planner-state";
 import type { Waypoint } from "@/lib/types";
-import { patternToMission } from "@/lib/patterns/pattern-to-mission";
-import type { DrawnPolygon, DrawnCircle, DrawnPolyline } from "@/lib/drawing/types";
-import type { DrawingFor } from "@/lib/planner-mode";
+import type { DroneProtocol } from "@/lib/protocol/types";
 import { datumPatternFor } from "@/lib/planner-mode";
+import { useDrawingComplete } from "./use-drawing-complete";
+import { usePatternApply } from "./use-pattern-apply";
 
 interface ActionsDeps {
   waypoints: Waypoint[];
@@ -43,20 +45,19 @@ interface ActionsDeps {
   clearMission: () => void;
   setWaypoints: (wps: Waypoint[]) => void;
   downloadMission: () => Promise<Waypoint[]>;
-  uploadMission: () => Promise<boolean>;
+  uploadMission: (target?: DroneProtocol, opts?: { waypoints?: Waypoint[] }) => Promise<boolean>;
   addRallyPoint: (point: { id: string; lat: number; lon: number; alt: number }) => void;
   // State setters
   setContextMenu: (menu: ContextMenuState | null) => void;
   setSelectedWaypoint: (id: string | null) => void;
   setShowClearConfirm: (show: boolean) => void;
-  // Optional so the composition layer (use-planner.ts, not owned by this file)
-  // can wire it in a follow-up without a compile break; the pattern-apply gate
+  // Optional so the composition layer can omit it; the pattern-apply gate
   // no-ops safely (no destructive apply) until it is provided.
   setShowPatternApplyConfirm?: (show: boolean) => void;
   setShowDownloadConfirm: (show: boolean) => void;
   setMissionName: (name: string) => void;
   setSelectedDroneId: (id: string) => void;
-  toast: (message: string, status?: "success" | "warning" | "error" | "info") => void;
+  toast: PlannerToast;
 }
 
 /**
@@ -76,12 +77,52 @@ const TOOL_COMMAND_MAP: Record<string, Waypoint["command"]> = {
   loiter: "LOITER_TIME",
 };
 
+/** Items a plan starts with that Reverse keeps first. */
+const LEADING_COMMANDS: Record<string, true> = { TAKEOFF: true, VTOL_TAKEOFF: true };
+/** Items a plan ends with that Reverse keeps last. */
+const TRAILING_COMMANDS: Record<string, true> = { RTL: true, LAND: true, VTOL_LAND: true };
+/** Items whose altitude says nothing about the height to fly on to the next point. */
+const GROUND_END_COMMANDS: Record<string, true> = { RTL: true, LAND: true, VTOL_LAND: true };
+
 /**
  * The frame a newly placed waypoint is stamped with: the planner default at the
  * moment of placement. Stored on the waypoint so a later change of the default
  * never changes what this altitude means.
  */
 const placementFrame = () => usePlannerStore.getState().defaultFrame;
+
+/**
+ * A plain waypoint inserted after `prev` at `at`: it flies at `prev`'s altitude
+ * in `prev`'s frame and speed, so inserting into a leg never changes the
+ * height the leg is flown at. After an RTL or LAND, whose altitude is not a
+ * flying height, it takes the planner's default altitude and frame.
+ */
+export function waypointForInsert(prev: Waypoint, at: { lat: number; lon: number }): Waypoint {
+  const planner = usePlannerStore.getState();
+  const groundEnd = GROUND_END_COMMANDS[prev.command ?? "WAYPOINT"] === true;
+  return {
+    id: randomId(),
+    lat: clampLat(at.lat),
+    lon: clampLon(at.lon),
+    alt: groundEnd ? clampAlt(planner.defaultAlt) : prev.alt,
+    frame: groundEnd ? planner.defaultFrame : prev.frame ?? planner.defaultFrame,
+    ...(prev.speed !== undefined ? { speed: prev.speed } : {}),
+    command: "WAYPOINT",
+    ...acceptRadiusDefault("WAYPOINT", planner.defaultAcceptRadius),
+  };
+}
+
+/**
+ * The plan in reverse flight order, with a leading TAKEOFF and a trailing
+ * RTL / LAND kept where they are: the vehicle still takes off first and
+ * returns or lands last.
+ */
+export function reverseWaypoints(waypoints: readonly Waypoint[]): Waypoint[] {
+  const start = waypoints.length > 0 && LEADING_COMMANDS[waypoints[0].command ?? "WAYPOINT"] ? 1 : 0;
+  const last = waypoints.length - 1;
+  const end = last >= start && TRAILING_COMMANDS[waypoints[last].command ?? "WAYPOINT"] ? last : waypoints.length;
+  return [...waypoints.slice(0, start), ...waypoints.slice(start, end).reverse(), ...waypoints.slice(end)];
+}
 
 /**
  * Attach an ROI action to a navigation waypoint. ROI is a non-navigation
@@ -108,22 +149,25 @@ function attachRoiAction(
 
 export function usePlannerActions(deps: ActionsDeps) {
   const {
-    waypoints, activePlanId, isDirty, activeTool, defaultAlt, defaultSpeed, defaultAcceptRadius,
-    selectedDroneId, missionName, contextMenu,
+    waypoints, activePlanId, activeTool, defaultAlt, defaultSpeed, defaultAcceptRadius,
+    contextMenu,
     addWaypoint, removeWaypoint, insertWaypoint, clearMission, setWaypoints,
-    downloadMission, uploadMission,
+    uploadMission,
     addRallyPoint, setContextMenu, setSelectedWaypoint,
-    setShowClearConfirm, setShowPatternApplyConfirm, setShowDownloadConfirm,
+    setShowClearConfirm, setShowPatternApplyConfirm,
     setMissionName, setSelectedDroneId,
     toast,
   } = deps;
+  const t = useTranslations("planner.toast");
 
   const handleMapClick = useCallback(
     (lat: number, lon: number) => {
       if (activeTool === "rally") {
+        // A rally point belongs to a plan; with none open it would belong to nothing.
+        if (!activePlanId) { toast(t("openPlanFirst"), "info"); return; }
         // Sticky: keep placing rally points until the tool is switched.
         addRallyPoint({ id: randomId(), lat: clampLat(lat), lon: clampLon(lon), alt: clampAlt(defaultAlt) });
-        toast("Rally point placed", "success");
+        toast(t("rallyPlaced"), "success");
         return;
       }
       // SAR pattern datum/start point placement — explicit "datum" tool only, so a
@@ -137,34 +181,34 @@ export function usePlannerActions(deps: ActionsDeps) {
         const patternStore = usePatternStore.getState();
         if (pattern === "expandingSquare") {
           patternStore.updateSarExpandingSquareConfig({ center: [clampLat(lat), clampLon(lon)] });
-          toast("Datum point set", "success");
+          toast(t("datumSet"), "success");
         } else if (pattern === "sectorSearch") {
           patternStore.updateSarSectorSearchConfig({ center: [clampLat(lat), clampLon(lon)] });
-          toast("Datum point set", "success");
+          toast(t("datumSet"), "success");
         } else if (pattern === "parallelTrack") {
           patternStore.updateSarParallelTrackConfig({ startPoint: [clampLat(lat), clampLon(lon)] });
-          toast("Start point set", "success");
+          toast(t("startPointSet"), "success");
         } else {
           // survey / orbit / corridor / structureScan take their area from a
           // drawn boundary, not a datum click — don't claim no pattern is armed.
-          toast("This pattern's area is set by drawing", "info");
+          toast(t("areaByDrawing"), "info");
         }
         return;
       }
       // The ROI tool attaches an action to the last navigation waypoint rather
       // than creating a top-level ROI row, which is not a navigation command.
       if (activeTool === "roi") {
-        if (!activePlanId) { toast("Create or select a flight plan first", "info"); return; }
+        if (!activePlanId) { toast(t("openPlanFirst"), "info"); return; }
         const attached = attachRoiAction(waypoints, clampLat(lat), clampLon(lon), clampAlt(defaultAlt));
         toast(
-          attached ? "ROI attached to the last waypoint" : "Add a waypoint before setting an ROI",
+          attached ? t("roiAttached") : t("roiNeedsWaypoint"),
           attached ? "success" : "info",
         );
         return;
       }
       const command = TOOL_COMMAND_MAP[activeTool];
       if (!command) return;
-      if (!activePlanId) { toast("Create or select a flight plan first", "info"); return; }
+      if (!activePlanId) { toast(t("openPlanFirst"), "info"); return; }
       const wp: Waypoint = {
         id: randomId(), lat: clampLat(lat), lon: clampLon(lon),
         alt: command === "LAND" ? 0 : clampAlt(defaultAlt), speed: defaultSpeed, command,
@@ -173,7 +217,7 @@ export function usePlannerActions(deps: ActionsDeps) {
       };
       addWaypoint(wp);
     },
-    [activePlanId, activeTool, addWaypoint, addRallyPoint, defaultAlt, defaultSpeed, defaultAcceptRadius, toast, waypoints]
+    [activePlanId, activeTool, addWaypoint, addRallyPoint, defaultAlt, defaultSpeed, defaultAcceptRadius, toast, t, waypoints]
   );
 
   const handleMapRightClick = useCallback(
@@ -212,30 +256,28 @@ export function usePlannerActions(deps: ActionsDeps) {
   );
 
   // Insert a fresh waypoint just before or after an existing one, nudged off
-  // it so the two markers don't stack. Shared by the map context menu and the
-  // waypoint inspector's menu.
+  // it so the two markers don't stack. It flies at the altitude of the
+  // waypoint it follows. Shared by the map context menu and the waypoint
+  // inspector's menu.
   const handleInsertRelative = useCallback(
     (waypointId: string, where: "before" | "after") => {
       const idx = waypoints.findIndex((w) => w.id === waypointId);
       if (idx === -1) return;
       const ref = waypoints[idx];
-      const newWp: Waypoint = {
-        id: randomId(), lat: clampLat(ref.lat + 0.0005), lon: clampLon(ref.lon + 0.0005),
-        alt: clampAlt(defaultAlt), command: "WAYPOINT", frame: placementFrame(),
-        ...acceptRadiusDefault("WAYPOINT", defaultAcceptRadius),
-      };
+      const prev = where === "after" ? ref : waypoints[idx - 1] ?? ref;
+      const newWp = waypointForInsert(prev, { lat: ref.lat + 0.0005, lon: ref.lon + 0.0005 });
       insertWaypoint(newWp, where === "before" ? idx : idx + 1);
     },
-    [waypoints, defaultAlt, defaultAcceptRadius, insertWaypoint]
+    [waypoints, insertWaypoint]
   );
 
   const handleContextAction = useCallback(
     (actionId: string) => {
       if (!contextMenu) return;
       const { lat, lon, waypointId } = contextMenu;
-      const addActions = ["add-wp", "add-takeoff", "add-land", "add-roi"];
+      const addActions = ["add-wp", "add-takeoff", "add-land", "add-roi", "add-rally"];
       if (addActions.includes(actionId) && !activePlanId) {
-        toast("Create or select a flight plan first", "info");
+        toast(t("openPlanFirst"), "info");
         setContextMenu(null);
         return;
       }
@@ -254,7 +296,7 @@ export function usePlannerActions(deps: ActionsDeps) {
           const attached = attachRoiAction(
             waypoints, clampLat(lat ?? 0), clampLon(lon ?? 0), clampAlt(defaultAlt),
           );
-          if (!attached) toast("Add a waypoint before setting an ROI", "info");
+          if (!attached) toast(t("roiNeedsWaypoint"), "info");
           break;
         }
         case "add-rally":
@@ -278,7 +320,7 @@ export function usePlannerActions(deps: ActionsDeps) {
       }
       setContextMenu(null);
     },
-    [contextMenu, activePlanId, addWaypoint, addRallyPoint, removeWaypoint, defaultAlt, defaultAcceptRadius, waypoints, setSelectedWaypoint, toast, setContextMenu, handleInsertRelative]
+    [contextMenu, activePlanId, addWaypoint, addRallyPoint, removeWaypoint, defaultAlt, defaultAcceptRadius, waypoints, setSelectedWaypoint, toast, t, setContextMenu, handleInsertRelative]
   );
 
   const handleWaypointClick = useCallback((id: string, additive?: boolean, range?: boolean) => {
@@ -300,26 +342,19 @@ export function usePlannerActions(deps: ActionsDeps) {
     }
   }, [setSelectedWaypoint, waypoints]);
 
-  // Insert a waypoint between waypoint index-1 and index. Position is the midpoint
-  // of its two neighbours, altitude their average, and it inherits the preceding
-  // waypoint's frame + speed. When inserting past the last row (no following
-  // waypoint) the new point is nudged off the previous one.
+  // Insert a waypoint between waypoint index-1 and index, at the midpoint of
+  // its two neighbours and at the preceding waypoint's altitude and frame (an
+  // average of two altitudes in different frames means nothing). Past the last
+  // row (no following waypoint) the new point is nudged off the previous one.
   const handleInsertAt = useCallback((index: number) => {
     const wps = useMissionStore.getState().waypoints;
     const before = wps[index - 1];
     if (!before) return;
     const after = wps[index];
-    const newWp: Waypoint = {
-      id: randomId(),
-      lat: after ? (before.lat + after.lat) / 2 : before.lat + 0.0005,
-      lon: after ? (before.lon + after.lon) / 2 : before.lon + 0.0005,
-      alt: after ? (before.alt + after.alt) / 2 : before.alt,
-      speed: before.speed,
-      frame: before.frame ?? usePlannerStore.getState().defaultFrame,
-      command: "WAYPOINT",
-      ...acceptRadiusDefault("WAYPOINT", usePlannerStore.getState().defaultAcceptRadius),
-    };
-    useMissionStore.getState().insertWaypoint(newWp, index);
+    const at = after
+      ? { lat: (before.lat + after.lat) / 2, lon: (before.lon + after.lon) / 2 }
+      : { lat: before.lat + 0.0005, lon: before.lon + 0.0005 };
+    useMissionStore.getState().insertWaypoint(waypointForInsert(before, at), index);
   }, []);
 
   const handleWaypointDragEnd = useCallback(
@@ -357,153 +392,57 @@ export function usePlannerActions(deps: ActionsDeps) {
     setMissionName("");
     setSelectedDroneId("");
     setShowClearConfirm(false);
-    toast("Mission cleared", "info");
-  }, [clearMission, toast, setMissionName, setSelectedDroneId, setShowClearConfirm]);
+    toast(t("missionCleared"), "info");
+  }, [clearMission, toast, t, setMissionName, setSelectedDroneId, setShowClearConfirm]);
 
   const handleReverseWaypoints = useCallback(() => {
     if (waypoints.length < 2) return;
-    setWaypoints([...waypoints].reverse());
-    toast("Waypoints reversed", "info");
-  }, [waypoints, setWaypoints, toast]);
+    setWaypoints(reverseWaypoints(waypoints));
+    toast(t("waypointsReversed"), "info");
+  }, [waypoints, setWaypoints, toast, t]);
 
-  /** Upload the mission. Toasts the outcome and returns it for callers that report it inline. */
-  const handleUpload = useCallback(async (): Promise<{ success: boolean; message: string }> => {
-    const ok = await uploadMission();
-    if (ok) { toast("Mission uploaded to FC", "success"); return { success: true, message: "Mission uploaded to FC" }; }
+  /**
+   * Upload the mission to the selected vehicle; with `resumeFromIndex`, upload
+   * the resume mission that picks the plan up at that waypoint instead. Toasts
+   * the outcome and returns it for callers that report it inline.
+   */
+  const handleUpload = useCallback(async (resumeFromIndex?: number): Promise<{ success: boolean; message: string }> => {
+    let override: Waypoint[] | undefined;
+    if (resumeFromIndex !== undefined) {
+      const profile = useMissionStore.getState().vehicleProfile
+        ?? profileFromVehicleInfo(selectedDroneProtocol()?.getVehicleInfo())
+        ?? DEFAULT_PLAN_PROFILE;
+      try {
+        override = buildResumeMission(waypoints, resumeFromIndex, {
+          takeoffAltM: defaultAlt, speedMps: defaultSpeed, vehicleClass: profile.vehicleClass,
+        });
+      } catch (err) {
+        const message = t("uploadFailedReason", { reason: err instanceof Error ? err.message : String(err) });
+        toast(message, "error");
+        return { success: false, message };
+      }
+    }
+    const ok = await uploadMission(undefined, override ? { waypoints: override } : undefined);
+    if (ok) {
+      const message = resumeFromIndex !== undefined
+        ? t("resumeUploaded", { n: resumeFromIndex + 1 })
+        : t("missionUploaded");
+      toast(message, "success");
+      return { success: true, message };
+    }
     const reason = useMissionStore.getState().uploadError;
-    const message = reason ? `Mission upload failed: ${reason}` : "Mission upload failed";
+    const message = reason ? t("uploadFailedReason", { reason }) : t("uploadFailed");
     toast(message, "error");
     return { success: false, message };
-  }, [uploadMission, toast]);
+  }, [uploadMission, waypoints, defaultAlt, defaultSpeed, toast, t]);
 
-  const handleDrawingComplete = useCallback(
-    (shape: DrawnPolygon | DrawnCircle | DrawnPolyline) => {
-      const patternStore = usePatternStore.getState();
-      const patternType = patternStore.activePatternType;
-      const geoStore = useGeofenceStore.getState();
-      const drawingStore = useDrawingStore.getState();
-
-      // Route the completed shape by the explicit destination tag carried on the
-      // current draw mode, not by inferring intent from which sibling stores
-      // happen to be active. PlannerMap completes the draw and only resets the
-      // tool to select AFTER this callback runs, so the mode here is still the
-      // draw mode and its `drawingFor` tag is authoritative. A non-draw mode
-      // (defensive) is treated as a free-hand draw.
-      const mode = usePlannerStore.getState().mode;
-      const drawingFor: DrawingFor = mode.kind === "draw" ? mode.drawingFor : "free";
-      // The pattern flow either tags the draw as `"pattern"` or leaves it
-      // `"free"` while a pattern is armed; both feed the active pattern.
-      const routeToPattern = drawingFor === "pattern" || (drawingFor === "free" && patternType !== null);
-
-      if ("points" in shape) {
-        // An open line feeds the line patterns; with none armed it was a free sketch.
-        if (routeToPattern && patternType === "corridor") {
-          patternStore.updateCorridorConfig({ pathPoints: shape.points });
-          usePlannerStore.getState().setInspectorTarget({ kind: "pattern" });
-          toast(`Corridor path set (${shape.points.length} points)`, "success");
-        } else if (routeToPattern && patternType === "facade") {
-          patternStore.updateFacadeConfig({ pathPoints: shape.points.slice(0, 2) });
-          usePlannerStore.getState().setInspectorTarget({ kind: "pattern" });
-          toast("Facade line set", "success");
-        } else {
-          toast(`Line drawn (${shape.points.length} points)`, "info");
-        }
-      } else if ("vertices" in shape) {
-        if (drawingFor === "geofence") {
-          // Tagged for the fence: set it unconditionally (a concurrently-armed
-          // pattern no longer steals the shape). Preserve the [lat, lon] vertex
-          // order exactly — a swapped order uploads a wrong fence to the FC.
-          geoStore.setFenceType("polygon");
-          geoStore.setPolygonPoints(shape.vertices);
-          geoStore.setEnabled(true);
-          // The fence now renders from the geofence store; drop the raw drawn
-          // shape so the polygon is not painted twice.
-          drawingStore.removePolygon(shape.id);
-          toast(`Geofence polygon set (${shape.vertices.length} vertices)`, "success");
-        } else if (routeToPattern && patternType === "survey") {
-          patternStore.updateSurveyConfig({ polygon: shape.vertices });
-          usePlannerStore.getState().setInspectorTarget({ kind: "pattern" });
-          // The boundary now renders from the pattern config; drop the raw drawn
-          // polygon so the ring is not painted twice.
-          drawingStore.removePolygon(shape.id);
-          toast(`Survey area set (${shape.vertices.length} vertices)`, "success");
-        } else if (routeToPattern && patternType === "structureScan") {
-          patternStore.updateStructureScanConfig({ structurePolygon: shape.vertices });
-          usePlannerStore.getState().setInspectorTarget({ kind: "pattern" });
-          drawingStore.removePolygon(shape.id);
-          toast(`Structure boundary set (${shape.vertices.length} vertices)`, "success");
-        } else if (routeToPattern && patternType === "corridor") {
-          // A corridor drawn as a closed shape still gives its center line.
-          patternStore.updateCorridorConfig({ pathPoints: shape.vertices });
-          usePlannerStore.getState().setInspectorTarget({ kind: "pattern" });
-          drawingStore.removePolygon(shape.id);
-          toast(`Corridor path set (${shape.vertices.length} points)`, "success");
-        } else {
-          toast(`Polygon drawn (${shape.vertices.length} vertices)`, "success");
-        }
-      } else {
-        if (drawingFor === "geofence") {
-          geoStore.setFenceType("circle");
-          geoStore.setCircle(shape.center, shape.radius);
-          geoStore.setEnabled(true);
-          drawingStore.removeCircle(shape.id);
-          toast(`Geofence circle set (r=${Math.round(shape.radius)}m)`, "success");
-        } else if (routeToPattern && patternType === "orbit") {
-          patternStore.updateOrbitConfig({ center: shape.center, radius: shape.radius });
-          usePlannerStore.getState().setInspectorTarget({ kind: "pattern" });
-          // The orbit renders from its config circle; drop the raw drawn circle.
-          drawingStore.removeCircle(shape.id);
-          toast(`Orbit area set (r=${Math.round(shape.radius)}m)`, "success");
-        } else {
-          toast(`Circle drawn (r=${Math.round(shape.radius)}m)`, "success");
-        }
-      }
-    },
-    [toast]
-  );
-
-  // The actual replace-every-waypoint apply. Kept separate from the gate so it
-  // can be invoked directly (empty mission) or after the destructive-apply
-  // confirm (mission already has waypoints).
-  const doPatternApply = useCallback(() => {
-    const patternStore = usePatternStore.getState();
-    const result = patternStore.patternResult;
-    if (!result || result.waypoints.length === 0) { toast("No pattern generated yet", "info"); return; }
-    if (!activePlanId) { toast("Create or select a flight plan first", "info"); return; }
-
-    // One converter shared with the mission templates: actions fold onto the
-    // navigation waypoint they follow, every waypoint carries the frame the
-    // generator's altitudes are measured in (above home), and TAKEOFF / RTL
-    // bookend the mission. The terrain sync samples the new waypoints.
-    const newWaypoints = patternToMission(result.waypoints);
-    if (newWaypoints.length === 0) { toast("Pattern produced no navigation waypoints", "warning"); return; }
-    setWaypoints(newWaypoints);
-    patternStore.clear();
-    const stats = result.stats;
-    const distStr = stats.totalDistance >= 1000 ? `${(stats.totalDistance / 1000).toFixed(1)} km` : `${Math.round(stats.totalDistance)} m`;
-    const timeStr = stats.estimatedTime >= 60 ? `${Math.round(stats.estimatedTime / 60)} min` : `${Math.round(stats.estimatedTime)} sec`;
-    toast(`Pattern applied: ${newWaypoints.length} waypoints, ${distStr}, ~${timeStr}`, "success");
-  }, [activePlanId, setWaypoints, toast]);
-
-  const handlePatternApply = useCallback(() => {
-    // Applying a pattern REPLACES every waypoint. If the mission already has
-    // waypoints, open the confirm and stop here so nothing is discarded without
-    // consent; an empty mission applies straight away with no prompt.
-    const patternStore = usePatternStore.getState();
-    const result = patternStore.patternResult;
-    if (!result || result.waypoints.length === 0) { toast("No pattern generated yet", "info"); return; }
-    if (!activePlanId) { toast("Create or select a flight plan first", "info"); return; }
-    if (waypoints.length > 0) { setShowPatternApplyConfirm?.(true); return; }
-    doPatternApply();
-  }, [waypoints.length, activePlanId, doPatternApply, setShowPatternApplyConfirm, toast]);
-
-  const applyPatternConfirmed = useCallback(() => {
-    setShowPatternApplyConfirm?.(false);
-    doPatternApply();
-  }, [doPatternApply, setShowPatternApplyConfirm]);
+  const handleDrawingComplete = useDrawingComplete(toast);
+  const { handlePatternApply, applyPatternConfirmed } = usePatternApply({
+    activePlanId, waypointCount: waypoints.length, setWaypoints, setShowPatternApplyConfirm, toast,
+  });
 
   const handleAddManualWaypoint = useCallback(() => {
-    if (!activePlanId) { toast("Create or select a flight plan first", "info"); return; }
+    if (!activePlanId) { toast(t("openPlanFirst"), "info"); return; }
     const lastWp = waypoints[waypoints.length - 1];
     // With no waypoint to follow, the new one goes where the operator is looking.
     const [centerLat, centerLon] = usePlannerStore.getState().mapCenter;
@@ -514,7 +453,7 @@ export function usePlannerActions(deps: ActionsDeps) {
       ...acceptRadiusDefault("WAYPOINT", defaultAcceptRadius),
     };
     addWaypoint(wp);
-  }, [activePlanId, waypoints, addWaypoint, defaultAlt, defaultAcceptRadius, toast]);
+  }, [activePlanId, waypoints, addWaypoint, defaultAlt, defaultAcceptRadius, toast, t]);
 
   return {
     handleMapClick, handleMapRightClick, handleWaypointRightClick,

@@ -12,6 +12,7 @@
 import { useMemo } from "react";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useMissionStore } from "@/stores/mission-store";
+import { planWireSettings } from "@/stores/mission-transfer";
 import { usePlannerStore } from "@/stores/planner-store";
 import { useGeofenceStore } from "@/stores/geofence-store";
 import { useRallyStore } from "@/stores/rally-store";
@@ -33,6 +34,9 @@ function useSelectedReceipt(kind: UploadKind) {
 export function useMissionUploadStatus(): ReceiptStatus {
   const receipt = useSelectedReceipt("mission");
   const waypoints = useMissionStore((s) => s.waypoints);
+  // The transit altitude adds legs to what an upload sends.
+  const transitAltM = useMissionStore((s) => s.transitAltM);
+  const plannedHome = useMissionStore((s) => s.plannedHome);
   // The expansion reads the planner defaults, so a change to them changes
   // what an upload would send.
   const defaultFrame = usePlannerStore((s) => s.defaultFrame);
@@ -40,8 +44,8 @@ export function useMissionUploadStatus(): ReceiptStatus {
   return useMemo(() => {
     void defaultFrame;
     void defaultSpeed;
-    return receiptStatus(receipt, missionContentHash(waypoints));
-  }, [receipt, waypoints, defaultFrame, defaultSpeed]);
+    return receiptStatus(receipt, missionContentHash(waypoints, planWireSettings({ transitAltM, plannedHome })));
+  }, [receipt, waypoints, transitAltM, plannedHome, defaultFrame, defaultSpeed]);
 }
 
 export function useFenceUploadStatus(): ReceiptStatus {

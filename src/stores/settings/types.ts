@@ -28,6 +28,7 @@ import type {
   SuggestedBinding,
 } from "./keybindings-slice";
 import type { CameraProfile } from "@/lib/patterns/gsd-calculator";
+import type { BatteryProfile } from "@/lib/energy/battery-split";
 
 export interface SettingsStoreState {
   // display + general preferences
@@ -297,6 +298,18 @@ export interface SettingsStoreState {
   /** Replace the custom camera named `name` (the new profile may rename it). */
   updateCustomCamera: (name: string, camera: CameraProfile) => void;
   removeCustomCamera: (name: string) => void;
+  /** Battery packs the energy estimate and battery split use. Always holds the "default" pack. */
+  batteryProfiles: BatteryProfile[];
+  /** Id of the pack the planner estimates with. */
+  selectedBatteryProfileId: string;
+  /** Add a pack; replaces one with the same id. */
+  addBatteryProfile: (profile: BatteryProfile) => void;
+  /** Change fields of the pack `id` (rename, capacity, power, reserve). */
+  updateBatteryProfile: (id: string, update: Partial<Omit<BatteryProfile, "id">>) => void;
+  /** Remove a pack. The "default" pack cannot be removed; removing the selected pack selects it. */
+  removeBatteryProfile: (id: string) => void;
+  /** Select a pack by id; an unknown id is ignored. */
+  selectBatteryProfile: (id: string) => void;
 }
 
 /**

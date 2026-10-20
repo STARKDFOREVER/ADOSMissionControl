@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useMissionStore } from '@/stores/mission-store';
+import { planWireSettings } from '@/stores/mission-transfer';
 import { canUndo, clearHistory } from '@/lib/planner-history';
 import type { Waypoint } from '@/lib/types';
 import type { MissionItem } from '@/lib/protocol/types';
@@ -64,6 +65,9 @@ describe('mission-store', () => {
       currentWaypoint: 0,
       uploadState: 'idle',
       downloadState: 'idle',
+      plannedHome: null,
+      vehicleProfile: null,
+      transitAltM: null,
     });
     // Undo/redo now lives in the shared coordinated timeline; drop it so each
     // test starts from a clean history.
@@ -339,9 +343,10 @@ describe('mission-store', () => {
   }
 
   function missionStatus() {
+    const state = useMissionStore.getState();
     return receiptStatus(
       receiptFor('mission', 'd1'),
-      missionContentHash(useMissionStore.getState().waypoints),
+      missionContentHash(state.waypoints, planWireSettings(state)),
     );
   }
 
@@ -469,6 +474,76 @@ describe('mission-store', () => {
     stubArduPilot();
     expect(await useMissionStore.getState().uploadMission()).toBe(true);
     expect(useMissionStore.getState().uploadError).toBeNull();
+  });
+
+  it('a resume upload sends its own list and records no receipt for the plan', async () => {
+    let uploaded: MissionItem[] = [];
+    stubArduPilot(async () => ({ success: true }));
+    useMissionStore.setState({ waypoints: arduPilotPlan() });
+    await useMissionStore.getState().uploadMission();
+    expect(missionStatus()).toBe('on-aircraft');
+
+    mockProtocol!.uploadMission = async (items) => {
+      uploaded = items;
+      return { success: true };
+    };
+    const resume = [
+      makeWaypoint({ id: 'rt', command: 'TAKEOFF', alt: 30 }),
+      makeWaypoint({ id: 'rb', command: 'WAYPOINT', lat: 12.99 }),
+      makeWaypoint({ id: 'rr', command: 'RTL', lat: 0, lon: 0, alt: 0 }),
+    ];
+    expect(await useMissionStore.getState().uploadMission(undefined, { waypoints: resume })).toBe(true);
+    // Home slot + the three resume items; the plan's four never went out.
+    expect(uploaded.map((it) => it.command)).toEqual([16, 22, 16, 20]);
+    // The vehicle holds the resume mission now, not the plan.
+    expect(receiptFor('mission', 'd1')).toBeUndefined();
+    expect(missionStatus()).toBe('unknown');
+    // The plan itself is untouched.
+    expect(useMissionStore.getState().waypoints.map((w) => w.id)).toEqual(['t', 'a', 'b', 'r']);
+  });
+
+  it('an upload flies the transit legs and maps their seq onto the waypoint they lead to', async () => {
+    let uploaded: MissionItem[] = [];
+    stubArduPilot(async () => ({ success: true }));
+    mockProtocol!.uploadMission = async (items) => {
+      uploaded = items;
+      return { success: true };
+    };
+    useMissionStore.setState({ waypoints: arduPilotPlan(), transitAltM: 120 });
+    expect(await useMissionStore.getState().uploadMission()).toBe(true);
+    // home, TAKEOFF, transit out, A, B, DO_JUMP, transit back, RTL
+    expect(uploaded.map((it) => it.command)).toEqual([16, 22, 16, 16, 16, 177, 16, 20]);
+    expect(uploaded[1].z).toBe(120);
+    expect(uploaded[2].z).toBe(120);
+    expect(missionStatus()).toBe('on-aircraft');
+    const at = (seq: number) => {
+      useMissionStore.getState().applyMissionCurrent('d1', seq);
+      return useMissionStore.getState().currentWaypoint;
+    };
+    expect(at(2)).toBe(1); // transit out leads to A
+    expect(at(3)).toBe(1); // A
+    expect(at(6)).toBe(3); // transit back leads to the RTL
+    // Changing the transit altitude changes what an upload would send.
+    useMissionStore.setState({ transitAltM: 150 });
+    expect(missionStatus()).toBe('older-on-aircraft');
+  });
+
+  it('an ArduPilot download takes its home slot as the planned home in the same undo step', async () => {
+    const home = { seq: 0, frame: 0, command: 16, current: 0, autocontinue: 1, param1: 0, param2: 0, param3: 0, param4: 0, x: 129000000, y: 775000000, z: 910 };
+    const wp = { seq: 1, frame: 3, command: 16, current: 1, autocontinue: 1, param1: 0, param2: 0, param3: 0, param4: 0, x: 129700000, y: 775900000, z: 30 };
+    mockProtocol = {
+      uploadMission: async () => ({ success: true }),
+      downloadMission: async () => [home, wp],
+      getVehicleInfo: () => ({ firmwareType: 'ardupilot-copter' }),
+    };
+    useMissionStore.setState({ waypoints: arduPilotPlan(), plannedHome: { lat: 1, lon: 2, groundAmsl: 5 }, transitAltM: 80 });
+    await useMissionStore.getState().downloadMission();
+    const state = useMissionStore.getState();
+    expect(state.plannedHome).toEqual({ lat: 12.9, lon: 77.5 });
+    expect(state.transitAltM).toBeNull();
+    useMissionStore.getState().undo();
+    expect(useMissionStore.getState().plannedHome).toEqual({ lat: 1, lon: 2, groundAmsl: 5 });
+    expect(useMissionStore.getState().transitAltM).toBe(80);
   });
 
   it('an MSP firmware with no mission store rejects the download instead of returning an empty mission', async () => {

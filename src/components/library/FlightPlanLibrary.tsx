@@ -181,9 +181,11 @@ export function FlightPlanLibrary({ context, onPlanLoaded, onSave, onPlanRenamed
           ?? (result.fenceZones
             ? withImportedFenceZones(useGeofenceStore.getState().snapshot(), result.fenceZones)
             : undefined);
+        // The file's planned home and vehicle profile (and, from a native
+        // file, its transit altitude) become the plan's settings.
         const planId = createPlan(name, result.waypoints, {
           droneId: result.metadata?.droneId,
-        }, { geofence, rally: result.rally, pois: result.pois });
+        }, { geofence, rally: result.rally, pois: result.pois, settings: result.settings });
         const plan = usePlanLibraryStore.getState().plans.find((p) => p.id === planId);
         if (plan) applyPlanToWorkspace(plan);
         onPlanLoaded?.({ name, droneId: result.metadata?.droneId });

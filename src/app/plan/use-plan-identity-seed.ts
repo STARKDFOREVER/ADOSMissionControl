@@ -11,40 +11,38 @@ import { usePlanLibraryStore } from "@/stores/plan-library-store";
 /**
  * The plan name and vehicle live in page state, so a remount (a reload, a
  * route change) starts them empty while the library still has a plan open.
- * On first mount they are seeded from that plan without replacing a name the
- * page already holds (a share link, a recovered autosave). After that the
- * identity follows the active plan: a switch made outside the library's own
- * load path (demo sync, a loader detaching, deleting the open plan) replaces
- * the name and vehicle, and closing the plan clears them.
+ * When a plan becomes active from nothing (first mount, or the library
+ * hydrating after mount) its name and vehicle only fill fields the page left
+ * empty, so a name the page already holds (a share link, a recovered
+ * autosave) is kept. A switch from one plan to another made outside the
+ * library's own load path (demo sync, a loader detaching, deleting the open
+ * plan) replaces the name and vehicle, and closing the plan clears them.
  */
 export function usePlanIdentitySeed(
   activePlanId: string | null,
   setMissionName: Dispatch<SetStateAction<string>>,
   setSelectedDroneId: Dispatch<SetStateAction<string>>,
 ): void {
-  // Last plan id seeded; `undefined` until the first seed has happened.
+  // Last plan id seen; `undefined` before the first run.
   const seededFor = useRef<string | null | undefined>(undefined);
 
   useEffect(() => {
-    if (seededFor.current === activePlanId) return;
-    const first = seededFor.current === undefined;
+    const previous = seededFor.current;
+    if (previous === activePlanId) return;
     seededFor.current = activePlanId;
 
     if (activePlanId === null) {
-      if (!first) {
+      if (previous !== undefined) {
         setMissionName("");
         setSelectedDroneId("");
       }
       return;
     }
 
+    // An active id the library does not hold names no plan to take identity from.
     const plan = usePlanLibraryStore.getState().plans.find((pl) => pl.id === activePlanId);
-    if (!plan) {
-      // The library has not hydrated yet; retry on the next run.
-      seededFor.current = undefined;
-      return;
-    }
-    if (first) {
+    if (!plan) return;
+    if (previous === undefined || previous === null) {
       setMissionName((current) => current || plan.name);
       const droneId = plan.metadata.droneId;
       if (droneId) setSelectedDroneId((current) => current || droneId);

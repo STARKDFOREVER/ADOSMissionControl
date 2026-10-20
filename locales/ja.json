@@ -214,7 +214,11 @@
     "vehicleHasNoMission": "The vehicle has no mission",
     "droneMissionName": "Drone Mission ({time})",
     "loadedFromDrone": "Loaded {count} waypoints from drone",
-    "connectDroneFirst": "Connect a drone first"
+    "connectDroneFirst": "Connect a drone first",
+    "sharedPlanSaved": "共有プランを「{name}」としてライブラリに保存しました",
+    "sharedPlanOpen": "開く",
+    "sharedPlanOpened": "共有プランを開きました",
+    "sharedPlanDamaged": "この共有リンクは破損しているか、新しいバージョンのものです"
   },
   "panelCommit": {
     "saved": "Saved to flight controller",
@@ -3589,7 +3593,20 @@
       "statusFailed": "Failed",
       "target": "Sends to {name}",
       "targetMismatch": "This plan is assigned to {plan}. Sending goes to {target}.",
-      "switchTarget": "Switch to {plan}"
+      "switchTarget": "Switch to {plan}",
+      "missionInFlight": "アップロードする前にミッションを一時停止してください",
+      "profileMismatch": "{plan} 向けに計画されています。送信先は {target} です",
+      "resumeMission": "離陸して速度とカメラを復元し、WP {n} から続行するミッションをアップロードします",
+      "autopilot": {
+        "ardupilot": "ArduPilot",
+        "px4": "PX4"
+      },
+      "vehicleClass": {
+        "copter": "マルチロータ",
+        "plane": "固定翼機",
+        "vtol": "VTOL",
+        "rover": "ローバー"
+      }
     },
     "dock": {
       "ariaLabel": "Mission review",
@@ -3736,6 +3753,39 @@
         "topAlt": "最上段",
         "rowSpacing": "段の間隔"
       }
+    },
+    "toast": {
+      "openPlanFirst": "先にプランを開くか作成してください",
+      "rallyPlaced": "ラリーポイントを配置しました",
+      "datumSet": "基準点を設定しました",
+      "startPointSet": "開始点を設定しました",
+      "areaByDrawing": "このパターンの範囲は描画で設定します",
+      "roiAttached": "ROI を最後のウェイポイントに追加しました",
+      "roiNeedsWaypoint": "ROI を設定する前にウェイポイントを追加してください",
+      "missionCleared": "ミッションを消去しました",
+      "waypointsReversed": "ウェイポイントの順序を反転しました",
+      "missionUploaded": "ミッションを FC にアップロードしました",
+      "uploadFailedReason": "ミッションのアップロードに失敗しました: {reason}",
+      "uploadFailed": "ミッションのアップロードに失敗しました",
+      "resumeUploaded": "WP {n} からの再開ミッションをアップロードしました",
+      "corridorPathSet": "回廊の経路を設定しました ({count} 点)",
+      "facadeLineSet": "ファサードの線を設定しました",
+      "lineDrawn": "線を描画しました ({count} 点)",
+      "fencePolygonSet": "ジオフェンスの多角形を設定しました (頂点 {count})",
+      "surveyAreaSet": "測量範囲を設定しました (頂点 {count})",
+      "structureSet": "構造物の境界を設定しました (頂点 {count})",
+      "polygonDrawn": "多角形を描画しました (頂点 {count})",
+      "fenceCircleSet": "ジオフェンスの円を設定しました (r = {radius} m)",
+      "orbitSet": "周回範囲を設定しました (r = {radius} m)",
+      "circleDrawn": "円を描画しました (r = {radius} m)",
+      "noPattern": "まだパターンが生成されていません",
+      "patternEmpty": "パターンからナビゲーション用ウェイポイントが生成されませんでした",
+      "patternApplied": "パターンを適用しました: ウェイポイント {count} 個、{distance}、約 {time}",
+      "distanceKm": "{value} km",
+      "distanceM": "{value} m",
+      "timeMin": "{value} 分",
+      "timeSec": "{value} 秒",
+      "pasteDroppedJumps": "貼り付けた範囲外のウェイポイントへのジャンプを {count} 件削除しました"
     }
   },
   "geofence": {

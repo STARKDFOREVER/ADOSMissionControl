@@ -15,15 +15,16 @@
  *      popover's capture-phase Escape) and any key while a modal
  *      (`aria-modal="true"`) is open are ignored too.
  *   2. Tool / panel letter shortcuts (no modifier), the side-panel keys `[`, `]`
- *      and `\`, plus arrow-key nudge of the selected waypoint(s). The panel and
- *      dock keys only act while a plan is open.
+ *      and `\`, plus arrow-key nudge of the selected waypoint(s). Tool, panel
+ *      and dock keys only act while a plan is open; a tool letter on Plans
+ *      home says why it did nothing.
  *   3. Undo / redo (Cmd/Ctrl+Z), then copy / paste (Cmd/Ctrl+C / V) of the
  *      selected waypoint(s) — copy defers to a live page text selection.
  *   4. Escape — close the plans sheet first, else cancel the active draw, else
  *      clear the waypoint selection, else return the inspector to the
  *      mission, else clear any non-select tool back to select.
- *   5. Backspace / Delete — pop a draw vertex while drawing, else delete the
- *      selected waypoint(s).
+ *   5. Enter finishes the active draw. Backspace / Delete — pop a draw vertex
+ *      while drawing, else delete the selected waypoint(s).
  *   6. Save / Save-As (Cmd/Ctrl+S).
  *   7. Cmd/Ctrl+O toggles the plans sheet. Cmd/Ctrl+N (new plan) is desktop
  *      (Electron) only, so the browser keeps its native new-window chord.
@@ -81,11 +82,17 @@ interface UseKeyboardShortcutsParams {
   onCopy?: () => void;
   /** Paste the waypoint clipboard back into the plan, offset slightly. */
   onPaste?: () => void;
+  /** A tool key was pressed with no plan open (the tool stays as it is). */
+  onNoActivePlan?: () => void;
 }
 
-/** Fine nudge step for a plain arrow key, in degrees (~1.1 m near the equator). */
+/**
+ * Fine nudge step for a plain arrow key, in degrees at the equator (~1.1 m).
+ * The page scales the east-west step by latitude so a press moves the same
+ * ground distance in every direction.
+ */
 const NUDGE_STEP_FINE = 1e-5;
-/** Coarser nudge step when Shift is held, in degrees. */
+/** Coarser nudge step when Shift is held, in degrees at the equator. */
 const NUDGE_STEP_COARSE = 1e-4;
 
 /**
@@ -133,6 +140,7 @@ export function useKeyboardShortcuts({
   onNudgeSelected,
   onCopy,
   onPaste,
+  onNoActivePlan,
 }: UseKeyboardShortcutsParams): void {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -162,6 +170,11 @@ export function useKeyboardShortcuts({
         const tool = TOOL_MAP[e.key.toLowerCase()];
         if (tool) {
           e.preventDefault();
+          // Placing anything needs a plan to place it in.
+          if (!hasActivePlan) {
+            onNoActivePlan?.();
+            return;
+          }
           setActiveTool(tool);
           return;
         }
@@ -286,6 +299,13 @@ export function useKeyboardShortcuts({
         return;
       }
 
+      // 5. Enter finishes the shape being drawn (keyboard-only polygon close).
+      if (e.key === "Enter" && drawing && !isMeta) {
+        e.preventDefault();
+        draw?.complete();
+        return;
+      }
+
       // 5. Backspace / Delete — vertex-pop while drawing wins over waypoint-delete.
       if (e.key === "Backspace" || e.key === "Delete") {
         if (drawing) {
@@ -372,5 +392,6 @@ export function useKeyboardShortcuts({
     onNudgeSelected,
     onCopy,
     onPaste,
+    onNoActivePlan,
   ]);
 }

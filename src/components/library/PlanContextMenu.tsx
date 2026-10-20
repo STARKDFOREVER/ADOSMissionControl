@@ -14,12 +14,14 @@ import { Copy, Trash2, FileDown, Pencil, FolderInput, FolderX, Folder } from "lu
 import { cn } from "@/lib/utils";
 import { usePlanLibraryStore } from "@/stores/plan-library-store";
 import { useMissionStore } from "@/stores/mission-store";
+import { planWireSettings } from "@/stores/mission-transfer";
 import { useSimulationStore } from "@/stores/simulation-store";
 import { useToast } from "@/components/ui/toast";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { currentExportOptions } from "@/lib/mission-io";
 import { exportWaypointsFormat, exportQGCPlan } from "@/lib/mission-io-formats";
 import { capturePlanExtras, clearPlanWorkspace } from "@/lib/plan-workspace";
+import { missionWireWaypoints } from "@/lib/mission-upload";
 
 interface PlanContextMenuProps {
   planId: string;
@@ -100,10 +102,16 @@ export function PlanContextMenu({ planId, x, y, onClose, onPlanRenamed }: PlanCo
     onClose();
   }, [deletePlan, planId, isActivePlan, toast, onClose, t]);
 
-  // Use current planner waypoints for active plan, stored waypoints for others
+  // The active plan exports what the editor holds, any other plan its saved
+  // copy; either way with its transit legs, which interchange files cannot
+  // express any other way.
   const getExportWaypoints = useCallback(() => {
-    if (isActivePlan) return currentWaypoints;
-    return plan?.waypoints ?? [];
+    if (isActivePlan) return missionWireWaypoints(currentWaypoints, planWireSettings(useMissionStore.getState()));
+    if (!plan) return [];
+    return missionWireWaypoints(plan.waypoints, {
+      transitAltM: plan.settings?.transitAltM ?? null,
+      homeGroundElevation: plan.settings?.plannedHome?.groundAmsl,
+    });
   }, [isActivePlan, currentWaypoints, plan]);
 
   const handleExportWaypoints = useCallback(() => {

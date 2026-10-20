@@ -214,7 +214,11 @@
     "vehicleHasNoMission": "The vehicle has no mission",
     "droneMissionName": "Drone Mission ({time})",
     "loadedFromDrone": "Loaded {count} waypoints from drone",
-    "connectDroneFirst": "Connect a drone first"
+    "connectDroneFirst": "Connect a drone first",
+    "sharedPlanSaved": "பகிர்ந்த திட்டம் உங்கள் நூலகத்தில் “{name}” எனச் சேமிக்கப்பட்டது",
+    "sharedPlanOpen": "திற",
+    "sharedPlanOpened": "பகிர்ந்த திட்டம் திறக்கப்பட்டது",
+    "sharedPlanDamaged": "இந்தப் பகிர்வு இணைப்பு சேதமடைந்துள்ளது அல்லது புதிய பதிப்பைச் சேர்ந்தது"
   },
   "panelCommit": {
     "saved": "Saved to flight controller",
@@ -3589,7 +3593,20 @@
       "statusFailed": "Failed",
       "target": "Sends to {name}",
       "targetMismatch": "This plan is assigned to {plan}. Sending goes to {target}.",
-      "switchTarget": "Switch to {plan}"
+      "switchTarget": "Switch to {plan}",
+      "missionInFlight": "பதிவேற்றும் முன் பணியை இடைநிறுத்தவும்",
+      "profileMismatch": "{plan}-க்காகத் திட்டமிடப்பட்டது; இலக்கு {target}",
+      "resumeMission": "புறப்பட்டு, வேகம் மற்றும் கேமராவை மீட்டமைத்து, WP {n} இலிருந்து தொடரும் பணியைப் பதிவேற்றுகிறது",
+      "autopilot": {
+        "ardupilot": "ArduPilot",
+        "px4": "PX4"
+      },
+      "vehicleClass": {
+        "copter": "மல்டிரோட்டர்",
+        "plane": "விமானம்",
+        "vtol": "VTOL",
+        "rover": "ரோவர்"
+      }
     },
     "dock": {
       "ariaLabel": "Mission review",
@@ -3736,6 +3753,39 @@
         "topAlt": "மேல் வரிசை",
         "rowSpacing": "வரிசை இடைவெளி"
       }
+    },
+    "toast": {
+      "openPlanFirst": "முதலில் ஒரு திட்டத்தைத் திறக்கவும் அல்லது உருவாக்கவும்",
+      "rallyPlaced": "ரேலி புள்ளி வைக்கப்பட்டது",
+      "datumSet": "டேட்டம் புள்ளி அமைக்கப்பட்டது",
+      "startPointSet": "தொடக்கப் புள்ளி அமைக்கப்பட்டது",
+      "areaByDrawing": "இந்த வடிவத்தின் பகுதி வரைந்து அமைக்கப்படுகிறது",
+      "roiAttached": "ROI கடைசி வழிப்புள்ளியுடன் இணைக்கப்பட்டது",
+      "roiNeedsWaypoint": "ROI அமைப்பதற்கு முன் ஒரு வழிப்புள்ளியைச் சேர்க்கவும்",
+      "missionCleared": "பணி அழிக்கப்பட்டது",
+      "waypointsReversed": "வழிப்புள்ளிகளின் வரிசை மாற்றப்பட்டது",
+      "missionUploaded": "பணி FC-க்கு பதிவேற்றப்பட்டது",
+      "uploadFailedReason": "பணி பதிவேற்றம் தோல்வி: {reason}",
+      "uploadFailed": "பணி பதிவேற்றம் தோல்வி",
+      "resumeUploaded": "WP {n} இலிருந்து தொடரும் பணி பதிவேற்றப்பட்டது",
+      "corridorPathSet": "தாழ்வாரப் பாதை அமைக்கப்பட்டது (புள்ளிகள்: {count})",
+      "facadeLineSet": "முகப்புக் கோடு அமைக்கப்பட்டது",
+      "lineDrawn": "கோடு வரையப்பட்டது (புள்ளிகள்: {count})",
+      "fencePolygonSet": "ஜியோஃபென்ஸ் பலகோணம் அமைக்கப்பட்டது (முனைகள்: {count})",
+      "surveyAreaSet": "அளவீட்டுப் பகுதி அமைக்கப்பட்டது (முனைகள்: {count})",
+      "structureSet": "கட்டமைப்பு எல்லை அமைக்கப்பட்டது (முனைகள்: {count})",
+      "polygonDrawn": "பலகோணம் வரையப்பட்டது (முனைகள்: {count})",
+      "fenceCircleSet": "ஜியோஃபென்ஸ் வட்டம் அமைக்கப்பட்டது (r = {radius} m)",
+      "orbitSet": "சுற்றுப் பகுதி அமைக்கப்பட்டது (r = {radius} m)",
+      "circleDrawn": "வட்டம் வரையப்பட்டது (r = {radius} m)",
+      "noPattern": "இன்னும் எந்த வடிவமும் உருவாக்கப்படவில்லை",
+      "patternEmpty": "வடிவம் எந்த வழிசெலுத்தல் வழிப்புள்ளியையும் உருவாக்கவில்லை",
+      "patternApplied": "வடிவம் பயன்படுத்தப்பட்டது: {count} வழிப்புள்ளிகள், {distance}, ~{time}",
+      "distanceKm": "{value} கிமீ",
+      "distanceM": "{value} மீ",
+      "timeMin": "{value} நிமி",
+      "timeSec": "{value} வினா",
+      "pasteDroppedJumps": "ஒட்டிய தொகுப்புக்கு வெளியே உள்ள வழிப்புள்ளிகளுக்கான தாவல்கள் நீக்கப்பட்டன: {count}"
     }
   },
   "geofence": {

@@ -99,6 +99,15 @@ interface PlannerStoreState {
   /** Current map zoom level. */
   mapZoom: number;
   /**
+   * The Send-to-vehicle dialog, when open. `resumeFromIndex` opens it in
+   * resume mode: the mission row uploads the mission that picks the plan up
+   * at that planner waypoint index. Not persisted.
+   */
+  sendDialog: { resumeFromIndex?: number } | null;
+  /** Open the Send-to-vehicle dialog, in resume mode with `resumeFromIndex`. */
+  openSendDialog: (opts?: { resumeFromIndex?: number }) => void;
+  closeSendDialog: () => void;
+  /**
    * Set the active tool. Routes through the planner-mode reducer so the new
    * mode carries no residue of the previous sub-mode, and mirrors the transient
    * drawing sub-mode for the new tool.
@@ -206,6 +215,7 @@ export const usePlannerStore = create<PlannerStoreState>()(
   mapCenter: [0, 0],
   mapBounds: null,
   mapZoom: DEFAULT_ZOOM_UNLOCATED,
+  sendDialog: null,
 
   setActiveTool: (tool) => {
     const mode = usePlannerStore.getState().mode;
@@ -271,6 +281,9 @@ export const usePlannerStore = create<PlannerStoreState>()(
   clearSelection: () => set({ selectedWaypointId: null, selectedWaypointIds: [], selectionMode: "single" }),
   setMapCenter: (mapCenter) => set({ mapCenter }),
   setMapView: (mapBounds, mapZoom) => set({ mapBounds, mapZoom }),
+  openSendDialog: (opts) =>
+    set({ sendDialog: opts?.resumeFromIndex !== undefined ? { resumeFromIndex: opts.resumeFromIndex } : {} }),
+  closeSendDialog: () => set({ sendDialog: null }),
   };
   return state;
     },

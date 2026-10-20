@@ -214,7 +214,11 @@
     "vehicleHasNoMission": "The vehicle has no mission",
     "droneMissionName": "Drone Mission ({time})",
     "loadedFromDrone": "Loaded {count} waypoints from drone",
-    "connectDroneFirst": "Connect a drone first"
+    "connectDroneFirst": "Connect a drone first",
+    "sharedPlanSaved": "Rencana bersama disimpan di pustaka Anda sebagai “{name}”",
+    "sharedPlanOpen": "Buka",
+    "sharedPlanOpened": "Rencana bersama dibuka",
+    "sharedPlanDamaged": "Tautan berbagi ini rusak atau berasal dari versi yang lebih baru"
   },
   "panelCommit": {
     "saved": "Saved to flight controller",
@@ -3589,7 +3593,20 @@
       "statusFailed": "Failed",
       "target": "Sends to {name}",
       "targetMismatch": "This plan is assigned to {plan}. Sending goes to {target}.",
-      "switchTarget": "Switch to {plan}"
+      "switchTarget": "Switch to {plan}",
+      "missionInFlight": "Jeda misi sebelum mengunggah",
+      "profileMismatch": "Direncanakan untuk {plan}; target adalah {target}",
+      "resumeMission": "Mengunggah misi yang lepas landas, memulihkan kecepatan dan kamera, lalu melanjutkan dari WP {n}",
+      "autopilot": {
+        "ardupilot": "ArduPilot",
+        "px4": "PX4"
+      },
+      "vehicleClass": {
+        "copter": "multirotor",
+        "plane": "pesawat",
+        "vtol": "VTOL",
+        "rover": "rover"
+      }
     },
     "dock": {
       "ariaLabel": "Mission review",
@@ -3736,6 +3753,39 @@
         "topAlt": "Baris atas",
         "rowSpacing": "Jarak baris"
       }
+    },
+    "toast": {
+      "openPlanFirst": "Buka atau buat rencana terlebih dahulu",
+      "rallyPlaced": "Titik kumpul ditempatkan",
+      "datumSet": "Titik datum ditetapkan",
+      "startPointSet": "Titik awal ditetapkan",
+      "areaByDrawing": "Area pola ini ditetapkan dengan menggambar",
+      "roiAttached": "ROI dipasang ke waypoint terakhir",
+      "roiNeedsWaypoint": "Tambahkan waypoint sebelum menetapkan ROI",
+      "missionCleared": "Misi dihapus",
+      "waypointsReversed": "Urutan waypoint dibalik",
+      "missionUploaded": "Misi diunggah ke FC",
+      "uploadFailedReason": "Gagal mengunggah misi: {reason}",
+      "uploadFailed": "Gagal mengunggah misi",
+      "resumeUploaded": "Misi lanjutan dari WP {n} diunggah",
+      "corridorPathSet": "Jalur koridor ditetapkan ({count} titik)",
+      "facadeLineSet": "Garis fasad ditetapkan",
+      "lineDrawn": "Garis digambar ({count} titik)",
+      "fencePolygonSet": "Poligon geofence ditetapkan ({count} sudut)",
+      "surveyAreaSet": "Area survei ditetapkan ({count} sudut)",
+      "structureSet": "Batas struktur ditetapkan ({count} sudut)",
+      "polygonDrawn": "Poligon digambar ({count} sudut)",
+      "fenceCircleSet": "Lingkaran geofence ditetapkan (r = {radius} m)",
+      "orbitSet": "Area orbit ditetapkan (r = {radius} m)",
+      "circleDrawn": "Lingkaran digambar (r = {radius} m)",
+      "noPattern": "Belum ada pola yang dibuat",
+      "patternEmpty": "Pola tidak menghasilkan waypoint navigasi",
+      "patternApplied": "Pola diterapkan: {count} waypoint, {distance}, ~{time}",
+      "distanceKm": "{value} km",
+      "distanceM": "{value} m",
+      "timeMin": "{value} mnt",
+      "timeSec": "{value} dtk",
+      "pasteDroppedJumps": "{count} lompatan ke waypoint di luar set yang ditempel dihapus"
     }
   },
   "geofence": {

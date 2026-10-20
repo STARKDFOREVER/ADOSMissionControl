@@ -29,11 +29,8 @@ import { useTrailStore } from "@/stores/trail-store";
 import { createVersionBumper } from "@/stores/coalesced-version";
 import { useDroneStore } from "@/stores/drone-store";
 import { useDroneManager } from "@/stores/drone-manager";
-import {
-  useMissionStore,
-  missionPartialize,
-  migrateMissionStore,
-} from "@/stores/mission-store";
+import { useMissionStore } from "@/stores/mission-store";
+import { missionPartialize, migrateMissionStore } from "@/stores/mission-store-persist";
 import type { PositionData } from "@/lib/types";
 
 const NOW = 1_700_000_000_000;
