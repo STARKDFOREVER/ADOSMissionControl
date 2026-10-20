@@ -27,6 +27,7 @@ import { useVehicleOptions } from "@/app/plan/use-vehicle-options";
 import { usePlannerStore } from "@/stores/planner-store";
 import { useRallyStore } from "@/stores/rally-store";
 import { useGeofenceStore } from "@/stores/geofence-store";
+import { useClockStore } from "@/stores/clock-store";
 
 type BarProps = ComponentProps<typeof PlannerBar>;
 
@@ -262,6 +263,8 @@ describe("vehicle options battery label", () => {
   }
   const labelOf = (d: FleetDrone) =>
     renderHook(() => useVehicleOptions([d]), { wrapper: IntlWrapper }).result.current[1]?.label;
+  // A slow worker reaches these tests long after the clock store last read the time.
+  beforeEach(() => useClockStore.setState({ now: Date.now() - 10_000 }));
 
   it("shows a dash when no battery has been received", () => {
     expect(labelOf(drone({}))).toBe("Alpha (—)");

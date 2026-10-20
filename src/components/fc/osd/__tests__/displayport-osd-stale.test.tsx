@@ -5,7 +5,7 @@
  * @license GPL-3.0-only
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { DisplayPortOsdPanel } from "../DisplayPortOsdPanel";
 import { useDisplayPortStore } from "@/stores/displayport-store";
@@ -20,7 +20,13 @@ vi.mock("@/stores/drone-manager", async (importOriginal) => ({
 const NOW = 1_700_000_000_000;
 
 beforeEach(() => {
+  // The clock reads the time when its first consumer subscribes, so pin it.
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(NOW);
   useClockStore.setState({ now: NOW });
+});
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe("DisplayPortOsdPanel status", () => {

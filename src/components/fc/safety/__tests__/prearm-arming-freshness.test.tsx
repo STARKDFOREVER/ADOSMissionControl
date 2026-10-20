@@ -7,7 +7,7 @@
  * @license GPL-3.0-only
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 
 vi.mock("next-intl", () => ({ useTranslations: () => (key: string) => key }));
@@ -32,7 +32,13 @@ const NOW = 1_800_000_000_000;
 
 beforeEach(() => {
   firmwareType = "inav";
+  // The clock reads the time when its first consumer subscribes, so pin it.
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(NOW);
   useClockStore.setState({ now: NOW });
+});
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe("PreArmPanel MSP arming badge", () => {

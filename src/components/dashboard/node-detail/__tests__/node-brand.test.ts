@@ -6,7 +6,7 @@
  * @license GPL-3.0-only
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook } from "@testing-library/react";
 
 vi.mock("next-intl", () => ({
@@ -22,7 +22,13 @@ const NOW = 1_700_000_000_000;
 
 beforeEach(() => {
   useAgentConnectionStore.setState({ connected: false });
+  // The clock reads the time when its first consumer subscribes, so pin it.
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(NOW);
   useClockStore.setState({ now: NOW });
+});
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe("useNodeBrand flight-controller status", () => {

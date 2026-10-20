@@ -23,6 +23,9 @@ vi.mock("@/stores/drone-manager", async (importOriginal) => ({
 }));
 
 function seed(statusAt: number, now: number): void {
+  // The clock reads the time when its first consumer subscribes, so pin it.
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(now);
   useClockStore.setState({ now });
   useProgrammingStore.setState({
     loaded: true,
@@ -33,6 +36,7 @@ function seed(statusAt: number, now: number): void {
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   useProgrammingStore.getState().clear();
 });
 

@@ -4,7 +4,9 @@
  * module-level interval + one Zustand store means every consumer (header,
  * sidebar, cards, sparklines) re-renders in lockstep instead of each spawning
  * its own interval. The interval is lazy: it starts on the first subscription
- * and stops when the last subscriber unmounts.
+ * and stops when the last subscriber unmounts. `now` is refreshed when the
+ * clock starts, so the first reader never sees the time the module was
+ * imported or last ticked.
  * @license GPL-3.0-only
  */
 
@@ -45,7 +47,10 @@ function stopInterval() {
  */
 export function subscribeToClock(): () => void {
   subscriberCount += 1;
-  if (subscriberCount === 1) startInterval();
+  if (subscriberCount === 1) {
+    useClockStore.setState((s) => ({ tick: s.tick, now: Date.now() }));
+    startInterval();
+  }
   return () => {
     subscriberCount -= 1;
     if (subscriberCount === 0) stopInterval();
