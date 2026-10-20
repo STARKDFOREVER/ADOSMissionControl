@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { parseKML } from '@/lib/formats/kml-parser';
+import { generateKML } from '@/lib/formats/kml-exporter';
+import type { Waypoint } from '@/lib/types/mission';
 
 describe('parseKML', () => {
   it('parses KML with single Placemark containing Point coordinates', () => {
@@ -8,6 +10,7 @@ describe('parseKML', () => {
   <Document>
     <Placemark>
       <Point>
+        <altitudeMode>absolute</altitudeMode>
         <coordinates>77.59,12.97,50</coordinates>
       </Point>
     </Placemark>
@@ -123,7 +126,7 @@ describe('parseKML', () => {
 <kml xmlns="http://www.opengis.net/kml/2.2">
   <Document>
     <Placemark>
-      <Point><coordinates>77.59,12.97,123.4</coordinates></Point>
+      <Point><altitudeMode>relativeToGround</altitudeMode><coordinates>77.59,12.97,123.4</coordinates></Point>
     </Placemark>
   </Document>
 </kml>`;
@@ -226,5 +229,59 @@ describe('parseKML', () => {
     expect(result.waypoints[0].lon).toBeCloseTo(-122.4194);
     expect(result.waypoints[1].lat).toBeCloseTo(-22.9068);
     expect(result.waypoints[1].lon).toBeCloseTo(-43.1729);
+  });
+});
+
+describe('KML commands and altitude modes', () => {
+  it('keeps RTL and LAND through an export and re-import, with their exported altitudes', () => {
+    const mission: Waypoint[] = [
+      { id: 't', lat: 12.97, lon: 77.59, alt: 20, command: 'TAKEOFF' },
+      { id: 'w', lat: 12.98, lon: 77.6, alt: 50, command: 'WAYPOINT' },
+      { id: 'l', lat: 12.99, lon: 77.61, alt: 0, command: 'LAND' },
+      // How ArduPilot downloads an RTL: 0 m at a stand-in position.
+      { id: 'r', lat: 12.99, lon: 77.61, alt: 0, command: 'RTL', inheritsPosition: true },
+    ];
+    const back = parseKML(generateKML(mission, 'rtl', { defaultFrame: 'relative' }), { defaultAlt: 40 });
+    expect(back.waypoints.map((w) => w.command)).toEqual(['TAKEOFF', 'WAYPOINT', 'LAND', 'RTL']);
+    expect(back.waypoints.map((w) => w.alt)).toEqual([20, 50, 0, 0]);
+    expect(back.waypoints[3].inheritsPosition).toBe(true);
+    expect(back.waypoints[2].inheritsPosition).toBeUndefined();
+    expect(back.warnings).toEqual([]);
+  });
+
+  it('takes the command from a placemark named RTL, LAND or TAKEOFF and does not trust its 0 m', () => {
+    const kml = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <Placemark>
+      <name>LAND</name>
+      <ExtendedData><Data name="adosAltitudeFrame"><value>relative</value></Data></ExtendedData>
+      <Point><altitudeMode>relativeToGround</altitudeMode><coordinates>77.59,12.97,0</coordinates></Point>
+    </Placemark>
+    <Placemark>
+      <name>WP 2</name>
+      <ExtendedData><Data name="adosAltitudeFrame"><value>relative</value></Data></ExtendedData>
+      <Point><altitudeMode>relativeToGround</altitudeMode><coordinates>77.6,12.98,0</coordinates></Point>
+    </Placemark>
+  </Document>
+</kml>`;
+    const result = parseKML(kml, { defaultAlt: 40 });
+    expect(result.waypoints.map((w) => w.command)).toEqual(['LAND', 'WAYPOINT']);
+    expect(result.waypoints[0].alt).toBe(40);
+    expect(result.waypoints[1].alt).toBe(0);
+    expect(result.warnings[0]).toMatch(/^1 point had no usable altitude/);
+  });
+
+  it('reads a placemark with no altitudeMode as clamped to ground and ignores its altitude', () => {
+    const kml = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <Placemark><Point><coordinates>8.545,47.397,550</coordinates></Point></Placemark>
+  </Document>
+</kml>`;
+    const result = parseKML(kml, { defaultAlt: 40 });
+    expect(result.waypoints[0].alt).toBe(40);
+    expect(result.waypoints[0].frame).toBeUndefined();
+    expect(result.warnings[0]).toMatch(/no usable altitude/);
   });
 });

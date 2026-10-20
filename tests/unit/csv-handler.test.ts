@@ -33,7 +33,7 @@ WAYPOINT,77.60,12.98,50`;
       { id: 'b', lat: 12.98, lon: 77.60, alt: 60, command: 'WAYPOINT' },
       { id: 'c', lat: 12.99, lon: 77.61, alt: 40, command: 'LAND' },
     ];
-    const csv = exportCSV(original);
+    const csv = exportCSV(original, 'relative');
     const parsed = parseCSV(csv);
     expect(parsed).toHaveLength(3);
     expect(parsed[0].lat).toBeCloseTo(12.97);
@@ -84,7 +84,7 @@ describe('exportCSV', () => {
     const waypoints: Waypoint[] = [
       { id: 'x', lat: 12.97, lon: 77.59, alt: 50, command: 'TAKEOFF' },
     ];
-    const csv = exportCSV(waypoints);
+    const csv = exportCSV(waypoints, 'relative');
     const lines = csv.split('\n');
     expect(lines[0]).toContain('lat');
     expect(lines[0]).toContain('lon');
@@ -94,7 +94,7 @@ describe('exportCSV', () => {
   });
 
   it('includes a frame column in the header', () => {
-    const csv = exportCSV([{ id: 'x', lat: 12.97, lon: 77.59, alt: 50, command: 'WAYPOINT' }]);
+    const csv = exportCSV([{ id: 'x', lat: 12.97, lon: 77.59, alt: 50, command: 'WAYPOINT' }], 'relative');
     expect(csv.split('\n')[0]).toContain('frame');
   });
 });
@@ -107,7 +107,7 @@ describe('frame + full-command-set round-trip', () => {
       { id: 'b', lat: 12.98, lon: 77.60, alt: 60, command: 'DO_LAND_START', frame: 'terrain' },
       { id: 'c', lat: 12.99, lon: 77.61, alt: 40, command: 'WAYPOINT', frame: 'relative' },
     ];
-    const parsed = parseCSV(exportCSV(original));
+    const parsed = parseCSV(exportCSV(original, 'relative'));
     expect(parsed).toHaveLength(3);
 
     expect(parsed[0].command).toBe('VTOL_TAKEOFF');
@@ -121,9 +121,16 @@ describe('frame + full-command-set round-trip', () => {
   });
 
   it('leaves frame undefined when the column is absent or blank', () => {
-    const noFrame: Waypoint[] = [{ id: 'a', lat: 12.97, lon: 77.59, alt: 50, command: 'WAYPOINT' }];
-    const parsed = parseCSV(exportCSV(noFrame));
+    const parsed = parseCSV(`lat,lon,alt,frame
+12.97,77.59,50,`);
     expect(parsed[0].frame).toBeUndefined();
+  });
+
+  it('writes a waypoint with no frame in the mission default frame, so it re-imports with that frame', () => {
+    const noFrame: Waypoint[] = [{ id: 'a', lat: 12.97, lon: 77.59, alt: 40, command: 'WAYPOINT' }];
+    const csv = exportCSV(noFrame, 'terrain');
+    expect(csv.split('\n')[1].split(',')[5]).toBe('terrain');
+    expect(parseCSV(csv)[0].frame).toBe('terrain');
   });
 
   it('round-trips nested actions and a retargeted DO_JUMP', () => {
@@ -138,7 +145,7 @@ describe('frame + full-command-set round-trip', () => {
         actions: [{ id: 'a-jmp', command: 'DO_JUMP', jumpTargetId: 'wp-1', param2: 2 }],
       },
     ];
-    const parsed = parseCSV(exportCSV(original));
+    const parsed = parseCSV(exportCSV(original, 'relative'));
     expect(parsed.map((w) => w.command)).toEqual(['TAKEOFF', 'WAYPOINT', 'LAND']);
     expect(parsed[1].actions?.[0].command).toBe('DO_SET_SPEED');
     const jump = parsed[2].actions?.[0];
@@ -160,7 +167,7 @@ describe('frame + full-command-set round-trip', () => {
         actions: [{ id: 'jmp', command: 'DO_JUMP', jumpTargetId: 'wp-0', param2: 1 }],
       },
     ];
-    const parsed = parseCSV(exportCSV(original));
+    const parsed = parseCSV(exportCSV(original, 'relative'));
     const [raw, shoot] = parsed[0].actions ?? [];
     expect(raw).toMatchObject({ command: 'RAW', rawCommand: 31000, param1: 1.5, param4: -2, x: 1234567, y: -7, z: 9.25, frame: 2 });
     expect(shoot).toMatchObject({ command: 'DO_DIGICAM', param5: 1 });

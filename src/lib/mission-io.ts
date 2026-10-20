@@ -16,7 +16,7 @@
  */
 
 import { get, set, del } from "idb-keyval";
-import type { PlanSettings, Waypoint } from "@/lib/types";
+import type { AltitudeFrame, PlanSettings, Waypoint } from "@/lib/types";
 import type { GeofenceSnapshot, FenceZone } from "@/stores/geofence-store";
 import type { RallyPoint } from "@/stores/rally-store";
 import type { PointOfInterest } from "@/stores/plan-poi-store";
@@ -28,7 +28,6 @@ import { exportKML, exportKMZ } from "@/lib/formats/kml-exporter";
 import { downloadCSV, parseCSV } from "@/lib/formats/csv-handler";
 import { foldLegacyWaypoints } from "@/lib/mission/flat-rows";
 import { migrateWaypointSlots } from "@/lib/mission/waypoint-slot-migration";
-import { isHomeNearPlan } from "@/lib/mission/plan-home";
 import {
   parseWaypointsFile,
   parseQGCPlan,
@@ -37,7 +36,6 @@ import {
   type FlatExportOptions,
 } from "./mission-io-formats";
 import { usePlannerStore } from "@/stores/planner-store";
-import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useMissionStore } from "@/stores/mission-store";
 import { downloadBlob } from "@/lib/download";
 
@@ -391,7 +389,8 @@ export async function importBoundaryFile(file: File): Promise<BoundaryPolygon[]>
 // ── Export options ───────────────────────────────────────────
 
 /**
- * The altitude frame and home datum every mission export must carry.
+ * The altitude frame, speed, vehicle profile and planned home every mission
+ * export must carry.
  *
  * File export used to be called with no options at all, so
  * `exportWaypointsFormat` / `exportQGCPlan` fell back to
@@ -404,21 +403,24 @@ export async function importBoundaryFile(file: File): Promise<BoundaryPolygon[]>
  * altitudes as above-home. Over rising terrain that is controlled flight into
  * terrain.
  *
- * `home` is included only when a vehicle has reported one near this plan; a
- * vehicle parked at another site reports that site's home, which is no datum
- * for these waypoints. Absent, the flat-file writers fall back to the first
- * waypoint as a PLANNED home at 0 m, which is the format's documented
- * placeholder rather than a surveyed datum.
+ * `home` is the plan's own planned home, never a vehicle's reported one: the
+ * file describes the plan, wherever a connected vehicle happens to sit. With
+ * no planned home the writers use the plan's launch point at 0 m.
+ *
+ * @param settings A saved plan's settings, when exporting a plan other than
+ *   the one open in the planner. Absent: the open plan's planned home and
+ *   vehicle profile.
  */
-export function currentExportOptions(waypoints: readonly Waypoint[]): FlatExportOptions {
-  const home = useTelemetryStore.getState().homePosition.latest();
+export function currentExportOptions(settings?: PlanSettings): FlatExportOptions {
   const { defaultFrame, defaultSpeed } = usePlannerStore.getState();
-  const vehicle = useMissionStore.getState().vehicleProfile;
+  const mission = useMissionStore.getState();
+  const home = settings ? settings.plannedHome : mission.plannedHome ?? undefined;
+  const vehicle = settings ? settings.vehicle : mission.vehicleProfile ?? undefined;
   return {
     defaultFrame,
     defaultSpeed,
     ...(vehicle ? { vehicle } : {}),
-    home: home && isHomeNearPlan(home, waypoints) ? { lat: home.lat, lon: home.lon, alt: home.alt } : undefined,
+    ...(home ? { home } : {}),
   };
 }
 
@@ -426,15 +428,15 @@ export function currentExportOptions(waypoints: readonly Waypoint[]): FlatExport
 
 /** Export waypoints as a .kml file, carrying the operator's altitude frame. */
 export function exportMissionKML(waypoints: Waypoint[], name: string): void {
-  exportKML(waypoints, name, { defaultFrame: currentExportOptions(waypoints).defaultFrame });
+  exportKML(waypoints, name, { defaultFrame: usePlannerStore.getState().defaultFrame });
 }
 
 /** Export waypoints as a .kmz file, carrying the operator's altitude frame. */
 export async function exportMissionKMZ(waypoints: Waypoint[], name: string): Promise<void> {
-  await exportKMZ(waypoints, name, { defaultFrame: currentExportOptions(waypoints).defaultFrame });
+  await exportKMZ(waypoints, name, { defaultFrame: usePlannerStore.getState().defaultFrame });
 }
 
-/** Export waypoints as a .csv file. */
-export function exportMissionCSV(waypoints: Waypoint[], name: string): void {
-  downloadCSV(waypoints, name);
+/** Export waypoints as a .csv file; a waypoint with no frame is written in `defaultFrame`. */
+export function exportMissionCSV(waypoints: Waypoint[], name: string, defaultFrame: AltitudeFrame): void {
+  downloadCSV(waypoints, name, defaultFrame);
 }

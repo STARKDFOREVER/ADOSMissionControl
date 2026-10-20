@@ -12,21 +12,31 @@
  * onto wire parameter slots lives in `mission/mission-expand`; this module only
  * knows how to write those items as text.
  *
+ * NaN parameters ("use the vehicle's current value", e.g. a waypoint with no
+ * heading) and `autocontinue = 0` are carried both ways: `.waypoints` writes
+ * the literal `NaN`, `.plan` writes JSON `null`. Both formats carry the plan's
+ * planned home, and `.plan` its autopilot and vehicle type, which the parsers
+ * return as `settings`.
+ *
  * @license GPL-3.0-only
  */
 
-import type { Waypoint, WaypointCommand, AltitudeFrame, PlanVehicleProfile } from "@/lib/types";
+import type {
+  Waypoint,
+  AltitudeFrame,
+  PlanVehicleProfile,
+  PlannedHome,
+  PlanSettings,
+} from "@/lib/types";
 import type { MissionItem } from "@/lib/protocol/types/mission";
 import type { GeofenceSnapshot, FenceZone } from "@/stores/geofence-store";
 import type { RallyPoint } from "@/stores/rally-store";
-import { cmdMap, reverseCmd } from "@/lib/mission/command-map";
+import { cmdMap } from "@/lib/mission/command-map";
 import {
   geofenceToQGC,
   parseQGCGeoFence,
   parseQGCRally,
   rallyToQGC,
-  type QGCGeoFence,
-  type QGCRallyPoints,
 } from "@/lib/mission/qgc-plan-extras";
 import {
   expandToItems,
@@ -41,6 +51,25 @@ import {
 } from "@/lib/mission/altitude-frame";
 import { downloadBlob } from "@/lib/download";
 import { DEFAULT_PLAN_PROFILE } from "@/lib/mission/plan-profile";
+import { planLaunchPoint } from "@/lib/mission/plan-home";
+import {
+  assertAltitudes,
+  attachLeadingItems,
+  carriesAltitude,
+  fileXY,
+  plannedHomeFromFile,
+  wireXY,
+} from "@/lib/formats/mission-file-items";
+import {
+  QGC_ALT_MODE_MIXED,
+  expandPlanItem,
+  profileFromQGC,
+  qgcAltitudeMode,
+  qgcVehicleCodes,
+  resolvePlanJumps,
+  type PlanExpansion,
+  type QGCPlanFile,
+} from "@/lib/formats/qgc-plan-items";
 
 /**
  * The altitude-frame ⇄ MAV_FRAME mapping lives in `mission/altitude-frame`
@@ -58,7 +87,7 @@ const DEFAULT_FRAME: AltitudeFrame = DEFAULT_ALTITUDE_FRAME;
 // with a reserved home slot, so rows and DO_JUMP targets carry that numbering
 // straight from `expandToItems`.
 
-/** Optional explicit home position written into a flat file's home slot. */
+/** What a flat-file export writes besides the waypoints. */
 export interface FlatExportOptions {
   /** Mission default altitude frame for waypoints carrying none. */
   defaultFrame?: AltitudeFrame;
@@ -67,17 +96,11 @@ export interface FlatExportOptions {
   /** Autopilot and vehicle class the file is written for; absent = ArduPilot copter. */
   vehicle?: PlanVehicleProfile;
   /**
-   * The real home / launch position. When absent the first waypoint's
-   * coordinates stand in as a PLANNED home at 0 m — a placeholder the format
-   * requires, not a surveyed home.
+   * The plan's planned home, written into the file's home slot with its
+   * ground elevation (0 when unknown). Absent: the plan's launch point stands
+   * in at 0 m, as QGC and Mission Planner do before they know the home.
    */
-  home?: { lat: number; lon: number; alt?: number };
-}
-
-/** Parse a numeric column, falling back to `fallback` for a non-numeric cell. */
-function num(raw: string | undefined, fallback: number): number {
-  const v = Number.parseFloat(raw ?? "");
-  return Number.isFinite(v) ? v : fallback;
+  home?: PlannedHome;
 }
 
 /**
@@ -85,41 +108,35 @@ function num(raw: string | undefined, fallback: number): number {
  * starts at seq 1 and every DO_JUMP target is numbered to match.
  */
 function toFileItems(waypoints: readonly Waypoint[], opts?: FlatExportOptions): MissionItem[] {
-  const home = opts?.home ?? { lat: waypoints[0]?.lat ?? 0, lon: waypoints[0]?.lon ?? 0, alt: 0 };
+  const home: PlannedHome = opts?.home ?? planLaunchPoint(waypoints) ?? { lat: 0, lon: 0 };
   const vehicle = opts?.vehicle ?? DEFAULT_PLAN_PROFILE;
   return expandToItems(waypoints, {
     autopilot: vehicle.autopilot,
     vehicleClass: vehicle.vehicleClass,
     defaultFrame: opts?.defaultFrame ?? DEFAULT_FRAME,
     defaultSpeed: opts?.defaultSpeed,
-    reserveHomeSlot: { lat: home.lat, lon: home.lon, alt: home.alt ?? 0 },
+    reserveHomeSlot: { lat: home.lat, lon: home.lon, alt: home.groundAmsl ?? 0 },
   });
 }
 
-/** Text-file value of an item's x/y: degrees for a location, else the raw parameter. */
-function fileXY(item: MissionItem): [number, number] {
-  return itemCarriesLocation(item.command) ? [item.x / 1e7, item.y / 1e7] : [item.x, item.y];
-}
-
-/** Wire x/y from a text-file param5/param6 pair (inverse of {@link fileXY}). */
-function wireXY(command: number, p5: number, p6: number): [number, number] {
-  return itemCarriesLocation(command)
-    ? [Math.round(p5 * 1e7), Math.round(p6 * 1e7)]
-    : [Math.round(p5), Math.round(p6)];
-}
-
-/** Collapse file items, naming every leading item that had no waypoint to ride. */
+/**
+ * Collapse file items, naming every item that had no waypoint to ride.
+ * Mission-start items written ahead of the first waypoint attach to it.
+ * `autopilot`, when the file names it, decodes autopilot-specific commands.
+ */
 function collapseWithWarnings(
   items: readonly MissionItem[],
   home?: { lat: number; lon: number },
+  autopilot?: PlanVehicleProfile["autopilot"],
 ): ParsedWaypoints {
   const warnings: string[] = [];
   const waypoints = collapseFromItems(
-    items,
+    attachLeadingItems(items),
     (dropped) => {
       warnings.push(droppedItemWarning(dropped));
     },
     home,
+    autopilot,
   );
   return { waypoints, warnings };
 }
@@ -133,8 +150,15 @@ export function droppedItemWarning(item: MissionItem): string {
 export interface ParsedWaypoints {
   waypoints: Waypoint[];
   warnings: string[];
+  /** The planned home (and, for `.plan`, the vehicle profile) the file names. */
+  settings?: PlanSettings;
 }
 
+/** `settings` holding only the fields a file named, or undefined when it named none. */
+function fileSettings(plannedHome?: PlannedHome, vehicle?: PlanVehicleProfile): PlanSettings | undefined {
+  if (!plannedHome && !vehicle) return undefined;
+  return { ...(plannedHome ? { plannedHome } : {}), ...(vehicle ? { vehicle } : {}) };
+}
 
 // ── .waypoints Export (ArduPilot / Mission Planner format) ───
 
@@ -142,17 +166,15 @@ export interface ParsedWaypoints {
  * Export waypoints as a `.waypoints` file (QGC WPL 110 format).
  * Tab-separated plain text compatible with Mission Planner and ArduPilot.
  *
- * Row 0 is the home position the format mandates; rows 1..N are the mission
- * items exactly as the MAVLink uploader would send them, so a nav waypoint's
- * parameters land in the same wire slots on disk as on the wire and an action's
- * `param4` is written rather than zeroed.
+ * Row 0 is the planned home the format mandates, flagged `current` as Mission
+ * Planner writes it; rows 1..N are the mission items exactly as the MAVLink
+ * uploader would send them. A NaN parameter is written as `NaN`.
  */
 export function exportWaypointsFormat(
   waypoints: Waypoint[],
   name: string,
   opts?: FlatExportOptions,
 ): void {
-  // Row 0 is the home slot the format mandates; rows 1..N are the mission.
   const items = toFileItems(waypoints, opts);
 
   const lines: string[] = ["QGC WPL 110"];
@@ -160,7 +182,7 @@ export function exportWaypointsFormat(
     const [x, y] = fileXY(it);
     lines.push(
       [
-        it.seq, it.current, it.frame, it.command,
+        it.seq, it.seq === 0 ? 1 : 0, it.frame, it.command,
         it.param1, it.param2, it.param3, it.param4,
         x, y, it.z, it.autocontinue,
       ].join("\t"),
@@ -174,54 +196,81 @@ export function exportWaypointsFormat(
 // ── .waypoints Import ────────────────────────────────────────
 
 /**
- * Parse a `.waypoints` (QGC WPL 110) file into waypoints. `warnings` names
- * every item that was dropped because no navigation waypoint preceded it.
+ * A numeric column: `NaN`/`nan` (as Mission Planner and pymavlink write it) is
+ * NaN, a number is itself, anything else is undefined for the caller to decide.
+ */
+function cell(raw: string | undefined): number | undefined {
+  const text = (raw ?? "").trim();
+  if (/^[+-]?nan$/i.test(text)) return Number.NaN;
+  const v = Number.parseFloat(text);
+  return Number.isFinite(v) ? v : undefined;
+}
+
+/**
+ * Parse a `.waypoints` file into waypoints. Accepts `QGC WPL 110` (row 0 is the
+ * planned home, returned in `settings`) and `QGC WPL 120` (no home row: row 0
+ * is the first item and DO_JUMP targets shift by one); any other version is
+ * refused, since its columns are laid out differently. `warnings` names every
+ * item that was dropped. Throws on a flown item with no altitude.
  */
 export function parseWaypointsFile(text: string): ParsedWaypoints {
-  const lines = text.trim().split("\n");
-  if (!lines[0]?.startsWith("QGC WPL")) {
+  const lines = text.trim().split(/\r?\n/);
+  const header = /^QGC WPL (\S+)$/.exec(lines[0]?.trim() ?? "");
+  if (!header) {
     throw new Error("Invalid .waypoints file — missing QGC WPL header");
   }
+  const version = header[1];
+  if (version !== "110" && version !== "120") {
+    throw new Error(`Unsupported waypoint file version ${version}`);
+  }
+  const hasHomeRow = version === "110";
+  // Mission items are numbered from 1 here; a v120 file numbers them from 0.
+  const shift = hasHomeRow ? 0 : 1;
 
+  let home: PlannedHome | undefined;
   const items: MissionItem[] = [];
   for (let i = 1; i < lines.length; i++) {
     const cols = lines[i].trim().split("\t");
     if (cols.length < 12) continue;
 
-    // Row 0 is the home position, not a mission item; mission rows count from 1.
-    const fileSeq = num(cols[0], items.length + 1);
-    if (fileSeq === 0) continue;
+    const fileSeq = cell(cols[0]) ?? items.length + 1 - shift;
+    if (hasHomeRow && fileSeq === 0) {
+      home = plannedHomeFromFile(cell(cols[8]) ?? Number.NaN, cell(cols[9]) ?? Number.NaN, cell(cols[10]) ?? Number.NaN);
+      continue;
+    }
 
-    const p5 = Number.parseFloat(cols[8]);
-    const p6 = Number.parseFloat(cols[9]);
+    const command = cell(cols[3]) ?? cmdMap.WAYPOINT;
+    const p5 = cell(cols[8]);
+    const p6 = cell(cols[9]);
     // Skip malformed rows: a non-numeric lat/lon would otherwise create a
     // waypoint at NaN,NaN that renders nowhere and fails validation silently.
-    if (!Number.isFinite(p5) || !Number.isFinite(p6)) continue;
+    if (itemCarriesLocation(command) && !(Number.isFinite(p5) && Number.isFinite(p6))) continue;
 
-    const command = num(cols[3], cmdMap.WAYPOINT);
-    const [x, y] = wireXY(command, p5, p6);
+    const [x, y] = wireXY(command, p5 ?? 0, p6 ?? 0);
+    const param1 = cell(cols[4]) ?? 0;
     items.push({
-      seq: fileSeq,
-      current: num(cols[1], 0),
-      frame: num(cols[2], frameToMav(DEFAULT_FRAME)),
+      seq: fileSeq + shift,
+      current: 0,
+      frame: cell(cols[2]) ?? frameToMav(DEFAULT_FRAME),
       command,
-      // A legitimate 0 is a real parameter value, so parse then check
-      // finiteness — `parseFloat(x) || 0` would be identical here but
-      // `parseFloat(x) || undefined` (the old form) silently ate every zero.
-      param1: num(cols[4], 0),
-      param2: num(cols[5], 0),
-      param3: num(cols[6], 0),
-      param4: num(cols[7], 0),
+      param1: command === cmdMap.DO_JUMP ? param1 + shift : param1,
+      param2: cell(cols[5]) ?? 0,
+      param3: cell(cols[6]) ?? 0,
+      param4: cell(cols[7]) ?? 0,
       x,
       y,
-      z: num(cols[10], 0),
-      autocontinue: num(cols[11], 1),
+      // A flown item with an unreadable altitude stays NaN and is refused below.
+      z: cell(cols[10]) ?? (carriesAltitude(command) ? Number.NaN : 0),
+      autocontinue: cell(cols[11]) === 0 ? 0 : 1,
     });
   }
+  assertAltitudes(items);
 
-  // Collapse the wire items back into nav waypoints with attached actions.
-  // DO_JUMP targets resolve in the file's own sequence space (home = row 0).
-  return collapseWithWarnings(items);
+  // DO_JUMP targets resolve in the file's own sequence space (home = row 0);
+  // the home places items that fly from where the vehicle is.
+  const parsed = collapseWithWarnings(items, home);
+  const settings = fileSettings(home);
+  return settings ? { ...parsed, settings } : parsed;
 }
 
 // ── Extra plan payload (fence + rally) carried alongside waypoints ──
@@ -246,23 +295,29 @@ export interface ParsedPlan extends ParsedWaypoints {
  * geofence and/or rally points they are serialized into the geoFence and
  * rallyPoints blocks so the plan round-trips the full mission, not just the path.
  *
- * Items are the wire `MissionItem[]`, so `params[0..3]` are MAVLink `param1..4`
- * — including an action's `param4`, which used to be a hardcoded `0`.
+ * Items are the wire `MissionItem[]`, so `params[0..3]` are MAVLink `param1..4`.
+ * An item with an altitude also carries QGC's `AltitudeMode` / `Altitude`, so
+ * QGC shows a terrain-frame or relative waypoint as what it is rather than as
+ * AMSL. The file names the autopilot and vehicle type it was planned for and
+ * the mission speed.
  */
 export function exportQGCPlan(
   waypoints: Waypoint[],
   name: string,
-  metadata?: { cruiseSpeed?: number; vehicleType?: number },
   extras?: PlanExtras,
   opts?: FlatExportOptions,
 ): void {
   // `.plan` keeps home in `plannedHomePosition`, so the home slot is not an item;
   // the mission items keep their 1-based seq as `doJumpId`.
   const [homeItem, ...wireItems] = toFileItems(waypoints, opts);
-  const home = { lat: homeItem.x / 1e7, lon: homeItem.y / 1e7, alt: homeItem.z };
+  const modes = new Set<number>();
   const items = wireItems.map((it) => {
     const [x, y] = fileXY(it);
+    const mode = itemCarriesLocation(it.command) ? qgcAltitudeMode(it.frame) : undefined;
+    if (mode !== undefined) modes.add(mode);
     return {
+      // JSON.stringify writes a NaN parameter as `null`, which is how QGC stores NaN.
+      ...(mode !== undefined ? { AltitudeMode: mode, Altitude: it.z, AMSLAltAboveTerrain: null } : {}),
       autoContinue: it.autocontinue === 1,
       command: it.command,
       doJumpId: it.seq,
@@ -271,17 +326,25 @@ export function exportQGCPlan(
       type: "SimpleItem",
     };
   });
+  const [onlyMode] = modes;
+  const globalPlanAltitudeMode =
+    modes.size === 1
+      ? onlyMode
+      : modes.size > 1
+        ? QGC_ALT_MODE_MIXED
+        : qgcAltitudeMode(frameToMav(opts?.defaultFrame ?? DEFAULT_FRAME)) ?? QGC_ALT_MODE_MIXED;
+  const speed = opts?.defaultSpeed;
 
   const plan = {
     fileType: "Plan",
     groundStation: "Altnautica Command",
     version: 1,
     mission: {
-      cruiseSpeed: metadata?.cruiseSpeed ?? 15,
-      firmwareType: 3,
+      ...(speed !== undefined ? { cruiseSpeed: speed, hoverSpeed: speed } : {}),
+      ...qgcVehicleCodes(opts?.vehicle ?? DEFAULT_PLAN_PROFILE),
+      globalPlanAltitudeMode,
       items,
-      plannedHomePosition: [home.lat, home.lon, home.alt ?? 0],
-      vehicleType: metadata?.vehicleType ?? 2,
+      plannedHomePosition: [homeItem.x / 1e7, homeItem.y / 1e7, homeItem.z],
       version: 2,
     },
     geoFence: geofenceToQGC(extras?.geofence),
@@ -294,204 +357,14 @@ export function exportQGCPlan(
 
 // ── .plan Import ─────────────────────────────────────────────
 
-/** Minimal typed views of the QGC .plan structures we read. */
-interface QGCMissionItem {
-  type?: string;
-  command?: number;
-  /** QGC's own item number; a DO_JUMP's `params[0]` names its target by it. */
-  doJumpId?: number;
-  frame?: number;
-  params?: number[];
-  autoContinue?: boolean;
-  complexItemType?: string;
-  TransectStyleComplexItem?: QGCTransectStyle;
-  // Present when the item itself is a TransectStyleComplexItem (transect fields inline).
-  Items?: QGCMissionItem[];
-  VisualTransectPoints?: Array<[number, number]>;
-  CameraCalc?: QGCCameraCalc;
-}
-
-/**
- * Altitude and frame for waypoints rebuilt from a transect's visual points.
- * Throws when the file does not say how high to fly: a grid placed at 0 m
- * above home is a mission into the ground, not a default.
- */
-function transectAltitude(calc: QGCCameraCalc | undefined, label: string): { z: number; frame: AltitudeFrame } {
-  const z = calc?.DistanceToSurface;
-  if (typeof z !== "number" || !Number.isFinite(z) || z <= 0) {
-    throw new Error(`Cannot expand complex mission item "${label}" — no survey altitude (CameraCalc.DistanceToSurface) in the file`);
-  }
-  const mode = calc?.DistanceMode ?? (calc?.DistanceToSurfaceRelative === false ? 2 : 1);
-  switch (mode) {
-    case 1: return { z, frame: "relative" };
-    case 2: return { z, frame: "absolute" };
-    case 4: return { z, frame: "terrain" };
-    default:
-      // 3 = heights computed per point from terrain data the file does not carry.
-      throw new Error(`Cannot expand complex mission item "${label}" — its altitude mode (${mode}) needs the embedded transect items`);
-  }
-}
-
-interface QGCTransectStyle {
-  Items?: QGCMissionItem[];
-  VisualTransectPoints?: Array<[number, number]>;
-  CameraCalc?: QGCCameraCalc;
-}
-
-/**
- * The survey's flight height. `DistanceMode` is QGC's AltitudeFrame
- * (1 relative, 2 absolute/AMSL, 3 calculated above terrain, 4 terrain frame);
- * files written before it carry `DistanceToSurfaceRelative` instead.
- */
-interface QGCCameraCalc {
-  DistanceToSurface?: number;
-  DistanceMode?: number;
-  DistanceToSurfaceRelative?: boolean;
-}
-
-interface QGCPlanFile {
-  fileType?: string;
-  mission?: { items?: QGCMissionItem[]; plannedHomePosition?: number[] };
-  geoFence?: QGCGeoFence;
-  rallyPoints?: QGCRallyPoints;
-}
-
-/** State shared across the expansion of one plan's items. */
-interface PlanExpansion {
-  /** File `doJumpId` → the seq of the first item it expanded to. */
-  jumpSeq: Map<number, number>;
-  warnings: string[];
-}
-
-/**
- * Convert one QGC SimpleItem into a wire `MissionItem`. `params[0..3]` are
- * MAVLink `param1..4` verbatim — including a legitimate `0`, which the old
- * `params[n] || undefined` form silently discarded. `seq` is assigned by the
- * caller from row order so a `DO_JUMP`'s `doJumpId`-space target resolves.
- */
-function simpleItemToWireItem(item: QGCMissionItem, seq: number): MissionItem {
-  const params = item.params ?? [];
-  const command = typeof item.command === "number" ? item.command : cmdMap.WAYPOINT;
-  const [x, y] = wireXY(
-    command,
-    Number.isFinite(params[4]) ? params[4] : 0,
-    Number.isFinite(params[5]) ? params[5] : 0,
-  );
-  return {
-    seq,
-    current: seq === 1 ? 1 : 0,
-    frame: typeof item.frame === "number" ? item.frame : frameToMav(DEFAULT_FRAME),
-    command,
-    param1: Number.isFinite(params[0]) ? params[0] : 0,
-    param2: Number.isFinite(params[1]) ? params[1] : 0,
-    param3: Number.isFinite(params[2]) ? params[2] : 0,
-    param4: Number.isFinite(params[3]) ? params[3] : 0,
-    x,
-    y,
-    z: Number.isFinite(params[6]) ? params[6] : 0,
-    autocontinue: item.autoContinue === false ? 0 : 1,
-  };
-}
-
-/**
- * Expand a single mission item into wire items. SimpleItems map 1:1; a
- * ComplexItem / TransectStyleComplexItem (survey / corridor / structure grid)
- * is expanded from its embedded transect items or coordinates. A complex item
- * that carries no expandable geometry throws rather than being silently dropped.
- * Sequence numbers come from output position (from 1), not the file, so an
- * expanded grid does not collide with the surrounding items; each item's file
- * `doJumpId` is recorded against the seq it starts at, so DO_JUMP targets can
- * be rewritten into the output numbering afterwards.
- */
-function expandPlanItem(item: QGCMissionItem, out: MissionItem[], ctx: PlanExpansion): void {
-  if (typeof item.doJumpId === "number" && Number.isFinite(item.doJumpId)) {
-    ctx.jumpSeq.set(item.doJumpId, out.length + 1);
-  }
-
-  if (item.type === "SimpleItem") {
-    out.push(simpleItemToWireItem(item, out.length + 1));
-    return;
-  }
-
-  if (item.type === "ComplexItem" || item.type === "TransectStyleComplexItem") {
-    const transect =
-      item.TransectStyleComplexItem ??
-      (item.type === "TransectStyleComplexItem" ? item : undefined);
-
-    const embedded = transect?.Items;
-    if (Array.isArray(embedded) && embedded.length > 0) {
-      for (const sub of embedded) expandPlanItem(sub, out, ctx);
-      return;
-    }
-
-    const visual = transect?.VisualTransectPoints ?? item.VisualTransectPoints;
-    if (Array.isArray(visual) && visual.length > 0) {
-      const { z, frame } = transectAltitude(transect?.CameraCalc ?? item.CameraCalc, item.complexItemType ?? item.type ?? "ComplexItem");
-      for (const pt of visual) {
-        if (Array.isArray(pt) && pt.length >= 2 && Number.isFinite(pt[0]) && Number.isFinite(pt[1])) {
-          const seq = out.length + 1;
-          out.push({
-            seq,
-            current: seq === 1 ? 1 : 0,
-            frame: frameToMav(frame),
-            command: cmdMap.WAYPOINT,
-            param1: 0, param2: 0, param3: 0, param4: 0,
-            x: Math.round(pt[0] * 1e7),
-            y: Math.round(pt[1] * 1e7),
-            z,
-            autocontinue: 1,
-          });
-        }
-      }
-      return;
-    }
-
-    throw new Error(
-      `Cannot expand complex mission item "${item.complexItemType ?? item.type}" — no embedded transect items or coordinates found`,
-    );
-  }
-
-  ctx.warnings.push(`Skipped a mission item of unsupported type "${item.type ?? "none"}"`);
-}
-
-/**
- * Rewrite each DO_JUMP's target from the file's `doJumpId` numbering into the
- * output seq. A file that numbers no items keeps its targets as written; a
- * jump whose target is not in the plan is dropped with a warning rather than
- * landing on whatever item now holds that number.
- */
-function resolvePlanJumps(items: MissionItem[], ctx: PlanExpansion): MissionItem[] {
-  if (ctx.jumpSeq.size === 0) return items;
-  const out: MissionItem[] = [];
-  for (const item of items) {
-    if (item.command !== cmdMap.DO_JUMP) {
-      out.push(item);
-      continue;
-    }
-    const seq = ctx.jumpSeq.get(item.param1);
-    if (seq === undefined) {
-      ctx.warnings.push(`Dropped DO_JUMP at item ${item.seq}: its target (item ${item.param1}) is not in the plan`);
-      continue;
-    }
-    out.push({ ...item, param1: seq });
-  }
-  return out;
-}
-
-/** The file's planned home, when it names a real position. */
-function plannedHome(position: number[] | undefined): { lat: number; lon: number } | undefined {
-  if (!Array.isArray(position) || position.length < 2) return undefined;
-  const [lat, lon] = position;
-  if (!Number.isFinite(lat) || !Number.isFinite(lon) || (lat === 0 && lon === 0)) return undefined;
-  return { lat, lon };
-}
-
 /**
  * Parse a `.plan` (QGC JSON) file into waypoints plus any fence / rally it
- * carries. Survey / corridor / structure grids (ComplexItem) are expanded into
- * waypoints; an unexpandable complex item throws rather than dropping silently.
- * DO_JUMP targets follow the file's `doJumpId` numbering, and the planned home
- * position places items that fly from home (a TAKEOFF saved without a position).
+ * carries, and the planned home and vehicle profile as `settings`. Survey /
+ * corridor grids (ComplexItem) are expanded into waypoints; structure scans
+ * and landing patterns are skipped with a warning; any other unexpandable
+ * complex item throws. DO_JUMP targets follow the file's `doJumpId`
+ * numbering, and the planned home places items that fly from home (a TAKEOFF
+ * saved without a position). Throws on a flown item with no altitude.
  */
 export function parseQGCPlan(text: string): ParsedPlan {
   const data = JSON.parse(text) as QGCPlanFile;
@@ -505,13 +378,26 @@ export function parseQGCPlan(text: string): ParsedPlan {
     expandPlanItem(item, expanded, ctx);
   }
   const items = resolvePlanJumps(expanded, ctx);
+  assertAltitudes(items);
+
+  const position = data.mission.plannedHomePosition;
+  const plannedHome = Array.isArray(position)
+    ? plannedHomeFromFile(
+        typeof position[0] === "number" ? position[0] : Number.NaN,
+        typeof position[1] === "number" ? position[1] : Number.NaN,
+        typeof position[2] === "number" ? position[2] : Number.NaN,
+      )
+    : undefined;
+  const vehicle = profileFromQGC(data.mission.firmwareType, data.mission.vehicleType);
+  const settings = fileSettings(plannedHome, vehicle);
 
   // Collapse DO / CONDITION sibling items into their navigation waypoint's
   // actions, restoring each item's frame and every parameter slot.
-  const { waypoints, warnings } = collapseWithWarnings(items, plannedHome(data.mission.plannedHomePosition));
+  const { waypoints, warnings } = collapseWithWarnings(items, plannedHome, vehicle?.autopilot);
   return {
     waypoints,
     warnings: [...ctx.warnings, ...warnings],
+    ...(settings ? { settings } : {}),
     fenceZones: parseQGCGeoFence(data.geoFence),
     rally: parseQGCRally(data.rallyPoints),
   };

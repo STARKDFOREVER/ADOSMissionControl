@@ -19,6 +19,10 @@
  * and re-import read the interop `relativeToGround` and flipped it to
  * `terrain`. Altitudes above HOME then flew as altitudes above TERRAIN.
  *
+ * The waypoint's command (and whether it flies from where the vehicle is
+ * rather than to its drawn position) rides in `ExtendedData` too, so an RTL
+ * or LAND re-imports as an RTL or LAND rather than as a plain waypoint at 0 m.
+ *
  * @license GPL-3.0-only
  */
 
@@ -27,6 +31,10 @@ import { downloadBlob } from "@/lib/download";
 
 /** Our frame name, written verbatim into ExtendedData for a lossless re-import. */
 export const KML_FRAME_KEY = "adosAltitudeFrame";
+/** The waypoint's planner command (`RTL`, `LAND`, …), written into ExtendedData. */
+export const KML_COMMAND_KEY = "adosCommand";
+/** `true` when the item flies from the vehicle's position (written at 0,0 on the wire). */
+export const KML_INHERITS_POSITION_KEY = "adosInheritsPosition";
 
 /**
  * KML `altitudeMode` for an altitude frame. `absolute` is AMSL in both models;
@@ -104,9 +112,13 @@ export function generateKML(
     lines.push(`      <name>${escapeXml(label)}</name>`);
     lines.push("      <styleUrl>#waypointStyle</styleUrl>");
     // Always written: an absent marker is what let re-import re-label the
-    // vertical datum.
+    // vertical datum and turn an RTL into a waypoint.
     lines.push("      <ExtendedData>");
     lines.push(`        <Data name="${KML_FRAME_KEY}"><value>${frameOf(wp)}</value></Data>`);
+    lines.push(`        <Data name="${KML_COMMAND_KEY}"><value>${wp.command ?? "WAYPOINT"}</value></Data>`);
+    if (wp.inheritsPosition) {
+      lines.push(`        <Data name="${KML_INHERITS_POSITION_KEY}"><value>true</value></Data>`);
+    }
     lines.push("      </ExtendedData>");
     lines.push("      <Point>");
     lines.push(`        <altitudeMode>${altitudeModeFor(frameOf(wp))}</altitudeMode>`);

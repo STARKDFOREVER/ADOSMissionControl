@@ -160,6 +160,22 @@ the project follows [Semantic Versioning](https://semver.org/).
   never takes and terrain-frame waypoints without terrain data on the vehicle
   are flagged. RTL, DO_LAND_START and items flown from the current position no
   longer trip the distance and link-range checks.
+- Mission files keep what QGC, Mission Planner and the autopilots read from
+  them. `.plan` and `.waypoints` carry the plan's planned home (with its
+  ground height) out and back in, and `.plan` names the autopilot, vehicle
+  type, mission speed and each item's altitude mode, so QGC shows a
+  terrain-frame waypoint as terrain rather than sea level. A missing heading
+  stays "no heading" (`NaN`, or `null` in `.plan`) instead of turning the
+  vehicle north, and an item set not to continue stays that way. A QGC item
+  with no stored altitude is refused rather than imported at 0 m above sea
+  level. `.waypoints` files must be `QGC WPL 110` or `120`; other versions,
+  whose columns differ, are refused. QGC's mission-start speed and camera
+  items attach to the first waypoint instead of being dropped, and a structure
+  scan or landing pattern is skipped with a warning instead of failing the
+  import. KML exports record each waypoint's command, so RTL and LAND come
+  back as RTL and LAND; a KML placemark with no altitude mode is read as
+  clamped to the ground. CSV export writes the mission default frame for
+  waypoints that have none.
 
 ### Removed
 

@@ -32,9 +32,11 @@ const CSV_HEADER =
 const VALID_COMMANDS: Set<string> = new Set(Object.keys(cmdMap));
 
 /**
- * Export waypoints as a CSV string.
+ * Export waypoints as a CSV string. A waypoint with no frame of its own is
+ * written in `defaultFrame`, so the file means the same altitude wherever and
+ * whenever it is re-imported.
  */
-export function exportCSV(waypoints: Waypoint[]): string {
+export function exportCSV(waypoints: Waypoint[], defaultFrame: AltitudeFrame): string {
   const lines: string[] = [CSV_HEADER];
 
   // Flatten attached actions into sibling rows so the CSV carries them too.
@@ -53,7 +55,7 @@ export function exportCSV(waypoints: Waypoint[]): string {
           wp.lon,
           wp.alt,
           wp.command ?? "WAYPOINT",
-          wp.frame ?? "",
+          wp.frame ?? defaultFrame,
           wp.speed ?? "",
           wp.holdTime ?? "",
           wp.param1 ?? "",
@@ -74,8 +76,8 @@ export function exportCSV(waypoints: Waypoint[]): string {
 /**
  * Download waypoints as a .csv file.
  */
-export function downloadCSV(waypoints: Waypoint[], name: string): void {
-  const csv = exportCSV(waypoints);
+export function downloadCSV(waypoints: Waypoint[], name: string, defaultFrame: AltitudeFrame): void {
+  const csv = exportCSV(waypoints, defaultFrame);
   const blob = new Blob([csv], { type: "text/csv" });
   downloadBlob(blob, `${name || "mission"}.csv`);
 }

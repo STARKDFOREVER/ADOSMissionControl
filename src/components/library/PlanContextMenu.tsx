@@ -109,10 +109,10 @@ export function PlanContextMenu({ planId, x, y, onClose, onPlanRenamed }: PlanCo
   const handleExportWaypoints = useCallback(() => {
     if (!plan) return;
     const waypoints = getExportWaypoints();
-    exportWaypointsFormat(waypoints, plan.name, currentExportOptions(waypoints));
+    exportWaypointsFormat(waypoints, plan.name, currentExportOptions(isActivePlan ? undefined : plan.settings ?? {}));
     toast(t("exportedWaypoints"), "success");
     onClose();
-  }, [plan, getExportWaypoints, toast, onClose, t]);
+  }, [plan, isActivePlan, getExportWaypoints, toast, onClose, t]);
 
   const handleExportPlan = useCallback(() => {
     if (!plan) return;
@@ -122,7 +122,7 @@ export function PlanContextMenu({ planId, x, y, onClose, onPlanRenamed }: PlanCo
       ? capturePlanExtras()
       : { geofence: plan.geofence, rally: plan.rally };
     const waypoints = getExportWaypoints();
-    exportQGCPlan(waypoints, plan.name, undefined, extras, currentExportOptions(waypoints));
+    exportQGCPlan(waypoints, plan.name, extras, currentExportOptions(isActivePlan ? undefined : plan.settings ?? {}));
     toast(t("exportedPlan"), "success");
     onClose();
   }, [plan, isActivePlan, getExportWaypoints, toast, onClose, t]);

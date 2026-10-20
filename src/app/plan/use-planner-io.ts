@@ -204,12 +204,12 @@ export function usePlannerIO(deps: IODeps) {
   }, [waypoints, missionName, selectedDroneId, toast, t]);
 
   const handleExportWaypoints = useCallback(() => {
-    exportWaypointsFormat(waypoints, missionName || "mission", currentExportOptions(waypoints));
+    exportWaypointsFormat(waypoints, missionName || "mission", currentExportOptions());
     toast(t("exported", { format: ".waypoints" }), "success");
   }, [waypoints, missionName, toast, t]);
 
   const handleExportPlan = useCallback(() => {
-    exportQGCPlan(waypoints, missionName || "mission", undefined, capturePlanExtras(), currentExportOptions(waypoints));
+    exportQGCPlan(waypoints, missionName || "mission", capturePlanExtras(), currentExportOptions());
     toast(t("exported", { format: ".plan" }), "success");
   }, [waypoints, missionName, toast, t]);
 
@@ -219,7 +219,7 @@ export function usePlannerIO(deps: IODeps) {
   }, [waypoints, missionName, toast, t]);
 
   const handleExportCSV = useCallback(() => {
-    exportMissionCSV(waypoints, missionName || "mission");
+    exportMissionCSV(waypoints, missionName || "mission", usePlannerStore.getState().defaultFrame);
     toast(t("exported", { format: ".csv" }), "success");
   }, [waypoints, missionName, toast, t]);
 

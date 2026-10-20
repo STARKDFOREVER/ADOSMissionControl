@@ -85,11 +85,9 @@ describe("parseWaypointsFile", () => {
     expect(Number.isFinite(wps[0].lon)).toBe(true);
   });
 
-  it("defaults a non-numeric altitude to 0 rather than NaN", () => {
+  it("refuses a waypoint whose altitude cannot be read rather than flying it at 0 m", () => {
     const text = [header, row(1, 16, "12.9", "77.5", "bad-alt")].join("\n");
-    const wps = parseWaypointsFile(text).waypoints;
-    expect(wps).toHaveLength(1);
-    expect(wps[0].alt).toBe(0);
+    expect(() => parseWaypointsFile(text)).toThrow(/Item 1 has no altitude/);
   });
 
   it("throws on a file without the QGC WPL header", () => {
@@ -232,7 +230,7 @@ describe(".plan geofence + rally round-trip", () => {
   ];
 
   it("serializes the geoFence and rallyPoints blocks instead of hard-coding them empty", () => {
-    const text = captureExport(() => exportQGCPlan(mission, "extras", undefined, { geofence, rally }));
+    const text = captureExport(() => exportQGCPlan(mission, "extras", { geofence, rally }));
     const plan = JSON.parse(text);
     expect(plan.geoFence.polygons).toHaveLength(1);
     expect(plan.geoFence.circles).toHaveLength(1);
@@ -240,7 +238,7 @@ describe(".plan geofence + rally round-trip", () => {
   });
 
   it("round-trips inclusion / exclusion fence zones and rally points through export → import", () => {
-    const text = captureExport(() => exportQGCPlan(mission, "extras", undefined, { geofence, rally }));
+    const text = captureExport(() => exportQGCPlan(mission, "extras", { geofence, rally }));
     const parsed = parseQGCPlan(text);
 
     // Waypoints survive alongside the extras.

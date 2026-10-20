@@ -7,15 +7,20 @@
  *
  * A Placemark's vertical datum is read rather than discarded: our own exports
  * carry the exact frame in `ExtendedData`, and a third-party document is read
- * from its `altitudeMode` (`absolute` -> AMSL, `relativeToGround` /
- * `clampToGround` -> above terrain). Dropping it made every imported KML
- * default to relative-to-home, which silently changes what the altitude means.
+ * from its `altitudeMode` (`absolute` -> AMSL, `relativeToGround` -> above
+ * terrain). A placemark with no `altitudeMode` is `clampToGround`, the KML
+ * default, whose written altitude means nothing.
+ *
+ * Our own exports also carry each waypoint's command in `ExtendedData`, so an
+ * RTL or LAND re-imports as one. A placemark without it that is named after a
+ * command (`RTL`, `LAND`, `TAKEOFF`) gets that command.
  *
  * @license GPL-3.0-only
  */
 
-import type { AltitudeFrame, Waypoint } from "@/lib/types";
-import { KML_FRAME_KEY } from "./kml-exporter";
+import type { AltitudeFrame, NavCommand, Waypoint } from "@/lib/types";
+import { NAV_COMMANDS } from "@/lib/mission/command-classes";
+import { KML_COMMAND_KEY, KML_FRAME_KEY, KML_INHERITS_POSITION_KEY } from "./kml-exporter";
 
 export interface KmlStyle {
   lineColor: string;  // CSS hex (#RRGGBB)
@@ -70,13 +75,18 @@ export function parseKML(text: string, options: KmlParseOptions = {}): KmlParseR
   const unusable = { point: 0, line: 0 };
   /**
    * The altitude to fly: the written one when it means something, else the
-   * default. A height our own export marked with its frame is always trusted
-   * (a LAND at 0 m relative is real); otherwise a clamped placemark has no
-   * altitude, and a missing or zero altitude would put the waypoint on the
-   * ground.
+   * default. A height our own export marked with its frame is trusted (a LAND
+   * at 0 m relative is real) unless `zeroUnknown` says a 0 is a placeholder;
+   * otherwise a clamped placemark has no altitude, and a missing or zero
+   * altitude would put the waypoint on the ground.
    */
-  const usableAlt = (alt: number | undefined, mode: PlacemarkAltitude, source: "point" | "line"): number => {
-    if (mode.exportedFrame) return alt ?? 0;
+  const usableAlt = (
+    alt: number | undefined,
+    mode: PlacemarkAltitude,
+    source: "point" | "line",
+    zeroUnknown = false,
+  ): number => {
+    if (mode.exportedFrame && !(zeroUnknown && alt === 0)) return alt ?? 0;
     if (mode.clamped || alt === undefined || alt === 0) {
       unusable[source]++;
       return defaultAlt;
@@ -109,6 +119,7 @@ export function parseKML(text: string, options: KmlParseOptions = {}): KmlParseR
     // Vertical datum for every geometry in this Placemark.
     const mode = placemarkAltitude(pm);
     const frame = mode.frame;
+    const { command, inheritsPosition, fromName } = placemarkCommand(pm);
 
     // Point → single waypoint + overlay point
     const pointElements = findElements(pm, "Point");
@@ -123,8 +134,11 @@ export function parseKML(text: string, options: KmlParseOptions = {}): KmlParseR
             id: generateId(),
             lat,
             lon,
-            alt: usableAlt(alt, mode, "point"),
-            command: "WAYPOINT",
+            // A command read from the name alone came from a file that did not
+            // record its altitude meaning, so its 0 is not trusted.
+            alt: usableAlt(alt, mode, "point", fromName),
+            command,
+            ...(inheritsPosition ? { inheritsPosition: true } : {}),
             frame,
           });
         }
@@ -226,28 +240,56 @@ interface PlacemarkAltitude {
   clamped: boolean;
 }
 
+/** The text of the placemark's `ExtendedData` entry named `key`, if any. */
+function extendedValue(pm: Element, key: string): string | undefined {
+  for (const data of findElements(pm, "Data")) {
+    if (data.getAttribute("name") === key) return findElements(data, "value")[0]?.textContent?.trim();
+  }
+  return undefined;
+}
+
 /**
  * How a Placemark's altitudes are to be read.
  *
  * Our own export records the exact frame in `ExtendedData`, so that wins.
  * Otherwise `absolute` is AMSL and `relativeToGround` is height above the
  * terrain below the point — our `terrain` frame, NOT `relative` (above home).
- * `clampToGround` carries no altitude at all, so it maps to no frame and the
- * mission default applies, as it does when the document says nothing.
+ * `clampToGround`, which is also what a placemark with no `altitudeMode`
+ * means, carries no altitude at all, so it maps to no frame and the mission
+ * default applies.
  */
 function placemarkAltitude(pm: Element): PlacemarkAltitude {
-  for (const data of findElements(pm, "Data")) {
-    if (data.getAttribute("name") !== KML_FRAME_KEY) continue;
-    const raw = findElements(data, "value")[0]?.textContent?.trim();
-    if (raw === "relative" || raw === "absolute" || raw === "terrain") {
-      return { frame: raw, exportedFrame: true, clamped: false };
-    }
+  const raw = extendedValue(pm, KML_FRAME_KEY);
+  if (raw === "relative" || raw === "absolute" || raw === "terrain") {
+    return { frame: raw, exportedFrame: true, clamped: false };
   }
 
   const mode = findElements(pm, "altitudeMode")[0]?.textContent?.trim();
   if (mode === "absolute") return { frame: "absolute", exportedFrame: false, clamped: false };
   if (mode === "relativeToGround") return { frame: "terrain", exportedFrame: false, clamped: false };
-  return { frame: undefined, exportedFrame: false, clamped: mode === "clampToGround" };
+  return { frame: undefined, exportedFrame: false, clamped: true };
+}
+
+/** Placemark names our exports (and older ones without the command entry) give these commands. */
+const NAMED_COMMANDS: Record<string, NavCommand> = { RTL: "RTL", LAND: "LAND", TAKEOFF: "TAKEOFF" };
+
+/**
+ * The navigation command a Placemark stands for: our export's recorded
+ * command, else a command its name spells out, else a plain waypoint.
+ * `fromName` marks the name fallback, whose altitude carries no meaning at 0.
+ */
+function placemarkCommand(pm: Element): { command: NavCommand; inheritsPosition: boolean; fromName: boolean } {
+  const recorded = extendedValue(pm, KML_COMMAND_KEY);
+  if (recorded !== undefined && NAV_COMMANDS.has(recorded as NavCommand)) {
+    return {
+      command: recorded as NavCommand,
+      inheritsPosition: extendedValue(pm, KML_INHERITS_POSITION_KEY) === "true",
+      fromName: false,
+    };
+  }
+  const name = findElements(pm, "name")[0]?.textContent?.trim().toUpperCase() ?? "";
+  const named = Object.hasOwn(NAMED_COMMANDS, name) ? NAMED_COMMANDS[name] : undefined;
+  return named ? { command: named, inheritsPosition: false, fromName: true } : { command: "WAYPOINT", inheritsPosition: false, fromName: false };
 }
 
 /**
