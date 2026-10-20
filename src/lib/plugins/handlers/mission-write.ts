@@ -72,7 +72,7 @@ export function buildMissionWriteHandler(
     const blocked = refusal(before);
     if (blocked) return { ok: false, error: blocked };
 
-    const options = buildValidationOptions(readValidationOptionsSnapshot());
+    const options = buildValidationOptions(readValidationOptionsSnapshot(protocol));
     const result = validateMission(waypoints, options);
     if (!result.valid) {
       return { ok: false, error: "invalid mission", errors: result.errors };

@@ -534,18 +534,19 @@ describe('validateMission — newly added dangerous conditions', () => {
     expect(result.warnings.some((w) => w.code === 'OUTSIDE_LINK_RANGE')).toBe(true);
   });
 
-  it('ignores a vehicle home from another site for the link range check', () => {
+  it('measures the link range from the planned home, even one at another site', () => {
     const mission = [
       wp({ lat: 12.97, lon: 77.59, alt: 0, command: 'TAKEOFF' }),
       wp({ lat: 12.973, lon: 77.59, command: 'WAYPOINT' }),
       wp({ lat: 12.973, lon: 77.59, command: 'LAND' }),
     ];
-    const foreign = validateMission(mission, { linkRangeM: 1000, home: { lat: 36.06, lon: -112.11 } });
-    expect(foreign.warnings.some((w) => w.code === 'OUTSIDE_LINK_RANGE')).toBe(false);
+    // The planned home is the plan's own: the validator never second-guesses it.
+    const distant = validateMission(mission, { linkRangeM: 1000, home: { lat: 36.06, lon: -112.11 } });
+    expect(distant.warnings.some((w) => w.code === 'OUTSIDE_LINK_RANGE')).toBe(true);
 
-    // About 3 km north of the launch point: the same site, so it counts.
-    const near = validateMission(mission, { linkRangeM: 1000, home: { lat: 12.997, lon: 77.59 } });
-    expect(near.warnings.some((w) => w.code === 'OUTSIDE_LINK_RANGE')).toBe(true);
+    // Without a planned home the launch point stands in, and the mission sits within range.
+    const launch = validateMission(mission, { linkRangeM: 1000 });
+    expect(launch.warnings.some((w) => w.code === 'OUTSIDE_LINK_RANGE')).toBe(false);
   });
 
   it('flags TURN_RADIUS_TOO_TIGHT for a hairpin a fixed wing cannot fly', () => {

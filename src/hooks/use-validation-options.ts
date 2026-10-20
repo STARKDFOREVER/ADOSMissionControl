@@ -1,10 +1,10 @@
 /**
  * @module use-validation-options
  * @description Single source of truth for building mission `ValidationOptions`
- * from the geofence + rally + planner stores, shared by the Plan tab's
- * ValidationPanel, the Simulate tab's banner, the upload gate and the plugin
- * `mission.write` handler so every surface gates the fence identically (no
- * phantom errors from stale inactive geometry), enforces zones + rally, and
+ * from the geofence + rally + planner + mission stores, shared by the Plan
+ * tab's ValidationPanel, the Simulate tab's banner, the upload gate and the
+ * plugin `mission.write` handler so every surface gates the fence identically
+ * (no phantom errors from stale inactive geometry), enforces zones + rally, and
  * resolves altitudes in the SAME frame the upload will use.
  *
  * The frame is the load-bearing part. Planner-drawn waypoints carry
@@ -16,21 +16,28 @@
  * the TERRAIN_CLEARANCE rule would pass clean. Options are always returned,
  * even with no fence and no rally, so the frame is never discarded.
  *
- * The hook also passes the vehicle's telemetry home (with its own terrain
- * sample) and its configured RTL altitude when they are known, so relative
- * altitudes resolve against the launch site's ground and the RTL return
- * altitude rule runs against the real value.
+ * Home is the plan's planned home with its ground elevation; with none the
+ * validator falls back to the plan's launch point. The vehicle profile picks
+ * the autopilot-specific rules. The hook also passes the vehicle's configured
+ * RTL altitude and TERRAIN_ENABLE when connected, and the ground profile
+ * sampled along every flown leg.
  * @license GPL-3.0-only
  */
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useGeofenceStore, type FenceType, type FenceZone } from "@/stores/geofence-store";
 import { useRallyStore, type RallyPoint } from "@/stores/rally-store";
 import { usePlannerStore } from "@/stores/planner-store";
-import type { AltitudeFrame } from "@/lib/types";
+import { useMissionStore } from "@/stores/mission-store";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
+import type { AltitudeFrame, PlannedHome, PlanVehicleProfile } from "@/lib/types";
+import type { DroneProtocol } from "@/lib/protocol/types";
 import type { ValidationOptions } from "@/lib/validation/mission-validator";
+import { DEFAULT_PLAN_PROFILE, profileFromVehicleInfo } from "@/lib/mission/plan-profile";
 import { useRtlReturnContext } from "@/hooks/use-rtl-return-context";
+import { usePlanVehicleProfile } from "@/hooks/use-plan-profile";
+import { useLegGroundProfiles } from "@/hooks/use-terrain-profile";
 
 /** The store fields the validation options are derived from. */
 export interface ValidationOptionsSnapshot {
@@ -44,6 +51,12 @@ export interface ValidationOptionsSnapshot {
   zones: FenceZone[];
   rallyPoints: RallyPoint[];
   defaultFrame: AltitudeFrame;
+  defaultSpeed: number;
+  /** ArduPilot's home-centred circle fence radius, metres; null when none. */
+  homeCircleRadiusM: number | null;
+  plannedHome: PlannedHome | null;
+  /** Profile the plan is validated for; null for a non-MAVLink target. */
+  profile: PlanVehicleProfile | null;
 }
 
 /**
@@ -73,12 +86,35 @@ export function buildValidationOptions(s: ValidationOptionsSnapshot): Validation
     geofence: hasFence ? geofence : undefined,
     rally,
     defaultFrame: s.defaultFrame,
+    defaultSpeed: s.defaultSpeed,
+    home: s.plannedHome
+      ? { lat: s.plannedHome.lat, lon: s.plannedHome.lon, groundElevation: s.plannedHome.groundAmsl }
+      : undefined,
+    profile: s.profile ?? undefined,
+    homeCircleRadiusM:
+      s.enabled && s.homeCircleRadiusM !== null && s.homeCircleRadiusM > 0 ? s.homeCircleRadiusM : undefined,
   };
 }
 
-/** Read the current store snapshot, for non-React callers. */
-export function readValidationOptionsSnapshot(): ValidationOptionsSnapshot {
+/** True for a vehicle flying MSP missions, which the MAVLink profiles do not describe. */
+function isMspTarget(protocol: DroneProtocol | null | undefined): boolean {
+  const firmware = protocol?.getVehicleInfo()?.firmwareType;
+  return firmware === "inav" || firmware === "betaflight";
+}
+
+/**
+ * Read the current store snapshot, for non-React callers. `target` is the
+ * vehicle the mission is meant for (its reported profile applies when the
+ * plan has none); absent, the selected vehicle.
+ */
+export function readValidationOptionsSnapshot(target?: DroneProtocol | null): ValidationOptionsSnapshot {
   const g = useGeofenceStore.getState();
+  const planner = usePlannerStore.getState();
+  const mission = useMissionStore.getState();
+  const vehicle = target === undefined ? selectSelectedProtocol(useDroneManager.getState()) : target;
+  const profile =
+    mission.vehicleProfile ??
+    (isMspTarget(vehicle) ? null : profileFromVehicleInfo(vehicle?.getVehicleInfo()) ?? DEFAULT_PLAN_PROFILE);
   return {
     enabled: g.enabled,
     fenceType: g.fenceType,
@@ -89,8 +125,34 @@ export function readValidationOptionsSnapshot(): ValidationOptionsSnapshot {
     circleRadius: g.circleRadius,
     zones: g.zones,
     rallyPoints: useRallyStore.getState().points,
-    defaultFrame: usePlannerStore.getState().defaultFrame,
+    defaultFrame: planner.defaultFrame,
+    defaultSpeed: planner.defaultSpeed,
+    homeCircleRadiusM: g.homeCircleRadiusM,
+    plannedHome: mission.plannedHome,
+    profile,
   };
+}
+
+/**
+ * The selected ArduPilot vehicle's TERRAIN_ENABLE, kept with the link it was
+ * read from; `undefined` until read, or for any other autopilot.
+ */
+function useTerrainEnabled(): boolean | undefined {
+  const protocol = useDroneManager(selectSelectedProtocol);
+  const firmware = protocol?.getVehicleInfo()?.firmwareType;
+  const [read, setRead] = useState<{ protocol: DroneProtocol; value: boolean } | null>(null);
+  useEffect(() => {
+    if (!protocol || !firmware?.startsWith("ardupilot")) return;
+    let live = true;
+    protocol.getParameter("TERRAIN_ENABLE").then(
+      (param) => {
+        if (live && Number.isFinite(param.value)) setRead({ protocol, value: param.value !== 0 });
+      },
+      () => undefined,
+    );
+    return () => { live = false; };
+  }, [protocol, firmware]);
+  return read && read.protocol === protocol ? read.value : undefined;
 }
 
 export function useValidationOptions(): ValidationOptions {
@@ -101,10 +163,22 @@ export function useValidationOptions(): ValidationOptions {
   const polygonPoints = useGeofenceStore((s) => s.polygonPoints);
   const circleCenter = useGeofenceStore((s) => s.circleCenter);
   const circleRadius = useGeofenceStore((s) => s.circleRadius);
+  const homeCircleRadiusM = useGeofenceStore((s) => s.homeCircleRadiusM);
   const zones = useGeofenceStore((s) => s.zones);
   const rallyPoints = useRallyStore((s) => s.points);
   const defaultFrame = usePlannerStore((s) => s.defaultFrame);
-  const { home, rtlAltitude } = useRtlReturnContext();
+  const defaultSpeed = usePlannerStore((s) => s.defaultSpeed);
+  const plannedHome = useMissionStore((s) => s.plannedHome);
+  const ownProfile = useMissionStore((s) => s.vehicleProfile);
+  const waypoints = useMissionStore((s) => s.waypoints);
+  const planProfile = usePlanVehicleProfile();
+  // A plan with no profile of its own, on an MSP vehicle, gets no
+  // MAVLink-autopilot rules.
+  const mspTarget = isMspTarget(useDroneManager(selectSelectedProtocol));
+  const profile = !ownProfile && mspTarget ? null : planProfile;
+  const { rtlAltitude } = useRtlReturnContext();
+  const terrainEnabled = useTerrainEnabled();
+  const legGroundProfiles = useLegGroundProfiles(waypoints);
 
   return useMemo(
     () => ({
@@ -119,10 +193,19 @@ export function useValidationOptions(): ValidationOptions {
         zones,
         rallyPoints,
         defaultFrame,
+        defaultSpeed,
+        homeCircleRadiusM,
+        plannedHome,
+        profile,
       }),
-      home,
       rtlAltitude,
+      terrainEnabled,
+      legGroundProfiles,
     }),
-    [enabled, fenceType, maxAltitude, minAltitude, polygonPoints, circleCenter, circleRadius, zones, rallyPoints, defaultFrame, home, rtlAltitude],
+    [
+      enabled, fenceType, maxAltitude, minAltitude, polygonPoints, circleCenter, circleRadius, zones,
+      rallyPoints, defaultFrame, defaultSpeed, homeCircleRadiusM, plannedHome, profile, rtlAltitude,
+      terrainEnabled, legGroundProfiles,
+    ],
   );
 }

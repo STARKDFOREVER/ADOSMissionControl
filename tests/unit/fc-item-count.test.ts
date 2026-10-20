@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   checkItemCount,
-  expandedItemCount,
+  missionItemCount,
+  ARDUPILOT_SMALL_BOARD_ITEMS,
   fcFamilyFromFirmware,
   limitForFirmware,
   FC_ITEM_COUNT_LIMITS,
@@ -20,11 +21,12 @@ function wps(n: number): Waypoint[] {
   }));
 }
 
-describe('expandedItemCount', () => {
-  it('counts each waypoint as one item (HOME implicit, not counted)', () => {
-    expect(expandedItemCount(wps(0))).toBe(0);
-    expect(expandedItemCount(wps(1))).toBe(1);
-    expect(expandedItemCount(wps(42))).toBe(42);
+describe('missionItemCount', () => {
+  it('counts one item per waypoint, plus the home slot on ArduPilot', () => {
+    expect(missionItemCount(wps(0), 'ardupilot')).toBe(0);
+    expect(missionItemCount(wps(1), 'ardupilot')).toBe(2);
+    expect(missionItemCount(wps(42), 'ardupilot')).toBe(43);
+    expect(missionItemCount(wps(42), 'px4')).toBe(42);
   });
 
   it('counts command-style waypoints as one item each', () => {
@@ -34,7 +36,7 @@ describe('expandedItemCount', () => {
       { id: 'c', lat: 2, lon: 2, alt: 10, command: 'DO_JUMP' },
       { id: 'd', lat: 3, lon: 3, alt: 0, command: 'LAND' },
     ];
-    expect(expandedItemCount(mixed)).toBe(4);
+    expect(missionItemCount(mixed, 'px4')).toBe(4);
   });
 
   it('counts each attached action as its own sibling item', () => {
@@ -54,12 +56,24 @@ describe('expandedItemCount', () => {
       { id: 'c', lat: 2, lon: 2, alt: 0, command: 'LAND' },
     ];
     // 3 NAV waypoints + 2 attached actions = 5 uploaded items.
-    expect(expandedItemCount(withActions)).toBe(5);
+    expect(missionItemCount(withActions, 'px4')).toBe(5);
+    expect(missionItemCount(withActions, 'inav')).toBe(5);
+  });
+
+  it('counts the speed items the upload writes for leg speeds', () => {
+    // 640 waypoints with 15 speed changes: 656 items with home, more than a
+    // 16 KB ArduCopter board (650) stores.
+    const plan = wps(640).map((w, i) => (i > 0 && i % 40 === 0 ? { ...w, speed: i % 80 === 0 ? 5 : 8 } : w));
+    expect(plan.filter((w) => w.speed !== undefined)).toHaveLength(15);
+    expect(missionItemCount(plan, 'ardupilot')).toBe(656);
+    // A default speed adds one more item ahead of the first waypoint, and one
+    // each time a leg returns to it.
+    expect(missionItemCount(wps(3).map((w, i) => (i === 1 ? { ...w, speed: 8 } : w)), 'ardupilot', 5)).toBe(7);
   });
 
   it('is defensive against null / undefined input', () => {
-    expect(expandedItemCount(null)).toBe(0);
-    expect(expandedItemCount(undefined)).toBe(0);
+    expect(missionItemCount(null, 'ardupilot')).toBe(0);
+    expect(missionItemCount(undefined, 'px4')).toBe(0);
   });
 });
 
@@ -102,18 +116,18 @@ describe('limitForFirmware', () => {
 
 describe('checkItemCount', () => {
   it('reports info well below the limit', () => {
-    const result = checkItemCount(wps(10), { limit: 100 });
+    const result = checkItemCount(wps(10), { limit: 100, firmware: 'px4' });
     expect(result).toEqual({ count: 10, limit: 100, level: 'info' });
   });
 
   it('escalates to warn once the count reaches the warn ratio', () => {
     // 90% of 100 = 90 → warn at 90+.
-    expect(checkItemCount(wps(89), { limit: 100 }).level).toBe('info');
-    expect(checkItemCount(wps(90), { limit: 100 }).level).toBe('warn');
+    expect(checkItemCount(wps(89), { limit: 100, firmware: 'px4' }).level).toBe('info');
+    expect(checkItemCount(wps(90), { limit: 100, firmware: 'px4' }).level).toBe('warn');
   });
 
   it('warns when the count exceeds the limit but never errors', () => {
-    const result = checkItemCount(wps(150), { limit: 100 });
+    const result = checkItemCount(wps(150), { limit: 100, firmware: 'px4' });
     expect(result.count).toBe(150);
     expect(result.limit).toBe(100);
     expect(result.level).toBe('warn');
@@ -134,6 +148,14 @@ describe('checkItemCount', () => {
     // PX4 stores 500 items by default, warn at >= 450.
     expect(checkItemCount(wps(449), { firmware: 'px4' }).level).toBe('info');
     expect(checkItemCount(wps(450), { firmware: 'px4' }).level).toBe('warn');
+  });
+
+  it('warns once an ArduPilot plan outgrows the smallest storage class', () => {
+    // 299 waypoints + home = 300 items fits an 8 KB board; one more does not.
+    expect(checkItemCount(wps(299), { firmware: 'ardupilot-copter' })).toEqual({
+      count: ARDUPILOT_SMALL_BOARD_ITEMS, limit: FC_ITEM_COUNT_LIMITS.ardupilot, level: 'info',
+    });
+    expect(checkItemCount(wps(300), { firmware: 'ardupilot-copter' }).level).toBe('warn');
   });
 
   it('lets an explicit limit override the firmware default', () => {

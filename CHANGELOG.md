@@ -150,6 +150,16 @@ the project follows [Semantic Versioning](https://semver.org/).
   fence type keeps the vehicle's home circle. The waypoint action menu gains
   photo every N seconds, stop photos, start video and stop video. The default
   acceptance radius is 0, which leaves the turn distance to the autopilot.
+- Validation checks the legs between waypoints against terrain, not only the
+  waypoints, and reports a leg it could not check instead of passing it. It
+  measures from the plan's planned home and applies each autopilot's own
+  rules: PX4 has no terrain frame, no forward jumps and smaller fence and
+  rally storage; ArduCopter will not start AUTO on the ground without a
+  TAKEOFF; ArduPilot storage is counted over every wire item plus the home
+  slot; a waypoint outside the vehicle's home circle fence, a jump ArduPilot
+  never takes and terrain-frame waypoints without terrain data on the vehicle
+  are flagged. RTL, DO_LAND_START and items flown from the current position no
+  longer trip the distance and link-range checks.
 
 ### Removed
 

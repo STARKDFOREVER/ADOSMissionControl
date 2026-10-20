@@ -2,9 +2,10 @@
  * @module mission-validator
  * @description Validates mission waypoints for the conditions that make a
  * mission unsafe or un-flyable: terrain clearance in the correct altitude
- * frame, geofence containment (horizontal and vertical), takeoff/land structure,
- * jump reachability, identity collisions, RTL return clearance, link range and
- * turn feasibility.
+ * frame (at each waypoint and along each leg), geofence containment
+ * (horizontal and vertical), takeoff/land structure, jump reachability,
+ * identity collisions, RTL return clearance, link range, turn feasibility,
+ * and what the target autopilot stores and accepts.
  *
  * Every issue carries an explicit `severity`: `blocking` means do not fly this,
  * `advisory` means look at this. `errors` / `warnings` are those two buckets.
@@ -19,21 +20,25 @@
  * @license GPL-3.0-only
  */
 
-import type { AltitudeFrame, Waypoint } from "@/lib/types";
+import type { AltitudeFrame, PlanVehicleProfile, Waypoint } from "@/lib/types";
 import type { FenceZone } from "@/stores/geofence-store";
 import type { RallyPoint } from "@/stores/rally-store";
 import { bearing } from "@/lib/telemetry-utils";
-import { isSelfIntersecting } from "@/lib/drawing/geo-utils";
 import { DEFAULT_MIN_TERRAIN_CLEARANCE } from "@/lib/terrain/terrain-clearance";
 import { isActionCommand } from "@/lib/mission/command-classes";
-import { isHomeNearPlan } from "@/lib/mission/plan-home";
+import { planLaunchPoint } from "@/lib/mission/plan-home";
 import {
   inferHomeGroundElevation,
   resolveWaypointAltitude,
   type AltitudeDatums,
 } from "@/lib/mission/altitude-frame";
-import { haversineDistance, pointInPolygon } from "@/lib/geo/distance";
+import { haversineDistance } from "@/lib/geo/distance";
 import { legFenceIssues } from "./leg-fence";
+import { isPositionedFlown, legTerrainIssues, type LegGroundProfiles } from "./leg-terrain";
+import { jumpIssues } from "./jump-rules";
+import { autopilotIssues, effectiveWaypoints, isArduCopter, noLandMessage } from "./autopilot-rules";
+import { fenceAndRallyIssues, fenceItemCount, waypointFenceIssues } from "./fence-rules";
+import { waypointIssues } from "./waypoint-rules";
 
 /** How much a mission issue matters. */
 export type ValidationSeverity =
@@ -49,6 +54,11 @@ export interface ValidationIssue {
   message: string;
   waypointIndex?: number;
   waypointId?: string;
+  /**
+   * For a leg issue: the leg runs from `waypointId` to `toWaypointId`, with the
+   * worst clearance (metres, may be negative) found `alongM` metres along it.
+   */
+  leg?: { toWaypointId: string; clearanceM: number; alongM: number };
 }
 
 /** Complete validation result. */
@@ -91,13 +101,17 @@ export interface ValidationOptions {
   /** Rally points to validate (containment + altitude band). */
   rally?: RallyPoint[];
   /**
-   * The launch point. `groundElevation` (terrain MSL at home) is the datum every
-   * `relative`-frame altitude resolves against; without it a relative mission
-   * cannot be checked against terrain and the rule says so.
+   * The plan's planned home. `groundElevation` (terrain MSL at home) is the
+   * datum every `relative`-frame altitude resolves against; without it a
+   * relative mission cannot be checked against terrain and the rule says so.
+   * Absent: the plan's launch point stands in for the position, and the
+   * launch waypoint's own terrain sample for the ground.
    */
   home?: { lat?: number; lon?: number; groundElevation?: number };
   /** Mission default altitude frame for waypoints carrying none. */
   defaultFrame?: AltitudeFrame;
+  /** Mission default speed: the upload writes a speed item for it. */
+  defaultSpeed?: number;
   /** RTL return altitude in metres above home, when configured. */
   rtlAltitude?: number;
   /** Usable command/telemetry link range in metres, when configured. */
@@ -107,20 +121,14 @@ export interface ValidationOptions {
     /** Minimum turn radius in metres (fixed wing / VTOL in forward flight). */
     minTurnRadiusM?: number;
   };
-}
-
-/**
- * Whether a point falls inside a fence zone (polygon or circle).
- * Returns false for a malformed zone (too few polygon points / no circle center).
- */
-function pointInZone(lat: number, lon: number, zone: FenceZone): boolean {
-  if (zone.type === "polygon") {
-    if (zone.polygonPoints.length < 3) return false;
-    return pointInPolygon([lat, lon], zone.polygonPoints);
-  }
-  if (!zone.circleCenter) return false;
-  const dist = haversineDistance(lat, lon, zone.circleCenter[0], zone.circleCenter[1]);
-  return dist <= zone.circleRadius;
+  /** Autopilot and vehicle class the plan is written for; absent = rules common to all autopilots only. */
+  profile?: PlanVehicleProfile;
+  /** The connected ArduPilot vehicle's TERRAIN_ENABLE; absent when unknown. */
+  terrainEnabled?: boolean;
+  /** Radius of ArduPilot's home-centred circle fence (`FENCE_RADIUS`), metres. */
+  homeCircleRadiusM?: number;
+  /** Ground AMSL sampled along each flown leg, keyed `${fromId}>${toId}`. */
+  legGroundProfiles?: LegGroundProfiles;
 }
 
 /**
@@ -156,9 +164,7 @@ export function validateMission(
   const warnings: ValidationIssue[] = [];
   const maxDist = options?.maxDistanceBetweenWps ?? 50_000; // 50km default
   const minClearance = options?.minTerrainClearance ?? DEFAULT_MIN_TERRAIN_CLEARANCE;
-  // Stable ids of every waypoint, for resolving DO_JUMP targets by id.
-  const waypointIds = new Set(waypoints.map((w) => w.id));
-  const indexById = new Map(waypoints.map((w, i) => [w.id, i]));
+  const profile = options?.profile;
 
   // 1. Empty mission
   if (waypoints.length === 0) {
@@ -170,25 +176,23 @@ export function validateMission(
     return { valid: false, warnings, errors };
   }
 
-  // A vehicle home from another site is not this plan's datum: its ground
-  // elevation and position would skew every relative altitude and the link
-  // range check, so only a home near the plan counts.
-  const home = options?.home && isHomeNearPlan(options.home, waypoints) ? options.home : undefined;
-
-  // Vertical datums. Home ground elevation is either supplied by the caller or
-  // inferred from the launch point's own terrain sample; without it no
-  // relative-frame altitude can be resolved to a real height.
+  // The planned home is the plan's own datum. Without one, the launch point
+  // stands in for its position and the launch waypoint's terrain for its ground.
+  const home = options?.home;
+  const launch = planLaunchPoint(waypoints);
+  const homeLat = home?.lat ?? launch?.lat;
+  const homeLon = home?.lon ?? launch?.lon;
   const homeGroundElevation =
     home?.groundElevation ?? inferHomeGroundElevation(waypoints);
   const datums: AltitudeDatums = {
     homeGroundElevation,
     defaultFrame: options?.defaultFrame,
   };
-  const homeLat = home?.lat ?? waypoints[0].lat;
-  const homeLon = home?.lon ?? waypoints[0].lon;
 
+  /** The waypoints with the altitude the vehicle holds (ArduCopter keeps the previous altitude for 0). */
+  const flown = effectiveWaypoints(waypoints, profile);
   /** Resolved altitude per waypoint, computed once and reused by every rule. */
-  const resolved = waypoints.map((wp) => resolveWaypointAltitude(wp, datums));
+  const resolved = flown.map((wp) => resolveWaypointAltitude(wp, datums));
 
   // 2. Less than 2 waypoints
   if (waypoints.length < 2) {
@@ -204,25 +208,29 @@ export function validateMission(
   // 3. First waypoint should be TAKEOFF or VTOL_TAKEOFF
   const firstCmd = waypoints[0].command ?? "WAYPOINT";
   if (!TAKEOFF_COMMANDS[firstCmd]) {
+    const first = { waypointIndex: 0, waypointId: waypoints[0].id };
     // A mission whose first waypoint is already at altitude has no launch
     // command at all: the vehicle would fly toward a point it is not at yet.
-    // That is a different, blocking, defect from a merely absent TAKEOFF row.
+    // PX4 climbs to MIS_TAKEOFF_ALT by itself first, so there it is advisory.
     const startsAirborne = (resolved[0].agl ?? resolved[0].aboveHome ?? waypoints[0].alt) > 0;
-    if (startsAirborne) {
+    const airborne = `WP1: mission starts airborne (${Math.round(waypoints[0].alt)}m, ${resolved[0].frame} frame) with no TAKEOFF command`;
+    if (startsAirborne && profile?.autopilot === "px4") {
+      warnings.push({ severity: "advisory", code: "MISSING_TAKEOFF", message: `${airborne}. PX4 climbs to MIS_TAKEOFF_ALT first`, ...first });
+    } else if (startsAirborne) {
+      errors.push({ severity: "blocking", code: "MISSING_TAKEOFF", message: airborne, ...first });
+    } else if (isArduCopter(profile)) {
       errors.push({
         severity: "blocking",
-        code: "MISSING_TAKEOFF",
-        message: `WP1: mission starts airborne (${Math.round(waypoints[0].alt)}m, ${resolved[0].frame} frame) with no TAKEOFF command`,
-        waypointIndex: 0,
-        waypointId: waypoints[0].id,
+        code: "NO_TAKEOFF",
+        message: "First waypoint is not TAKEOFF. ArduCopter will not start AUTO on the ground without a TAKEOFF",
+        ...first,
       });
     } else {
       warnings.push({
         severity: "advisory",
         code: "NO_TAKEOFF",
         message: "First waypoint is not TAKEOFF. The drone may not launch correctly.",
-        waypointIndex: 0,
-        waypointId: waypoints[0].id,
+        ...first,
       });
     }
   }
@@ -234,16 +242,12 @@ export function validateMission(
       warnings.push({
         severity: "advisory",
         code: "NO_LAND",
-        message: "Last waypoint is not LAND or RTL. The drone may hover at the final waypoint.",
+        message: noLandMessage(profile),
         waypointIndex: waypoints.length - 1,
         waypointId: waypoints[waypoints.length - 1].id,
       });
     }
   }
-
-  // Index of the first terminal command: anything after it never executes, so a
-  // jump into that region targets dead mission.
-  const firstTerminalIndex = waypoints.findIndex((w) => TERMINAL_COMMANDS[w.command ?? "WAYPOINT"]);
 
   // 5. Identity collisions. A waypoint's id IS its sequence identity: DO_JUMP
   // targets resolve by id and the wire sequence is derived from list order, so
@@ -275,11 +279,16 @@ export function validateMission(
     });
   }
 
+  // The previous waypoint flown to at its own coordinates. RTL, items placed
+  // at run time (0,0) and actions have no position of their own, so distance
+  // and link-range rules measure between positioned waypoints only.
+  let prevPositioned = -1;
+
   // Per-waypoint checks
   for (let i = 0; i < waypoints.length; i++) {
     const wp = waypoints[i];
     const alt = resolved[i];
-    const wpCommand = wp.command ?? "WAYPOINT";
+    const positioned = isPositionedFlown(wp);
 
     // 7. An action command (DO_/CONDITION_) has no leg of its own and must be
     // attached to a navigation waypoint, never placed as its own top-level row.
@@ -304,109 +313,29 @@ export function validateMission(
       });
     }
 
-    // 9. Altitude ceiling. The fence ceiling is expressed above HOME, so the
-    // waypoint altitude is normalised into that datum first — comparing a raw
-    // MSL altitude against an above-home limit is how a legal mission got
-    // rejected and an illegal one passed.
-    const altLimit = options?.maxAltitude ?? options?.geofence?.maxAltitude;
-    if (altLimit !== undefined) {
-      if (alt.aboveHome !== null) {
-        if (alt.aboveHome > altLimit) {
-          errors.push({
-            severity: "blocking",
-            code: "ALTITUDE_EXCEEDED",
-            message: `WP${i + 1}: Altitude ${Math.round(alt.aboveHome)}m above home exceeds limit of ${altLimit}m`,
-            waypointIndex: i,
-            waypointId: wp.id,
-          });
-        }
-      } else {
-        warnings.push({
-          severity: "advisory",
-          code: "ALTITUDE_UNCHECKED",
-          message: `WP${i + 1}: ${alt.frame}-frame altitude cannot be compared to the ${altLimit}m ceiling without a home elevation`,
-          waypointIndex: i,
-          waypointId: wp.id,
-        });
-      }
-    }
+    // 9-10. Fence ceiling and floor, terrain clearance, action locations.
+    const own = waypointIssues(wp, i, alt, options, minClearance);
+    errors.push(...own.errors);
+    warnings.push(...own.warnings);
 
-    // 10. Fence floor, in the same above-home datum as the ceiling.
-    const minAlt = options?.geofence?.minAltitude;
-    if (minAlt !== undefined && minAlt > 0 && alt.aboveHome !== null && alt.aboveHome < minAlt) {
-      errors.push({
-        severity: "blocking",
-        code: "BELOW_MIN_ALTITUDE",
-        message: `WP${i + 1}: Altitude ${Math.round(alt.aboveHome)}m above home is below the fence floor of ${minAlt}m`,
-        waypointIndex: i,
-        waypointId: wp.id,
-      });
-    }
-
-    // 11. Geofence polygon check
-    if (options?.geofence?.polygonPoints && options.geofence.polygonPoints.length >= 3) {
-      if (!pointInPolygon([wp.lat, wp.lon], options.geofence.polygonPoints)) {
-        errors.push({
-          severity: "blocking",
-          code: "OUTSIDE_GEOFENCE",
-          message: `WP${i + 1}: Outside geofence polygon`,
-          waypointIndex: i,
-          waypointId: wp.id,
-        });
-      }
-    }
-
-    // 12. Geofence circle check
-    if (options?.geofence?.circleCenter && options?.geofence?.circleRadius) {
-      const [centerLat, centerLon] = options.geofence.circleCenter;
-      const dist = haversineDistance(wp.lat, wp.lon, centerLat, centerLon);
-      if (dist > options.geofence.circleRadius) {
-        errors.push({
-          severity: "blocking",
-          code: "OUTSIDE_GEOFENCE",
-          message: `WP${i + 1}: ${Math.round(dist)}m from center, exceeds ${options.geofence.circleRadius}m radius`,
-          waypointIndex: i,
-          waypointId: wp.id,
-        });
-      }
-    }
-
-    // 13. Multi-zone fences: inclusion = must stay inside, exclusion = must stay outside
-    for (const zone of options?.geofence?.zones ?? []) {
-      const inside = pointInZone(wp.lat, wp.lon, zone);
-      if (zone.role === "inclusion" && !inside) {
-        errors.push({
-          severity: "blocking",
-          code: "OUTSIDE_GEOFENCE",
-          message: `WP${i + 1}: Outside inclusion zone`,
-          waypointIndex: i,
-          waypointId: wp.id,
-        });
-      } else if (zone.role === "exclusion" && inside) {
-        errors.push({
-          severity: "blocking",
-          code: "INSIDE_EXCLUSION_ZONE",
-          message: `WP${i + 1}: Inside a no-fly exclusion zone`,
-          waypointIndex: i,
-          waypointId: wp.id,
-        });
-      }
-    }
+    // 11-13. Fence containment: primary polygon or circle, and every zone.
+    errors.push(...waypointFenceIssues(wp, i, options?.geofence));
 
     // 13b. The leg into this waypoint: both ends can sit on the right side of
     // a fence while the straight line the vehicle flies between them does not.
     if (i > 0) errors.push(...legFenceIssues(waypoints[i - 1], wp, i, options?.geofence));
 
-    // 14. Consecutive-leg distance rules: duplicate point, absurd leg, and a leg
-    // longer than the usable link range.
-    if (i > 0) {
-      const prev = waypoints[i - 1];
+    // 14. Leg distance rules between positioned waypoints: duplicate point,
+    // absurd leg, and a leg longer than the usable link range.
+    if (positioned && prevPositioned !== -1) {
+      const prev = waypoints[prevPositioned];
+      const legName = `WP${prevPositioned + 1} to WP${i + 1}`;
       const dist = haversineDistance(prev.lat, prev.lon, wp.lat, wp.lon);
       if (dist < 0.5) {
         warnings.push({
           severity: "advisory",
           code: "DUPLICATE_WAYPOINT",
-          message: `WP${i + 1}: Duplicate of WP${i} (${dist.toFixed(1)}m apart)`,
+          message: `WP${i + 1}: Duplicate of WP${prevPositioned + 1} (${dist.toFixed(1)}m apart)`,
           waypointIndex: i,
           waypointId: wp.id,
         });
@@ -415,7 +344,7 @@ export function validateMission(
         warnings.push({
           severity: "advisory",
           code: "EXCESSIVE_DISTANCE",
-          message: `WP${i} to WP${i + 1}: ${(dist / 1000).toFixed(1)}km apart (max: ${(maxDist / 1000).toFixed(0)}km)`,
+          message: `${legName}: ${(dist / 1000).toFixed(1)}km apart (max: ${(maxDist / 1000).toFixed(0)}km)`,
           waypointIndex: i,
           waypointId: wp.id,
         });
@@ -424,18 +353,19 @@ export function validateMission(
         warnings.push({
           severity: "advisory",
           code: "LEG_EXCEEDS_LINK_RANGE",
-          message: `WP${i} to WP${i + 1}: ${Math.round(dist)}m leg exceeds the ${Math.round(options.linkRangeM)}m link range`,
+          message: `${legName}: ${Math.round(dist)}m leg exceeds the ${Math.round(options.linkRangeM)}m link range`,
           waypointIndex: i,
           waypointId: wp.id,
         });
       }
     }
 
-    // 15. Distance from home against the link range: the point at which command
-    // and telemetry stop reaching the vehicle.
-    if (options?.linkRangeM !== undefined && options.linkRangeM > 0) {
+    // 15. Distance from home against the link range (the point at which
+    // command and telemetry stop reaching the vehicle) and against ArduPilot's
+    // home-centred circle fence. Skipped with no home and no launch point.
+    if (positioned && homeLat !== undefined && homeLon !== undefined) {
       const fromHome = haversineDistance(homeLat, homeLon, wp.lat, wp.lon);
-      if (fromHome > options.linkRangeM) {
+      if (options?.linkRangeM !== undefined && options.linkRangeM > 0 && fromHome > options.linkRangeM) {
         warnings.push({
           severity: "advisory",
           code: "OUTSIDE_LINK_RANGE",
@@ -444,7 +374,18 @@ export function validateMission(
           waypointId: wp.id,
         });
       }
+      const circle = options?.homeCircleRadiusM;
+      if (circle !== undefined && circle > 0 && fromHome > circle) {
+        errors.push({
+          severity: "blocking",
+          code: "OUTSIDE_HOME_CIRCLE_FENCE",
+          message: `WP${i + 1}: ${Math.round(fromHome)}m from home, outside the ${Math.round(circle)}m home circle fence (FENCE_RADIUS)`,
+          waypointIndex: i,
+          waypointId: wp.id,
+        });
+      }
     }
+    if (positioned) prevPositioned = i;
 
     // 16. Turn feasibility. A vertex whose largest fitting arc is tighter than
     // the vehicle's minimum turn radius cannot be flown as drawn — the vehicle
@@ -472,122 +413,24 @@ export function validateMission(
         }
       }
     }
-
-    // 17. Attached-action validation. Actions ride nested under the waypoint
-    // they fire at; a DO_JUMP must resolve to a real, reachable target waypoint
-    // (by id, so it survives reorder) and must not loop forever.
-    for (const action of wp.actions ?? []) {
-      if (action.command === "DO_JUMP") {
-        const targetId = action.jumpTargetId;
-        if (targetId === undefined || !waypointIds.has(targetId)) {
-          errors.push({
-            severity: "blocking",
-            code: "INVALID_JUMP_TARGET",
-            message: `WP${i + 1}: DO_JUMP has no valid target waypoint`,
-            waypointIndex: i,
-            waypointId: wp.id,
-          });
-          continue;
-        }
-        const targetIndex = indexById.get(targetId) ?? -1;
-        const repeat = action.param2 ?? 0;
-        const backwards = targetIndex <= i;
-
-        // A backwards jump that repeats forever never leaves the loop, so the
-        // mission has no end and the vehicle never lands.
-        if (backwards && repeat < 0) {
-          errors.push({
-            severity: "blocking",
-            code: "JUMP_LOOP_NO_EXIT",
-            message: `WP${i + 1}: DO_JUMP loops back to WP${targetIndex + 1} forever — the mission never reaches a landing`,
-            waypointIndex: i,
-            waypointId: wp.id,
-          });
-        } else if (repeat < 0) {
-          warnings.push({
-            severity: "advisory",
-            code: "JUMP_REPEAT_FOREVER",
-            message: `WP${i + 1}: DO_JUMP repeat count is negative — the jump repeats forever`,
-            waypointIndex: i,
-            waypointId: wp.id,
-          });
-        }
-
-        // A jump into the region after the mission's terminal command targets
-        // items the vehicle never executes.
-        if (firstTerminalIndex !== -1 && targetIndex > firstTerminalIndex) {
-          warnings.push({
-            severity: "advisory",
-            code: "UNREACHABLE_JUMP_TARGET",
-            message: `WP${i + 1}: DO_JUMP targets WP${targetIndex + 1}, which sits after the mission ends at WP${firstTerminalIndex + 1}`,
-            waypointIndex: i,
-            waypointId: wp.id,
-          });
-        }
-      } else if (action.command === "ROI" || action.command === "DO_SET_HOME") {
-        const alat = action.lat ?? 0;
-        const alon = action.lon ?? 0;
-        if (alat === 0 && alon === 0) {
-          // 0,0 uploads as "clear the ROI" / a home in the ocean off Africa.
-          errors.push({
-            severity: "blocking",
-            code: "ACTION_NO_LOCATION",
-            message: `WP${i + 1}: ${action.command} has no location (0, 0); set its latitude and longitude`,
-            waypointIndex: i,
-            waypointId: wp.id,
-          });
-        } else if (alat < -90 || alat > 90 || alon < -180 || alon > 180) {
-          errors.push({
-            severity: "blocking",
-            code: "INVALID_ACTION_COORDS",
-            message: `WP${i + 1}: ${action.command} has invalid coordinates`,
-            waypointIndex: i,
-            waypointId: wp.id,
-          });
-        }
-      }
-    }
-
-    // 18. Terrain clearance, in the waypoint's OWN frame.
-    //
-    // `relative` is above HOME: clearance is `homeGround + alt - waypointGround`,
-    // so a mission crossing rising terrain breaches even with a healthy-looking
-    // altitude. `terrain` is already AGL. `absolute` is MSL, so clearance is
-    // `alt - waypointGround`. Never skipped silently: when the datum is missing
-    // the rule says the check could not run.
-    //
-    // Ground-contact commands are exempt: a TAKEOFF, LAND, VTOL_LAND or RTL row
-    // is deliberately at or bound for the surface, so measuring its clearance
-    // above that surface is meaningless and would fire on every mission.
-    const groundContact = TAKEOFF_COMMANDS[wpCommand] === true || TERMINAL_COMMANDS[wpCommand] === true;
-    if (!groundContact) {
-      if (alt.agl !== null) {
-        if (alt.agl < minClearance) {
-          errors.push({
-            severity: "blocking",
-            code: "TERRAIN_CLEARANCE",
-            message: `WP${i + 1}: Only ${Math.round(alt.agl)}m above terrain (min: ${minClearance}m). Ground: ${Math.round(wp.groundElevation ?? 0)}m MSL`,
-            waypointIndex: i,
-            waypointId: wp.id,
-          });
-        }
-      } else {
-        // Advisory, but never "clear": a warning keeps the mission out of the
-        // green state until the terrain under the waypoint is known.
-        warnings.push({
-          severity: "advisory",
-          code: "TERRAIN_UNCHECKED",
-          message: alt.waypointGroundKnown
-            ? `WP${i + 1}: terrain clearance not checked — no home elevation for this relative-frame altitude`
-            : `WP${i + 1}: terrain unknown — no ground elevation sample at this waypoint, clearance not checked`,
-          waypointIndex: i,
-          waypointId: wp.id,
-        });
-      }
-    }
   }
 
-  // 19. RTL return clearance. The return cruise sits at `homeGround + rtlAlt`
+  // 19. Jumps: a real target, a way out of loops, and a jump the autopilot takes.
+  const jumps = jumpIssues(waypoints, profile);
+  errors.push(...jumps.errors);
+  warnings.push(...jumps.warnings);
+
+  // 20. Terrain between waypoints, along each flown leg.
+  const legs = legTerrainIssues({
+    waypoints: flown,
+    datums,
+    minClearance,
+    profiles: options?.legGroundProfiles,
+  });
+  errors.push(...legs.errors);
+  warnings.push(...legs.warnings);
+
+  // 21. RTL return clearance. The return cruise sits at `homeGround + rtlAlt`
   // (RTL altitude is relative to home on both ArduPilot and PX4). The vehicle
   // overflies the mission area on the way back, so the highest ground the
   // mission sampled bounds the terrain it must clear.
@@ -616,52 +459,24 @@ export function validateMission(
     }
   }
 
-  // 20. Self-intersecting geofence polygon check
-  if (options?.geofence?.polygonPoints && options.geofence.polygonPoints.length >= 4) {
-    if (isSelfIntersecting(options.geofence.polygonPoints)) {
-      warnings.push({
-        severity: "advisory",
-        code: "SELF_INTERSECTING_FENCE",
-        message: "Geofence polygon is self-intersecting. Containment checks may be inaccurate.",
-      });
-    }
-  }
+  // 22. Fence shape and rally points.
+  const fenceRally = fenceAndRallyIssues(options?.geofence, options?.rally ?? []);
+  errors.push(...fenceRally.errors);
+  warnings.push(...fenceRally.warnings);
 
-  // 21. Rally point validation — a rally must be a safe return target: inside any
-  // inclusion fence, outside every exclusion zone, and within the altitude band.
-  const fence = options?.geofence;
-  const rallyPoints = options?.rally ?? [];
-  for (let r = 0; r < rallyPoints.length; r++) {
-    const rp = rallyPoints[r];
-    if (rp.lat < -90 || rp.lat > 90 || rp.lon < -180 || rp.lon > 180) {
-      errors.push({
-        severity: "blocking",
-        code: "RALLY_INVALID_COORDS",
-        message: `Rally ${r + 1}: Invalid coordinates`,
-      });
-      continue;
-    }
-    if (fence?.polygonPoints && fence.polygonPoints.length >= 3 && !pointInPolygon([rp.lat, rp.lon], fence.polygonPoints)) {
-      errors.push({ severity: "blocking", code: "RALLY_OUTSIDE_GEOFENCE", message: `Rally ${r + 1}: Outside geofence polygon` });
-    }
-    if (fence?.circleCenter && fence.circleRadius) {
-      const dist = haversineDistance(rp.lat, rp.lon, fence.circleCenter[0], fence.circleCenter[1]);
-      if (dist > fence.circleRadius) {
-        errors.push({ severity: "blocking", code: "RALLY_OUTSIDE_GEOFENCE", message: `Rally ${r + 1}: Outside geofence circle` });
-      }
-    }
-    for (const zone of fence?.zones ?? []) {
-      const inside = pointInZone(rp.lat, rp.lon, zone);
-      if (zone.role === "inclusion" && !inside) {
-        errors.push({ severity: "blocking", code: "RALLY_OUTSIDE_GEOFENCE", message: `Rally ${r + 1}: Outside inclusion zone` });
-      } else if (zone.role === "exclusion" && inside) {
-        errors.push({ severity: "blocking", code: "RALLY_INSIDE_EXCLUSION_ZONE", message: `Rally ${r + 1}: Inside a no-fly exclusion zone` });
-      }
-    }
-    // A rally altitude is above home by definition, so it compares directly.
-    if (fence?.maxAltitude !== undefined && fence.maxAltitude > 0 && rp.alt > fence.maxAltitude) {
-      warnings.push({ severity: "advisory", code: "RALLY_ALTITUDE", message: `Rally ${r + 1}: Altitude ${rp.alt}m exceeds fence ceiling ${fence.maxAltitude}m` });
-    }
+  // 23. What the target autopilot stores and accepts.
+  if (profile) {
+    const ap = autopilotIssues({
+      waypoints,
+      resolved,
+      profile,
+      terrainEnabled: options?.terrainEnabled,
+      defaultSpeed: options?.defaultSpeed,
+      fenceItemCount: fenceItemCount(options?.geofence),
+      rallyCount: options?.rally?.length ?? 0,
+    });
+    errors.push(...ap.errors);
+    warnings.push(...ap.warnings);
   }
 
   return {

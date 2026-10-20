@@ -31,7 +31,10 @@ vi.hoisted(() => {
 });
 
 const vehicle = vi.hoisted(() => ({ armState: "disarmed" as "armed" | "disarmed" }));
-const protocol = vi.hoisted(() => ({ sendCommand: async () => ({ success: true }) }));
+const protocol = vi.hoisted(() => ({
+  sendCommand: async () => ({ success: true }),
+  getVehicleInfo: () => ({ firmwareType: "ardupilot-copter", vehicleClass: "copter" }),
+}));
 vi.mock("@/stores/drone-manager", () => ({
   useDroneManager: {
     getState: () => ({ drones: new Map([["node:d1", { protocol, name: "Drone 1" }]]) }),

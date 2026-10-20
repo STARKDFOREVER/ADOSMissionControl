@@ -121,9 +121,12 @@ function okResult() {
   return { success: true, resultCode: 0, message: "" };
 }
 
+/** What every fake drone reports: the mission validator rules depend on it. */
+const getVehicleInfo = () => ({ firmwareType: "ardupilot-copter", vehicleClass: "copter" });
+
 /** Install a drone "d1" whose protocol carries a sendCommand spy. */
 function withProtocol(sendCommand = vi.fn(async () => okResult())) {
-  droneManagerState = { drones: new Map([["node:d1", { protocol: { sendCommand } }]]) };
+  droneManagerState = { drones: new Map([["node:d1", { protocol: { sendCommand, getVehicleInfo } }]]) };
   return { sendCommand };
 }
 
@@ -360,8 +363,8 @@ describe("mission.write gates", () => {
   });
 
   it("uploads to the plugin's OWN drone, never the selected one", async () => {
-    const protocol = { sendCommand: vi.fn(async () => okResult()) };
-    const otherProtocol = { sendCommand: vi.fn(async () => okResult()) };
+    const protocol = { sendCommand: vi.fn(async () => okResult()), getVehicleInfo };
+    const otherProtocol = { sendCommand: vi.fn(async () => okResult()), getVehicleInfo };
     droneManagerState = {
       drones: new Map([
         ["node:d1", { protocol }],
