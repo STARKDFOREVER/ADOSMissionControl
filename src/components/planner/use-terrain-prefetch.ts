@@ -16,7 +16,7 @@ export type TerrainPrefetchError = { kind: "tooLarge" } | { kind: "failed"; reas
 
 export interface TerrainPrefetchState {
   running: boolean;
-  /** Elevation cells done of the area's total, while running. */
+  /** Elevation tiles done of the area's total, while running. */
   progress: { done: number; total: number } | null;
   result: { fetched: number; failed: number } | null;
   error: TerrainPrefetchError | null;
@@ -24,7 +24,7 @@ export interface TerrainPrefetchState {
 
 const IDLE: TerrainPrefetchState = { running: false, progress: null, result: null, error: null };
 
-/** The message `prefetchElevationGrid` throws for an area over its cell limit. */
+/** The message `prefetchElevationGrid` throws for an area over its tile limit. */
 const TOO_LARGE_MESSAGE = "Area too large for terrain download";
 
 export function useTerrainPrefetch() {
@@ -39,7 +39,6 @@ export function useTerrainPrefetch() {
     try {
       const result = await prefetchElevationGrid(
         bounds,
-        undefined,
         (done, total) => {
           if (controllerRef.current === controller) setState((s) => ({ ...s, progress: { done, total } }));
         },

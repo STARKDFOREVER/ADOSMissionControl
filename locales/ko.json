@@ -3334,9 +3334,9 @@
       "scopePlan": "계획의 웨이포인트, 계획 홈, 지오펜스, 랠리 포인트와 그 주변 500 m를 캐시합니다.",
       "includeTerrain": "지형 고도 포함",
       "progressTiles": "타일 {done} / {total}",
-      "progressElevation": "고도 셀 {done} / {total}",
+      "progressElevation": "고도 타일 {done} / {total}",
       "elevationStarting": "고도: 시작 중…",
-      "elevationDone": "고도: 셀 {count}개 저장됨",
+      "elevationDone": "고도: 타일 {count}개 저장됨",
       "elevationTooLarge": "지형을 다운로드하기에는 영역이 너무 큽니다",
       "elevationFailed": "고도 다운로드 실패: {reason}"
     },
@@ -3958,7 +3958,8 @@
     "cycleFrame": "Change frame",
     "unavailableOffline": "Terrain data unavailable (offline)",
     "gapsUnchecked": "{count, plural, one {# stretch has no terrain data and is not checked} other {# stretches have no terrain data and are not checked}}",
-    "groundDatumUnknown": "Terrain under the launch point or a waypoint is unknown, so the flight path cannot be drawn against the ground"
+    "groundDatumUnknown": "Terrain under the launch point or a waypoint is unknown, so the flight path cannot be drawn against the ground",
+    "dataAttribution": "지형 데이터: Mapzen Terrain Tiles (USGS SRTM, 3DEP, GMTED2010 등)"
   },
   "transform": {
     "title": "미션 변환",

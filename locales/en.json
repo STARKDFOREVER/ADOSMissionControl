@@ -3744,9 +3744,9 @@
       "scopePlan": "Caches the plan's waypoints, planned home, fence and rally points, plus 500 m around them.",
       "includeTerrain": "Include terrain elevation",
       "progressTiles": "Tiles {done} / {total}",
-      "progressElevation": "Elevation cells {done} / {total}",
+      "progressElevation": "Elevation tiles {done} / {total}",
       "elevationStarting": "Elevation: starting…",
-      "elevationDone": "Elevation: {count} cells stored",
+      "elevationDone": "Elevation: {count} tiles stored",
       "elevationTooLarge": "Area too large for terrain download",
       "elevationFailed": "Elevation download failed: {reason}"
     },
@@ -3963,7 +3963,8 @@
     "cycleFrame": "Change frame",
     "unavailableOffline": "Terrain data unavailable (offline)",
     "gapsUnchecked": "{count, plural, one {# stretch has no terrain data and is not checked} other {# stretches have no terrain data and are not checked}}",
-    "groundDatumUnknown": "Terrain under the launch point or a waypoint is unknown, so the flight path cannot be drawn against the ground"
+    "groundDatumUnknown": "Terrain under the launch point or a waypoint is unknown, so the flight path cannot be drawn against the ground",
+    "dataAttribution": "Terrain data: Mapzen Terrain Tiles (USGS SRTM, 3DEP, GMTED2010 and others)"
   },
   "transform": {
     "title": "Transform Mission",

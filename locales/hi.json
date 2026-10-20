@@ -3334,9 +3334,9 @@
       "scopePlan": "योजना के वेपॉइंट, नियोजित होम, जियोफ़ेंस और रैली पॉइंट, और उनके आसपास 500 m कैश करता है।",
       "includeTerrain": "भू-भाग की ऊँचाई शामिल करें",
       "progressTiles": "टाइल {done} / {total}",
-      "progressElevation": "ऊँचाई सेल {done} / {total}",
+      "progressElevation": "ऊँचाई टाइल {done} / {total}",
       "elevationStarting": "ऊँचाई: शुरू हो रहा है…",
-      "elevationDone": "ऊँचाई: {count} सेल सहेजे गए",
+      "elevationDone": "ऊँचाई: {count} टाइल सहेजी गईं",
       "elevationTooLarge": "भू-भाग डाउनलोड के लिए क्षेत्र बहुत बड़ा है",
       "elevationFailed": "ऊँचाई डाउनलोड विफल: {reason}"
     },
@@ -3958,7 +3958,8 @@
     "cycleFrame": "Change frame",
     "unavailableOffline": "Terrain data unavailable (offline)",
     "gapsUnchecked": "{count, plural, one {# stretch has no terrain data and is not checked} other {# stretches have no terrain data and are not checked}}",
-    "groundDatumUnknown": "Terrain under the launch point or a waypoint is unknown, so the flight path cannot be drawn against the ground"
+    "groundDatumUnknown": "Terrain under the launch point or a waypoint is unknown, so the flight path cannot be drawn against the ground",
+    "dataAttribution": "भूभाग डेटा: Mapzen Terrain Tiles (USGS SRTM, 3DEP, GMTED2010 और अन्य)"
   },
   "transform": {
     "title": "मिशन ट्रांसफ़ॉर्म",

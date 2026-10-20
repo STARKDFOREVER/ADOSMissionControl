@@ -3334,9 +3334,9 @@
       "scopePlan": "योजनेचे वेपॉइंट, नियोजित होम, जिओफेन्स आणि रॅली पॉइंट, आणि भोवतीचे 500 m कॅश करते.",
       "includeTerrain": "भूभागाची उंची समाविष्ट करा",
       "progressTiles": "टाइल {done} / {total}",
-      "progressElevation": "उंची सेल {done} / {total}",
+      "progressElevation": "उंची टाइल {done} / {total}",
       "elevationStarting": "उंची: सुरू होत आहे…",
-      "elevationDone": "उंची: {count} सेल जतन केले",
+      "elevationDone": "उंची: {count} टाइल जतन केल्या",
       "elevationTooLarge": "भूभाग डाउनलोडसाठी क्षेत्र खूप मोठे आहे",
       "elevationFailed": "उंची डाउनलोड अयशस्वी: {reason}"
     },
@@ -3958,7 +3958,8 @@
     "cycleFrame": "Change frame",
     "unavailableOffline": "Terrain data unavailable (offline)",
     "gapsUnchecked": "{count, plural, one {# stretch has no terrain data and is not checked} other {# stretches have no terrain data and are not checked}}",
-    "groundDatumUnknown": "Terrain under the launch point or a waypoint is unknown, so the flight path cannot be drawn against the ground"
+    "groundDatumUnknown": "Terrain under the launch point or a waypoint is unknown, so the flight path cannot be drawn against the ground",
+    "dataAttribution": "भूप्रदेश डेटा: Mapzen Terrain Tiles (USGS SRTM, 3DEP, GMTED2010 आणि इतर)"
   },
   "transform": {
     "title": "मोहीम रूपांतरण",

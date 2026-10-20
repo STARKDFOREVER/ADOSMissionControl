@@ -3334,9 +3334,9 @@
       "scopePlan": "Menyimpan waypoint, home terencana, geofence, dan titik kumpul rencana, ditambah 500 m di sekitarnya.",
       "includeTerrain": "Sertakan elevasi medan",
       "progressTiles": "Tile {done} / {total}",
-      "progressElevation": "Sel elevasi {done} / {total}",
+      "progressElevation": "Tile elevasi {done} / {total}",
       "elevationStarting": "Elevasi: memulai…",
-      "elevationDone": "Elevasi: {count} sel tersimpan",
+      "elevationDone": "Elevasi: {count} tile tersimpan",
       "elevationTooLarge": "Area terlalu besar untuk unduhan medan",
       "elevationFailed": "Unduhan elevasi gagal: {reason}"
     },
@@ -3958,7 +3958,8 @@
     "cycleFrame": "Change frame",
     "unavailableOffline": "Terrain data unavailable (offline)",
     "gapsUnchecked": "{count, plural, one {# stretch has no terrain data and is not checked} other {# stretches have no terrain data and are not checked}}",
-    "groundDatumUnknown": "Terrain under the launch point or a waypoint is unknown, so the flight path cannot be drawn against the ground"
+    "groundDatumUnknown": "Terrain under the launch point or a waypoint is unknown, so the flight path cannot be drawn against the ground",
+    "dataAttribution": "Data medan: Mapzen Terrain Tiles (USGS SRTM, 3DEP, GMTED2010, dan lainnya)"
   },
   "transform": {
     "title": "Transformasi Misi",

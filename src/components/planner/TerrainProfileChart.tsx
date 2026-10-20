@@ -353,6 +353,18 @@ export function TerrainProfileChart({ waypoints }: TerrainProfileChartProps) {
           </ResponsiveContainer>
         </div>
       )}
+
+      {/* Credit the terrain data, as its licence requires. */}
+      {status === "ready" && data.length > 0 && (
+        <a
+          href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[10px] text-text-tertiary hover:underline"
+        >
+          {t("dataAttribution")}
+        </a>
+      )}
     </div>
   );
 }

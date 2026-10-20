@@ -140,7 +140,7 @@ Nearly 60 panels covering calibration, PID tuning, receiver, outputs, failsafe, 
 
 ### Plan missions
 
-Drag waypoints on an interactive map. Pattern generators for survey (boustrophedon), orbit, corridor, SAR (expanding square, sector, parallel track), structure scan, plus automated landing approaches. Terrain following via the Open Elevation API. Geofence editor, rally points, batch waypoint editing, and mission validation before upload. Import and export KML, KMZ, CSV, `.waypoints`, `.plan`.
+Drag waypoints on an interactive map. Pattern generators for survey (boustrophedon), orbit, corridor, SAR (expanding square, sector, parallel track), structure scan, plus automated landing approaches. Terrain following from the open Terrain Tiles dataset. Geofence editor, rally points, batch waypoint editing, and mission validation before upload. Import and export KML, KMZ, CSV, `.waypoints`, `.plan`.
 
 ### Fly and simulate
 
@@ -202,7 +202,7 @@ All optional. The GCS works fully offline for local FC configuration and field o
 | Service | Purpose | Required? |
 |---------|---------|-----------|
 | [Convex](https://convex.dev) | Cloud fleet management, auth, community features | No (field mode works without) |
-| [Open Elevation](https://open-elevation.com) | Terrain following for mission planning | No (defaults to flat terrain) |
+| [Terrain Tiles](https://registry.opendata.aws/terrain-tiles/) (AWS Open Data) | Ground heights for terrain checks, follow-terrain patterns and the terrain profile | No (terrain checks report "unchecked" without network) |
 | [Cesium Ion](https://cesium.com/ion) | 3D terrain tiles and satellite imagery | No (uses ArcGIS terrain by default) |
 | [Groq](https://console.groq.com) | AI PID tuning analysis | No (AI features disabled without key) |
 | [GitHub API](https://github.com) | PX4 firmware release fetching | No (raises rate limit from 60 to 5000/hr) |

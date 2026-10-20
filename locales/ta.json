@@ -3334,9 +3334,9 @@
       "scopePlan": "திட்டத்தின் வழிப்புள்ளிகள், திட்டமிட்ட ஹோம், ஜியோஃபென்ஸ், ரேலி புள்ளிகள் மற்றும் சுற்றியுள்ள 500 m ஐச் சேமிக்கிறது.",
       "includeTerrain": "நில உயரத்தைச் சேர்",
       "progressTiles": "டைல்கள் {done} / {total}",
-      "progressElevation": "உயரக் கலங்கள் {done} / {total}",
+      "progressElevation": "உயர டைல்கள் {done} / {total}",
       "elevationStarting": "உயரம்: தொடங்குகிறது…",
-      "elevationDone": "உயரம்: {count} கலங்கள் சேமிக்கப்பட்டன",
+      "elevationDone": "உயரம்: {count} டைல்கள் சேமிக்கப்பட்டன",
       "elevationTooLarge": "நிலப் பதிவிறக்கத்திற்குப் பகுதி மிகப் பெரியது",
       "elevationFailed": "உயரப் பதிவிறக்கம் தோல்வி: {reason}"
     },
@@ -3958,7 +3958,8 @@
     "cycleFrame": "Change frame",
     "unavailableOffline": "Terrain data unavailable (offline)",
     "gapsUnchecked": "{count, plural, one {# stretch has no terrain data and is not checked} other {# stretches have no terrain data and are not checked}}",
-    "groundDatumUnknown": "Terrain under the launch point or a waypoint is unknown, so the flight path cannot be drawn against the ground"
+    "groundDatumUnknown": "Terrain under the launch point or a waypoint is unknown, so the flight path cannot be drawn against the ground",
+    "dataAttribution": "நிலப்பரப்பு தரவு: Mapzen Terrain Tiles (USGS SRTM, 3DEP, GMTED2010 மற்றும் பிற)"
   },
   "transform": {
     "title": "மிஷன் Transform",

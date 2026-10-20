@@ -3334,9 +3334,9 @@
       "scopePlan": "ਯੋਜਨਾ ਦੇ ਵੇਅਪੁਆਇੰਟ, ਯੋਜਨਾਬੱਧ ਹੋਮ, ਜੀਓਫ਼ੈਂਸ ਅਤੇ ਰੈਲੀ ਪੁਆਇੰਟ, ਅਤੇ ਆਲੇ-ਦੁਆਲੇ 500 m ਕੈਸ਼ ਕਰਦਾ ਹੈ।",
       "includeTerrain": "ਭੂਮੀ ਦੀ ਉਚਾਈ ਸ਼ਾਮਲ ਕਰੋ",
       "progressTiles": "ਟਾਈਲਾਂ {done} / {total}",
-      "progressElevation": "ਉਚਾਈ ਸੈੱਲ {done} / {total}",
+      "progressElevation": "ਉਚਾਈ ਟਾਈਲਾਂ {done} / {total}",
       "elevationStarting": "ਉਚਾਈ: ਸ਼ੁਰੂ ਹੋ ਰਿਹਾ ਹੈ…",
-      "elevationDone": "ਉਚਾਈ: {count} ਸੈੱਲ ਸੰਭਾਲੇ",
+      "elevationDone": "ਉਚਾਈ: {count} ਟਾਈਲਾਂ ਸੰਭਾਲੀਆਂ",
       "elevationTooLarge": "ਭੂਮੀ ਡਾਊਨਲੋਡ ਲਈ ਖੇਤਰ ਬਹੁਤ ਵੱਡਾ ਹੈ",
       "elevationFailed": "ਉਚਾਈ ਡਾਊਨਲੋਡ ਅਸਫਲ: {reason}"
     },
@@ -3958,7 +3958,8 @@
     "cycleFrame": "Change frame",
     "unavailableOffline": "Terrain data unavailable (offline)",
     "gapsUnchecked": "{count, plural, one {# stretch has no terrain data and is not checked} other {# stretches have no terrain data and are not checked}}",
-    "groundDatumUnknown": "Terrain under the launch point or a waypoint is unknown, so the flight path cannot be drawn against the ground"
+    "groundDatumUnknown": "Terrain under the launch point or a waypoint is unknown, so the flight path cannot be drawn against the ground",
+    "dataAttribution": "ਭੂ-ਭਾਗ ਡਾਟਾ: Mapzen Terrain Tiles (USGS SRTM, 3DEP, GMTED2010 ਅਤੇ ਹੋਰ)"
   },
   "transform": {
     "title": "Transform Mission",

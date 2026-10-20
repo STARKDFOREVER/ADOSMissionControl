@@ -3334,9 +3334,9 @@
       "scopePlan": "計画のウェイポイント、計画ホーム、ジオフェンス、ラリーポイントとその周囲 500 m をキャッシュします。",
       "includeTerrain": "地形標高を含める",
       "progressTiles": "タイル {done} / {total}",
-      "progressElevation": "標高セル {done} / {total}",
+      "progressElevation": "標高タイル {done} / {total}",
       "elevationStarting": "標高: 開始中…",
-      "elevationDone": "標高: {count} セルを保存",
+      "elevationDone": "標高: {count} タイルを保存",
       "elevationTooLarge": "地形をダウンロードするには領域が大きすぎます",
       "elevationFailed": "標高のダウンロードに失敗しました: {reason}"
     },
@@ -3958,7 +3958,8 @@
     "cycleFrame": "Change frame",
     "unavailableOffline": "Terrain data unavailable (offline)",
     "gapsUnchecked": "{count, plural, one {# stretch has no terrain data and is not checked} other {# stretches have no terrain data and are not checked}}",
-    "groundDatumUnknown": "Terrain under the launch point or a waypoint is unknown, so the flight path cannot be drawn against the ground"
+    "groundDatumUnknown": "Terrain under the launch point or a waypoint is unknown, so the flight path cannot be drawn against the ground",
+    "dataAttribution": "地形データ: Mapzen Terrain Tiles（USGS SRTM、3DEP、GMTED2010 ほか）"
   },
   "transform": {
     "title": "ミッション変換",

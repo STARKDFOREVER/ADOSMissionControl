@@ -3334,9 +3334,9 @@
       "scopePlan": "યોજનાના વેપૉઇન્ટ, આયોજિત હોમ, જિઓફેન્સ અને રેલી પૉઇન્ટ, અને આસપાસના 500 m કૅશ કરે છે.",
       "includeTerrain": "ભૂપ્રદેશની ઊંચાઈ સામેલ કરો",
       "progressTiles": "ટાઇલ {done} / {total}",
-      "progressElevation": "ઊંચાઈ સેલ {done} / {total}",
+      "progressElevation": "ઊંચાઈ ટાઇલ {done} / {total}",
       "elevationStarting": "ઊંચાઈ: શરૂ થઈ રહ્યું છે…",
-      "elevationDone": "ઊંચાઈ: {count} સેલ સાચવ્યા",
+      "elevationDone": "ઊંચાઈ: {count} ટાઇલ સાચવી",
       "elevationTooLarge": "ભૂપ્રદેશ ડાઉનલોડ માટે વિસ્તાર ખૂબ મોટો છે",
       "elevationFailed": "ઊંચાઈ ડાઉનલોડ નિષ્ફળ: {reason}"
     },
@@ -3958,7 +3958,8 @@
     "cycleFrame": "Change frame",
     "unavailableOffline": "Terrain data unavailable (offline)",
     "gapsUnchecked": "{count, plural, one {# stretch has no terrain data and is not checked} other {# stretches have no terrain data and are not checked}}",
-    "groundDatumUnknown": "Terrain under the launch point or a waypoint is unknown, so the flight path cannot be drawn against the ground"
+    "groundDatumUnknown": "Terrain under the launch point or a waypoint is unknown, so the flight path cannot be drawn against the ground",
+    "dataAttribution": "ભૂપ્રદેશ ડેટા: Mapzen Terrain Tiles (USGS SRTM, 3DEP, GMTED2010 અને અન્ય)"
   },
   "transform": {
     "title": "મિશન ટ્રાન્સફોર્મ",

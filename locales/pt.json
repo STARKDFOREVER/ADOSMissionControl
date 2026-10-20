@@ -3334,9 +3334,9 @@
       "scopePlan": "Guarda os waypoints, o home planejado, a geocerca e os pontos de reunião do plano, mais 500 m ao redor.",
       "includeTerrain": "Incluir elevação do terreno",
       "progressTiles": "Tiles {done} / {total}",
-      "progressElevation": "Células de elevação {done} / {total}",
+      "progressElevation": "Tiles de elevação {done} / {total}",
       "elevationStarting": "Elevação: iniciando…",
-      "elevationDone": "Elevação: {count} células guardadas",
+      "elevationDone": "Elevação: {count} tiles guardados",
       "elevationTooLarge": "Área grande demais para baixar o terreno",
       "elevationFailed": "Falha ao baixar a elevação: {reason}"
     },
@@ -3958,7 +3958,8 @@
     "cycleFrame": "Change frame",
     "unavailableOffline": "Terrain data unavailable (offline)",
     "gapsUnchecked": "{count, plural, one {# stretch has no terrain data and is not checked} other {# stretches have no terrain data and are not checked}}",
-    "groundDatumUnknown": "Terrain under the launch point or a waypoint is unknown, so the flight path cannot be drawn against the ground"
+    "groundDatumUnknown": "Terrain under the launch point or a waypoint is unknown, so the flight path cannot be drawn against the ground",
+    "dataAttribution": "Dados de terreno: Mapzen Terrain Tiles (USGS SRTM, 3DEP, GMTED2010 e outros)"
   },
   "transform": {
     "title": "Transformar Missão",

@@ -1,197 +1,214 @@
 /**
  * @module terrain/terrain-provider
- * @description Elevation data fetcher using the Open Elevation API.
+ * @description Ground elevation from the open terrain tiles (Mapzen Terrain
+ * Tiles on AWS Open Data, "terrarium" encoding, zoom {@link TERRAIN_ZOOM}).
  *
- * Returns `null` for a failed lookup (offline / error / no result). That is the
- * whole contract: a genuine sea-level 0 m reading and "we have no idea" are
+ * Heights are metres above mean sea level (orthometric: SRTM on EGM96, 3DEP
+ * and similar sources), the datum every planner altitude check uses. A point
+ * resolves by bilinear interpolation between the four surrounding pixel
+ * centres, loading the neighbouring tile when a point sits near a tile edge.
+ *
+ * Tiles resolve in three levels: decoded tiles in memory (64, least recently
+ * used dropped), then the persistent tile cache (`terrain-tile-cache.ts`,
+ * bounded, pinned tiles from area downloads kept longest), then the network.
+ * Every caller asking for one tile shares one load. A tile that failed to load
+ * (offline, not found, undecodable) is remembered for a minute, so repeated
+ * edits do not refetch it, and then tried again.
+ *
+ * Returns `null` for a point whose ground is unknown. That is the whole
+ * contract: a genuine sea-level 0 m reading and "we have no idea" are
  * different facts, and a mission validated against a fabricated 0 m ground is
- * the worst kind of false green — every altitude looks safely clear of the sea.
- * `null` (rather than `NaN`) makes the unknown case a compile-time obligation
- * for every caller instead of a value that silently participates in arithmetic.
- *
- * Lookups resolve in three levels: an in-memory LRU (~10K entries), then the
- * persistent IndexedDB cache (`elevation-cache.ts`: exact cells from earlier
- * lookups, then posts from a downloaded area), then the API. Every API answer
- * is written through to both caches; a failed lookup is never cached, so it is
- * retried next time rather than remembered as unknown.
- *
- * Cache keys are a quantised grid CELL INDEX, not a rounded coordinate string.
- * The old 4-decimal (~11 m) rounding merged genuinely distinct planner points
- * into one cache entry, and the batch reader then matched responses back by
- * that same rounded coordinate — so two co-rounded points could be bound each
- * other's elevation. Batch responses are correlated by request INDEX, which is
- * the only correlation the API actually guarantees.
+ * the worst kind of false green. `null` (rather than `NaN`) makes the unknown
+ * case a compile-time obligation for every caller.
  *
  * @license GPL-3.0-only
  */
 
-import {
-  POST_DEG,
-  interpolateFromPosts,
-  persistentCacheAvailable,
-  postIndexAbove,
-  postIndexBelow,
-  postKey,
-  readCells,
-  writeCells,
-  writePosts,
-} from "./elevation-cache";
+import { TERRAIN_ZOOM, TILE_SIZE, decodeTerrariumPng, tileUrl, worldPixel } from "./terrarium";
+import { hasTile, persistentCacheAvailable, readTile, writeTile } from "./terrain-tile-cache";
 
-const API_URL = "https://api.open-elevation.com/api/v1/lookup";
-const MAX_CACHE_SIZE = 10_000;
-const BATCH_CHUNK_SIZE = 100;
+/** Decoded tiles kept in memory (about 256 KB each). */
+const MEMORY_TILES = 64;
+/** How long a failed tile is answered as unknown without a new request, ms. */
+const FAILURE_HOLD_MS = 60_000;
+/** Below this a tile pixel is a no-data fill, not real ground. */
+const NO_DATA_BELOW_M = -11_000;
 
-/** Largest area download, in lattice posts. */
-export const MAX_PREFETCH_CELLS = 40_000;
+/** Largest area download, in tiles. */
+export const MAX_PREFETCH_TILES = 64;
 
-/** North-south length of one arc-second, metres. */
-const ARC_SECOND_M = POST_DEG * 111_320;
+// LRU: Map preserves insertion order, oldest entries are first.
+const memory = new Map<string, Float32Array>();
+/** Failed tile key → time the failure expires. */
+const failures = new Map<string, number>();
+const inFlight = new Map<string, Promise<Float32Array | null>>();
 
-/**
- * Cache grid resolution in degrees. 1e-5° is ~1.1 m — over an order of
- * magnitude finer than the ~30 m SRTM-class DEM this API serves, so two
- * distinct planner points never collapse onto one sample, while a repeated
- * lookup of the same point still hits.
- */
-const CACHE_GRID_DEG = 1e-5;
-
-// LRU cache: Map preserves insertion order, oldest entries are first
-const cache = new Map<string, number>();
-
-/** Quantised grid cell index pair — an exact key, not a lossy rounded string. */
-function cacheKey(lat: number, lon: number): string {
-  return `${Math.round(lat / CACHE_GRID_DEG)}:${Math.round(lon / CACHE_GRID_DEG)}`;
+function remember(key: string, tile: Float32Array): void {
+  memory.delete(key);
+  memory.set(key, tile);
+  if (memory.size > MEMORY_TILES) memory.delete(memory.keys().next().value as string);
 }
 
-function cacheSet(key: string, value: number): void {
-  // If key already exists, delete to re-insert at end (most recent)
-  if (cache.has(key)) cache.delete(key);
-  cache.set(key, value);
-  // Evict oldest entries if over capacity
-  if (cache.size > MAX_CACHE_SIZE) {
-    const first = cache.keys().next().value;
-    if (first !== undefined) cache.delete(first);
+/** Decode stored bytes; `null` when they no longer decode. */
+function decodeOrNull(bytes: Uint8Array): Float32Array | null {
+  try {
+    return decodeTerrariumPng(bytes);
+  } catch {
+    return null;
   }
 }
 
-function cacheGet(key: string): number | undefined {
-  const val = cache.get(key);
-  if (val !== undefined) {
-    // Move to end (most recent)
-    cache.delete(key);
-    cache.set(key, val);
-  }
-  return val;
-}
-
-/**
- * Ask the API for every point, in chunks of 100. `null` at every index whose
- * chunk failed or whose result was missing. Rethrows `AbortError`.
- */
-async function fetchFromApi(
-  points: Array<{ lat: number; lon: number }>,
+/** Fetch one tile's PNG bytes and decoded heights; `null` on any failure. */
+async function fetchTile(
+  z: number,
+  x: number,
+  y: number,
   signal?: AbortSignal,
-): Promise<Array<number | null>> {
-  const results = new Array<number | null>(points.length).fill(null);
-  for (let start = 0; start < points.length; start += BATCH_CHUNK_SIZE) {
-    const chunk = points.slice(start, start + BATCH_CHUNK_SIZE);
-    try {
-      const response = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          locations: chunk.map((p) => ({ latitude: p.lat, longitude: p.lon })),
-        }),
-        signal,
-      });
-      if (!response.ok) {
-        console.warn(`[terrain] Batch API returned ${response.status}`);
-        continue; // this chunk's indices stay null
-      }
-      const data = await response.json() as {
-        results?: Array<{ elevation?: number }>;
-      };
-      const resultsArr = data.results;
-      if (!resultsArr || resultsArr.length !== chunk.length) {
-        // Partial / truncated response: the server did not answer every point,
-        // so index correlation is no longer meaningful for ANY of them. Leave
-        // the whole chunk unknown rather than binding a possibly-wrong value.
-        console.warn(
-          `[terrain] Batch returned ${resultsArr?.length ?? 0} results for ${chunk.length} points — discarding the chunk`,
-        );
-        continue;
-      }
-      // The API answers in request order and guarantees nothing else, so index
-      // is the only sound correlation. Matching by rounded coordinate (the old
-      // behaviour) bound the wrong elevation whenever two requested points
-      // shared a rounded key.
-      for (let j = 0; j < chunk.length; j++) {
-        const elev = resultsArr[j]?.elevation;
-        if (typeof elev !== "number" || !Number.isFinite(elev)) continue;
-        results[start + j] = elev;
-      }
-    } catch (err) {
-      if ((err as Error).name === "AbortError") throw err;
-      console.warn("[terrain] Batch fetch failed:", err);
-      // this chunk's indices stay null
-    }
+): Promise<{ bytes: Uint8Array; tile: Float32Array } | null> {
+  try {
+    const res = await fetch(tileUrl(z, x, y), signal ? { signal } : undefined);
+    if (!res.ok) return null;
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    const tile = decodeOrNull(bytes);
+    return tile ? { bytes, tile } : null;
+  } catch (err) {
+    if (signal?.aborted) throw err;
+    return null;
   }
-  return results;
+}
+
+async function loadUncached(z: number, x: number, y: number, key: string): Promise<Float32Array | null> {
+  const stored = await readTile(key);
+  const decoded = stored ? decodeOrNull(stored) : null;
+  if (decoded) {
+    remember(key, decoded);
+    return decoded;
+  }
+  const fetched = await fetchTile(z, x, y);
+  if (!fetched) {
+    failures.set(key, Date.now() + FAILURE_HOLD_MS);
+    return null;
+  }
+  remember(key, fetched.tile);
+  await writeTile(key, fetched.bytes, false);
+  return fetched.tile;
+}
+
+/** One tile's decoded heights, shared by every caller; `null` when unavailable. */
+function loadTile(z: number, x: number, y: number): Promise<Float32Array | null> {
+  const key = `${z}/${x}/${y}`;
+  const hit = memory.get(key);
+  if (hit) {
+    remember(key, hit);
+    return Promise.resolve(hit);
+  }
+  const failedUntil = failures.get(key);
+  if (failedUntil !== undefined) {
+    if (Date.now() < failedUntil) return Promise.resolve(null);
+    failures.delete(key);
+  }
+  const pending = inFlight.get(key);
+  if (pending) return pending;
+  const load = loadUncached(z, x, y, key).finally(() => inFlight.delete(key));
+  inFlight.set(key, load);
+  return load;
+}
+
+function abortError(): DOMException {
+  return new DOMException("The operation was aborted.", "AbortError");
+}
+
+/** Wait for `work`, rejecting with `AbortError` as soon as `signal` aborts. */
+function raceAbort<T>(work: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return work;
+  if (signal.aborted) return Promise.reject(abortError());
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(abortError());
+    signal.addEventListener("abort", onAbort, { once: true });
+    work.then(
+      (v) => {
+        signal.removeEventListener("abort", onAbort);
+        resolve(v);
+      },
+      (e: unknown) => {
+        signal.removeEventListener("abort", onAbort);
+        reject(e);
+      },
+    );
+  });
+}
+
+/** A sampled pixel: tile key, tile address and index inside the tile. */
+interface Corner {
+  key: string;
+  x: number;
+  y: number;
+  index: number;
 }
 
 /**
- * Fetch elevations for multiple points in batch: memory, then the persistent
- * cache, then the API (chunked, max 100 per request). Returns `null` at every
- * index whose lookup failed; the returned array is always the same length and
- * order as `points`. Rejects with `AbortError` when `signal` aborts a request.
+ * Elevations for many points, in order; `null` wherever the ground is
+ * unknown. Rejects with `AbortError` when `signal` aborts (the tile loads
+ * other callers share carry on).
  */
 export async function getElevations(
   points: Array<{ lat: number; lon: number }>,
   signal?: AbortSignal,
 ): Promise<Array<number | null>> {
   if (points.length === 0) return [];
+  const z = TERRAIN_ZOOM;
+  const tiles = 2 ** z;
+  const size = tiles * TILE_SIZE;
 
-  const results = new Array<number | null>(points.length).fill(null);
-  const keys = points.map((p) => cacheKey(p.lat, p.lon));
+  const corner = (gx: number, gy: number): Corner => {
+    const px = ((gx % size) + size) % size;
+    const py = Math.max(0, Math.min(size - 1, gy));
+    const x = Math.floor(px / TILE_SIZE);
+    const y = Math.floor(py / TILE_SIZE);
+    return { key: `${z}/${x}/${y}`, x, y, index: (py % TILE_SIZE) * TILE_SIZE + (px % TILE_SIZE) };
+  };
 
-  let pending: number[] = [];
-  for (let i = 0; i < points.length; i++) {
-    const cached = cacheGet(keys[i]);
-    if (cached !== undefined) results[i] = cached;
-    else pending.push(i);
-  }
-
-  // Keep the indices a cache level could not answer; bind the ones it could.
-  const settle = (values: Array<number | undefined>): number[] =>
-    pending.filter((i, n) => {
-      const v = values[n];
-      if (v === undefined) return true;
-      results[i] = v;
-      cacheSet(keys[i], v);
-      return false;
-    });
-
-  if (pending.length > 0) pending = settle(await readCells(pending.map((i) => keys[i])));
-  if (pending.length > 0) pending = settle(await interpolateFromPosts(pending.map((i) => points[i])));
-  if (pending.length === 0) return results;
-
-  const fetched = await fetchFromApi(pending.map((i) => points[i]), signal);
-  const resolved: Array<[string, number]> = [];
-  pending.forEach((i, n) => {
-    const elev = fetched[n];
-    if (elev === null) return;
-    results[i] = elev;
-    cacheSet(keys[i], elev);
-    resolved.push([keys[i], elev]);
+  const samples = points.map(({ lat, lon }) => {
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+    const p = worldPixel(lat, lon, z);
+    const fx = p.x - 0.5;
+    const fy = p.y - 0.5;
+    const x0 = Math.floor(fx);
+    const y0 = Math.floor(fy);
+    return {
+      tx: fx - x0,
+      ty: fy - y0,
+      corners: [corner(x0, y0), corner(x0 + 1, y0), corner(x0, y0 + 1), corner(x0 + 1, y0 + 1)],
+    };
   });
-  await writeCells(resolved);
-  return results;
+
+  const wanted = new Map<string, Corner>();
+  for (const s of samples) for (const c of s?.corners ?? []) wanted.set(c.key, c);
+  const keys = [...wanted.keys()];
+  const loaded = await raceAbort(
+    Promise.all(keys.map((k) => loadTile(z, wanted.get(k)!.x, wanted.get(k)!.y))),
+    signal,
+  );
+  const byKey = new Map(keys.map((k, i) => [k, loaded[i]]));
+
+  return samples.map((s) => {
+    if (!s) return null;
+    const values: number[] = [];
+    for (const c of s.corners) {
+      const v = byKey.get(c.key)?.[c.index];
+      if (v === undefined || v < NO_DATA_BELOW_M) return null;
+      values.push(v);
+    }
+    const [nw, ne, sw, se] = values;
+    const north = nw + (ne - nw) * s.tx;
+    const south = sw + (se - sw) * s.tx;
+    return north + (south - north) * s.ty;
+  });
 }
 
 /**
- * Fetch elevation for a single point through the same cache levels.
- * Returns `null` on failure (offline / error / no result / aborted) — never a
- * fabricated 0.
+ * Elevation of one point. Returns `null` on failure (offline / error / no
+ * data / aborted), never a fabricated 0.
  */
 export async function getElevation(
   lat: number,
@@ -210,38 +227,34 @@ export async function getElevation(
 }
 
 /**
- * Download ground elevation over `bounds` into the persistent cache, so any
- * point inside resolves offline afterwards. Posts lie on the whole-arc-second
- * lattice nearest `spacingM` apart (north-south), snapped outward so the area
- * is fully enclosed; posts already stored are not fetched again.
+ * Download the terrain tiles covering `bounds` into the persistent cache and
+ * pin them, so every point inside resolves offline afterwards. Tiles already
+ * stored are pinned without a new request.
  *
- * @returns `fetched`: posts now stored (including ones already present);
- *   `failed`: posts the API did not answer.
- * @throws RangeError for invalid bounds or an area over {@link MAX_PREFETCH_CELLS}
- *   posts; Error when this environment has no persistent storage;
+ * @returns `fetched`: tiles now stored (including ones already present);
+ *   `failed`: tiles that could not be downloaded.
+ * @throws RangeError for invalid bounds or an area over {@link MAX_PREFETCH_TILES}
+ *   tiles; Error when this environment has no persistent storage;
  *   `AbortError` when `signal` aborts.
  */
 export async function prefetchElevationGrid(
   bounds: { north: number; south: number; east: number; west: number },
-  spacingM = 30,
   onProgress?: (done: number, total: number) => void,
   signal?: AbortSignal,
 ): Promise<{ fetched: number; failed: number }> {
   const { north, south, east, west } = bounds;
-  if (
-    ![north, south, east, west, spacingM].every(Number.isFinite) ||
-    north < south || east < west || spacingM <= 0
-  ) {
+  if (![north, south, east, west].every(Number.isFinite) || north < south || east < west) {
     throw new RangeError("Invalid terrain download area");
   }
-  const stride = Math.max(1, Math.round(spacingM / ARC_SECOND_M));
-  const iS = postIndexBelow(south, stride);
-  const jW = postIndexBelow(west, stride);
-  // At least two posts per axis so every point inside has four corners.
-  const rows = Math.max(postIndexAbove(north, stride), iS + 1) - iS + 1;
-  const cols = Math.max(postIndexAbove(east, stride), jW + 1) - jW + 1;
-  const total = rows * cols;
-  if (total > MAX_PREFETCH_CELLS) throw new RangeError("Area too large for terrain download");
+  const z = TERRAIN_ZOOM;
+  const last = 2 ** z - 1;
+  const nw = worldPixel(north, west, z);
+  const se = worldPixel(south, east, z);
+  const tileOf = (v: number) => Math.max(0, Math.min(last, Math.floor(v / TILE_SIZE)));
+  const [x0, x1, y0, y1] = [tileOf(nw.x), tileOf(se.x), tileOf(nw.y), tileOf(se.y)];
+  const cols = x1 - x0 + 1;
+  const total = cols * (y1 - y0 + 1);
+  if (total > MAX_PREFETCH_TILES) throw new RangeError("Area too large for terrain download");
   if (!persistentCacheAvailable()) {
     throw new Error("Terrain download needs browser storage, which is unavailable here");
   }
@@ -249,25 +262,27 @@ export async function prefetchElevationGrid(
   let fetched = 0;
   let failed = 0;
   onProgress?.(0, total);
-  for (let start = 0; start < total; start += BATCH_CHUNK_SIZE) {
+  for (let i = 0; i < total; i++) {
     signal?.throwIfAborted();
-    const posts = Array.from({ length: Math.min(BATCH_CHUNK_SIZE, total - start) }, (_, n) => {
-      const I = (iS + Math.floor((start + n) / cols)) * stride;
-      const J = (jW + ((start + n) % cols)) * stride;
-      return { lat: I * POST_DEG, lon: J * POST_DEG, key: postKey(I, J) };
-    });
-    const stored = await readCells(posts.map((p) => p.key));
-    const missing = posts.filter((_, n) => stored[n] === undefined);
-    const elevations = await fetchFromApi(missing, signal);
-    const entries: Array<[string, number]> = [];
-    missing.forEach((p, n) => {
-      const elev = elevations[n];
-      if (elev !== null) entries.push([p.key, elev]);
-    });
-    await writePosts(entries, stride);
-    fetched += posts.length - missing.length + entries.length;
-    failed += missing.length - entries.length;
-    onProgress?.(start + posts.length, total);
+    const x = x0 + (i % cols);
+    const y = y0 + Math.floor(i / cols);
+    const key = `${z}/${x}/${y}`;
+    const stored = (await hasTile(key)) ? await readTile(key) : undefined;
+    if (stored) {
+      await writeTile(key, stored, true);
+      fetched++;
+    } else {
+      const result = await fetchTile(z, x, y, signal);
+      if (result) {
+        await writeTile(key, result.bytes, true);
+        remember(key, result.tile);
+        failures.delete(key);
+        fetched++;
+      } else {
+        failed++;
+      }
+    }
+    onProgress?.(i + 1, total);
   }
   return { fetched, failed };
 }

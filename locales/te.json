@@ -3334,9 +3334,9 @@
       "scopePlan": "ప్లాన్ వేపాయింట్‌లు, ప్లాన్ చేసిన హోమ్, జియోఫెన్స్, ర్యాలీ పాయింట్‌లు మరియు వాటి చుట్టూ 500 m ను కాష్ చేస్తుంది.",
       "includeTerrain": "భూభాగ ఎత్తును చేర్చు",
       "progressTiles": "టైల్స్ {done} / {total}",
-      "progressElevation": "ఎత్తు సెల్‌లు {done} / {total}",
+      "progressElevation": "ఎత్తు టైల్స్ {done} / {total}",
       "elevationStarting": "ఎత్తు: ప్రారంభమవుతోంది…",
-      "elevationDone": "ఎత్తు: {count} సెల్‌లు భద్రపరచబడ్డాయి",
+      "elevationDone": "ఎత్తు: {count} టైల్స్ భద్రపరచబడ్డాయి",
       "elevationTooLarge": "భూభాగ డౌన్‌లోడ్‌కు ప్రాంతం చాలా పెద్దది",
       "elevationFailed": "ఎత్తు డౌన్‌లోడ్ విఫలమైంది: {reason}"
     },
@@ -3958,7 +3958,8 @@
     "cycleFrame": "Change frame",
     "unavailableOffline": "Terrain data unavailable (offline)",
     "gapsUnchecked": "{count, plural, one {# stretch has no terrain data and is not checked} other {# stretches have no terrain data and are not checked}}",
-    "groundDatumUnknown": "Terrain under the launch point or a waypoint is unknown, so the flight path cannot be drawn against the ground"
+    "groundDatumUnknown": "Terrain under the launch point or a waypoint is unknown, so the flight path cannot be drawn against the ground",
+    "dataAttribution": "భూభాగ డేటా: Mapzen Terrain Tiles (USGS SRTM, 3DEP, GMTED2010 మరియు ఇతరాలు)"
   },
   "transform": {
     "title": "మిషన్ రూపాంతరం",

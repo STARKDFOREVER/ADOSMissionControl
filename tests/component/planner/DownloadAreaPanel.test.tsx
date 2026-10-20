@@ -13,7 +13,7 @@ import type { Waypoint } from "@/lib/types";
 import { renderWithIntl } from "../../helpers/intl-wrapper";
 
 const prefetch = vi.hoisted(() => ({
-  fn: vi.fn<(bounds: unknown, spacing?: number, onProgress?: (d: number, t: number) => void, signal?: AbortSignal) => Promise<{ fetched: number; failed: number }>>(),
+  fn: vi.fn<(bounds: unknown, onProgress?: (d: number, t: number) => void, signal?: AbortSignal) => Promise<{ fetched: number; failed: number }>>(),
 }));
 vi.mock("@/lib/terrain/terrain-provider", () => ({
   prefetchElevationGrid: (...args: Parameters<typeof prefetch.fn>) => prefetch.fn(...args),
@@ -93,7 +93,7 @@ describe("DownloadAreaPanel area", () => {
     const expected = planAreaBounds(WPS, null, useGeofenceStore.getState(), [], 500);
     expect(startDownload.mock.calls[0][0]).toEqual(expected);
     expect(prefetch.fn.mock.calls[0][0]).toEqual(expected);
-    expect(screen.getByText("Elevation: 10 cells stored")).toBeDefined();
+    expect(screen.getByText("Elevation: 10 tiles stored")).toBeDefined();
   });
 
   it("the current view is the default area", async () => {
@@ -120,8 +120,8 @@ describe("DownloadAreaPanel area", () => {
 
 describe("DownloadAreaPanel progress", () => {
   it("shows tile and elevation progress separately", async () => {
-    // Elevation reports 120 of 400 cells and keeps running; so do the tiles.
-    prefetch.fn.mockImplementation((_b, _s, onProgress) => {
+    // Elevation reports 120 of 400 tiles and keeps running; so do the tiles.
+    prefetch.fn.mockImplementation((_b, onProgress) => {
       onProgress?.(120, 400);
       return Promise.withResolvers<{ fetched: number; failed: number }>().promise;
     });
@@ -137,12 +137,12 @@ describe("DownloadAreaPanel progress", () => {
       fireEvent.click(screen.getByRole("button", { name: "Download" }));
     });
     expect(screen.getByText("Tiles 5 / 20")).toBeDefined();
-    expect(screen.getByText("Elevation cells 120 / 400")).toBeDefined();
+    expect(screen.getByText("Elevation tiles 120 / 400")).toBeDefined();
 
     // Cancel stops both.
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(cancelDownload).toHaveBeenCalled();
-    expect((prefetch.fn.mock.calls[0][3] as AbortSignal).aborted).toBe(true);
+    expect((prefetch.fn.mock.calls[0][2] as AbortSignal).aborted).toBe(true);
   });
 
   it("an area too large for the terrain download says so", async () => {

@@ -3334,9 +3334,9 @@
       "scopePlan": "缓存计划的航点、计划起降点、地理围栏和集结点，以及周围 500 m。",
       "includeTerrain": "包含地形高程",
       "progressTiles": "瓦片 {done} / {total}",
-      "progressElevation": "高程单元 {done} / {total}",
+      "progressElevation": "高程瓦片 {done} / {total}",
       "elevationStarting": "高程：正在开始…",
-      "elevationDone": "高程：已存储 {count} 个单元",
+      "elevationDone": "高程：已存储 {count} 个瓦片",
       "elevationTooLarge": "区域太大，无法下载地形",
       "elevationFailed": "高程下载失败：{reason}"
     },
@@ -3958,7 +3958,8 @@
     "cycleFrame": "Change frame",
     "unavailableOffline": "Terrain data unavailable (offline)",
     "gapsUnchecked": "{count, plural, one {# stretch has no terrain data and is not checked} other {# stretches have no terrain data and are not checked}}",
-    "groundDatumUnknown": "Terrain under the launch point or a waypoint is unknown, so the flight path cannot be drawn against the ground"
+    "groundDatumUnknown": "Terrain under the launch point or a waypoint is unknown, so the flight path cannot be drawn against the ground",
+    "dataAttribution": "地形数据：Mapzen Terrain Tiles（USGS SRTM、3DEP、GMTED2010 等）"
   },
   "transform": {
     "title": "变换任务",
