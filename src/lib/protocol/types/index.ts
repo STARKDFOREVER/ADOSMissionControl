@@ -16,3 +16,4 @@ export * from './callbacks';
 export * from './mission';
 export * from './firmware';
 export * from './protocol';
+export * from './settings';

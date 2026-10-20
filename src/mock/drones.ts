@@ -1,5 +1,5 @@
 import type { FleetDrone, DroneStatus, FlightMode } from "@/lib/types";
-import type { MockFirmware } from "./mock-protocol";
+import type { MockFirmware } from "./mock-firmware";
 
 export interface DemoDroneConfig {
   id: string;

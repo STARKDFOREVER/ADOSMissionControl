@@ -7,7 +7,8 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { MockProtocol, type MockFirmware } from "@/mock/mock-protocol";
+import { MockProtocol } from "@/mock/mock-protocol";
+import type { MockFirmware } from "@/mock/mock-firmware";
 import { INavMockProtocol } from "@/mock/inav-mock-protocol";
 import { DEMO_DRONES } from "@/mock/drones";
 

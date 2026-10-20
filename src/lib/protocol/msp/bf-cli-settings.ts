@@ -12,7 +12,7 @@
  */
 
 import type { CommandResult } from "../types/core";
-import type { CliSetting, CliSettingChange, CliSettingsCapability } from "../types/protocol";
+import type { CliSetting, CliSettingChange, CliSettingsCapability } from "../types/settings";
 import type { MspCliSession } from "./cli-session";
 
 const DUMP_TIMEOUT_MS = 12000;

@@ -24,7 +24,8 @@ import { betaflightHandler } from "@/lib/protocol/firmware/betaflight";
 import { inavHandler } from "@/lib/protocol/firmware/inav";
 import { ParamAbsentError } from "@/lib/protocol/mavlink-adapter-params";
 import { decodeBoardId } from "@/lib/protocol/handlers/info-handlers";
-import { MOCK_PARAMS, ARDUPLANE_MOCK_PARAMS, HELI_MOCK_PARAMS, PX4_MOCK_PARAMS, BETAFLIGHT_MOCK_PARAMS, QUADPLANE_MOCK_PARAMS, TAILSITTER_MOCK_PARAMS, TILTROTOR_MOCK_PARAMS, ROVER_MOCK_PARAMS, BOAT_MOCK_PARAMS, type MockParam } from "./mock-params";
+import { MOCK_PARAMS, ARDUPLANE_MOCK_PARAMS, HELI_MOCK_PARAMS, PX4_MOCK_PARAMS, QUADPLANE_MOCK_PARAMS, TAILSITTER_MOCK_PARAMS, TILTROTOR_MOCK_PARAMS, ROVER_MOCK_PARAMS, BOAT_MOCK_PARAMS, type MockParam } from "./mock-params";
+import { BETAFLIGHT_MOCK_PARAMS } from "./mock-params-betaflight";
 import { createCallbackArrays, bindOnMethods } from "./mock-protocol-callbacks";
 import type { ManualControlSample } from "./mock-control-samples";
 import * as E from "./mock-protocol-emitters";
@@ -43,21 +44,7 @@ import type { LinkInfo } from "@/lib/protocol/types";
 
 export { MOCK_FENCE_POLYGON } from "./mock-protocol-data";
 
-/** Firmware + vehicle-class variants the demo fleet can instantiate. */
-export type MockFirmware =
-  | "ardupilot-copter"
-  | "ardupilot-heli"
-  | "ardupilot-plane"
-  | "ardupilot-plane-vtol"
-  | "ardupilot-plane-tailsitter"
-  | "ardupilot-plane-tiltrotor"
-  | "ardupilot-rover"
-  | "ardupilot-boat"
-  | "ardupilot-sub"
-  | "px4"
-  | "px4-vtol"
-  | "betaflight"
-  | "inav-plane";
+import type { MockFirmware } from "./mock-firmware";
 
 function ok(message = "OK"): CommandResult { return { success: true, resultCode: 0, message }; }
 

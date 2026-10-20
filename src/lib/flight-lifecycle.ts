@@ -54,8 +54,9 @@ import { computeSunMoon } from "./environment/sun-moon";
 import { getWeatherSnapshot } from "./environment/weather-provider";
 import { reverseGeocode } from "./geocoding/reverse";
 import { haversineDistance } from "@/lib/geo/distance";
-import type { FlightRecord, LoadoutSnapshot, SysStatusData } from "./types";
+import type { FlightRecord, SysStatusData } from "./types";
 import { cryptoRandomId } from "./flight-lifecycle/geo";
+import { operatorSnapshot } from "./flight-lifecycle/operator";
 import { computeFlightStats } from "./flight-lifecycle/stats";
 import {
   capturePreflightSnapshot,
@@ -128,23 +129,6 @@ export function clearLifecycleState(droneId: string): void {
 }
 
 // ── Arm / disarm handlers ────────────────────────────────────
-
-/** The pilot, aircraft and loadout fields frozen into a record at arm. */
-function operatorSnapshot(droneId: string, droneName: string): Partial<FlightRecord> {
-  const profile = useOperatorProfileStore.getState().profile;
-  const aircraft = useAircraftRegistryStore.getState().getOrCreate(droneId, droneName);
-  const loadout: LoadoutSnapshot | undefined = useLoadoutStore.getState().get(droneId);
-  return {
-    pilotFirstName: profile.pilotFirstName,
-    pilotLastName: profile.pilotLastName,
-    pilotLicenseNumber: profile.pilotLicenseNumber,
-    pilotLicenseIssuer: profile.pilotLicenseIssuer,
-    aircraftRegistration: aircraft.registrationNumber,
-    aircraftSerial: aircraft.serialNumber,
-    aircraftMtomKg: aircraft.mtomKg,
-    loadout,
-  };
-}
 
 function handleArm(droneId: string, droneName: string, snapshot: ArmSnapshot): void {
   const startTime = Date.now();
