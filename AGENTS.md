@@ -309,6 +309,9 @@ the smallest surface that proves the fix.
 
 - Drone Agent API or telemetry shape changes may require generated API type
   updates and UI state handling here.
+- Node settings pages (`src/components/command/settings/`) have counterparts in
+  the agent web dashboard and the agent terminal UI; a settings change here is
+  checked against both.
 - Documentation changes may be needed when setup, API behavior, operator
   workflows, or troubleshooting steps change.
 - Extension host changes must preserve declared slots, permissions, and stable
