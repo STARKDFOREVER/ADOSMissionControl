@@ -66,3 +66,6 @@ next-env.d.ts
 
 # Local omp agent tooling directory (not part of the project)
 .omp/
+
+# Local review screenshots
+.review/

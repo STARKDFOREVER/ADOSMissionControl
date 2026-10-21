@@ -55,8 +55,6 @@ interface ActionsDeps {
   // no-ops safely (no destructive apply) until it is provided.
   setShowPatternApplyConfirm?: (show: boolean) => void;
   setShowDownloadConfirm: (show: boolean) => void;
-  setMissionName: (name: string) => void;
-  setSelectedDroneId: (id: string) => void;
   toast: PlannerToast;
 }
 
@@ -155,7 +153,6 @@ export function usePlannerActions(deps: ActionsDeps) {
     uploadMission,
     addRallyPoint, setContextMenu, setSelectedWaypoint,
     setShowClearConfirm, setShowPatternApplyConfirm,
-    setMissionName, setSelectedDroneId,
     toast,
   } = deps;
   const t = useTranslations("planner.toast");
@@ -389,11 +386,11 @@ export function usePlannerActions(deps: ActionsDeps) {
     });
     void clearAutoSave();
     usePlannerStore.getState().clearSelection();
-    setMissionName("");
-    setSelectedDroneId("");
+    // The plan stays open under its name and vehicle: clearing empties its
+    // contents (undoable above), it does not close or rename it.
     setShowClearConfirm(false);
     toast(t("missionCleared"), "info");
-  }, [clearMission, toast, t, setMissionName, setSelectedDroneId, setShowClearConfirm]);
+  }, [clearMission, toast, t, setShowClearConfirm]);
 
   const handleReverseWaypoints = useCallback(() => {
     if (waypoints.length < 2) return;

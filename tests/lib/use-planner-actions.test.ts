@@ -37,6 +37,7 @@ import { usePatternStore } from "@/stores/pattern-store";
 import { useGeofenceStore } from "@/stores/geofence-store";
 import { useDrawingStore } from "@/stores/drawing-store";
 import { useMissionStore } from "@/stores/mission-store";
+import { usePlanLibraryStore } from "@/stores/plan-library-store";
 import type { DrawnPolygon, DrawnCircle } from "@/lib/drawing/types";
 import type { DrawingFor } from "@/lib/planner-mode";
 import type { Waypoint } from "@/lib/types";
@@ -93,8 +94,6 @@ function buildActions(activeTool = "polygon", over: Partial<Deps> = {}) {
     setSelectedWaypoint: vi.fn(),
     setShowClearConfirm: vi.fn(),
     setShowDownloadConfirm: vi.fn(),
-    setMissionName: vi.fn(),
-    setSelectedDroneId: vi.fn(),
     toast,
     ...over,
   };
@@ -216,6 +215,18 @@ describe("handleDrawingComplete routing", () => {
     expect(usePatternStore.getState().orbitConfig.center).toEqual(circ.center);
     expect(usePatternStore.getState().orbitConfig.radius).toBe(circ.radius);
     expect(toast).toHaveBeenCalledWith(expect.stringContaining("Orbit area set"), "success");
+  });
+
+  it("rounds a drawn circle's radius to whole metres for the orbit", () => {
+    usePatternStore.getState().setPatternType("orbit");
+    const circ = { ...makeCircle(), radius: 145.99543907653433 };
+    useDrawingStore.getState().addCircle(circ);
+    armDraw("circle", "free");
+
+    const { handleDrawingComplete } = buildActions();
+    handleDrawingComplete(circ);
+
+    expect(usePatternStore.getState().orbitConfig.radius).toBe(146);
   });
 
   // ---- Free draw + no pattern is a plain annotation ----
@@ -398,6 +409,20 @@ describe("Reverse waypoints", () => {
   it("keeps VTOL takeoff and LAND bookends", () => {
     const plan = [wp("t", "VTOL_TAKEOFF"), wp("a", "WAYPOINT"), wp("b", "WAYPOINT"), wp("l", "LAND")];
     expect(reverseWaypoints(plan).map((w) => w.id)).toEqual(["t", "b", "a", "l"]);
+  });
+});
+
+describe("clearing the plan", () => {
+  it("empties the plan in one undo step and keeps it open", () => {
+    usePlanLibraryStore.setState({ activePlanId: "plan-open" });
+    const clearMission = vi.fn();
+    const setShowClearConfirm = vi.fn();
+    const { confirmClear } = buildActions("select", { clearMission, setShowClearConfirm });
+    confirmClear();
+    expect(clearMission).toHaveBeenCalledTimes(1);
+    expect(setShowClearConfirm).toHaveBeenCalledWith(false);
+    // Still the same plan: clearing never closes or detaches it.
+    expect(usePlanLibraryStore.getState().activePlanId).toBe("plan-open");
   });
 });
 

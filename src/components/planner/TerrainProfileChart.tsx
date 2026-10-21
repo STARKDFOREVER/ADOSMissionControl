@@ -21,9 +21,10 @@ import { Mountain, Loader2, RefreshCw } from "lucide-react";
 import type { Waypoint, AltitudeFrame } from "@/lib/types";
 import { useTerrainProfile } from "@/hooks/use-terrain-profile";
 import { usePlannerStore } from "@/stores/planner-store";
+import { useMissionStore } from "@/stores/mission-store";
 import { MAP_COLORS } from "@/lib/map-constants";
 import { findCollisionSegments, DEFAULT_MIN_TERRAIN_CLEARANCE } from "@/lib/terrain/terrain-clearance";
-import { waypointAbsoluteAltitude } from "@/lib/mission/altitude-frame";
+import { planHomeGroundElevation, waypointAbsoluteAltitude } from "@/lib/mission/altitude-frame";
 import { haversineDistance } from "@/lib/geo/distance";
 
 /** Merged data point for the combined chart. All altitudes are MSL. */
@@ -45,6 +46,7 @@ interface TerrainProfileChartProps {
 export function TerrainProfileChart({ waypoints }: TerrainProfileChartProps) {
   const t = useTranslations("terrain");
   const defaultFrame = usePlannerStore((s) => s.defaultFrame);
+  const plannedHomeGround = useMissionStore((s) => s.plannedHome?.groundAmsl);
   // Ground sampled at every waypoint and at most 30 m apart along each leg;
   // repeated points come from the shared elevation cache.
   const { profile: terrainProfile, status } = useTerrainProfile(waypoints);
@@ -103,10 +105,10 @@ export function TerrainProfileChart({ waypoints }: TerrainProfileChartProps) {
       return undefined;
     };
 
-    // Ground at the launch point is the datum for relative-frame altitudes:
-    // the first waypoint's own sample, else the profile sample at distance 0.
-    // Never the first sample that happened to resolve further along the path.
-    const homeGround = waypoints[0].groundElevation ?? terrainElevAt(0);
+    // The relative-frame datum is the one the outline, the flight plan and the
+    // validator use: the planned home's ground, else the launch waypoint's own
+    // sample, else the profile sample at distance 0.
+    const homeGround = planHomeGroundElevation(plannedHomeGround, waypoints) ?? terrainElevAt(0);
 
     // MSL flight altitude at each waypoint, resolved through the shared
     // frame model so the chart, the validator and the 3D view cannot disagree
@@ -135,7 +137,8 @@ export function TerrainProfileChart({ waypoints }: TerrainProfileChartProps) {
       }
       return msl[msl.length - 1];
     };
-    const label = (dist: number) => (dist >= 1000 ? `${(dist / 1000).toFixed(1)}` : `${Math.round(dist)}`);
+    // With the unit, as the altitude chart labels it: a bare "1.0" after "988" reads as metres.
+    const label = (dist: number) => (dist >= 1000 ? `${(dist / 1000).toFixed(1)} km` : `${Math.round(dist)} m`);
 
     const known: ChartDataPoint[] = profilePoints.map((tp) => {
       const flightMsl = flightAt(tp.distance);
@@ -168,7 +171,7 @@ export function TerrainProfileChart({ waypoints }: TerrainProfileChartProps) {
       data: [...known, ...unknown].sort((a, b) => a.distance - b.distance),
       homeUnknown: false,
     };
-  }, [terrainProfile, waypoints, displayFrame]);
+  }, [terrainProfile, waypoints, displayFrame, plannedHomeGround]);
 
   // Contiguous stretches where the flight path breaches the clearance minimum,
   // over the stretches whose ground is known.
@@ -292,6 +295,7 @@ export function TerrainProfileChart({ waypoints }: TerrainProfileChartProps) {
                 axisLine={{ stroke: "var(--alt-border-default)" }}
                 tickLine={false}
                 interval="preserveStartEnd"
+                minTickGap={24}
               />
               <YAxis
                 tick={{ fill: "var(--alt-text-tertiary)", fontSize: 9, fontFamily: "JetBrains Mono" }}

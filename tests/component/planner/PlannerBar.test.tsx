@@ -112,10 +112,10 @@ describe("PlannerBar send button", () => {
     expect(screen.getByRole("button", { name: "Sent ✓" })).toBeInTheDocument();
   });
 
-  it("reads 'Fix n issues' and leads to the issues when only the mission could be sent", () => {
+  it("reads 'Fix n errors' and leads to the issues when only the mission could be sent", () => {
     mocks.errors = [{}, {}];
     const { onOpenSend } = renderBar();
-    fireEvent.click(screen.getByRole("button", { name: "Fix 2 issues" }));
+    fireEvent.click(screen.getByRole("button", { name: "Fix 2 errors" }));
     expect(onOpenSend).not.toHaveBeenCalled();
     expect(usePlannerStore.getState().dockOpen).toBe(true);
     expect(usePlannerStore.getState().dockTab).toBe("issues");
@@ -125,7 +125,7 @@ describe("PlannerBar send button", () => {
     mocks.errors = [{}];
     useRallyStore.setState({ points: [{ id: "r1", lat: 1, lon: 1, alt: 30 }] });
     const { onOpenSend } = renderBar();
-    fireEvent.click(screen.getByRole("button", { name: "Fix 1 issue" }));
+    fireEvent.click(screen.getByRole("button", { name: "Fix 1 error" }));
     expect(onOpenSend).toHaveBeenCalledTimes(1);
   });
 
@@ -153,13 +153,13 @@ describe("PlannerBar send button", () => {
 describe("PlannerBar issues chip", () => {
   it("is hidden with no errors", () => {
     renderBar();
-    expect(screen.queryByRole("button", { name: /issue/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /error/ })).toBeNull();
   });
 
   it("opens the dock on the issues tab", () => {
     mocks.errors = [{}, {}, {}];
     renderBar();
-    fireEvent.click(screen.getByRole("button", { name: "3 issues" }));
+    fireEvent.click(screen.getByRole("button", { name: "3 errors" }));
     expect(usePlannerStore.getState().dockOpen).toBe(true);
     expect(usePlannerStore.getState().dockTab).toBe("issues");
   });
@@ -178,17 +178,17 @@ describe("PlannerBar overflow menu", () => {
   const ITEMS: [label: string, handler: string, from: "p" | "shareIo"][] = [
     ["Download from drone", "handleDownloadFromDrone", "p"],
     [en.import.boundary.menuLabel, "handleImportBoundary", "shareIo"],
-    ["Export (.altmission, lossless)", "handleExportNative", "p"],
+    ["Export .altmission (lossless)", "handleExportNative", "p"],
     [en.exportWaypoints, "handleExportWaypoints", "p"],
     [en.exportPlanQgc, "handleExportPlan", "p"],
     [en.exportKml, "handleExportKML", "p"],
-    ["Export (.kmz)", "handleExportKMZ", "p"],
+    ["Export KMZ", "handleExportKMZ", "p"],
     [en.exportCsv, "handleExportCSV", "p"],
     [en.export.brief.menuLabel, "handleExportBrief", "shareIo"],
     [en.share.copyLink, "handleCopyShareLink", "shareIo"],
     ["Save as new plan", "handleSaveAs", "p"],
     ["Reverse waypoints", "handleReverseWaypoints", "p"],
-    ["Discard plan", "handleClearAll", "p"],
+    ["Clear plan", "handleClearAll", "p"],
   ];
 
   function openMenu() {

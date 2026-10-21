@@ -36,7 +36,7 @@ import { useEffect } from "react";
 import type { PlannerTool } from "@/lib/types";
 import { isTypingTarget, isElectron } from "@/lib/utils";
 import { getActiveDrawApi } from "@/lib/drawing/active-draw-api";
-import { TOOL_SHORTCUT_MAP } from "@/lib/planner-shortcuts";
+import { TOOL_SHORTCUT_MAP, isDrawingTool } from "@/lib/planner-shortcuts";
 
 interface UseKeyboardShortcutsParams {
   activeTool: PlannerTool;
@@ -73,6 +73,8 @@ interface UseKeyboardShortcutsParams {
   onToggleTerrain?: () => void;
   onToggleOverlays?: () => void;
   onFocusPlaceSearch?: () => void;
+  /** Switch the map between the 2D map and the 3D view. */
+  onToggleView3d?: () => void;
   /**
    * Nudge the selected waypoint(s) by a small offset. An arrow key moves a fine
    * step; Shift+arrow a coarser one. dLat is positive north, dLon positive east.
@@ -103,9 +105,17 @@ const NUDGE_STEP_COARSE = 1e-4;
  */
 const TOOL_MAP: Readonly<Record<string, PlannerTool>> = TOOL_SHORTCUT_MAP;
 
-/** True for the tools whose map gesture is an in-progress shape draw. */
-function isDrawingTool(tool: PlannerTool): boolean {
-  return tool === "polygon" || tool === "polyline" || tool === "circle" || tool === "measure";
+/**
+ * True while a modal dialog is shown. A hidden one does not count: the 3D
+ * view's map widget keeps its closed attribution dialog in the DOM.
+ */
+function modalShown(): boolean {
+  return Array.from(document.querySelectorAll('[aria-modal="true"]')).some((el) => {
+    for (let n: Element | null = el; n; n = n.parentElement) {
+      if (getComputedStyle(n).display === "none") return false;
+    }
+    return true;
+  });
 }
 
 /** Register the single global keyboard dispatcher for the mission planner. */
@@ -137,6 +147,7 @@ export function useKeyboardShortcuts({
   onToggleTerrain,
   onToggleOverlays,
   onFocusPlaceSearch,
+  onToggleView3d,
   onNudgeSelected,
   onCopy,
   onPaste,
@@ -150,7 +161,7 @@ export function useKeyboardShortcuts({
       // A key another handler already consumed, or any key while a modal
       // dialog is open (the modal owns its own keys), is not a planner shortcut.
       if (e.defaultPrevented) return;
-      if (document.querySelector('[aria-modal="true"]')) return;
+      if (modalShown()) return;
 
       const isMeta = e.metaKey || e.ctrlKey;
       // Chord letter independent of Shift and CapsLock: `e.key` is uppercase
@@ -181,7 +192,7 @@ export function useKeyboardShortcuts({
 
         const k = e.key.toLowerCase();
         // Panel and dock keys need an open plan; on Plans home they stay inert.
-        const panelKey = k === "t" || k === "g" || k === "i" || k === "l" || e.key === "[" || e.key === "]" || e.key === "\\";
+        const panelKey = k === "t" || k === "g" || k === "i" || k === "l" || k === "3" || e.key === "[" || e.key === "]" || e.key === "\\";
         if (panelKey && !hasActivePlan) return;
 
         if (k === "t") {
@@ -202,6 +213,11 @@ export function useKeyboardShortcuts({
         if (k === "l") {
           e.preventDefault();
           onToggleOverlays?.();
+          return;
+        }
+        if (k === "3") {
+          e.preventDefault();
+          onToggleView3d?.();
           return;
         }
         if (e.key === "[" || e.key === "]" || e.key === "\\") {
@@ -389,6 +405,7 @@ export function useKeyboardShortcuts({
     onToggleTerrain,
     onToggleOverlays,
     onFocusPlaceSearch,
+    onToggleView3d,
     onNudgeSelected,
     onCopy,
     onPaste,

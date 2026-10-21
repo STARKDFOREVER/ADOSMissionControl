@@ -30,7 +30,9 @@ export function DockStats() {
   const maxAboveHome = formatAltitude(plan.maxAboveHomeM, units);
 
   return (
-    <div className="flex min-w-0 items-center gap-3 overflow-hidden whitespace-nowrap">
+    // One 16 px row; a stat that does not fit wraps onto a hidden second row
+    // instead of being cut mid-word.
+    <div className="flex h-4 min-w-0 flex-wrap items-center gap-x-3 overflow-hidden whitespace-nowrap">
       <Stat title={t("waypointsTitle")}>{t("waypoints", { count: waypointCount })}</Stat>
       <Stat title={t("distanceTitle")}>{formatDistance(plan.totalDistance, units)}</Stat>
       {plan.openEnded ? (
@@ -50,7 +52,7 @@ export function DockStats() {
 
 function Stat({ title, children }: { title: string; children: string }) {
   return (
-    <span title={title} className="text-[11px] font-mono tabular-nums text-text-secondary">
+    <span title={title} className="text-[11px] leading-4 font-mono tabular-nums text-text-secondary">
       {children}
     </span>
   );

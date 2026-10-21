@@ -1,7 +1,8 @@
 /**
  * @module WaypointEntities
  * @description Renders numbered waypoint billboards at their actual altitude in the 3D scene.
- * Clicking a waypoint selects it (syncs with planner store).
+ * Clicking a waypoint selects it (syncs with planner store) unless the parent
+ * owns input (`selectOnClick={false}`, the planner's 3D view).
  * Entity creation and selection styling are split into separate effects
  * to avoid recreating all entities on selection change.
  * @license GPL-3.0-only
@@ -28,18 +29,22 @@ import {
 import type { Waypoint } from "@/lib/types";
 import { MAP_COLORS } from "@/lib/map-constants";
 import { usePlannerStore } from "@/stores/planner-store";
+import { isWaypointSelected } from "@/lib/waypoint-selection";
 
 interface WaypointEntitiesProps {
   viewer: CesiumViewer | null;
   waypoints: Waypoint[];
   /** Pre-resolved absolute positions from terrain sampling (matches flight path exactly). */
   resolvedPositions?: Cartesian3[];
+  /** Register the click-to-select handler. Default true. */
+  selectOnClick?: boolean;
 }
 
 const WP_ENTITY_PREFIX = "sim-wp-";
 
-export function WaypointEntities({ viewer, waypoints, resolvedPositions }: WaypointEntitiesProps) {
+export function WaypointEntities({ viewer, waypoints, resolvedPositions, selectOnClick = true }: WaypointEntitiesProps) {
   const selectedWaypointId = usePlannerStore((s) => s.selectedWaypointId);
+  const selectedWaypointIds = usePlannerStore((s) => s.selectedWaypointIds);
   const entityMapRef = useRef<Map<string, Entity>>(new Map());
 
   // Effect 1 — Entity creation (only on viewer/waypoints change)
@@ -125,7 +130,7 @@ export function WaypointEntities({ viewer, waypoints, resolvedPositions }: Waypo
     const selectedTextColor = Color.fromCssColorString(MAP_COLORS.background);
 
     for (const [wpId, entity] of entityMap) {
-      const isSelected = wpId === selectedWaypointId;
+      const isSelected = isWaypointSelected(wpId, selectedWaypointId, selectedWaypointIds);
       const bgColor = isSelected ? selectedColor : defaultColor;
       const textColor = isSelected ? selectedTextColor : Color.WHITE;
 
@@ -140,11 +145,11 @@ export function WaypointEntities({ viewer, waypoints, resolvedPositions }: Waypo
       }
     }
     viewer.scene.requestRender();
-  }, [viewer, waypoints, resolvedPositions, selectedWaypointId]);
+  }, [viewer, waypoints, resolvedPositions, selectedWaypointId, selectedWaypointIds]);
 
   // Click handler for waypoint selection
   useEffect(() => {
-    if (!viewer || viewer.isDestroyed()) return;
+    if (!selectOnClick || !viewer || viewer.isDestroyed()) return;
 
     const handler = new ScreenSpaceEventHandler(viewer.scene.canvas);
     handler.setInputAction(
@@ -161,7 +166,7 @@ export function WaypointEntities({ viewer, waypoints, resolvedPositions }: Waypo
     return () => {
       if (!handler.isDestroyed()) handler.destroy();
     };
-  }, [viewer]);
+  }, [viewer, selectOnClick]);
 
   return null;
 }

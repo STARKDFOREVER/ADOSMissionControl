@@ -13,12 +13,9 @@ import { useEffect, useMemo, useCallback, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { Viewer as CesiumViewer } from "cesium";
 import type { AltitudeFrame, Waypoint } from "@/lib/types";
-import { createSimulationMissionSignature } from "@/lib/simulation-utils";
 import { computeFlightPlan } from "@/lib/flight-plan";
 import { buildSampledProperties } from "@/lib/build-sampled-properties";
 import { makeKinematicViewerTrack, type ViewerTrack } from "@/lib/simulation/viewer-track";
-import { resolveAGLToAbsolute, type ResolvedPath } from "@/lib/terrain-utils";
-import { planLaunchPoint } from "@/lib/mission/plan-home";
 import { useSimulationStore } from "@/stores/simulation-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useSimClock } from "@/hooks/use-sim-clock";
@@ -26,10 +23,7 @@ import { useFlightPlanOptions } from "@/hooks/use-rtl-return-context";
 import { useSimCamera } from "@/hooks/use-sim-camera";
 import { useSimAutoFollow } from "@/hooks/use-sim-auto-follow";
 import { useSimCompletion } from "@/hooks/use-sim-completion";
-import { useTerrainReady } from "@/hooks/use-terrain-ready";
 import { useConvexAvailable } from "@/hooks/use-convex-available";
-import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
-import { communityApi } from "@/lib/community-api";
 
 import { MapPin } from "lucide-react";
 import CesiumScene from "./CesiumScene";
@@ -48,33 +42,14 @@ import { SimulationHUD } from "./SimulationHUD";
 import { MapControlsPanel } from "./MapControlsPanel";
 import { MissionWarningBanner } from "./MissionWarningBanner";
 import { SimCameraCluster } from "./SimCameraCluster";
-
-/** Fetches Cesium Ion token from Convex. Only mount when Convex is available. */
-function ConvexCesiumToken({ onToken }: { onToken: (token: string | null) => void }) {
-  // Parent already mounts this only when Convex is available. Bypass the demo
-  // check so simulation in demo mode still pulls the token when the backend
-  // is reachable.
-  const config = useConvexSkipQuery(communityApi.clientConfig.get, { skipDemoCheck: true });
-  useEffect(() => {
-    // config is undefined while loading, null if query not found
-    if (config !== undefined) {
-      onToken((config as { cesiumIonToken?: string } | null)?.cesiumIonToken ?? null);
-    }
-  }, [config, onToken]);
-  return null;
-}
+import { ConvexCesiumToken } from "./ConvexCesiumToken";
+import { useResolvedMissionPath } from "./use-resolved-mission-path";
 
 interface SimulationViewerProps {
   waypoints: Waypoint[];
   defaultSpeed: number;
   /** Planner default frame: the frame the upload gives a frameless waypoint. */
   defaultFrame: AltitudeFrame;
-}
-
-interface TerrainResultState {
-  signature: string;
-  path: ResolvedPath | null;
-  failed: boolean;
 }
 
 export function SimulationViewer({ waypoints, defaultSpeed, defaultFrame }: SimulationViewerProps) {
@@ -97,77 +72,16 @@ export function SimulationViewer({ waypoints, defaultSpeed, defaultFrame }: Simu
   const showPathLabels = useSettingsStore((s) => s.showPathLabels);
   const showCameraTriggers = useSettingsStore((s) => s.showCameraTriggers);
 
-  // Relative-frame altitudes are measured from the plan's planned home, else
-  // the launch point the upload uses (the first item with a position; a
-  // TAKEOFF saved at 0/0 has none).
   const planOptions = useFlightPlanOptions();
-  const launch = planLaunchPoint(waypoints);
-  const homeLat = planOptions.home?.lat ?? launch?.lat;
-  const homeLon = planOptions.home?.lon ?? launch?.lon;
-  const homeGroundAmsl = planOptions.home?.groundAmsl;
-
-  const missionSignature = useMemo(
-    () => createSimulationMissionSignature(waypoints, defaultSpeed, defaultFrame),
-    [waypoints, defaultSpeed, defaultFrame]
-  );
 
   const flightPlan = useMemo(
     () => computeFlightPlan(waypoints, defaultSpeed, planOptions),
     [waypoints, defaultSpeed, planOptions]
   );
 
-  // ── Terrain readiness — wait for real provider before sampling ──
-  const { isReady: terrainReady, version: terrainVersion } = useTerrainReady(viewer);
-
   // ── Terrain-resolved positions for 3D flight path ──────────
-  const [terrainResult, setTerrainResult] = useState<TerrainResultState | null>(null);
-
-  const resolvedPath =
-    terrainResult?.signature === missionSignature && !terrainResult.failed
-      ? terrainResult.path
-      : null;
-  const terrainFailed =
-    terrainResult?.signature === missionSignature && terrainResult.failed;
-  const terrainResolving =
-    !!viewer && !viewer.isDestroyed() && waypoints.length >= 2 && !resolvedPath && !terrainFailed;
-
-  useEffect(() => {
-    if (!viewer || viewer.isDestroyed() || waypoints.length < 2) {
-      return;
-    }
-
-    // Don't sample while terrain provider is still the flat ellipsoid —
-    // it returns height=0 everywhere, placing the path underground.
-    if (!terrainReady) {
-      return;
-    }
-
-    let cancelled = false;
-    const terrainProvider = viewer.scene.globe.terrainProvider;
-    const signature = missionSignature;
-
-    if (homeLat === undefined || homeLon === undefined) return;
-    resolveAGLToAbsolute(waypoints, terrainProvider, defaultFrame, { lat: homeLat, lon: homeLon, groundAmsl: homeGroundAmsl })
-      .then((result) => {
-        if (!cancelled) {
-          setTerrainResult({ signature, path: result, failed: false });
-        }
-      })
-      .catch(() => {
-        // Terrain sampling failed — FlightPathEntity falls back to clamped path
-        if (!cancelled) {
-          setTerrainResult({ signature, path: null, failed: true });
-        }
-      });
-
-    return () => { cancelled = true; };
-  }, [viewer, missionSignature, waypoints, defaultFrame, terrainReady, terrainVersion, homeLat, homeLon, homeGroundAmsl]);
-
-  // Extract waypoint-only resolved positions for WaypointEntities + camera
-  const waypointPositions = useMemo(() => {
-    if (!resolvedPath) return undefined;
-    return resolvedPath.waypointIndices.map((idx) => resolvedPath.positions[idx]);
-  }, [resolvedPath]);
+  const { missionSignature, resolvedPath, waypointPositions, terrainResolving, terrainVersion } =
+    useResolvedMissionPath(viewer, waypoints, defaultSpeed, defaultFrame);
 
   const hasAbsolutePositions = !!waypointPositions;
 

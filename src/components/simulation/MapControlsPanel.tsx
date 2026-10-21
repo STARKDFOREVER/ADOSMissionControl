@@ -16,9 +16,11 @@ import { BasemapSwitcher } from "@/components/map/BasemapSwitcher";
 
 interface MapControlsPanelProps {
   hasIonToken: boolean;
+  /** Corner placement classes; defaults to the top-left corner. */
+  placement?: string;
 }
 
-export function MapControlsPanel({ hasIonToken }: MapControlsPanelProps) {
+export function MapControlsPanel({ hasIonToken, placement = "top-4 left-4" }: MapControlsPanelProps) {
   const t = useTranslations("simulate");
   const imageryMode = useSettingsStore((s) => s.cesiumImageryMode);
   const setImageryMode = useSettingsStore((s) => s.setCesiumImageryMode);
@@ -38,7 +40,7 @@ export function MapControlsPanel({ hasIonToken }: MapControlsPanelProps) {
   const buildingsDisabled = !hasIonToken;
 
   return (
-    <div className="absolute top-4 left-4 z-10 flex flex-col gap-2 p-2 bg-bg-primary/70 backdrop-blur-md border border-border-default rounded-lg">
+    <div className={cn("absolute z-10 flex flex-col gap-2 p-2 bg-bg-primary/70 backdrop-blur-md border border-border-default rounded-lg", placement)}>
       <span className="text-[9px] font-mono text-text-tertiary text-center">
         {t("map")}
       </span>

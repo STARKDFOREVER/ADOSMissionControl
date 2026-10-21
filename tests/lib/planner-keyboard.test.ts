@@ -179,6 +179,19 @@ describe("planner keyboard dispatcher", () => {
     expect(params.setActiveTool).not.toHaveBeenCalled();
   });
 
+  it("a hidden modal kept in the DOM does not block shortcuts", () => {
+    const params = makeParams();
+    renderHook(() => useKeyboardShortcuts(params));
+    const overlay = document.createElement("div");
+    overlay.style.display = "none";
+    const dialog = document.createElement("div");
+    dialog.setAttribute("aria-modal", "true");
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+    press("w");
+    expect(params.setActiveTool).toHaveBeenCalledWith("waypoint");
+  });
+
   it("keeps panel and tool keys inert on Plans home, and says why for a tool", () => {
     const onNoActivePlan = vi.fn();
     const params = makeParams({ hasActivePlan: false, onNoActivePlan });
@@ -192,6 +205,24 @@ describe("planner keyboard dispatcher", () => {
     press("w");
     expect(params.setActiveTool).not.toHaveBeenCalled();
     expect(onNoActivePlan).toHaveBeenCalledTimes(2);
+  });
+
+  it("3 toggles the 3D view with an open plan", () => {
+    const onToggleView3d = vi.fn();
+    const params = makeParams({ onToggleView3d });
+    renderHook(() => useKeyboardShortcuts(params));
+    const event = press("3");
+    expect(onToggleView3d).toHaveBeenCalledTimes(1);
+    expect(event.defaultPrevented).toBe(true);
+  });
+
+  it("3 does nothing with no plan open", () => {
+    const onToggleView3d = vi.fn();
+    const params = makeParams({ hasActivePlan: false, onToggleView3d });
+    renderHook(() => useKeyboardShortcuts(params));
+    const event = press("3");
+    expect(onToggleView3d).not.toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(false);
   });
 
   it("Enter finishes the active draw", () => {

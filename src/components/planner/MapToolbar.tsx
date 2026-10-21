@@ -35,6 +35,8 @@ interface MapToolbarProps {
   onRedo: () => void;
   onToggleOverlays?: () => void;
   overlayPanelOpen?: boolean;
+  /** The overlays panel is unavailable (the 3D view has no 2D layers). */
+  overlaysDisabled?: boolean;
   onToggleDownload?: () => void;
   downloadPanelOpen?: boolean;
   /** The map has not reported its bounds yet, so there is no area to download. */
@@ -229,6 +231,7 @@ export function MapToolbar({
   onRedo,
   onToggleOverlays,
   overlayPanelOpen,
+  overlaysDisabled,
   onToggleDownload,
   downloadPanelOpen,
   downloadDisabled,
@@ -278,7 +281,7 @@ export function MapToolbar({
       <div className="my-0.5 h-px bg-border-default" />
 
       {onToggleOverlays && (
-        <RailButton active={overlayPanelOpen} onClick={onToggleOverlays} tooltip={`${t("rail.layers")} (L)`}>
+        <RailButton active={overlayPanelOpen} disabled={overlaysDisabled} onClick={onToggleOverlays} tooltip={`${t("rail.layers")} (L)`}>
           <Layers size={16} />
         </RailButton>
       )}

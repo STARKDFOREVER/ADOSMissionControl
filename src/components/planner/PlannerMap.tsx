@@ -41,6 +41,7 @@ import { haversineDistance } from "@/lib/geo/distance";
 import { CursorTracker } from "./map/CursorTracker";
 import { pickPlannedHome, useHomePickEscape } from "./map/planned-home";
 import { LegInsertHandles } from "./map/LegInsertHandles";
+import { isWaypointSelected } from "@/lib/waypoint-selection";
 
 const MapContainer = dynamic(() => import("react-leaflet").then((m) => m.MapContainer), { ssr: false });
 const TileLayerSwitcher = dynamic(() => import("@/components/map/TileLayerSwitcher").then((m) => ({ default: m.TileLayerSwitcher })), { ssr: false });
@@ -66,7 +67,7 @@ const BatteryChangeBadges = memo(dynamic(() => import("./map/BatteryChangeBadges
 const SPLINE_PATH_STYLE = { color: MAP_COLORS.spline, weight: 2.5, opacity: 0.9 };
 const MEASURE_PATH_STYLE = { color: MAP_COLORS.muted, weight: 2, dashArray: "4 4" };
 
-interface PlannerMapProps {
+export interface PlannerMapProps {
   waypoints: Waypoint[];
   activeTool: PlannerTool;
   selectedWaypointId: string | null;
@@ -105,6 +106,7 @@ export function PlannerMap({
   useHomePickEscape();
   // Authoritative interaction mode drives the single in-map hint banner.
   const mode = usePlannerStore((s) => s.mode);
+  const selectedIds = usePlannerStore((s) => s.selectedWaypointIds);
   const fitRequestTs = usePlannerStore((s) => s.fitRequestTs);
   const clearFitRequest = usePlannerStore((s) => s.clearFitRequest);
   // One-shot recentres. The map reads centre/zoom only at mount, so a view that
@@ -114,6 +116,7 @@ export function PlannerMap({
   const hydratedViewAppliedRef = useRef(false);
   const gpsViewAppliedRef = useRef(false);
   const restoredFitRef = useRef(false);
+  const planFittedRef = useRef(false); // a plan was framed since mount; the restored view must not undo it
 
   useEffect(() => {
     if (!mapInstance) return;
@@ -132,9 +135,10 @@ export function PlannerMap({
   useEffect(() => {
     if (!mapInstance || !viewHydrated || hydratedViewAppliedRef.current) return;
     hydratedViewAppliedRef.current = true;
-    // No persisted view to apply: report the current view once so mapBounds
-    // is known even if the operator never moves the map.
-    if (viewSource !== "persisted" || userMovedRef.current) { mapInstance.fire("moveend"); return; }
+    // No persisted view to apply, or a plan was framed since mount: report the
+    // current view once so mapBounds is known even if the map never moves.
+    const planFramed = planFittedRef.current || usePlannerStore.getState().fitRequestTs !== 0;
+    if (viewSource !== "persisted" || userMovedRef.current || planFramed) { mapInstance.fire("moveend"); return; }
     const c = mapInstance.getCenter();
     if (c.lat === viewCenter[0] && c.lng === viewCenter[1] && mapInstance.getZoom() === viewZoom) { mapInstance.fire("moveend"); return; }
     mapInstance.setView(viewCenter, viewZoom, { animate: false });
@@ -303,7 +307,7 @@ export function PlannerMap({
     const reportView = () => {
       if (!plannerHydrationSettled()) return;
       const b = mapInstance.getBounds();
-      usePlannerStore.getState().setMapView(
+      usePlannerStore.getState().setMapViewport(
         { north: b.getNorth(), south: b.getSouth(), east: b.getEast(), west: b.getWest() },
         mapInstance.getZoom(),
       );
@@ -329,6 +333,7 @@ export function PlannerMap({
     const bounds = L.latLngBounds(waypoints.map((wp) => [wp.lat, wp.lon] as [number, number]));
     mapInstance.invalidateSize({ animate: false, pan: false });
     mapInstance.fitBounds(bounds, { padding: [40, 40], maxZoom: 16 }); clearFitRequest();
+    planFittedRef.current = true;
   }, [mapInstance, fitRequestTs, waypoints, clearFitRequest]);
 
   const panRequest = usePlannerStore((s) => s.panRequest);
@@ -372,17 +377,18 @@ export function PlannerMap({
   // position stream.
   const waypointMarkers = useMemo(
     () =>
-      waypoints.map((wp, i) => (
-        <Marker key={wp.id} position={[wp.lat, wp.lon]}
-          icon={wp.command === "SPLINE_WAYPOINT" ? makeSplineWaypointIcon(i, wp.id === selectedWaypointId) : makeWaypointIcon(i, wp.id === selectedWaypointId)}
+      waypoints.map((wp, i) => {
+        const selected = isWaypointSelected(wp.id, selectedWaypointId, selectedIds);
+        return <Marker key={wp.id} position={[wp.lat, wp.lon]}
+          icon={wp.command === "SPLINE_WAYPOINT" ? makeSplineWaypointIcon(i, selected) : makeWaypointIcon(i, selected)}
           draggable={activeTool === "select"}
           eventHandlers={{
             click: (e) => { e.originalEvent.stopPropagation(); onWaypointClick(wp.id, e.originalEvent.ctrlKey || e.originalEvent.metaKey, e.originalEvent.shiftKey); },
             dragend: (e) => { const ll = e.target.getLatLng(); onWaypointDragEnd(wp.id, ll.lat, ll.lng); },
             contextmenu: (e) => { e.originalEvent.preventDefault(); e.originalEvent.stopPropagation(); onWaypointRightClick(wp.id, e.originalEvent.clientX, e.originalEvent.clientY); },
-          }} />
-      )),
-    [waypoints, selectedWaypointId, activeTool, onWaypointClick, onWaypointDragEnd, onWaypointRightClick]
+          }} />;
+      }),
+    [waypoints, selectedWaypointId, selectedIds, activeTool, onWaypointClick, onWaypointDragEnd, onWaypointRightClick]
   );
 
   // Rally points are plan-independent (the FC uses them for failsafe): render

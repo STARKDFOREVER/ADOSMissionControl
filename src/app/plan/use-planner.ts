@@ -40,8 +40,6 @@ export function usePlanner() {
     setShowClearConfirm: state.setShowClearConfirm,
     setShowPatternApplyConfirm: state.setShowPatternApplyConfirm,
     setShowDownloadConfirm: state.setShowDownloadConfirm,
-    setMissionName: state.setMissionName,
-    setSelectedDroneId: state.setSelectedDroneId,
     toast: state.toast,
   });
 

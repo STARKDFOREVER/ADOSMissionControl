@@ -26,6 +26,7 @@ import { useRallyStore } from "@/stores/rally-store";
 import { useMissionStore } from "@/stores/mission-store";
 import { usePlannerStore } from "@/stores/planner-store";
 import { useVehicleOptions } from "./use-vehicle-options";
+import { PlannerViewToggle } from "./PlannerViewToggle";
 import type { PlannerShareImport } from "./use-planner-share-import";
 import type { Planner } from "./use-planner";
 
@@ -222,6 +223,7 @@ export function PlannerBar({ p, hasDrone, showGeofence, showRally, shareIo, onOp
       >
         {sendLabel}
       </Button>
+      <PlannerViewToggle />
       <DropdownMenu
         trigger={<Button variant="ghost" size="sm" icon={<MoreHorizontal size={14} />} aria-label={t("bar.more")} title={t("bar.more")} />}
         items={overflowItems}
@@ -277,7 +279,8 @@ function PlanNameField({ name, onCommit }: { name: string; onCommit: (name: stri
         }
         onCommit(draft);
       }}
-      className="h-7 min-w-0 w-56 px-1.5 bg-transparent border border-transparent text-sm font-medium text-text-primary placeholder:text-text-tertiary hover:border-border-default focus:border-accent-primary focus:outline-none focus-ring transition-colors"
+      title={draft}
+      className="h-7 min-w-0 basis-56 grow max-w-96 px-1.5 bg-transparent border border-transparent text-sm font-medium text-text-primary text-ellipsis placeholder:text-text-tertiary hover:border-border-default focus:border-accent-primary focus:outline-none focus-ring transition-colors"
     />
   );
 }

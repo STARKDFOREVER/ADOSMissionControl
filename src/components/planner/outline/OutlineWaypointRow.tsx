@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import type { AltitudeFrame, Waypoint } from "@/lib/types/mission";
 import { waypointAltitudeAgl } from "@/lib/mission/altitude-frame";
 import { DEFAULT_MIN_TERRAIN_CLEARANCE } from "@/lib/terrain/terrain-clearance";
+import { isGroundContactCommand } from "@/lib/validation/autopilot-rules";
 import { INAV_ACTION_LABEL, NAV_COMMAND_OPTIONS } from "../waypoint-constants";
 
 /** Altitude datum chip: relative altitudes are above home, not above ground. */
@@ -60,6 +61,8 @@ export const OutlineWaypointRow = memo(function OutlineWaypointRow({
   const frame = waypoint.frame ?? defaultFrame;
   const frameLabel = frame === "terrain" ? t("inspector.defaults.frameTerrain") : (FRAME_LABELS[frame] ?? "REL");
   const clearance = waypointAltitudeAgl(waypoint, { homeGroundElevation, defaultFrame });
+  // Takeoff, landing and RTL rows sit at the surface by design: no hazard colour.
+  const clearanceHazard = clearance !== null && !isGroundContactCommand(waypoint.command);
   const actionCount = waypoint.actions?.length ?? 0;
   const highlighted = selected || multiSelected;
 
@@ -106,7 +109,8 @@ export const OutlineWaypointRow = memo(function OutlineWaypointRow({
             title={t("aboveGround", { alt: Math.round(clearance), elev: Math.round(waypoint.groundElevation) })}
             className={cn(
               "shrink-0 font-mono text-[11px]",
-              clearance < 0 ? "text-status-error"
+              !clearanceHazard ? "text-text-tertiary"
+                : clearance < 0 ? "text-status-error"
                 : clearance < DEFAULT_MIN_TERRAIN_CLEARANCE ? "text-status-warning"
                 : "text-text-tertiary",
             )}

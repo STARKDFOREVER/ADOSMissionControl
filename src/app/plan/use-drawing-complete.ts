@@ -94,7 +94,8 @@ export function useDrawingComplete(toast: PlannerToast) {
           drawingStore.removeCircle(shape.id);
           toast(t("fenceCircleSet", { radius }), "success");
         } else if (routeToPattern && patternType === "orbit") {
-          patternStore.updateOrbitConfig({ center: shape.center, radius: shape.radius });
+          // Whole metres: the radius field steps by 1 m and the toast rounds too.
+          patternStore.updateOrbitConfig({ center: shape.center, radius: Math.round(shape.radius) });
           showPattern();
           // The orbit renders from its config circle; drop the raw drawn circle.
           drawingStore.removeCircle(shape.id);

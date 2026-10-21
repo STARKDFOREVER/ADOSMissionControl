@@ -243,9 +243,12 @@ export const usePatternStore = create<PatternStoreState>()((set, get) => ({
   clearAppliedBoundary: () => set({ appliedBoundary: null }),
 
   setPatternType: (type) => {
-    // Clear any previously drawn shapes so the new pattern can't silently
-    // regenerate over the last polygon/circle via the generator's fallback.
-    useDrawingStore.getState().clearAll();
+    // Switching from one pattern to another clears the shapes drawn for the
+    // previous one, so the new pattern can't silently regenerate over them via
+    // the generator's fallback. Shapes drawn before any pattern was picked are
+    // the operator's area for this pattern and stay.
+    const previous = get().activePatternType;
+    if (previous !== null && previous !== type) useDrawingStore.getState().clearAll();
     cancelTerrainRun();
     set({
       activePatternType: type,

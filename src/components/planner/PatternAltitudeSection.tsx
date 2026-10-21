@@ -48,10 +48,14 @@ export function PatternAltitudeSection({ settings, onChange }: PatternAltitudeSe
 
   return (
     <PropertySection title={t("title")} persistKey="pattern.altitude" flush>
-      <PropertyRow label={t("reference")}>
-        <SegmentedControl<PatternAltitudeMode> size="sm" stretch ariaLabel={t("reference")}
-          options={options} value={mode} onChange={(altitudeMode) => onChange({ altitudeMode })} />
-      </PropertyRow>
+      {/* Full width: three labels do not fit beside the 96 px label column. */}
+      <div className="py-1">
+        <span className="text-xs leading-tight text-text-secondary">{t("reference")}</span>
+        <div className="mt-1">
+          <SegmentedControl<PatternAltitudeMode> size="sm" stretch ariaLabel={t("reference")}
+            options={options} value={mode} onChange={(altitudeMode) => onChange({ altitudeMode })} />
+        </div>
+      </div>
       {mode === "followTerrain" && (
         <>
           <PatternNumberRow label={t("tolerance")} unit="m" step={1} min={1}

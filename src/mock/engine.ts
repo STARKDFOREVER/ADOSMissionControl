@@ -141,7 +141,7 @@ class MockFlightEngine {
       // sidebar synthesizes a second, duplicate "direct-FC" entry for each).
       droneManager.addDrone(nid(cfg.id), cfg.name, state.protocol, state.transport, vehicleInfo,
         { type: "websocket", url: "mock://demo" },
-        { ownsFleetRow: false });
+        { ownsFleetRow: false, autoSelect: false });
       // The iNav mock drives its own MSP settings + telemetry. connect() marks
       // it connected (so FC panels load) and, after a short delay, auto-starts
       // its self-tick. That tick writes GLOBAL telemetry state (nav/arming/adsb)

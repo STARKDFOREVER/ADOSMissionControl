@@ -45,7 +45,7 @@ describe("usePlannerState subscriptions", () => {
 
     act(() => {
       usePlannerStore.getState().setMapCenter([12.5, 77.5]);
-      usePlannerStore.getState().setMapView({ north: 1, south: 0, east: 1, west: 0 }, 14);
+      usePlannerStore.getState().setMapViewport({ north: 1, south: 0, east: 1, west: 0 }, 14);
       useMissionStore.setState({ downloadWarnings: ["item 3 dropped"] });
     });
 

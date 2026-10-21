@@ -49,4 +49,11 @@ describe("OutlineWaypointRow altitude labels", () => {
     expect(chip.className).not.toContain("text-status-error");
     expect(chip.className).not.toContain("text-status-warning");
   });
+
+  it("does not paint a landing row below home ground as a hazard (the validator exempts it)", () => {
+    renderRow({ id: "w", lat: 12.98, lon: 77.6, alt: 0, command: "LAND", groundElevation: 102 });
+    const chip = screen.getByTitle("-2m AGL (ground: 102m)");
+    expect(chip.className).not.toContain("text-status-error");
+    expect(chip.className).toContain("text-text-tertiary");
+  });
 });

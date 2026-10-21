@@ -32,7 +32,6 @@ import { UnsavedChangesDialog } from "@/components/library/UnsavedChangesDialog"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { SidePanel } from "@/components/ui/side-panel";
-import { useDroneManager } from "@/stores/drone-manager";
 import { usePlannerStore, type DockTab } from "@/stores/planner-store";
 import { useMissionStore } from "@/stores/mission-store";
 import { usePlanLibraryStore } from "@/stores/plan-library-store";
@@ -44,6 +43,7 @@ import { registerCommandProvider } from "@/lib/command-palette-registry";
 import { setClipboard, getClipboard } from "@/lib/waypoint-clipboard";
 import { MAP_OVERLAY_Z } from "@/lib/map-overlay-z";
 import { startGroundElevationSync } from "@/lib/mission/sample-ground-elevations";
+import { isDrawingTool } from "@/lib/planner-shortcuts";
 import { usePlanner } from "./use-planner";
 import { useKeyboardShortcuts } from "./use-keyboard-shortcuts";
 import { buildPlannerCommands, type PlannerCommandHandlers } from "./planner-commands";
@@ -52,8 +52,10 @@ import { usePlannerShareImport } from "./use-planner-share-import";
 import { useSharedPlanLink } from "./use-shared-plan-link";
 import { usePlannedHomeSeed } from "./use-planned-home-seed";
 import { nudgeWaypoints, pasteWaypoints } from "./waypoint-edits";
+import { planElementSupport } from "./plan-element-support";
 
 const PlannerMap = dynamic(() => import("@/components/planner/PlannerMap").then((m) => m.PlannerMap), { ssr: false });
+const Planner3DView = dynamic(() => import("@/components/planner/Planner3DView").then((m) => m.Planner3DView), { ssr: false });
 
 /** The library's own search-focus event (see FlightPlanLibrary's search bar). */
 const FOCUS_LIBRARY_SEARCH_EVENT = "plan-library:focus-search";
@@ -67,13 +69,12 @@ export default function MissionPlannerPage() {
   const { toast } = useToast();
   const router = useRouter();
   const p = usePlanner();
-  const droneCount = useDroneManager((s) => s.drones.size);
-  const hasDrone = droneCount > 0;
   const hasActivePlan = !!p.activePlanId;
   const isDownloading = p.downloadState === "downloading";
-  const { supports } = useFirmwareCapabilities();
-  const showGeofence = !hasDrone || supports("supportsGeoFence");
-  const showRally = !hasDrone || supports("supportsRally");
+  // Send, download and fence/rally support all act on the selected, connected
+  // vehicle; other connected drones that are not selected cannot receive them.
+  const { supports, isConnected: hasDrone } = useFirmwareCapabilities();
+  const { showGeofence, showRally } = planElementSupport(hasDrone, supports);
 
   const outlineOpen = usePlannerStore((s) => s.outlineOpen);
   const inspectorOpen = usePlannerStore((s) => s.inspectorOpen);
@@ -84,6 +85,9 @@ export default function MissionPlannerPage() {
   const mapBounds = usePlannerStore((s) => s.mapBounds);
   const mapZoom = usePlannerStore((s) => s.mapZoom);
   const mapTileSource = useSettingsStore((s) => s.mapTileSource);
+  const mapView = usePlannerStore((s) => s.mapView);
+  // The 3D view needs an open plan; Plans home always shows the 2D map.
+  const is3d = hasActivePlan && mapView === "3d";
   const shareIo = usePlannerShareImport(p);
 
   const [overlayPanelOpen, setOverlayPanelOpen] = useState(false);
@@ -94,15 +98,30 @@ export default function MissionPlannerPage() {
   const [panelAnimate, setPanelAnimate] = useState(true);
 
   // The overlay and download panels dock at the same spot, so they are mutually
-  // exclusive — opening one closes the other.
+  // exclusive — opening one closes the other. Both act on the 2D map only.
   const toggleOverlayPanel = useCallback(() => {
+    if (usePlannerStore.getState().mapView === "3d") return;
     setOverlayPanelOpen((v) => !v);
     setDownloadPanelOpen(false);
   }, []);
   const toggleDownloadPanel = useCallback(() => {
+    if (usePlannerStore.getState().mapView === "3d") return;
     setDownloadPanelOpen((v) => !v);
     setOverlayPanelOpen(false);
   }, []);
+  // Entering 3D closes the 2D-only panels.
+  useEffect(() => {
+    if (!is3d) return;
+    setOverlayPanelOpen(false);
+    setDownloadPanelOpen(false);
+  }, [is3d]);
+  // Shapes are drawn on the 2D map: picking a drawing tool in 3D switches back.
+  useEffect(() => {
+    if (!is3d || !isDrawingTool(p.activeTool)) return;
+    usePlannerStore.getState().setMapView("2d");
+    toast(t("view3d.drawIn2d"), "info");
+  }, [is3d, p.activeTool, toast, t]);
+  const toggleView3d = useCallback(() => usePlannerStore.getState().toggleMapView(), []);
   // Keep every waypoint's terrain sample matched to its position while the
   // planner is open: any edit that moves a waypoint drops its old sample, and
   // the sync looks up the ground under the new spot.
@@ -220,6 +239,7 @@ export default function MissionPlannerPage() {
     onToggleTerrain: toggleAltitude, onTogglePatternEditor: togglePattern, onToggleValidation: toggleIssues,
     onToggleOverlays: toggleOverlayPanel,
     onFocusPlaceSearch: focusPlaceSearch,
+    onToggleView3d: toggleView3d,
     onNudgeSelected, onCopy, onPaste, onNoActivePlan,
   });
 
@@ -240,7 +260,7 @@ export default function MissionPlannerPage() {
       setActiveTool: pSetActiveTool, undo: pUndo, redo: pRedo,
       handleSave: pHandleSave, handleSaveAs: pHandleSaveAs, handleNewPlan: pHandleNewPlan,
       toggleTerrain: toggleAltitude, togglePattern, toggleValidation: toggleIssues, toggleOverlays: toggleOverlayPanel,
-      togglePlans, toggleOutline, toggleInspector, togglePanels, openDock,
+      togglePlans, toggleOutline, toggleInspector, togglePanels, toggleView3d, openDock,
       sendToVehicle: openSend,
       downloadFromDrone: handleDownloadFromDrone, importBoundary: handleImportBoundary,
       exportNative: handleExportNative, exportWaypoints: handleExportWaypoints, exportPlan: handleExportPlan,
@@ -258,7 +278,7 @@ export default function MissionPlannerPage() {
     );
   }, [
     pSetActiveTool, pUndo, pRedo, pHandleSave, pHandleSaveAs, pHandleNewPlan, toggleAltitude, togglePattern,
-    toggleIssues, toggleOverlayPanel, togglePlans, toggleOutline, toggleInspector, togglePanels, openDock, openSend,
+    toggleIssues, toggleOverlayPanel, togglePlans, toggleOutline, toggleInspector, togglePanels, toggleView3d, openDock, openSend,
     handleDownloadFromDrone, handleImportBoundary, handleExportNative, handleExportWaypoints, handleExportPlan,
     handleExportKML, handleExportKMZ, handleExportCSV, handleExportBrief, handleCopyShareLink,
     handleReverseWaypoints, transformMission, simulate, handleClearAll, t,
@@ -292,22 +312,30 @@ export default function MissionPlannerPage() {
 
           <div className="flex-1 relative min-w-0">
             <div className="absolute inset-x-0 top-0" style={{ bottom: hasActivePlan ? DOCK_STRIP_HEIGHT : 0 }}>
-              <PlannerMap waypoints={p.waypoints} activeTool={p.activeTool} selectedWaypointId={p.selectedWaypointId}
-                hasActivePlan={hasActivePlan} rallyPoints={p.rallyPoints} onMapClick={p.handleMapClick}
-                onMapRightClick={p.handleMapRightClick} onWaypointClick={p.handleWaypointClick}
-                onWaypointDragEnd={p.handleWaypointDragEnd} onWaypointRightClick={p.handleWaypointRightClick}
-                onDrawingComplete={p.handleDrawingComplete} />
+              {is3d ? (
+                <Planner3DView waypoints={p.waypoints} activeTool={p.activeTool} selectedWaypointId={p.selectedWaypointId}
+                  hasActivePlan={hasActivePlan} rallyPoints={p.rallyPoints} onMapClick={p.handleMapClick}
+                  onMapRightClick={p.handleMapRightClick} onWaypointClick={p.handleWaypointClick}
+                  onWaypointDragEnd={p.handleWaypointDragEnd} onWaypointRightClick={p.handleWaypointRightClick}
+                  onDrawingComplete={p.handleDrawingComplete} />
+              ) : (
+                <PlannerMap waypoints={p.waypoints} activeTool={p.activeTool} selectedWaypointId={p.selectedWaypointId}
+                  hasActivePlan={hasActivePlan} rallyPoints={p.rallyPoints} onMapClick={p.handleMapClick}
+                  onMapRightClick={p.handleMapRightClick} onWaypointClick={p.handleWaypointClick}
+                  onWaypointDragEnd={p.handleWaypointDragEnd} onWaypointRightClick={p.handleWaypointRightClick}
+                  onDrawingComplete={p.handleDrawingComplete} />
+              )}
             </div>
             {hasActivePlan && (
               <>
                 <PlaceSearchBox />
-                <CoordinateWidget bottomOffset={coordinateLift} />
+                {!is3d && <CoordinateWidget bottomOffset={coordinateLift} />}
                 <MapToolbar activeTool={p.activeTool} onToolChange={p.setActiveTool}
                   canUndo={p.canUndo} canRedo={p.canRedo} onUndo={p.undo} onRedo={p.redo}
-                  onToggleOverlays={toggleOverlayPanel} overlayPanelOpen={overlayPanelOpen}
-                  onToggleDownload={toggleDownloadPanel} downloadPanelOpen={downloadPanelOpen} downloadDisabled={!mapBounds} />
-                {overlayPanelOpen && <OverlayPanel onClose={() => setOverlayPanelOpen(false)} />}
-                {downloadPanelOpen && mapBounds && (
+                  onToggleOverlays={toggleOverlayPanel} overlayPanelOpen={overlayPanelOpen} overlaysDisabled={is3d}
+                  onToggleDownload={toggleDownloadPanel} downloadPanelOpen={downloadPanelOpen} downloadDisabled={!mapBounds || is3d} />
+                {overlayPanelOpen && !is3d && <OverlayPanel onClose={() => setOverlayPanelOpen(false)} />}
+                {downloadPanelOpen && mapBounds && !is3d && (
                   <DownloadAreaPanel bounds={mapBounds} currentZoom={mapZoom} currentProvider={mapTileSource}
                     onClose={() => setDownloadPanelOpen(false)} />
                 )}

@@ -98,6 +98,10 @@ interface PlannerStoreState {
   mapBounds: { north: number; south: number; east: number; west: number } | null;
   /** Current map zoom level. */
   mapZoom: number;
+  /** Whether the planner shows the 2D map or the 3D view. Persisted. */
+  mapView: "2d" | "3d";
+  setMapView: (view: "2d" | "3d") => void;
+  toggleMapView: () => void;
   /**
    * The Send-to-vehicle dialog, when open. `resumeFromIndex` opens it in
    * resume mode: the mission row uploads the mission that picks the plan up
@@ -165,7 +169,7 @@ interface PlannerStoreState {
   /** Update current map center. */
   setMapCenter: (center: [number, number]) => void;
   /** Update current map viewport bounds + zoom (from move/zoom events). */
-  setMapView: (bounds: { north: number; south: number; east: number; west: number }, zoom: number) => void;
+  setMapViewport: (bounds: { north: number; south: number; east: number; west: number }, zoom: number) => void;
 }
 
 let plannerHydrationDone = false;
@@ -221,6 +225,7 @@ export const usePlannerStore = create<PlannerStoreState>()(
   mapCenter: [0, 0],
   mapBounds: null,
   mapZoom: DEFAULT_ZOOM_UNLOCATED,
+  mapView: "2d",
   sendDialog: null,
   homePickArmed: false,
 
@@ -287,7 +292,9 @@ export const usePlannerStore = create<PlannerStoreState>()(
   clearPanRequest: () => set({ panRequest: null }),
   clearSelection: () => set({ selectedWaypointId: null, selectedWaypointIds: [], selectionMode: "single" }),
   setMapCenter: (mapCenter) => set({ mapCenter }),
-  setMapView: (mapBounds, mapZoom) => set({ mapBounds, mapZoom }),
+  setMapViewport: (mapBounds, mapZoom) => set({ mapBounds, mapZoom }),
+  setMapView: (mapView) => set({ mapView }),
+  toggleMapView: () => set((s) => ({ mapView: s.mapView === "3d" ? "2d" : "3d" })),
   openSendDialog: (opts) =>
     set({ sendDialog: opts?.resumeFromIndex !== undefined ? { resumeFromIndex: opts.resumeFromIndex } : {} }),
   closeSendDialog: () => set({ sendDialog: null }),
@@ -298,7 +305,7 @@ export const usePlannerStore = create<PlannerStoreState>()(
     {
       name: PLANNER_STORE_KEY,
       storage: createJSONStorage(indexedDBStorage.storage),
-      version: 3,
+      version: 4,
       partialize: (state) => ({
         defaultAlt: state.defaultAlt,
         defaultSpeed: state.defaultSpeed,
@@ -314,6 +321,7 @@ export const usePlannerStore = create<PlannerStoreState>()(
         dockOpen: state.dockOpen,
         dockTab: state.dockTab,
         sectionOpen: state.sectionOpen,
+        mapView: state.mapView,
       }),
       // Fires on success and on a failed read (zustand leaves `hasHydrated()`
       // false when the storage read rejects), so the planner never waits
@@ -336,6 +344,10 @@ export const usePlannerStore = create<PlannerStoreState>()(
         // v3 added the persisted map view and panel layout. Older payloads
         // simply lack them, so the store defaults fill in: the map opens
         // unlocated or at the GPS fix, and the panels take their defaults.
+        if (version < 4 && state.mapView === undefined) {
+          // v4 persists the 2D/3D view choice; older payloads open in 2D.
+          state.mapView = "2d";
+        }
         return state as Partial<PlannerStoreState>;
       },
     }

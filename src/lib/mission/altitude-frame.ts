@@ -270,3 +270,16 @@ export function inferHomeGroundElevation(
 ): number | undefined {
   return finite(waypoints[0]?.groundElevation);
 }
+
+/**
+ * The relative-frame datum every planner surface shares: the planned home's
+ * ground when the plan has one, else the launch waypoint's sample. A chart or
+ * readout that took the launch waypoint while a planned home exists would put
+ * every relative altitude at the wrong height.
+ */
+export function planHomeGroundElevation(
+  plannedHomeGround: number | undefined,
+  waypoints: readonly FrameAwareWaypoint[],
+): number | undefined {
+  return finite(plannedHomeGround) ?? inferHomeGroundElevation(waypoints);
+}

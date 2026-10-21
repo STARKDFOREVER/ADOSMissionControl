@@ -2820,7 +2820,8 @@
       "outline": "Toggle plan outline",
       "inspector": "Toggle inspector",
       "focusMap": "Toggle both side panels",
-      "openPlans": "Open plans"
+      "openPlans": "Open plans",
+      "toggle3d": "2D / 3D view"
     },
     "searchPlaceholder": "ಸ್ಥಳ ಅಥವಾ lat, lon ಹುಡುಕಿ",
     "searchNoResults": "ಹೊಂದುವ ಸ್ಥಳ ಸಿಗಲಿಲ್ಲ",
@@ -3363,7 +3364,8 @@
         "energy": "Show energy estimate",
         "site": "Show site conditions",
         "checklist": "Show pre-flight checklist"
-      }
+      },
+      "toggleView3d": "Toggle 3D view"
     },
     "inspector": {
       "back": "Back to mission",
@@ -3883,7 +3885,14 @@
       "insertWaypoint": "ವೇಪಾಯಿಂಟ್ ಸೇರಿಸಿ",
       "packStarts": "ಬ್ಯಾಟರಿ ಪ್ಯಾಕ್ {n} ಇಲ್ಲಿ ಆರಂಭವಾಗುತ್ತದೆ"
     },
-    "setFacadeLine": "ನಕ್ಷೆಯಲ್ಲಿ ಮುಂಭಾಗದ ರೇಖೆಯನ್ನು ಹೊಂದಿಸಿ"
+    "setFacadeLine": "ನಕ್ಷೆಯಲ್ಲಿ ಮುಂಭಾಗದ ರೇಖೆಯನ್ನು ಹೊಂದಿಸಿ",
+    "view3d": {
+      "label2d": "2D",
+      "label3d": "3D",
+      "title": "Switch between the 2D map and the 3D view (3)",
+      "drawIn2d": "Shapes are drawn on the 2D map.",
+      "hint": "Drag a waypoint to move it · Alt+drag to change altitude · Right-drag to tilt"
+    }
   },
   "geofence": {
     "autoFence": "ಸ್ವಯಂ-ಬೇಲಿ",

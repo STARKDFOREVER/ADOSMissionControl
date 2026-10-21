@@ -29,6 +29,8 @@ export interface PlannerCommandHandlers {
   toggleOutline: () => void;
   toggleInspector: () => void;
   togglePanels: () => void;
+  /** Switch between the 2D map and the 3D view. */
+  toggleView3d: () => void;
   openDock: (tab: DockTab) => void;
   sendToVehicle: () => void;
   downloadFromDrone: () => void;
@@ -100,6 +102,7 @@ const MENU_COMMANDS: readonly {
   { labelKey: "commands.copyShareLink", run: (h) => h.copyShareLink(), when: (h) => h.hasWaypoints },
   { labelKey: "commands.reverseWaypoints", run: (h) => h.reverseWaypoints() },
   { labelKey: "commands.transformMission", run: (h) => h.transformMission() },
+  { labelKey: "commands.toggleView3d", run: (h) => h.toggleView3d() },
   { labelKey: "commands.simulate", run: (h) => h.simulate(), when: (h) => h.hasWaypoints },
   { labelKey: "commands.discardPlan", run: (h) => h.discardPlan() },
   ...DOCK_TABS.map((tab) => ({ labelKey: `commands.dock.${tab}`, run: (h: PlannerCommandHandlers) => h.openDock(tab) })),

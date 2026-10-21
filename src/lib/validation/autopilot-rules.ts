@@ -29,6 +29,15 @@ const GROUND_CONTACT: Record<string, true> = {
   TAKEOFF: true, VTOL_TAKEOFF: true, LAND: true, VTOL_LAND: true, RTL: true,
 };
 
+/**
+ * A command deliberately at or bound for the surface (takeoff, landing, RTL).
+ * Its terrain clearance is not a hazard: the validator exempts it, and the
+ * outline must not paint it as one.
+ */
+export function isGroundContactCommand(command: string | undefined): boolean {
+  return command !== undefined && GROUND_CONTACT[command] === true;
+}
+
 /** True when ArduCopter flies the plan. */
 export function isArduCopter(profile: PlanVehicleProfile | undefined): boolean {
   return profile?.autopilot === "ardupilot" && profile.vehicleClass === "copter";

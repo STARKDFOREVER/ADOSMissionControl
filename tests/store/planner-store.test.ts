@@ -172,4 +172,30 @@ describe("planner-store persist migrate", () => {
     expect(migrated.mode).toEqual({ kind: "rally" });
     expect(migrated.defaultAlt).toBe(50);
   });
+
+  it("a v3 payload migrates to v4 with the 2D map view", () => {
+    const v3Payload = { defaultAlt: 50, mapCenter: [12.5, 77.5], outlineOpen: true };
+    const migrated = migrate!(v3Payload, 3) as Record<string, unknown>;
+    expect(migrated.mapView).toBe("2d");
+    expect(migrated.outlineOpen).toBe(true);
+  });
+});
+
+describe("planner-store map view", () => {
+  beforeEach(() => {
+    usePlannerStore.setState({ mapView: "2d" });
+  });
+
+  it("toggleMapView flips between 2d and 3d", () => {
+    usePlannerStore.getState().toggleMapView();
+    expect(usePlannerStore.getState().mapView).toBe("3d");
+    usePlannerStore.getState().toggleMapView();
+    expect(usePlannerStore.getState().mapView).toBe("2d");
+  });
+
+  it("persists the map view", () => {
+    const partialize = usePlannerStore.persist.getOptions().partialize!;
+    usePlannerStore.getState().setMapView("3d");
+    expect((partialize(usePlannerStore.getState()) as Record<string, unknown>).mapView).toBe("3d");
+  });
 });

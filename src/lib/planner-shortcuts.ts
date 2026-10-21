@@ -58,6 +58,7 @@ export const PLANNER_SHORTCUTS: readonly PlannerShortcut[] = [
   { key: "[", group: "panel", labelKey: "shortcuts.outline" },
   { key: "]", group: "panel", labelKey: "shortcuts.inspector" },
   { key: "\\", group: "panel", labelKey: "shortcuts.focusMap" },
+  { key: "3", group: "panel", labelKey: "shortcuts.toggle3d" },
   // ── Overlays ──────────────────────────────────────────────────────────
   { key: "l", group: "overlay", labelKey: "shortcuts.overlays" },
   // ── Edit ──────────────────────────────────────────────────────────────
@@ -86,3 +87,8 @@ export function shortcutKeyForTool(tool: PlannerTool): string | undefined {
 export const TOOL_SHORTCUT_MAP: Readonly<Record<string, PlannerTool>> = Object.fromEntries(
   PLANNER_SHORTCUTS.filter((s) => s.tool && !s.meta).map((s) => [s.key, s.tool!]),
 );
+
+/** True for the tools whose map gesture is an in-progress shape draw. */
+export function isDrawingTool(tool: PlannerTool): boolean {
+  return tool === "polygon" || tool === "polyline" || tool === "circle" || tool === "measure";
+}

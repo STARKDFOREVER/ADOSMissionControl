@@ -10,7 +10,7 @@ function noopHandlers(): PlannerCommandHandlers {
     setActiveTool: vi.fn(), undo: vi.fn(), redo: vi.fn(),
     handleSave: vi.fn(), handleSaveAs: vi.fn(), handleNewPlan: vi.fn(),
     toggleTerrain: vi.fn(), togglePattern: vi.fn(), toggleValidation: vi.fn(), toggleOverlays: vi.fn(),
-    togglePlans: vi.fn(), toggleOutline: vi.fn(), toggleInspector: vi.fn(), togglePanels: vi.fn(),
+    togglePlans: vi.fn(), toggleOutline: vi.fn(), toggleInspector: vi.fn(), togglePanels: vi.fn(), toggleView3d: vi.fn(),
     openDock: vi.fn(), sendToVehicle: vi.fn(), downloadFromDrone: vi.fn(), importBoundary: vi.fn(),
     exportNative: vi.fn(), exportWaypoints: vi.fn(), exportPlan: vi.fn(), exportKML: vi.fn(),
     exportKMZ: vi.fn(), exportCSV: vi.fn(), exportBrief: vi.fn(), copyShareLink: vi.fn(),
@@ -77,12 +77,14 @@ describe("buildPlannerCommands", () => {
     run("commands.dock.checklist");
     run("shortcuts.openPlans");
     run("shortcuts.focusMap");
+    run("commands.toggleView3d");
     expect(h.sendToVehicle).toHaveBeenCalledTimes(1);
     expect(h.exportKMZ).toHaveBeenCalledTimes(1);
     expect(h.discardPlan).toHaveBeenCalledTimes(1);
     expect(h.openDock).toHaveBeenCalledWith("checklist");
     expect(h.togglePlans).toHaveBeenCalledTimes(1);
     expect(h.togglePanels).toHaveBeenCalledTimes(1);
+    expect(h.toggleView3d).toHaveBeenCalledTimes(1);
   });
 
   it("omits context-scoped shortcuts (delete / cancel) that have no standalone verb", () => {

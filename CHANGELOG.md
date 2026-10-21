@@ -8,6 +8,14 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Planner 3D view with editing.** A 2D / 3D switch in the planner bar (or
+  the `3` key, or "Toggle 3D view" in the command palette) shows the plan on
+  terrain with its path, fences, rally points and pattern boundaries. Click to
+  place with the same tools as the 2D map, drag a waypoint to move it,
+  Alt+drag to change its altitude, right-click for the waypoint menu; Escape
+  cancels a drag. Selection is shared with the outline and inspector, edits
+  share the undo history, and the chosen view persists. Drawing tools return
+  to the 2D map.
 - **SIM chip** on the node header when the agent reports `sim: true` (its
   simulation mode flag). Demo mode shows it on Delta-04.
 - **Visor nodes.** A node running the agent's `visor` profile shows with a
@@ -223,6 +231,26 @@ the project follows [Semantic Versioning](https://semver.org/).
   pasted copies, Enter finishes a drawing, and the east-west nudge moves the
   same distance at every latitude. Battery packs can be saved and picked for
   the energy estimate.
+
+### Fixed
+
+- Planner: a reload in demo mode keeps the plan that was open (it used to
+  switch to the first demo mission or the first drone's live mission), and the
+  map frames that plan. Demo drones no longer start selected.
+- Planner: picking a pattern after drawing its polygon keeps the polygon.
+- Planner: Send to vehicle and Download from drone need a selected, connected
+  vehicle; geofence and rally stay available when no vehicle is selected.
+- Planner: "Clear plan" (was "Discard plan") keeps the plan's name and
+  vehicle and says that Undo brings the contents back.
+- Planner: the 2D map highlights every waypoint in a multi-selection; the
+  terrain chart measures relative altitudes from the planned home, labels its
+  distances with units and no longer overlaps them; landing, takeoff and RTL
+  rows are no longer painted as terrain hazards; an orbit drawn as a circle
+  gets a whole-metre radius.
+- Planner wording and layout: error counts read as errors, one name for the
+  map overlays panel, export labels match the command palette, the plan name
+  and the pattern altitude reference no longer clip, and the dock stats drop a
+  stat whole instead of cutting it.
 
 ### Removed
 

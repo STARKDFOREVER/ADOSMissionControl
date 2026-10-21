@@ -65,8 +65,6 @@ function makeDeps(over: Partial<Deps> = {}): Deps {
     setShowClearConfirm: vi.fn(),
     setShowPatternApplyConfirm: vi.fn(),
     setShowDownloadConfirm: vi.fn(),
-    setMissionName: vi.fn(),
-    setSelectedDroneId: vi.fn(),
     toast: vi.fn(),
     ...over,
   };

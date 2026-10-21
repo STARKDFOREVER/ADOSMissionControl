@@ -46,12 +46,13 @@ vi.mock('@/lib/patterns/structure-scan-generator', () => ({
     stats: { totalDistance: 0, estimatedTime: 0, photoCount: 0, coveredArea: 0, transectCount: 0 },
   })),
 }));
+const clearShapes = vi.fn();
 vi.mock('@/stores/drawing-store', () => ({
   useDrawingStore: {
     getState: vi.fn(() => ({
       polygons: [{ id: 'p1', vertices: [[12.97, 77.59], [12.97, 77.60], [12.98, 77.60], [12.98, 77.59]] }],
       selectedPolygonIds: [],
-      clearAll: vi.fn(),
+      clearAll: clearShapes,
     })),
   },
 }));
@@ -86,6 +87,17 @@ describe('pattern-store', () => {
     expect(s.activePatternType).toBe('survey');
     expect(s.patternResult).toBeNull();
     expect(s.error).toBeNull();
+  });
+
+  it('keeps shapes drawn before the first pattern pick (they are its area)', () => {
+    usePatternStore.getState().setPatternType('survey');
+    expect(clearShapes).not.toHaveBeenCalled();
+  });
+
+  it('clears the previous pattern\'s shapes when switching to another pattern', () => {
+    usePatternStore.getState().setPatternType('survey');
+    usePatternStore.getState().setPatternType('orbit');
+    expect(clearShapes).toHaveBeenCalledTimes(1);
   });
 
   // ------- Config updates -------
