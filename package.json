@@ -41,6 +41,8 @@
     "convex:dev": "npx convex dev",
     "convex:deploy": "npx convex deploy",
     "deploy": "cargo run --release --quiet --manifest-path tools/deploy/Cargo.toml --",
+    "changelog:draft": "node scripts/changelog-draft.mjs",
+    "release:prepare": "node scripts/release-prepare.mjs",
     "postinstall": "patch-package"
   },
   "dependencies": {

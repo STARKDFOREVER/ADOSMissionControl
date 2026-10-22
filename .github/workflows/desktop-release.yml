@@ -4,9 +4,19 @@ on:
   push:
     tags:
       - "v*"
+  # The Release workflow (release.yml) calls this one directly: its tag push
+  # uses GITHUB_TOKEN, which does not start the tag trigger above.
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
 
 permissions:
   contents: write
+
+env:
+  TAG: ${{ inputs.tag || github.ref_name }}
 
 jobs:
   # A `v*` tag published three installers without running one test.
@@ -22,6 +32,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ env.TAG }}
 
       # electron-builder publishes to the release named after package.json's
       # version, while the notes job below looks the release up by the pushed
@@ -31,11 +43,11 @@ jobs:
         run: |
           set -euo pipefail
           expected="v$(node -p 'require("./package.json").version')"
-          if [ "$expected" != "$GITHUB_REF_NAME" ]; then
-            echo "FAIL: tag $GITHUB_REF_NAME does not match package.json version ($expected)." >&2
+          if [ "$expected" != "$TAG" ]; then
+            echo "FAIL: tag $TAG does not match package.json version ($expected)." >&2
             exit 1
           fi
-          echo "tag $GITHUB_REF_NAME matches package.json"
+          echo "tag $TAG matches package.json"
 
       - uses: actions/setup-node@v7
         with:
@@ -62,6 +74,8 @@ jobs:
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ env.TAG }}
 
       - uses: actions/setup-node@v7
         with:
@@ -95,6 +109,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ env.TAG }}
 
       - uses: actions/setup-node@v7
         with:
@@ -128,6 +144,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ env.TAG }}
 
       - uses: actions/setup-node@v7
         with:
@@ -161,6 +179,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ env.TAG }}
+          fetch-depth: 0
+          fetch-tags: true
 
       - name: Collect the installers
         uses: actions/download-artifact@v4
@@ -188,36 +210,40 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const tag = context.ref.replace('refs/tags/', '');
-            const version = tag.replace(/^v/, '');
-            const changelog = fs.readFileSync('CHANGELOG.md', 'utf8');
-            // Match `## [version]` line then capture everything until the next
-            // `## [` heading (or end of file). Escape dots in the version.
-            const escaped = version.replace(/\./g, '\\.');
-            const re = new RegExp(`^## \\[${escaped}\\][^\\n]*\\n([\\s\\S]*?)(?=^## \\[|$(?![\\s\\S]))`, 'm');
-            const match = changelog.match(re);
-            if (!match) {
-              core.setFailed(`No CHANGELOG section found for ${version}.`);
+            const notes = require(`${process.env.GITHUB_WORKSPACE}/scripts/release-notes.cjs`);
+            const { execFileSync } = require('child_process');
+            const tag = process.env.TAG;
+            const section = notes.extractSection(fs.readFileSync('CHANGELOG.md', 'utf8'), tag.replace(/^v/, ''));
+            if (section === null) {
+              core.setFailed(`No CHANGELOG section found for ${tag}.`);
               return;
             }
-            const body = [
-              `## Altnautica Command ${tag}`,
-              '',
-              match[1].trim(),
-              '',
-              '---',
-              '',
-              '### Downloads',
-              '',
-              '- **macOS:** `.dmg` (Intel and Apple Silicon), unsigned and not notarized',
-              '- **Windows:** `.exe` installer, unsigned',
-              '- **Linux:** `.AppImage`',
-              '',
-              'These installers are not code-signed. Check a download against',
-              '`SHA256SUMS` in this release (`sha256sum -c SHA256SUMS --ignore-missing`).',
-              '',
-              '> For the latest web version, visit [command.altnautica.com](https://command.altnautica.com).',
-            ].join('\n');
+            const git = (...args) => execFileSync('git', args, { encoding: 'utf8' }).trim();
+            let prev = null;
+            try {
+              prev = git('describe', '--tags', '--abbrev=0', '--match', 'v[0-9]*.[0-9]*.[0-9]*', `${tag}^`);
+            } catch {
+              prev = null;
+            }
+            const commits = prev
+              ? git('log', '--no-merges', '--reverse', '--format=%H%x1f%s', `${prev}..${tag}`)
+                  .split('\n')
+                  .filter(Boolean)
+                  .map((line) => {
+                    const [sha, subject] = line.split('\x1f');
+                    return { sha, subject };
+                  })
+              : [];
+            const body = notes.releaseBody({
+              tag,
+              section,
+              commitList: notes.commitListMarkdown({
+                commits,
+                prevTag: prev,
+                tag,
+                repoUrl: `https://github.com/${context.repo.owner}/${context.repo.repo}`,
+              }),
+            });
             const { data: releases } = await github.rest.repos.listReleases({
               owner: context.repo.owner,
               repo: context.repo.repo,
