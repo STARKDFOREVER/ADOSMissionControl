@@ -8,7 +8,7 @@
 </p>
 <h1 align="center">ADOS Mission Control</h1>
 <p align="center"><em>Open-source ground control station for software-defined drones. ArduPilot, PX4, Betaflight and iNav, in the browser.</em></p>
-<p align="center">![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-green.svg) ![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue.svg) ![Next.js 16](https://img.shields.io/badge/Next.js-16-black.svg) ![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg) [![Discord](https://img.shields.io/badge/Discord-Join-5865F2.svg)](https://discord.gg/uxbvuD4d5q)</p>
+<p align="center"><img alt="License: GPL-3.0" src="https://img.shields.io/badge/License-GPL--3.0-green.svg"> <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-strict-blue.svg"> <img alt="Next.js 16" src="https://img.shields.io/badge/Next.js-16-black.svg"> <img alt="PRs Welcome" src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg"> <a href="https://discord.gg/uxbvuD4d5q"><img alt="Discord" src="https://img.shields.io/badge/Discord-Join-5865F2.svg"></a></p>
 <p align="center">
   <strong><a href="https://github.com/altnautica/ADOSMissionControl">Mission Control</a></strong> |
   <strong><a href="https://github.com/altnautica/ADOSDroneAgent">Drone Agent</a></strong> |
@@ -23,9 +23,7 @@
 
 <p align="center"><a href="https://command.altnautica.com">Live App</a> · <a href="https://command.altnautica.com/community/changelog">Changelog</a> · <a href="https://command.altnautica.com/community/contact">Contact</a> · <a href="https://github.com/altnautica/ADOSMissionControl/issues">Issues</a></p>
 
-<p align="center">
-  <a href="https://altnautica.com"><img src=".github/assets/film-poster.webp" alt="ADOS in 30 seconds" width="100%"></a>
-</p>
+https://github.com/user-attachments/assets/09f265f4-b692-468a-a170-2be2d8525ae7
 
 Command any drone from any browser. ADOS Mission Control is a full ground control station for software-defined drones. Configure flight controllers panel by panel, plan missions with pattern generators, fly with a gamepad at 50 Hz, and tune PIDs with AI. No install. No locked hardware.
 
