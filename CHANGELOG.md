@@ -6,6 +6,30 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+This release covers everything since 0.60.0: fifty-four commits between
+2026-10-13 and 2026-10-22, more than half of them on 2026-10-20. Three threads
+run through it.
+
+The first is the planner, rebuilt around the selection. A plan outline, an
+inspector that follows what you pick, a dock of mission tabs and a 3D view
+replace the old panels. Missions now reach ArduPilot and PX4 the way each
+autopilot reads them, and validation, flight time and the return leg follow
+the autopilot's own rules. Each plan carries its planned home, vehicle profile
+and transit altitude into the library, files and share links, and `.plan`,
+`.waypoints` and KML files round-trip what QGC and Mission Planner read.
+Terrain comes from open elevation tiles, and terrain, map tiles and the app
+itself are kept for offline use.
+
+The second is nodes beyond the drone. The Visor capture rig is a new node
+profile with its own Overview, Sensors and Cameras pages, and it is never
+offered flight actions. Ground stations gain GNSS and LoRa tabs with the LoRa
+band plan, duty meters and region advisories, and the front-panel buttons
+become editable on both. Detection overlays move to wire version 3.
+
+The third is the surface around them: the Dark theme is a neutral black with
+one accent, the vector STREETS and LIGHT basemaps and ground-station field tile
+packs join the map, and MCP setup runs the server in Docker by default.
+
 ### Added
 
 - **MCP setup runs the server in Docker by default.** The MCP setup wizard,
@@ -22,99 +46,165 @@ the project follows [Semantic Versioning](https://semver.org/).
   place with the same tools as the 2D map, drag a waypoint to move it,
   Alt+drag to change its altitude, right-click for the waypoint menu; Escape
   cancels a drag. Selection is shared with the outline and inspector, edits
-  share the undo history, and the chosen view persists. Drawing tools return
-  to the 2D map.
+  share the undo history, and the chosen view persists. Picking a drawing tool
+  switches back to the 2D map, and the map overlays panel and offline area
+  download work only on the 2D map. With no plan open, the planner shows the
+  2D map.
 - **SIM chip** on the node header when the agent reports `sim: true` (its
-  simulation mode flag). Demo mode shows it on Delta-04.
+  simulation mode flag), whether the node is reached on the local network or
+  through the cloud relay. Demo mode shows it on Delta-04.
 - **Visor nodes.** A node running the agent's `visor` profile shows with a
-  scan-line glyph and its own accent. Its Overview reads the agent's health,
-  battery gauge, capture storage, session clock, a rig summary and the last
-  capture session; a Sensors tab lists every rig sensor with its live rate
-  against the expected rate, sample age, sync sigma and source, plus the
-  sensor hub and flight controller behind them. Display, buttons and
-  peripherals are the same tabs the ground station uses. Extension pages that
-  target the Visor join by their manifest order. Plugins and their Convex
-  install rows accept `visor` as a target profile. Demo mode includes a Visor.
+  scan-line glyph and its own accent, and the profile picker on a node's Core
+  settings page lists Visor. Its Overview reads the agent's health, battery
+  gauge, capture storage, session clock, a rig summary and the last capture
+  session. A Sensors tab lists every rig sensor with its live rate against the
+  expected rate (a sensor with no known expected rate shows its rate without a
+  verdict), sample age, sync sigma and source, plus the sensor hub and flight
+  controller behind them. A reading whose latest read failed keeps its last
+  value with a "Stale" chip giving its age, a failed read says whether the
+  node answered with an error or did not answer, and a GNSS receiver without a
+  fix reads "no fix". Capture storage and session sizes read in binary units
+  (GiB). A Visor reached only through the cloud relay says its sensor readings
+  need a local-network connection. The Cameras page edits the roles and
+  capture keys of the capture cameras. Display, buttons and peripherals are
+  the same tabs the ground station uses, with the Visor's own button and
+  screen defaults. Extension pages that target the Visor are placed in their
+  manifest order, and plugins and their Convex install rows accept `visor` as
+  a target profile. Demo mode includes a Visor with two capture cameras and
+  stand-in Capture, Sessions and Calibration tabs.
+- **Visors are offered no flight actions.** A Visor whose sensor hub answers
+  as a MAVLink flight controller shows the flight-controller reading, status
+  card and hardware panel; without one it is a host node. Either way it is not
+  offered arm, mode change, takeoff, land, return to launch, guided or mission
+  commands, mission, fence or rally upload, set home, motor or servo tests, or
+  stick input, and a fleet-wide return to launch skips Visors. Any such
+  command that still reaches the vehicle connection is refused with "This
+  node's flight controller is a sensor hub: flight commands are not offered".
+  Disarm and kill are never refused. Readings, parameters and calibration work
+  as on any other node.
 - **Ground-station GNSS and LoRa tabs**, shown when the node advertises the
-  `gnss` / `lora` capability: receiver fix, RTK base survey/fixed control,
-  heading and PPS lock; the LoRa beacon lane with its regional band plan,
-  region picker, per-rule duty governor meters and a blocked banner that names
-  the reason and the fix. The Radio tab shows every WFB adapter with a
-  diversity summary, and the RC / ELRS tab shows every ELRS module.
-- **Vector street basemaps.** "Streets" (dark) and "Light" draw self-hosted
-  vector tiles with crisp labels at any screen density, in the app language
-  where the map data carries it. Label fonts, icons and the map renderer's
-  worker are fetched into `public/basemap-assets/` before dev and build.
-- **Field tile packs.** When a paired ground station serves a vector tile
-  pack over the local network, the basemap picker offers "Field" and the map
-  works with no internet. Settings > Data lists the station's packs.
+  `gnss` / `lora` flag, whether it is reached on the local network or through
+  the cloud relay. The GNSS tab shows receiver fix, RTK base survey/fixed
+  control (disabled while the vehicle may be armed), heading and PPS lock. The
+  LoRa tab shows the beacon lane with its regional band plan, a region picker,
+  a channel and power form (frequency, ERP and spreading factor) that the agent
+  checks against the band plan, per-rule duty governor meters, the position
+  beacons the lane heard (age, position, altitude, battery, flight mode, RSSI
+  and SNR), a Meshtastic card with receive counters and the bridge state, and
+  a blocked banner that names the reason and the fix. Transmit reads "Allowed"
+  only when transmitting is allowed now, "Paused" with a countdown while a
+  duty, dwell or listen-before-talk rule waits, and "Blocked" otherwise; a
+  region whose module support is unknown is marked "Module band unknown". The
+  Radio tab shows every WFB adapter, with a diversity summary when two or more
+  adapters receive; an adapter whose FEC recoveries are counted per stream
+  shows a dash for them with its loss marked as an estimate, and a node with
+  no WFB receive plane shows an empty state. The RC / ELRS tab shows every
+  ELRS module.
+- **LoRa region advisories.** Amber chips under the active LoRa region flag a
+  Meshtastic bridge preset that differs from the one the region maps to, an
+  explicitly set region that differs from the plan the node's country setting
+  resolves to, and an ELRS module whose domain is not the one the region
+  expects for that module's band. They are advisory only and never block
+  transmit.
+- **LoRa state on the ground-station Overview.** A chip shows the region and
+  its highest duty use while transmit is allowed, "paused" with a countdown
+  while a waiting rule holds it, and "blocked" with the reason otherwise. It
+  appears once that node's LoRa lane has been read.
+- **Adapter RSSI sparklines.** The ground-station Radio tab draws a short RSSI
+  history for each WFB adapter chain, and stops polling the adapters route on
+  an agent that does not serve it.
+- **Demo direct ground station.** Demo mode adds "Ground Station Bravo" in the
+  direct role, with the multi-adapter Radio tab, seeded RSSI history and the
+  GNSS and LoRa tabs. Its mesh view reads as a direct station.
+- **Vector street basemaps.** STREETS (dark) and LIGHT draw vector tiles from
+  the project's tile server. Labels stay crisp at any screen density and use
+  the app language where the map data carries it. The map renderer loads only
+  when one of them is picked, and the map still zooms to street level past the
+  tiles' own detail.
+- **Field tile packs.** When a paired ground station serves a vector tile pack
+  over the local network, the basemap picker offers FIELD and the map works
+  with no internet. With several packs, the picker names the active one and
+  lets you choose. Settings > Data lists the station's packs with their zoom
+  range and size. The list is re-read every minute; a single missed read keeps
+  the field map, and three failures in a row (about three minutes) fall back
+  to STREETS. A page served over HTTPS cannot reach the station's plain-HTTP
+  address, so FIELD appears in the desktop app or in a Mission Control opened
+  over plain HTTP on the local network.
 - **Send to vehicle.** One dialog sends the mission, the geofence and the
   rally points (each when present), shows any blocking issues and the
   pre-flight checklist progress, and reports each item's result. A fence or
   rally points can be sent without a mission. The dialog names the vehicle
   that receives the upload and, when the plan is assigned to another one,
   offers to switch to it.
-- Inspector number fields commit on blur or Enter and can be scrubbed by
-  dragging their label, unit or (on a bare field) the drag handle (Shift ×10,
-  Alt ×0.1) or stepped with the arrow keys.
-- Survey, corridor, structure scan and the new facade scan follow the camera
-  and the ground. Patterns can fly above home, follow the terrain within a set
-  tolerance and climb and descent limits, or use the terrain frame on
-  ArduPilot. Custom cameras, portrait orientation, a minimum trigger interval
-  warning and hover-and-capture for multirotors are new, and corridors are
-  drawn as an open line. Alternate transects now fly every line, entry corners
-  start where they say, the grid angle is a compass bearing from north, a
-  narrow area gets one centred line, photo counts include the shot at each end
-  of a line, corridors fly parallel lines along the whole path, and structure
-  scans orbit the building outline at the scan distance.
-- Terrain heights are kept in the browser between sessions, and an area can be
-  downloaded for offline use. Terrain profiles sample the ground every 30 m
-  instead of five points per leg.
-- The planner shows where the flight starts and ends. A plan keeps a planned
-  home "H" that can be dragged, picked on the map or taken from the vehicle,
-  and the inspector gains Vehicle (autopilot and type) and Home & launch
-  sections with a transit altitude. The map draws the legs from home and back,
-  transit climbs, battery change points and legs that clip terrain, and a "+"
-  on each leg inserts a waypoint at the previous altitude. The Energy tab
-  picks and edits battery packs, splits the route per pack and resumes from
-  the start of any pack; the outline and waypoint menus can resume from a
-  waypoint too. The offline area download can cover the plan's own area and
-  stores terrain heights with the map tiles.
+- **Scrub number fields.** Inspector number fields commit on blur or Enter.
+  You can scrub them by dragging their label, their unit or, on a bare field,
+  the drag handle (Shift ×10, Alt ×0.1), or step them with the arrow keys.
+- **Camera and terrain-following patterns.** Survey, corridor, structure scan
+  and the new facade scan follow the camera and the ground. Patterns can fly
+  above home, follow the terrain within a set tolerance and climb and descent
+  limits, or use the terrain frame on ArduPilot; a follow-terrain pattern
+  applies only once the ground along every leg has been sampled, and says so
+  when the ground could not be read. Custom cameras, portrait orientation, a
+  minimum trigger interval warning and hover-and-capture for multirotors are
+  new, and corridors are drawn as an open line. The survey's wind rows default
+  to the Site tab's forecast wind. Alternate transects now fly every line,
+  entry corners start where they say, the grid angle is a compass bearing from
+  north, a narrow area gets one centred line, photo counts include the shot at
+  each end of a line, corridors fly parallel lines along the whole path, and
+  structure scans orbit the building outline at the scan distance.
+- **Planned home, transit and battery on the map.** The planner shows where
+  the flight starts and ends. A plan keeps a planned home "H" that can be
+  dragged, picked on the map or taken from the vehicle, and the inspector
+  gains Vehicle (autopilot and type) and Home & launch sections. The map draws
+  the legs from home and back, transit climbs, battery change points, and in
+  red the legs that pass through or too close to the terrain (hover for the
+  clearance, click to open it in Issues); a "+" on each leg inserts a waypoint
+  at the previous altitude. The Energy tab picks and edits battery packs,
+  splits the route per pack and resumes from the start of any pack; the
+  outline and waypoint menus can resume from a waypoint too. The offline area
+  download can cover the plan's own area and stores terrain heights with the
+  map tiles.
+- **Transit altitude.** Home & launch has a transit altitude. With one set, a
+  plan that starts with a TAKEOFF or VTOL_TAKEOFF climbs to that height at
+  takeoff, flies over to the first work waypoint at that height before
+  descending to work, and climbs back above the last work waypoint before the
+  final RTL or LAND; a leg whose work waypoint already flies at or above the
+  transit height gets no extra waypoint. These legs are generated, never
+  stored: statistics, the simulation, the upload, the upload receipt and every
+  interchange export (`.waypoints`, `.plan`, KML, KMZ, CSV, including exports
+  from the plan library's menu) fly or write the plan with them, while the
+  `.altmission` file keeps the plan and its transit setting.
+- **Plan settings travel with the plan.** The planned home, vehicle profile and
+  transit altitude are saved with each library plan and written to
+  `.altmission` files and share links. A mission downloaded into a new plan is
+  saved with the planned home taken from the vehicle's home slot. A shared
+  link's home ground height is sampled again locally, and the sharer's vehicle
+  assignment is not carried over.
+- **Share link feedback.** A link that does not decode says so. When unsaved
+  work is open, a toast says the shared plan was saved to the library and
+  offers to open it, and opening it from there saves the open work first. The
+  link is cleared from the address bar either way, so a reload does not import
+  it twice.
+- **The Vehicle section offers the connected vehicle's profile.** When the
+  selected vehicle reports a different autopilot or type than the plan, the
+  Vehicle section names what it reports and offers a Use button. On a PX4 plan
+  the terrain frame is unavailable and its tooltip says why, and a fixed-wing
+  plan with an acceptance radius of 0 reads "Auto (WP_RADIUS)".
+- **Simulation and flight brief follow the flown path.** The simulation's
+  altitude profile plots height above home against horizontal distance flown,
+  including the takeoff climb, transit and return legs, and its waypoint ETAs
+  and seek points use the first arrival at each waypoint. The PDF flight brief
+  counts DO_JUMP repeats, where it used to note that it skipped them, and flags
+  a plan that never ends on its own as an endless loop or an unlimited loiter.
 
 ### Changed
 
-- Detection batches are read at wire version 3 only (frame time comes from
-  the agent's monotonic clock). A batch at any other version is dropped and
-  the node's perception chip and pipelines panel say the agent (or Mission
-  Control) needs an update, instead of the overlay going silently empty.
-- LoRa transmit state follows `blocked_reason` as well as `tx_allowed`: green
-  only when transmit is allowed now, "paused" with a countdown for a waiting
-  rule, "blocked" with the fix otherwise. A region whose module support is
-  unknown reads "module band unknown", never "cannot".
-- Cameras come from the agent's single top-level `cameras[]` list; the
-  retired `video.cameras` list is no longer read. The camera editor edits each
-  camera's capture keys (captured by the vision engine, pixel format, manual
-  exposure, gain, trigger source, keyframe interval), refuses values the agent
-  rejects, and keeps every capture key through an unrelated edit. The Video
-  settings page marks captured cameras with their capture settings.
-- The front-panel Buttons card on ground stations and Visors is editable: one
-  action picker per short and long press, including plugin pass-through (the
-  press goes only to the plugin that claimed it, such as REC and MARK) and the
-  power-off prompt. It reads the agent's `buttons.mapping` shape, which the
-  earlier read-only table did not.
-- A rig sensor with no known expected rate shows its rate without a verdict.
-  A node whose radio adapters read reports no receive plane shows an empty
-  state instead of capability adapters, and an adapter whose FEC recoveries
-  are counted per stream shows a dash for them with its loss marked estimated.
-- A node reporting a profile Mission Control does not know is shown as an
-  unknown node with a neutral glyph and only the Agent page, instead of being
-  treated as a drone. Compute nodes keep their own profile and present as
-  workstations.
-- A Visor whose sensor hub answers as a MAVLink flight controller is treated
-  as a flight node by every FC surface (FC reading, status card, hardware
-  panel); without one it is a host node.
-- The display, buttons and peripherals tabs moved to a profile-neutral
-  `nodes/device/` folder.
+- **Neutral black theme with one accent.** The Dark theme is now a neutral
+  black, with blue as the only default accent. Places that used the secondary
+  lime accent take the primary accent or a categorical yellow or teal;
+  selected waypoints and map items are white, points of interest are violet,
+  and charts, map labels and the desktop window chrome use neutral colours.
+  The accent picker keeps its other colours.
 - **The planner is rebuilt around the selection.** With no plan open, the plan
   library docks beside a full-bleed map. With a plan open: a planner bar (plan
   name, vehicle, issue count, Save, Send to vehicle, and every import, export
@@ -125,110 +215,157 @@ the project follows [Semantic Versioning](https://semver.org/).
   transform); a grouped tool rail on the map with a pattern and template
   gallery; and a dock along the bottom with the mission stats and the
   altitude, terrain, issues, energy, site and checklist tabs. `[`, `]` and `\`
-  toggle the side panels and Ctrl/Cmd+O opens the plan library. Every menu
-  action, panel and dock tab is in the command palette. Pattern number fields
-  no longer snap back to their default while you type.
-  Escape closes an open menu or popover first, then the plans sheet, then
-  cancels drawing, clears the selection and returns the inspector to the
-  mission; no planner key acts while a dialog is open, and the panel keys do
-  nothing with no plan open. Delete, the arrow keys and Ctrl/Cmd+C act on
-  every selected waypoint. Opening another plan clears the previous plan's
+  toggle the side panels and Ctrl/Cmd+O opens the plan library. The side
+  panels, the dock and its tab, and the inspector sections you leave open are
+  remembered between sessions. Every menu action, panel and dock tab is in the
+  command palette. Pattern number fields no longer snap back to their default
+  while you type. Escape closes an open menu or popover first, then the plans
+  sheet, then cancels drawing, clears the selection and returns the inspector
+  to the mission; no planner key acts while a dialog is open, and the panel
+  keys do nothing with no plan open. Delete, the arrow keys and Ctrl/Cmd+C act
+  on every selected waypoint. Opening another plan clears the previous plan's
   checklist ticks and any pattern not yet applied.
-- The planner map opens where you last left it, else at your GPS fix, else
-  showing the whole world. It used to open on open ocean at street zoom, which
-  rendered as a solid dark square. The locate button shows even with no plan
-  open, and the Overview and fleet maps pair an unknown position with a
-  world-wide zoom too.
-- Plugin frames declare the same colour scheme as their document, so a
-  transparent map overlay plugin no longer blanks the map under it.
-- Map tiles are cached for every basemap, always: a service worker keeps the
-  tiles you view and serves them when the connection drops, and serves the
-  app itself offline once it has loaded. Downloaded areas live in their own
-  cache that is never trimmed. Settings > Data shows both caches and the
-  browser storage they use, with a clear button for each. The download panel
-  warns when an area may not fit the free browser storage.
-- Areas downloaded before this release lived in the old browser-database tile
-  store, which is now deleted. Download those areas again.
-- Cached app pages are stored once per path (query strings ignored) and are
-  cleared on sign-out. The app's static files are capped at 600 cached
-  entries, and a dev build's service worker never serves them from cache.
-- Leaving the STREETS vector basemap drops its zoom limit and OpenStreetMap
-  credit, so raster basemaps stop at their own maximum zoom again.
-- A single failed read of the ground station's field tile packs keeps the
-  field map; three failures in a row (about three minutes) fall back.
-- A plan opened from the plan library fits the planner's own map area, the
-  first GPS fix recentres the map even after it was moved programmatically,
-  and the saved map view is no longer overwritten before it has loaded.
-- The planner's plan name and vehicle follow the open plan when it changes
-  outside the plan library (demo start-up, a vehicle mission replacing the
-  plan, deleting the open plan), and clear when no plan is open. A new plan is
-  stored under its translated "Untitled Plan" name.
-- A vehicle home more than 50 km from a plan's launch point is treated as
-  belonging to another site: flight time and distance, the validator's home
-  datum and link-range check, the return-leg terrain advisory, the 3D view's
-  altitudes and exported home slots fall back to the plan's own launch point.
-  A connected drone parked elsewhere no longer turns a 7 km plan into a
-  14,000 km one.
-- Unavailable planner rail buttons (offline area, undo, redo) stay in the tab
-  order and show why in their tooltip on focus. The offline-area button no
-  longer stays disabled forever when the saved planner state fails to load.
-- Missions reach ArduPilot and PX4 the way each autopilot reads them. Items
-  with no position (speed changes, camera and other actions, RTL,
-  DO_LAND_START) go out in the mission frame, which PX4 requires; a waypoint
-  with no heading sends NaN instead of north; only the first item is marked
-  current; ROI is sent as DO_SET_ROI_LOCATION; planes and VTOLs set airspeed
-  rather than ground speed; PX4 delays use NAV_DELAY and terrain-frame
-  waypoints are refused before a PX4 upload; the PX4 action list offers only
-  commands PX4 accepts. Transfers follow the MAVLink mission protocol more
-  strictly: a stray INVALID_SEQUENCE from ArduPilot no longer aborts an
-  upload, an early ACCEPTED is ignored, an empty download is acknowledged, a
-  repeated MISSION_COUNT is ignored and clearing a mission is retried. Rally
-  points keep their altitude frame, a fence return point survives download and
-  upload, ArduPlane's Land breach action is written as autoland-or-RTL, the
-  fence ceiling is read only when the altitude fence is on, and writing the
-  fence type keeps the vehicle's home circle. The waypoint action menu gains
-  photo every N seconds, stop photos, start video and stop video. The default
-  acceptance radius is 0, which leaves the turn distance to the autopilot.
-- Validation checks the legs between waypoints against terrain, not only the
-  waypoints, and reports a leg it could not check instead of passing it. It
-  measures from the plan's planned home and applies each autopilot's own
-  rules: PX4 has no terrain frame, no forward jumps and smaller fence and
-  rally storage; ArduCopter will not start AUTO on the ground without a
-  TAKEOFF; ArduPilot storage is counted over every wire item plus the home
-  slot; a waypoint outside the vehicle's home circle fence, a jump ArduPilot
-  never takes and terrain-frame waypoints without terrain data on the vehicle
-  are flagged. RTL, DO_LAND_START and items flown from the current position no
-  longer trip the distance and link-range checks.
-- Mission files keep what QGC, Mission Planner and the autopilots read from
-  them. `.plan` and `.waypoints` carry the plan's planned home (with its
-  ground height) out and back in, and `.plan` names the autopilot, vehicle
-  type, mission speed and each item's altitude mode, so QGC shows a
-  terrain-frame waypoint as terrain rather than sea level. A missing heading
-  stays "no heading" (`NaN`, or `null` in `.plan`) instead of turning the
-  vehicle north, and an item set not to continue stays that way. A QGC item
-  with no stored altitude is refused rather than imported at 0 m above sea
-  level. `.waypoints` files must be `QGC WPL 110` or `120`; other versions,
-  whose columns differ, are refused. QGC's mission-start speed and camera
-  items attach to the first waypoint instead of being dropped, and a structure
-  scan or landing pattern is skipped with a warning instead of failing the
-  import. KML exports record each waypoint's command, so RTL and LAND come
-  back as RTL and LAND; a KML placemark with no altitude mode is read as
-  clamped to the ground. CSV export writes the mission default frame for
-  waypoints that have none.
-- Flight time, distance and the return leg follow what the autopilot flies.
-  Distance is horizontal and each leg takes as long as its climb or descent
-  needs, at the vehicle's own climb and descent rates when connected. Copters
-  climb straight up at home, landings fly across before descending, a
-  DO_SET_SPEED carries to later legs, jumps are repeated as flown, and an
-  unlimited loiter or looping jump marks the time as open-ended ("+").
-  Statistics measure from the plan's planned home instead of a vehicle home,
-  the dock shows the highest point above home, and RTL heads for the nearest
-  rally point inside the rally limit with its altitude capped by the fence.
-  The energy estimate splits hover from cruise time, uses the selected battery
-  pack and derates for the forecast wind and temperature. A DO_LAND_START on
-  ArduPlane with RTL_AUTOLAND = 0 now blocks the upload.
-- Uploading is refused while the target is armed and flying a mission, and the
-  Send dialog warns when the plan was made for a different autopilot or
+- **The planner map opens on your area.** It opens where you last left it,
+  else at your GPS fix (and recentres when the first fix arrives), else showing
+  the whole world. It used to open on open ocean at street zoom, which rendered
+  as a solid dark square. The locate button shows even with no plan open, and
+  the Overview and fleet maps pair an unknown position with a world-wide zoom
+  too.
+- **Map tiles are cached, always.** A service worker keeps the tiles you view
+  from every built-in basemap and from a field pack, and serves them when the
+  connection drops. It holds up to 20,000 browsed tiles and drops the oldest
+  first. Downloaded areas live in their own cache, which is never trimmed.
+  Downloading an area asks the browser to keep this site's storage, and some
+  browsers ask you first. Tiles from a custom tile server are not kept while
+  browsing: to use one offline, download an area, and the server must send
+  Access-Control-Allow-Origin. Once it has loaded, the app opens offline from
+  its cached pages; signing out drops them. Settings > Data shows both tile
+  caches and the browser storage they use, with a clear button for each. The
+  download panel warns when an area may not fit the free browser storage.
+- **Terrain from open elevation tiles, kept offline.** Terrain checks,
+  follow-terrain patterns, the terrain profile and the 3D view read ground
+  heights from the public Terrain Tiles open dataset (terrarium elevation
+  tiles at zoom 13) instead of an elevation lookup service. Tiles are kept in
+  the browser between sessions, up to 400, least recently used removed first
+  and tiles from an offline area download kept longest. A tile that fails to
+  load reads as unknown ground and is retried after a minute, and the terrain
+  chart credits the data source. Terrain profiles sample the ground every 30 m
+  instead of five points per leg. An offline area download takes up to 64
+  terrain tiles, and its progress reads "Elevation tiles".
+- **Detections use wire version 3.** Mission Control reads detection batches
+  only at version 3, whose frame time comes from the agent's monotonic clock.
+  A batch at any other version is dropped, and the cockpit perception chip and
+  the vision pipelines panel then say whether the agent or Mission Control
+  needs an update, where the overlay used to go empty without explanation.
+  Plugin video overlays receive the batch's arrival time on the Mission
+  Control clock as `frameTimestampMs`, because the agent's frame time is not
+  wall-clock time. An agent restart is recognised (a new connection, a stream
+  that went stale, or a frame time earlier than where the stream started), so
+  the overlay shows the new run's detections straight away.
+- **Cameras come from the agent's single top-level `cameras[]` list;** the
+  retired `video.cameras` list is no longer read. The camera editor edits each
+  camera's capture keys (captured by the vision engine, pixel format, manual
+  exposure, gain, trigger source, keyframe interval), refuses values the agent
+  rejects, and keeps every capture key through an unrelated edit. The Video
+  settings page marks captured cameras with their capture settings.
+- **Editable front-panel buttons.** The Buttons card on ground stations and
+  Visors has one action picker per short and long press, including plugin
+  pass-through (the press goes only to the plugin that claimed it, such as REC
+  and MARK) and the power-off prompt. Each picker starts at the node's current
+  action, and Save sends only the presses that differ from the profile
+  defaults, so a later change to a default still reaches the node. The earlier
+  read-only table did not read the agent's `buttons.mapping` shape and showed
+  every press as unassigned. Before the node's screen list has been read, the
+  Screens card shows that profile's own default screens. In demo mode a save
+  says demo mode is read-only.
+- **Unknown node profiles.** A node reporting a profile Mission Control does
+  not know is shown as an unknown node with a neutral glyph and only the Agent
+  page, instead of being treated as a drone. Compute nodes keep their own
+  profile and present as workstations.
+- **The plugin permission review names the capture permissions.** The plugin
+  install dialog gives a label, a description and a risk level for five agent
+  permissions it used to show as bare ids: reading the sensor bus, writing
+  capture sessions to the capture storage volume, relaying live video playback
+  sessions, storing the sensor rig calibration, and setting exposure and gain
+  on a capture camera.
+- **Mission wire encoding for ArduPilot and PX4.** Missions reach each
+  autopilot the way it reads them. Items with no position (speed changes,
+  camera and other actions, RTL, DO_LAND_START) go out in the mission frame,
+  which PX4 requires; a waypoint with no heading sends NaN instead of north;
+  only the first item is marked current; ROI is sent as DO_SET_ROI_LOCATION;
+  planes and VTOLs set airspeed rather than ground speed; PX4 delays use
+  NAV_DELAY and terrain-frame waypoints are refused before a PX4 upload; the
+  PX4 action list offers only commands PX4 accepts. Transfers follow the
+  MAVLink mission protocol more strictly: a stray INVALID_SEQUENCE from
+  ArduPilot no longer aborts an upload, an early ACCEPTED is ignored, an empty
+  download is acknowledged, a repeated MISSION_COUNT is ignored and clearing a
+  mission is retried. Rally points keep their altitude frame, a fence return
+  point survives download and upload, ArduPlane's Land breach action is
+  written as autoland-or-RTL, the fence ceiling is read only when the altitude
+  fence is on, and writing the fence type keeps the vehicle's home circle. The
+  waypoint action menu gains photo every N seconds, stop photos, start video
+  and stop video. The default acceptance radius is 0, which leaves the turn
+  distance to the autopilot.
+- **Waypoint commands and rally defaults.** Switching a waypoint to another
+  command clears its parameter slots and applies the new command's defaults,
+  so an old acceptance radius is no longer read as a different setting (on PX4
+  that slot means LAND's precision-landing mode or VTOL_TAKEOFF's transition
+  heading). The action menu has a separate Gimbal group, and a new
+  CONDITION_YAW defaults to the shortest turn. A new rally point's default
+  altitude reads RTL_ALT_M on ArduCopter 4.7 and RTL_ALTITUDE on ArduPlane
+  4.5, falling back to the older RTL_ALT and ALT_HOLD_RTL.
+- **Rally download altitudes.** A downloaded rally point stored above sea
+  level is converted to above-home with the vehicle's home altitude. The
+  download is refused when no home altitude is known, or when a point uses an
+  altitude frame the planner cannot show.
+- **ArduPlane fence breach.** On an ArduPlane or QuadPlane plan the fence
+  editor offers Land only while it is already the stored choice, because
+  ArduPlane ignores "always land".
+- **Autopilot-aware validation.** Validation checks the legs between waypoints
+  against terrain, not only the waypoints, and reports a leg it could not check
+  instead of passing it. It measures from the plan's planned home and applies
+  each autopilot's own rules: PX4 has no terrain frame, no forward jumps and
+  smaller fence and rally storage; ArduCopter will not start AUTO on the
+  ground without a TAKEOFF; ArduPilot storage is counted over every wire item
+  plus the home slot; a waypoint outside the vehicle's home circle fence, a
+  jump ArduPilot never takes and terrain-frame waypoints without terrain data
+  on the vehicle are flagged. RTL, DO_LAND_START and items flown from the
+  current position no longer trip the distance and link-range checks.
+- **Mission file round trips.** Mission files keep what QGC, Mission Planner
+  and the autopilots read from them. `.plan` and `.waypoints` carry the plan's
+  planned home (with its ground height) out and back in, and `.plan` names the
+  autopilot, vehicle type, mission speed and each item's altitude mode, so QGC
+  shows a terrain-frame waypoint as terrain rather than sea level. A missing
+  heading stays "no heading" (`NaN`, or `null` in `.plan`) instead of turning
+  the vehicle north, and an item set not to continue stays that way. A QGC
+  item with no stored altitude is refused rather than imported at 0 m above
+  sea level. `.waypoints` files must be `QGC WPL 110` or `120`; other
+  versions, whose columns differ, are refused. QGC's mission-start speed and
+  camera items attach to the first waypoint instead of being dropped, and a
+  structure scan or landing pattern is skipped with a warning instead of
+  failing the import. KML exports record each waypoint's command, so RTL and
+  LAND come back as RTL and LAND; a KML placemark with no altitude mode is
+  read as clamped to the ground. CSV export writes the mission default frame
+  for waypoints that have none.
+- **Flight time follows the autopilot.** Flight time, distance and the return
+  leg follow what the autopilot flies. Distance is horizontal and each leg
+  takes as long as its climb or descent needs, at the vehicle's own climb and
+  descent rates when connected. Copters climb straight up at home, landings
+  fly across before descending, a DO_SET_SPEED carries to later legs, jumps
+  are repeated as flown, and an unlimited loiter or looping jump marks the
+  time as open-ended ("+"). Statistics measure from the plan's planned home
+  instead of a vehicle home, the dock shows the highest point above home, and
+  RTL heads for the nearest rally point inside the rally limit with its
+  altitude capped by the fence. The energy estimate splits hover from cruise
+  time, uses the selected battery pack and derates for the forecast wind and
+  temperature. A DO_LAND_START on ArduPlane with RTL_AUTOLAND = 0 now blocks
+  the upload.
+- **Send guards and resume.** Uploading a mission, a geofence or rally points
+  is refused while the target vehicle is armed and running its mission (AUTO on
+  ArduPilot and PX4, MISSION on iNav), with "Pause the mission before
+  uploading". The check reads the target vehicle's own state, so another
+  drone's reading never decides it, and an unknown arm state does not block.
+  The Send dialog warns when the plan was made for a different autopilot or
   vehicle type. A mission can be resumed from a chosen waypoint: the planner
   uploads a mission that takes off, restores the speed and camera trigger in
   effect, and continues from there. Every plan keeps a planned home, seeded
@@ -237,19 +374,61 @@ the project follows [Semantic Versioning](https://semver.org/).
   unsaved work. Reverse keeps the takeoff and the return in place, inserted
   waypoints copy the previous altitude and frame, pasted jumps point at the
   pasted copies, Enter finishes a drawing, and the east-west nudge moves the
-  same distance at every latitude. Battery packs can be saved and picked for
-  the energy estimate.
+  same distance at every latitude.
+- **Plan name follows the open plan.** The planner's plan name and vehicle
+  follow the open plan when it changes outside the plan library (demo
+  start-up, a vehicle mission replacing the plan, deleting the open plan), and
+  clear when no plan is open. A new plan is stored under its translated
+  "Untitled Plan" name.
+- **Vehicle home from another site.** A vehicle home more than 50 km from the
+  plan's launch point is never used to seed the plan's planned home or offered
+  as one. Without a planned home, flight time and distance, validation, the
+  return-leg advisory, the 3D view and exported home slots measure from the
+  plan's launch point, so a connected drone parked at another site no longer
+  turns a 7 km plan into a 14,000 km one.
+- **Rail buttons explain themselves.** Unavailable planner rail buttons
+  (offline area, undo, redo) stay in the tab order and show why in their
+  tooltip on focus. The offline-area button no longer stays disabled forever
+  when the saved planner state fails to load. Tool keys pressed with no plan
+  open leave the tool as it is and show a message saying why.
+- **A demo drone's mission opens as its own plan.** In demo mode, the mission
+  downloaded from the selected demo drone opens as a plan named "<drone> live
+  mission" in the demo folder. Switching away asks nothing, the previous
+  plan's geofence, rally points and points of interest are cleared, and Undo
+  does not step back into the previous plan. Selecting the same drone again
+  replaces its plan.
 
 ### Fixed
 
+- **Map overlay plugins.** A transparent map overlay plugin no longer blanks
+  the map under it. Plugin frames now declare the same colour scheme as the
+  page around them.
+- **"Seconds ago" and freshness readouts start from the current time.** A
+  panel opened after the shared one-second clock had stopped could read the
+  time of its last tick, or the time the app loaded, so ages and staleness
+  verdicts were off until the next tick. This affected panels such as
+  pre-arm, DisplayPort OSD, the iNav programming PID readouts and node ages.
+  The clock now refreshes when the first panel subscribes.
+- **Node tab strip.** The node page tab strip scrolls sideways when the tabs
+  do not fit, instead of clipping them. Arrow buttons appear at an overflowing
+  edge, a vertical mouse wheel scrolls the strip, and the active tab scrolls
+  into view.
+- **Share links open when saved plans fail to load.** A share link used to
+  wait forever when the browser's stored plans or planner state could not be
+  read. It now opens the shared plan anyway and says it will not be kept after
+  a reload. If stored plans take more than five seconds to load, a notice says
+  the shared plan opens when they are ready.
+- Planner: a takeoff and the first waypoint at the same spot are no longer
+  flagged as duplicate waypoints.
 - Planner: a reload in demo mode keeps the plan that was open (it used to
   switch to the first demo mission or the first drone's live mission), and the
   map frames that plan. Demo drones no longer start selected.
 - Planner: picking a pattern after drawing its polygon keeps the polygon.
 - Planner: Send to vehicle and Download from drone need a selected, connected
   vehicle; geofence and rally stay available when no vehicle is selected.
-- Planner: "Clear plan" (was "Discard plan") keeps the plan's name and
-  vehicle and says that Undo brings the contents back.
+- Planner: "Clear plan" (was "Discard Changes") keeps the plan's name and
+  vehicle, and its confirmation says that Undo brings the contents back and
+  that the library copy stays until you save.
 - Planner: the 2D map highlights every waypoint in a multi-selection; the
   terrain chart measures relative altitudes from the planned home, labels its
   distances with units and no longer overlaps them; landing, takeoff and RTL
@@ -266,6 +445,61 @@ the project follows [Semantic Versioning](https://semver.org/).
   area" button). Flight patterns and mission templates cover the same set-ups.
 - The "Tile caching" setting. Caching is always on, so the toggle went with
   the old browser-database tile store.
+- The Mono theme. Dark now uses the same neutral black, and a saved Mono
+  choice switches to Dark automatically.
+
+### Notes
+
+- **Redeploy Convex functions** (`npx convex deploy`) before serving this
+  build. The cloud status heartbeat now stores a node's `gnss`, `lora` and
+  `sim` flags, so a node reached only through the cloud relay shows its GNSS
+  and LoRa tabs and its SIM chip; a deployment that has not been redeployed
+  drops those flags.
+- **Update agents for detections and camera settings.** Detection overlays
+  need an agent that sends detection batches at wire version 3; with an older
+  agent the overlay stays empty and the perception chip and pipelines panel
+  ask for an agent update. The Video settings page reads the top-level
+  `cameras[]` list, so an agent that still keeps its streams under
+  `video.cameras` shows only its single camera block there until it is
+  updated.
+- **Download offline areas again.** Areas downloaded before this release lived
+  in the old browser-database tile store, which Mission Control deletes on
+  first load. Download those areas again from the planner.
+- **New planner settings.** Settings gain custom camera profiles and battery
+  packs. Existing installs are migrated automatically, and the battery pack
+  list is seeded with a "Default pack" (185 Wh, 20 % reserve) that matches the
+  figure the energy estimate used before. That pack can be edited but not
+  deleted.
+- **Plugin theme token.** Plugin frames no longer receive the
+  `accent-secondary` colour token through `theme.changed`. A plugin that styled
+  against it should use `accent-primary` or its own colour.
+- **Builds download the basemap label fonts.** `npm run build` fetches the
+  vector basemaps' label fonts and icons from a pinned archive into
+  `public/basemap-assets/`, and the build stops if it cannot reach the
+  archive; that covers the Docker image and the `desktop:build*` installers
+  too. Dev and demo runs only warn, and the vector basemaps then draw without
+  labels or icons. Once fetched, the files are reused until the pinned version
+  changes.
+- **STREETS and LIGHT load tiles from the project's tile server.** The tile
+  address is built into the app. A deployment that must not reach that server
+  can stay on a raster basemap, or point the Custom basemap at its own tile
+  server.
+- **Keep `/sw.js` uncached.** Mission Control serves `/sw.js` with
+  `Cache-Control: no-cache` and `Service-Worker-Allowed: /`, so each new
+  build's service worker is picked up on the next load. A reverse proxy in
+  front of a self-hosted install should pass both headers through. Development
+  builds register the worker only when `NEXT_PUBLIC_ENABLE_SW=true` is set.
+- **MCP in Docker: auto-adopt and Linux user ids.** A container on Docker's
+  default network cannot see mDNS, so auto-adopt does not find drones from a
+  Docker run: on Linux add `--network host`, elsewhere use From source for
+  auto-adopt. The image runs as user id 1000; on Linux with a different id,
+  add `--user "$(id -u):$(id -g)"`. In Git Bash, prefix the command with
+  `MSYS_NO_PATHCONV=1` so the mount path is not rewritten. The setup wizard
+  shows each of these hints.
+- **Releases run from the Release workflow.** Maintainers dispatch `Release`
+  with a version; it turns `[Unreleased]` into that version, bumps
+  `package.json`, tags and builds the installers, and the release page lists
+  every commit since the previous release.
 
 ## [0.60.0] - 2026-10-11
 
