@@ -1,104 +1,35 @@
-# Altnautica Mission Control
+<p align="center">
+  <a href="https://altnautica.com">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset=".github/assets/brand/ados-lockup-dark.svg">
+      <img src=".github/assets/brand/ados-lockup-light.svg" alt="ADOS" width="220">
+    </picture>
+  </a>
+</p>
+<h1 align="center">ADOS Mission Control</h1>
+<p align="center"><em>Open-source ground control station for software-defined drones. ArduPilot, PX4, Betaflight and iNav, in the browser.</em></p>
+<p align="center">![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-green.svg) ![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue.svg) ![Next.js 16](https://img.shields.io/badge/Next.js-16-black.svg) ![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg) [![Discord](https://img.shields.io/badge/Discord-Join-5865F2.svg)](https://discord.gg/uxbvuD4d5q)</p>
+<p align="center">
+  <strong><a href="https://github.com/altnautica/ADOSMissionControl">Mission Control</a></strong> |
+  <strong><a href="https://github.com/altnautica/ADOSDroneAgent">Drone Agent</a></strong> |
+  <strong><a href="https://github.com/altnautica/ADOSAndroidGCS">Android GCS</a></strong> |
+  <strong><a href="https://github.com/altnautica/ADOSExtensions">Extensions</a></strong> |
+  <strong><a href="https://github.com/altnautica/ADOS-MCP">MCP</a></strong> |
+  <strong><a href="https://github.com/altnautica/ADOSDroneAgent/tree/main/crates#published-crates">Rust crates</a></strong> |
+  <strong><a href="https://docs.altnautica.com">Docs</a></strong> |
+  <strong><a href="https://altnautica.com">Website</a></strong> |
+  <strong><a href="https://discord.gg/uxbvuD4d5q">Discord</a></strong>
+</p>
 
-**Open-source web ground station for software-defined drones. ArduPilot, PX4, Betaflight, and iNav. Mission planning, AI tuning, and gamepad flight, in the browser.**
+<p align="center"><a href="https://command.altnautica.com">Live App</a> · <a href="https://command.altnautica.com/community/changelog">Changelog</a> · <a href="https://command.altnautica.com/community/contact">Contact</a> · <a href="https://github.com/altnautica/ADOSMissionControl/issues">Issues</a></p>
 
-![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-green.svg) ![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue.svg) ![Next.js 16](https://img.shields.io/badge/Next.js-16-black.svg) ![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg) [![Discord](https://img.shields.io/badge/Discord-Join-5865F2.svg)](https://discord.gg/uxbvuD4d5q)
+<p align="center">
+  <a href="https://altnautica.com"><img src=".github/assets/film-poster.webp" alt="ADOS in 30 seconds" width="100%"></a>
+</p>
 
 Command any drone from any browser. ADOS Mission Control is a full ground control station for software-defined drones. Configure flight controllers panel by panel, plan missions with pattern generators, fly with a gamepad at 50 Hz, and tune PIDs with AI. No install. No locked hardware.
 
-> **Part of the ADOS ecosystem.** Pairs with [ADOS Drone Agent](https://github.com/altnautica/ADOSDroneAgent), the Rust-first onboard companion, for the long-range data link, HD video, and cloud fleet management. Works standalone with any MAVLink drone over USB or WebSocket. Add features with [ADOS Extensions](https://github.com/altnautica/ADOSExtensions), the first-party plugin repo.
-
-<p align="center">
-  <strong><a href="https://command.altnautica.com">Live App</a></strong> |
-  <strong><a href="https://docs.altnautica.com">Docs</a></strong> |
-  <strong><a href="https://github.com/altnautica/ADOSExtensions">ADOS Extensions</a></strong> |
-  <strong><a href="https://command.altnautica.com/community/changelog">Changelog</a></strong> |
-  <strong><a href="https://discord.gg/uxbvuD4d5q">Discord</a></strong> |
-  <strong><a href="mailto:team@altnautica.com">Email</a></strong> |
-  <strong><a href="https://command.altnautica.com/community/contact">Contact</a></strong>
-</p>
-
----
-
-<p align="center">
-  <img src="public/screenshots/dashboard.png" alt="Fleet Dashboard" width="100%">
-</p>
-
----
-
-<table>
-  <tr>
-    <td width="50%">
-      <img src="public/screenshots/mission-planner.png" alt="Mission Planner" height="220" width="100%"><br>
-      <sub>Mission planning with pattern generators and terrain following</sub>
-    </td>
-    <td width="50%">
-      <img src="public/screenshots/flight-control.png" alt="Flight Control" height="220" width="100%"><br>
-      <sub>Gamepad and HOTAS flight controls at 50 Hz</sub>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%">
-      <img src="public/screenshots/3d-simulation.png" alt="3D Simulation" height="220" width="100%"><br>
-      <sub>Cesium 3D globe with real terrain and flight path replay</sub>
-    </td>
-    <td width="50%">
-      <img src="public/screenshots/configure.png" alt="FC Configuration" height="220" width="100%"><br>
-      <sub>Nearly 60 panels for full flight controller setup</sub>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%">
-      <img src="public/screenshots/parameters.png" alt="FC Parameters" height="220" width="100%"><br>
-      <sub>Search, edit, and write all FC parameters</sub>
-    </td>
-    <td width="50%">
-      <img src="public/screenshots/flashtool.png" alt="Firmware Flash Tool" height="220" width="100%"><br>
-      <sub>WebUSB firmware flashing, no external flasher needed</sub>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%">
-      <img src="public/screenshots/planning.png" alt="Mission Planning" height="220" width="100%"><br>
-      <sub>Drag-and-drop waypoint editor with terrain profile and mission validation</sub>
-    </td>
-    <td width="50%">
-      <img src="public/screenshots/drone-agent-overview.png" alt="Drone Agent Overview" height="220" width="100%"><br>
-      <sub>Real-time agent monitoring with service status, system resources, and live logs</sub>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%">
-      <img src="public/screenshots/drone-agent-fleet.png" alt="Fleet Network" height="220" width="100%"><br>
-      <sub>MeshNet fleet enrollment, MQTT gateway status, mesh radio peers, and network topology</sub>
-    </td>
-    <td width="50%">
-      <img src="public/screenshots/drone-agent-peripherals.png" alt="Peripherals" height="220" width="100%"><br>
-      <sub>Connected peripheral detection with live sensor readings (IMU, GPS, barometer, camera, radio)</sub>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%">
-      <img src="public/screenshots/simulate-3d.png" alt="3D Mission Simulation" height="220" width="100%"><br>
-      <sub>3D mission simulation with waypoints over terrain, playback controls, and camera presets</sub>
-    </td>
-    <td width="50%"></td>
-  </tr>
-</table>
-
----
-
-## What it lets you do
-
-- **Connect to any drone, no driver install.** Plug in over USB (WebSerial), point at a MAVLink WebSocket, or pair with an ADOS agent over your LAN.
-- **Set up the whole flight controller.** Nearly 60 panels cover calibration, PID tuning, receivers, outputs, failsafe, power, ports, OSD, firmware flashing, and the iNav-specific surfaces.
-- **Plan a mission by drawing it.** Drop waypoints on the map, generate survey, orbit, corridor, SAR, and structure-scan patterns, follow terrain, set geofences and rally points, then validate before upload.
-- **Fly with a real controller.** Gamepad, HOTAS, RC transmitter, or keyboard at 50 Hz, with arm/disarm, mode switching, guided flight, and a kill switch.
-- **Rehearse in 3D.** Replay a mission over real terrain on a Cesium globe before you fly it.
-- **Tune PIDs with help.** FFT-driven noise and motor-health analysis suggests filter settings and PID values.
-- **Manage a fleet from anywhere.** Cloud mode adds multi-drone dashboards, mission sync, and real-time telemetry over MQTT.
-- **Sign your commands.** HMAC-SHA256 on every outbound MAVLink v2 frame, with the key held only in your browser.
-- **Self-host all of it.** Field operations work fully offline, and the cloud relay can run entirely on your own servers.
+It works standalone with any MAVLink or MSP flight controller over USB or WebSocket, and pairs with [ADOS Drone Agent](https://github.com/altnautica/ADOSDroneAgent) for the long-range link, HD video and fleet management.
 
 ## Quick Start
 
@@ -114,6 +45,129 @@ npm run demo
 ```
 
 Open [http://localhost:4000](http://localhost:4000). Simulated drones, no hardware required.
+
+## Features
+
+<table>
+  <tr>
+    <td width="50%">
+      <img src=".github/assets/loops/plan3d.gif" alt="3D mission planning" width="100%"><br>
+      <sub>Plan missions in 3D over real terrain. <a href="https://docs.altnautica.com/mission-control/mission-planning">Docs</a></sub>
+    </td>
+    <td width="50%">
+      <img src=".github/assets/loops/cockpit.gif" alt="Cockpit" width="100%"><br>
+      <sub>Fly from the cockpit with live video and a gamepad. <a href="https://docs.altnautica.com/mission-control/cockpit">Docs</a></sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src=".github/assets/loops/sim3d.gif" alt="3D simulation" width="100%"><br>
+      <sub>Rehearse a mission on a Cesium globe before you fly it. <a href="https://docs.altnautica.com/mission-control/simulation">Docs</a></sub>
+    </td>
+    <td width="50%">
+      <img src=".github/assets/loops/plan-generate.gif" alt="Pattern generation" width="100%"><br>
+      <sub>Generate survey, orbit, corridor and search patterns. <a href="https://docs.altnautica.com/mission-control/pattern-generators">Docs</a></sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset=".github/assets/screens/dashboard-dark.webp">
+        <img src=".github/assets/screens/dashboard-light.webp" alt="Fleet dashboard" width="100%">
+      </picture><br>
+      <sub>See every drone and node on one dashboard. <a href="https://docs.altnautica.com/mission-control/dashboard">Docs</a></sub>
+    </td>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset=".github/assets/screens/plan-dark.webp">
+        <img src=".github/assets/screens/plan-light.webp" alt="Mission planner" width="100%">
+      </picture><br>
+      <sub>Edit waypoints with a terrain profile and validation. <a href="https://docs.altnautica.com/mission-control/mission-planning">Docs</a></sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset=".github/assets/screens/fleet-nodes-dark.webp">
+        <img src=".github/assets/screens/fleet-nodes-light.webp" alt="Fleet nodes" width="100%">
+      </picture><br>
+      <sub>Manage paired drones and ground nodes. <a href="https://docs.altnautica.com/mission-control/nodes-fleet-view">Docs</a></sub>
+    </td>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset=".github/assets/screens/parameters-dark.webp">
+        <img src=".github/assets/screens/parameters-light.webp" alt="Parameters" width="100%">
+      </picture><br>
+      <sub>Search, edit and write every FC parameter. <a href="https://docs.altnautica.com/mission-control/parameters">Docs</a></sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset=".github/assets/screens/setup-dark.webp">
+        <img src=".github/assets/screens/setup-light.webp" alt="FC setup" width="100%">
+      </picture><br>
+      <sub>Set up the flight controller panel by panel. <a href="https://docs.altnautica.com/mission-control/fc-configuration">Docs</a></sub>
+    </td>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset=".github/assets/screens/mcp-wizard-dark.webp">
+        <img src=".github/assets/screens/mcp-wizard-light.webp" alt="MCP wizard" width="100%">
+      </picture><br>
+      <sub>Connect an AI client through the MCP wizard. <a href="https://docs.altnautica.com/mission-control/mcp">Docs</a></sub>
+    </td>
+  </tr>
+</table>
+
+## What it lets you do
+
+- **Connect to any drone, no driver install.** Plug in over USB (WebSerial), point at a MAVLink WebSocket, or pair with an ADOS agent over your LAN.
+- **Set up the whole flight controller.** More than 80 panels cover calibration, PID tuning, receivers, outputs, failsafe, power, ports, OSD, firmware flashing, and the iNav-specific surfaces.
+- **Plan a mission by drawing it.** Drop waypoints on the map, generate survey, orbit, corridor, SAR, and structure-scan patterns, follow terrain, set geofences and rally points, then validate before upload.
+- **Fly with a real controller.** Gamepad, HOTAS, RC transmitter, or keyboard at 50 Hz, with arm/disarm, mode switching, guided flight, and a kill switch.
+- **Rehearse in 3D.** Replay a mission over real terrain on a Cesium globe before you fly it.
+- **Tune PIDs with help.** FFT-driven noise and motor-health analysis suggests filter settings and PID values.
+- **Manage a fleet from anywhere.** Cloud mode adds multi-drone dashboards, mission sync, and real-time telemetry over MQTT.
+- **Sign your commands.** HMAC-SHA256 on every outbound MAVLink v2 frame, with the key held only in your browser.
+- **Self-host all of it.** Field operations work fully offline, and the cloud relay can run entirely on your own servers.
+
+---
+
+## How ADOS fits together
+
+```mermaid
+flowchart LR
+  subgraph air["On the drone"]
+    FC["Flight controller<br/>ArduPilot · PX4 · Betaflight · iNav"]
+    DA["ADOS Drone Agent"]
+  end
+  subgraph ground["On the ground"]
+    GA["ADOS Ground Agent"]
+    MC["ADOS Mission Control<br/>browser · desktop"]
+    AG["ADOS Android GCS"]
+    MCP["ADOS MCP<br/>AI clients"]
+  end
+  EXT["ADOS Extensions"]
+  FC <-- MAVLink --> DA
+  DA <-- "long-range radio link" --> GA
+  MC <-- "LAN or cloud relay" --> DA
+  MC <-- LAN --> GA
+  AG <-- "LAN or cloud" --> DA
+  MCP <-- "LAN or cloud" --> DA
+  EXT -. "agent plugins" .-> DA
+  EXT -. "GCS panels" .-> MC
+```
+
+ADOS Ground Agent is the Drone Agent running its ground-station profile.
+
+| Repo | Runs on | What it does | Link |
+|---|---|---|---|
+| ADOS Mission Control | Browser, desktop (Electron) | Ground control station: FC setup, mission planning, flight, 3D simulation, fleet | [ADOSMissionControl](https://github.com/altnautica/ADOSMissionControl) |
+| ADOS Drone Agent | Companion computer on the drone, or a ground node | Onboard agent: MAVLink routing, HD video, long-range radio link, plugins, remote control | [ADOSDroneAgent](https://github.com/altnautica/ADOSDroneAgent) |
+| ADOS Android GCS | Android phones and tablets | Native ground control app for agents on the LAN, direct flight controllers and the cloud | [ADOSAndroidGCS](https://github.com/altnautica/ADOSAndroidGCS) |
+| ADOS Extensions | Drone Agent and Mission Control | First-party signed plugins, each with an agent half and a GCS half | [ADOSExtensions](https://github.com/altnautica/ADOSExtensions) |
+| ADOS MCP | Your machine | Model Context Protocol server that lets AI clients operate ADOS drones under scopes and a safety gate | [ADOS-MCP](https://github.com/altnautica/ADOS-MCP) |
+| Documentation | docs.altnautica.com | Public docs for every ADOS product | [Documentation](https://github.com/altnautica/Documentation) |
 
 ---
 
@@ -136,7 +190,7 @@ The browser side is TypeScript. The onboard agent it pairs with, [ADOS Drone Age
 
 ### Configure your flight controller
 
-Nearly 60 panels covering calibration, PID tuning, receiver, outputs, failsafe, power, ports, OSD, firmware flashing, plus iNav-specific panels for safehomes, geozones, navigation config, profiles, output mapping, servos, temp sensors, MC braking, rate dynamics, and mission summary. Works with ArduPilot, PX4, Betaflight, and iNav. **AI PID tuning** analyzes FFT noise and motor health, then suggests filter settings and PID values. Board auto-detection for firmware flashing. WebUSB firmware flashing with no external tools.
+More than 80 panels covering calibration, PID tuning, receiver, outputs, failsafe, power, ports, OSD, firmware flashing, plus iNav-specific panels for safehomes, geozones, navigation config, profiles, output mapping, servos, temp sensors, MC braking, rate dynamics, and mission summary. Works with ArduPilot, PX4, Betaflight, and iNav. **AI PID tuning** analyzes FFT noise and motor health, then suggests filter settings and PID values. Board auto-detection for firmware flashing. WebUSB firmware flashing with no external tools.
 
 ### Plan missions
 
@@ -177,7 +231,7 @@ When the paired agent runs in the ground-station profile, the node panel shows r
 
 ## By the Numbers
 
-~98K lines of TypeScript. Nearly 60 FC panels. 83 MAVLink message decoders. 65 iNav decoders. 7 mission pattern generators. Over 60 ring-buffered Zustand stores. Full demo mode with zero setup.
+98 top-level Zustand stores. 87 flight-controller panels. Full demo mode with zero setup.
 
 ---
 
@@ -221,7 +275,7 @@ All optional. The GCS works fully offline for local FC configuration and field o
 | Protocol | Custom MAVLink v2 and MSP v1/v2 binary parsers |
 | Transport | WebSocket, WebSerial, WebUSB |
 | Backend | Convex (optional, cloud fleet and community features) |
-| Desktop | Electron 41 |
+| Desktop | Electron 44 |
 | Language | TypeScript (strict) |
 
 ---
@@ -327,7 +381,7 @@ All variables are optional. Set them by editing `.env.local` directly (or re-run
 |----------|-------------|
 | `NEXT_PUBLIC_DEMO_MODE` | Enable demo mode with simulated drones |
 | `NEXT_PUBLIC_CONVEX_URL` | Convex backend URL for cloud fleet features |
-| `GITHUB_TOKEN` | Raises the PX4 releases API limit from 60 to 5000 req/hr. Server-side only — export it in the server shell rather than writing it into `.env` |
+| `GITHUB_TOKEN` | Raises the PX4 releases API limit from 60 to 5000 req/hr. Server-side only: export it in the server shell rather than writing it into `.env` |
 | `GROQ_API_KEY` | AI PID tuning suggestions. Free at [console.groq.com](https://console.groq.com) |
 | `CESIUM_BASE_URL` | Self-hosted Cesium JS URL (falls back to CDN if unset) |
 
@@ -338,16 +392,6 @@ All variables are optional. Set them by editing `.env.local` directly (or re-run
 | SITL launcher | `tools/sitl/` | ArduPilot SITL plus TCP-to-WebSocket bridge |
 | MQTT broker | `tools/mqtt-bridge/` | Mosquitto broker config, ACL and credential-sync scripts (Docker Compose) |
 | Video relay | `tools/video-relay/` | RTSP-to-WebSocket fMP4 relay via ffmpeg (Docker Compose) |
-
----
-
-## Hardware Partners
-
-Building and testing ADOS Mission Control on real hardware. Want to get involved? [Email us](mailto:team@altnautica.com).
-
-<!-- Format: | [![Company](logo-url)](website) -->
-
-*Interested in sponsoring or sending test hardware? See our [partnership info](mailto:team@altnautica.com).*
 
 ---
 
