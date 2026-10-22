@@ -311,7 +311,7 @@ When the paired agent runs in the ground-station profile, the node panel shows r
 |----------|-------------|-------|
 | Web (recommended) | Chrome 89+ or Edge 89+ | WebSerial and WebUSB for FC connection and firmware flashing |
 | Web (limited) | Firefox, Safari | No WebSerial or WebUSB. WebSocket connections work. |
-| Desktop (macOS) | Intel or Apple Silicon | Electron app, not code-signed (same as Betaflight and iNav Configurator) |
+| Desktop (macOS) | Intel or Apple Silicon | Electron app, not code-signed |
 | Desktop (Windows) | x64 | Electron app, `.exe` installer |
 | Desktop (Linux) | x64 or arm64 | `.AppImage` |
 
@@ -396,7 +396,7 @@ npm run desktop:build:win   # Windows .exe installer
 npm run desktop:build:linux # Linux .AppImage
 ```
 
-macOS: right-click the app, Open, then Open again. Not code-signed, same as Betaflight Configurator and iNav Configurator.
+macOS: the app is not code-signed yet, so right-click it, choose Open, then Open again.
 
 ---
 
@@ -488,4 +488,4 @@ npm run lint   # Must pass before PR
 
 ## License
 
-[GPL-3.0-only](LICENSE). Copyright 2025-2026 Altnautica. Derivative works must also be GPL-3.0, same as ArduPilot.
+[GPL-3.0-only](LICENSE). Copyright 2025-2026 Altnautica. Free to use, modify, and distribute; modified versions you distribute must also be GPL-3.0.
