@@ -69,6 +69,24 @@ jobs:
       - name: Node-environment tests
         run: npm run test:node
 
+      # The three build jobs run in parallel and each electron-builder looks
+      # for a release named after the tag, creating one when none exists. With
+      # no release yet, two jobs can each create a draft and split the
+      # installers between them. Create the one draft here, before any build.
+      - name: Create the draft release the builds upload to
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          existing=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
+            --jq "[.[] | select(.tag_name == \"$TAG\")][0].id // empty")
+          if [ -n "$existing" ]; then
+            echo "release $existing already exists for $TAG"
+          else
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --draft --verify-tag \
+              --title "${TAG#v}" --notes ""
+          fi
+
   build-macos:
     needs: gate
     runs-on: macos-14
@@ -247,10 +265,19 @@ jobs:
             const { data: releases } = await github.rest.repos.listReleases({
               owner: context.repo.owner,
               repo: context.repo.repo,
+              per_page: 100,
             });
-            const release = releases.find(r => r.tag_name === tag);
-            if (!release) {
-              core.setFailed(`Release for tag ${tag} not found`);
+            const matching = releases.filter(r => r.tag_name === tag);
+            if (matching.length !== 1) {
+              core.setFailed(`Expected one release for tag ${tag}, found ${matching.length}: ${matching.map(r => r.id).join(', ')}`);
+              return;
+            }
+            const release = matching[0];
+            // Every installer this run built must be on the release it publishes.
+            const names = new Set(release.assets.map(a => a.name));
+            const missing = fs.readdirSync('installers').filter(f => f !== 'SHA256SUMS' && !names.has(f));
+            if (missing.length > 0) {
+              core.setFailed(`Release ${release.id} for ${tag} is missing: ${missing.join(', ')}`);
               return;
             }
             // Replace a SHA256SUMS left by an earlier attempt of this run.
