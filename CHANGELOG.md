@@ -6,6 +6,8 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.61.0] - 2026-10-22
+
 This release covers everything since 0.60.0: fifty-four commits between
 2026-10-13 and 2026-10-22, more than half of them on 2026-10-20. Three threads
 run through it.
