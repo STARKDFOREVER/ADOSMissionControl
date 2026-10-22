@@ -141,7 +141,7 @@ Open a drone that runs the ADOS Drone Agent and Mission Control shows the flight
 ## Smart and autonomous features
 
 - **Cockpit skills.** The Skill Bar puts flight skills one tap away: take off, land, return home, pause, resume, fly here, change mode and abort. Extensions add their own, such as Follow-Me, which follows a subject you click in the live video.
-- **Swarm view.** A fleet board with a map, a video rail and bulk actions, including formation commands. Per-drone swarm settings drive the agent's onboard swarm layer (off by default and still early), and each drone reports which layer is in control right now.
+- **Swarm view.** A fleet board with a map, a video rail and bulk actions, including formation commands. Per-drone swarm settings drive the agent's onboard swarm layer, and each drone reports which layer is in control right now.
 - **World Engine (beta).** Start a capture, watch the 3D world model build, then open it as a Gaussian splat, a point cloud or a Rerun recording, next to the compute node's job queue and the perception offload settings.
 - **Vision and perception.** Camera and perception pages for the agent's onboard vision, and Vision Navigation for GPS-denied flight on optical flow, with its estimator state and pre-arm status.
 - **AI that helps, and AI that operates.** AI PID tuning suggests filter and PID values from your flight data. The MCP wizard connects an AI client to your drones through [ADOS MCP](https://github.com/altnautica/ADOS-MCP), under scopes you grant and behind a safety gate.
@@ -156,7 +156,7 @@ ADOS is a base, not a finished product for one job. These are directions it is b
 - **Indoor operations.** GPS-denied flight on optical flow with Vision Navigation, and visual-inertial or LiDAR SLAM poses with indoor world models from World Engine (beta).
 - **Logistics in GPS-denied warehouses.** The same positioning sources, a warehouse reconstruction preset in World Engine, and perception offload so a drone without an NPU can run detection on a nearby compute node.
 
-None of these is a turnkey product yet. The parts are open, so you can take them the rest of the way.
+The parts are open, so you can take them where you need them.
 
 ## Build on it
 
