@@ -1,8 +1,8 @@
 <p align="center">
   <a href="https://altnautica.com">
     <picture>
-      <source media="(prefers-color-scheme: dark)" srcset=".github/assets/brand/ados-lockup-dark.svg">
-      <img src=".github/assets/brand/ados-lockup-light.svg" alt="ADOS" width="220">
+      <source media="(prefers-color-scheme: dark)" srcset=".github/assets/brand/altnautica-wordmark-dark.svg">
+      <img src=".github/assets/brand/altnautica-wordmark-light.svg" alt="Altnautica" width="240">
     </picture>
   </a>
 </p>
@@ -25,9 +25,9 @@
 
 https://github.com/user-attachments/assets/09f265f4-b692-468a-a170-2be2d8525ae7
 
-Command any drone from any browser. ADOS Mission Control is a full ground control station for software-defined drones. Configure flight controllers panel by panel, plan missions with pattern generators, fly with a gamepad at 50 Hz, and tune PIDs with AI. No install. No locked hardware.
+ADOS Mission Control is the ground control station of ADOS, an open-source platform for software-defined drones. Open it in a browser, connect a flight controller, and you can set it up panel by panel, plan a mission with pattern generators, fly it with a gamepad at 50 Hz and tune PIDs with AI help. No install. No locked hardware.
 
-It works standalone with any MAVLink or MSP flight controller over USB or WebSocket, and pairs with [ADOS Drone Agent](https://github.com/altnautica/ADOSDroneAgent) for the long-range link, HD video and fleet management.
+On its own it talks to any MAVLink or MSP flight controller over USB or WebSocket. Pair it with an [ADOS Drone Agent](https://github.com/altnautica/ADOSDroneAgent) on the drone's companion computer and it becomes the one place you run the whole aircraft: the flight controller, the long-range radio and HD video link, onboard vision, swarm settings, World Engine (in beta) and every extension you install.
 
 ## Quick Start
 
@@ -128,6 +128,43 @@ Open [http://localhost:4000](http://localhost:4000). Simulated drones, no hardwa
 - **Manage a fleet from anywhere.** Cloud mode adds multi-drone dashboards, mission sync, and real-time telemetry over MQTT.
 - **Sign your commands.** HMAC-SHA256 on every outbound MAVLink v2 frame, with the key held only in your browser.
 - **Self-host all of it.** Field operations work fully offline, and the cloud relay can run entirely on your own servers.
+
+## One system with the Drone Agent
+
+Open a drone that runs the ADOS Drone Agent and Mission Control shows the flight controller and the companion computer as one node:
+
+- **Vehicle.** Flight controller setup and the full parameter editor, carried over MAVLink by the agent, including drones reached through a ground station's radio relay.
+- **Agent.** Health with per-service restart and the connected peripherals, battery and profile, the radio link and its setup, networking (Wi-Fi, cellular, MAC pinning, discovery, MAVLink routing and signing), cameras and perception, swarm, cloud relay, security and advanced settings.
+- **Extensions.** Install and update plugins from the same panel. An extension can add its own pages there, the way World Engine adds its world model and perception offload pages.
+- **Logs.** Flight logs and the agent's on-board recorder.
+
+## Smart and autonomous features
+
+- **Cockpit skills.** The Skill Bar puts flight skills one tap away: take off, land, return home, pause, resume, fly here, change mode and abort. Extensions add their own, such as Follow-Me, which follows a subject you click in the live video.
+- **Swarm view.** A fleet board with a map, a video rail and bulk actions, including formation commands. Per-drone swarm settings drive the agent's onboard swarm layer (off by default and still early), and each drone reports which layer is in control right now.
+- **World Engine (beta).** Start a capture, watch the 3D world model build, then open it as a Gaussian splat, a point cloud or a Rerun recording, next to the compute node's job queue and the perception offload settings.
+- **Vision and perception.** Camera and perception pages for the agent's onboard vision, and Vision Navigation for GPS-denied flight on optical flow, with its estimator state and pre-arm status.
+- **AI that helps, and AI that operates.** AI PID tuning suggests filter and PID values from your flight data. The MCP wizard connects an AI client to your drones through [ADOS MCP](https://github.com/altnautica/ADOS-MCP), under scopes you grant and behind a safety gate.
+
+These features are under active development and grow with every release; build on them through extensions and the SDK.
+
+## What you can build on it
+
+ADOS is a base, not a finished product for one job. These are directions it is built toward, with the pieces that exist for them today:
+
+- **Smart agriculture.** Survey and terrain-following missions planned here, RTK corrections the agent injects into the flight controller, and payload devices such as sprayers or droppers that extensions can register.
+- **Indoor operations.** GPS-denied flight on optical flow with Vision Navigation, and visual-inertial or LiDAR SLAM poses with indoor world models from World Engine (beta).
+- **Logistics in GPS-denied warehouses.** The same positioning sources, a warehouse reconstruction preset in World Engine, and perception offload so a drone without an NPU can run detection on a nearby compute node.
+
+None of these is a turnkey product yet. The parts are open, so you can take them the rest of the way.
+
+## Build on it
+
+ADOS is meant to be extended. An extension has a Mission Control half (React panels in a sandboxed frame) and a Drone Agent half (Python or Rust), packed into one signed archive. Start from [ADOS Extensions](https://github.com/altnautica/ADOSExtensions) and the [developer docs](https://docs.altnautica.com/developers/overview). Rust plugins build on the [`ados-sdk`](https://docs.rs/ados-sdk) crate. Pull requests to Mission Control itself are welcome; see [Contributing](#contributing).
+
+## Where it fits
+
+Mission Control is the browser and desktop ground station of the ADOS ecosystem. It reaches the [Drone Agent](https://github.com/altnautica/ADOSDroneAgent) over your LAN or the cloud relay, and a ground node running the Ground Agent profile when the drone is out on the long-range radio link. [Android GCS](https://github.com/altnautica/ADOSAndroidGCS) flies the same drones from a phone or tablet, [Extensions](https://github.com/altnautica/ADOSExtensions) add panels here and code on the drone, [ADOS MCP](https://github.com/altnautica/ADOS-MCP) gives AI clients scoped access to the same agents, and the agent's reusable code ships as published Rust crates.
 
 ---
 
