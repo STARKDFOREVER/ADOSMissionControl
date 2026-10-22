@@ -8033,12 +8033,15 @@
         "node": "Node.js 20 or newer",
         "git": "git",
         "pnpm": "pnpm  (install with: npm install -g pnpm)",
-        "client": "An MCP client — Claude Code, Cursor, or Claude Desktop"
+        "client": "An MCP client — Claude Code, Cursor, or Claude Desktop",
+        "docker": "Docker (Docker Desktop on Windows or macOS, Docker Engine on Linux)"
       },
       "get": {
         "title": "Get the server",
         "body": "Clone the ADOS MCP repo and build it. The setup script installs, builds, and prints your exact connect command:",
-        "note": "The script prints the command with your local path filled in — you'll paste your credential into it in the last step."
+        "note": "The script prints the command with your local path filled in — you'll paste your credential into it in the last step.",
+        "dockerBody": "Create the folder the server keeps its audit trail in, and pull the image:",
+        "dockerNote": "The image runs as user id 1000. On Linux, if your user id differs, add --user \"$(id -u):$(id -g)\" after docker run."
       },
       "add": {
         "title": "Add it to your client",
@@ -8054,7 +8057,9 @@
         "allBody": "Run this one command. Every drone's address and key rides inside it — there is no file to save:",
         "fileAlt": "Prefer a file? (very large fleets / a saved setup)",
         "fileBody": "Download the fleet file, save it to the path below, then use this command instead:",
-        "jsonSecretNote": "This .mcp.json reads {name} from your environment, so the file holds no secret and is safe to commit. Set it in your shell with the line below, and keep that value out of shared source: it holds drone pairing keys."
+        "jsonSecretNote": "This .mcp.json reads {name} from your environment, so the file holds no secret and is safe to commit. Set it in your shell with the line below, and keep that value out of shared source: it holds drone pairing keys.",
+        "dockerNote": "The container mounts ~/.ados/mcp so the audit trail persists and this tab's live activity works. Run it in PowerShell or a POSIX shell so $HOME expands; in Git Bash, put MSYS_NO_PATHCONV=1 in front of the command or Git Bash rewrites the mount path.",
+        "dockerDiscoverNote": "Auto-adopt finds drones over mDNS, which a container on Docker's default network cannot see. On Linux add --network host after docker run; elsewhere use From source for auto-adopt."
       },
       "verify": {
         "title": "Check the connection",
@@ -8135,7 +8140,14 @@
     "watchBody": "Keep Mission Control open and see every action the MCP takes as it happens. The view jumps to the surface being changed and highlights it in real time, so operating a drone through an AI feels like watching a model assemble itself.",
     "watchPointSee": "Every tool call, live — the effect in plain language, not a black box.",
     "watchPointLocal": "Local-first: control and the activity feed both stay on your machine.",
-    "watchPointAudit": "Timestamped and recorded — the live feed doubles as your audit trail."
+    "watchPointAudit": "Timestamped and recorded — the live feed doubles as your audit trail.",
+    "runtime": {
+      "label": "Run the server with",
+      "docker": "Docker",
+      "source": "From source",
+      "dockerHint": "Pulls a ready-built image. Needs Docker; no Node.js, git or pnpm.",
+      "sourceHint": "Clones and builds the repo. Needs Node.js 20 or newer, git and pnpm."
+    }
   },
   "cockpitStreams": {
     "switcherLabel": "Video streams",

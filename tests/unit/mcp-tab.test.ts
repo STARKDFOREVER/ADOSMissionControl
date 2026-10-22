@@ -12,6 +12,9 @@ import {
   fleetFileContents,
   fleetEnvValue,
   localFleetEnvRecipe,
+  dockerReachableHost,
+  DEFAULT_FLEET_PATH,
+  ADOS_MCP_IMAGE,
 } from "@/components/mcp/mcp-shared";
 
 function reset() {
@@ -196,5 +199,54 @@ describe("local fleet (many LAN drones, no cloud)", () => {
   it("localFleetEnvRecipe adds --discover only when opted in", () => {
     expect(localFleetEnvRecipe("B", { discover: true })).toContain("--discover");
     expect(localFleetEnvRecipe("B", { discover: false })).not.toContain("--discover");
+  });
+});
+
+describe("docker runtime recipes", () => {
+  const host = "http://drone.local:8080";
+  const key = "pk_abc123";
+
+  it("localConnectRecipe matches the agent TUI docker recipe byte for byte", () => {
+    expect(localConnectRecipe(host, key, "docker")).toBe(
+      'claude mcp add ados -e ADOS_MCP_AGENT_KEY=pk_abc123 -- docker run -i --rm -e ADOS_MCP_AGENT_KEY -v "$HOME/.ados/mcp:/home/node/.ados/mcp" ghcr.io/altnautica/ados-mcp:latest --target agent http://drone.local:8080',
+    );
+  });
+
+  it("localMcpJsonSnippet launches docker and forwards the key by name only", () => {
+    const snippet = localMcpJsonSnippet(host, "docker");
+    const server = JSON.parse(snippet).mcpServers.ados;
+    expect(server.command).toBe("docker");
+    expect(server.args).toContain("-i");
+    expect(server.args).toContain("ADOS_MCP_AGENT_KEY");
+    expect(server.args).toContain(ADOS_MCP_IMAGE);
+    expect(snippet).not.toContain(key);
+  });
+
+  it("localFleetEnvRecipe sets the fleet blob once and forwards it by name", () => {
+    const recipe = localFleetEnvRecipe("BLOB==", {}, "docker");
+    expect(recipe.split("-e ADOS_MCP_FLEET=BLOB==")).toHaveLength(2);
+    expect(recipe.indexOf("-e ADOS_MCP_FLEET=BLOB==")).toBeLessThan(recipe.indexOf(" -- "));
+    expect(recipe).toContain("-e ADOS_MCP_FLEET -v");
+    expect(recipe).not.toContain(".json");
+  });
+
+  it("localFleetConnectRecipe reads the mounted default fleet file", () => {
+    expect(localFleetConnectRecipe(DEFAULT_FLEET_PATH, {}, "docker")).toMatch(/--target local-fleet$/);
+  });
+
+  it("localVerifyRecipe is a one-shot run with no stdin", () => {
+    const recipe = localVerifyRecipe(host, key, "docker");
+    expect(recipe).toContain("docker run --rm -e ADOS_MCP_AGENT_KEY=pk_abc123");
+    expect(recipe).toContain("--verify");
+    expect(recipe).not.toContain(" -i ");
+  });
+
+  it("connectRecipe forwards the token by name and mounts the data dir", () => {
+    expect(connectRecipe("ados_mc_secret", "docker")).toContain("-e ADOS_MCP_TOKEN -v");
+  });
+
+  it("dockerReachableHost swaps a known IPv4 in, keeping protocol and port", () => {
+    expect(dockerReachableHost(host, "192.168.1.50")).toBe("http://192.168.1.50:8080");
+    expect(dockerReachableHost(host)).toBe(host);
   });
 });

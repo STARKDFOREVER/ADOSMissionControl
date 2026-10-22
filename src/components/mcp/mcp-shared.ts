@@ -105,32 +105,88 @@ export const ADOS_MCP_REPO = "https://github.com/altnautica/ADOS-MCP.git";
 /** Stands in for the operator's local clone path; the setup script prints the real one. */
 export const CLONE_PATH_PLACEHOLDER = "<path-to>/ADOS-MCP";
 
+/** The public container image the Docker runtime runs (multi-arch, GHCR). */
+export const ADOS_MCP_IMAGE = "ghcr.io/altnautica/ados-mcp:latest";
+
+/**
+ * How the operator runs the server: `docker` pulls the ready-built image (needs
+ * only Docker), `source` clones and builds the repo (needs Node.js, git, pnpm).
+ */
+export type McpRuntime = "docker" | "source";
+
+/** The host data dir mounted into the container, shell form (`$HOME` expands). */
+const MOUNT_SHELL = '"$HOME/.ados/mcp:/home/node/.ados/mcp"';
+/** The same mount for `.mcp.json` args (the client expands `${HOME}`). */
+const MOUNT_JSON = "${HOME}/.ados/mcp:/home/node/.ados/mcp";
+
+/**
+ * The shell launch command for a runtime. Docker forwards each named env var
+ * with a bare `-e NAME` (the value comes from the client-set environment, never
+ * the `docker` argv) and mounts `~/.ados/mcp` so the audit trail persists and
+ * this tab's live activity can tail it.
+ */
+function launchCmd(runtime: McpRuntime, envNames: readonly string[]): string {
+  if (runtime === "source") return `node ${CLONE_PATH_PLACEHOLDER}/dist/index.js`;
+  return ["docker run -i --rm", ...envNames.map((n) => `-e ${n}`), `-v ${MOUNT_SHELL}`, ADOS_MCP_IMAGE].join(" ");
+}
+
+/** The `.mcp.json` `command` + leading `args` for a runtime (see {@link launchCmd}). */
+function launchJson(runtime: McpRuntime, envNames: readonly string[]): { command: string; args: string[] } {
+  if (runtime === "source") return { command: "node", args: [`${CLONE_PATH_PLACEHOLDER}/dist/index.js`] };
+  return {
+    command: "docker",
+    args: ["run", "-i", "--rm", ...envNames.flatMap((n) => ["-e", n]), "-v", MOUNT_JSON, ADOS_MCP_IMAGE],
+  };
+}
+
+/** The one-time block that creates the data dir and pulls the image. */
+export function dockerPullRecipe(): string {
+  return `mkdir -p ~/.ados/mcp\ndocker pull ${ADOS_MCP_IMAGE}`;
+}
+
+/**
+ * The host a containerised server should dial. A `.local` mDNS name does not
+ * resolve inside a container on Linux bridge networking, so when the node's
+ * IPv4 is known it replaces the hostname (protocol and port kept); otherwise
+ * the hostname is returned unchanged.
+ */
+export function dockerReachableHost(hostname: string, ipv4?: string): string {
+  if (!ipv4) return hostname;
+  try {
+    const url = new URL(hostname);
+    url.hostname = ipv4;
+    return url.origin;
+  } catch {
+    return hostname;
+  }
+}
+
 /** The clone + build block a user runs once to get the server locally. */
 export function cloneAndBuildRecipe(): string {
   return `git clone ${ADOS_MCP_REPO}\ncd ADOS-MCP\n./scripts/setup.sh`;
 }
 
 /**
- * The `claude mcp add` command that registers the locally-built server with the
- * credential in the client environment (`-e`, so it is not left in the shell).
- * `clonePath` is the operator's local clone (the setup script prints the real one).
+ * The `claude mcp add` command that registers the server with the credential
+ * in the client environment (`-e`, so it is not left in the shell).
  */
-export function connectRecipe(credential: string, clonePath = CLONE_PATH_PLACEHOLDER): string {
-  return `claude mcp add ados -e ADOS_MCP_TOKEN=${credential} -- node ${clonePath}/dist/index.js --target fleet --gcs prod`;
+export function connectRecipe(credential: string, runtime: McpRuntime = "source"): string {
+  return `claude mcp add ados -e ADOS_MCP_TOKEN=${credential} -- ${launchCmd(runtime, ["ADOS_MCP_TOKEN"])} --target fleet --gcs prod`;
 }
 
 /**
  * A project-scoped `.mcp.json` entry an operator commits to a project so Claude
- * Code (and other MCP clients that read `.mcp.json`) launch the locally-built
- * server with the credential set. An alternative to the `claude mcp add` command.
+ * Code (and other MCP clients that read `.mcp.json`) launch the server with the
+ * credential set. An alternative to the `claude mcp add` command.
  */
-export function mcpJsonSnippet(credential: string, clonePath = CLONE_PATH_PLACEHOLDER): string {
+export function mcpJsonSnippet(credential: string, runtime: McpRuntime = "source"): string {
+  const launch = launchJson(runtime, ["ADOS_MCP_TOKEN"]);
   return JSON.stringify(
     {
       mcpServers: {
         ados: {
-          command: "node",
-          args: [`${clonePath}/dist/index.js`, "--target", "fleet", "--gcs", "prod"],
+          command: launch.command,
+          args: [...launch.args, "--target", "fleet", "--gcs", "prod"],
           env: { ADOS_MCP_TOKEN: credential },
         },
       },
@@ -150,8 +206,8 @@ export function mcpJsonSnippet(credential: string, clonePath = CLONE_PATH_PLACEH
 // (`--target fleet`) recipes above are the opt-in "manage from anywhere" path.
 
 /** The LAN-direct `claude mcp add` command for one drone (no login, no cloud). */
-export function localConnectRecipe(host: string, apiKey: string, clonePath = CLONE_PATH_PLACEHOLDER): string {
-  return `claude mcp add ados -e ADOS_MCP_AGENT_KEY=${apiKey} -- node ${clonePath}/dist/index.js --target agent ${host}`;
+export function localConnectRecipe(host: string, apiKey: string, runtime: McpRuntime = "source"): string {
+  return `claude mcp add ados -e ADOS_MCP_AGENT_KEY=${apiKey} -- ${launchCmd(runtime, ["ADOS_MCP_AGENT_KEY"])} --target agent ${host}`;
 }
 
 /** The shell line that sets a secret the `.mcp.json` snippets read by reference. */
@@ -165,13 +221,14 @@ export function envExportLine(name: string, value: string): string {
  * from the environment by the client, so the file itself holds no secret and
  * is safe to commit.
  */
-export function localMcpJsonSnippet(host: string, clonePath = CLONE_PATH_PLACEHOLDER): string {
+export function localMcpJsonSnippet(host: string, runtime: McpRuntime = "source"): string {
+  const launch = launchJson(runtime, ["ADOS_MCP_AGENT_KEY"]);
   return JSON.stringify(
     {
       mcpServers: {
         ados: {
-          command: "node",
-          args: [`${clonePath}/dist/index.js`, "--target", "agent", host],
+          command: launch.command,
+          args: [...launch.args, "--target", "agent", host],
           env: { ADOS_MCP_AGENT_KEY: "${ADOS_MCP_AGENT_KEY}" },
         },
       },
@@ -181,9 +238,13 @@ export function localMcpJsonSnippet(host: string, clonePath = CLONE_PATH_PLACEHO
   );
 }
 
-/** The one-line LAN-direct check that confirms the drone answers, no MCP client. */
-export function localVerifyRecipe(host: string, apiKey: string, clonePath = CLONE_PATH_PLACEHOLDER): string {
-  return `ADOS_MCP_AGENT_KEY=${apiKey} node ${clonePath}/dist/index.js --target agent ${host} --verify`;
+/** The one-line LAN-direct check that confirms the drone answers, no MCP client.
+ * The Docker form is a one-shot run (no `-i`), with the key set inline. */
+export function localVerifyRecipe(host: string, apiKey: string, runtime: McpRuntime = "source"): string {
+  if (runtime === "docker") {
+    return `docker run --rm -e ADOS_MCP_AGENT_KEY=${apiKey} ${ADOS_MCP_IMAGE} --target agent ${host} --verify`;
+  }
+  return `ADOS_MCP_AGENT_KEY=${apiKey} node ${CLONE_PATH_PLACEHOLDER}/dist/index.js --target agent ${host} --verify`;
 }
 
 // --- LOCAL-FIRST multi-drone fleet (local-first) --------------------------------
@@ -251,9 +312,9 @@ export function fleetEnvValue(nodes: FleetFileNode[]): string {
 export function localFleetEnvRecipe(
   fleetB64: string,
   opts: FleetRecipeOpts = {},
-  clonePath = CLONE_PATH_PLACEHOLDER,
+  runtime: McpRuntime = "source",
 ): string {
-  return `claude mcp add ados -e ADOS_MCP_FLEET=${fleetB64} -- node ${clonePath}/dist/index.js --target local-fleet${discoverFlag(opts)}`;
+  return `claude mcp add ados -e ADOS_MCP_FLEET=${fleetB64} -- ${launchCmd(runtime, ["ADOS_MCP_FLEET"])} --target local-fleet${discoverFlag(opts)}`;
 }
 
 /** The `.mcp.json` equivalent of the no-file, whole-fleet command. The fleet
@@ -261,30 +322,41 @@ export function localFleetEnvRecipe(
  * `${ADOS_MCP_FLEET}` and expanded from the environment, never embedded. */
 export function localFleetEnvJsonSnippet(
   opts: FleetRecipeOpts = {},
-  clonePath = CLONE_PATH_PLACEHOLDER,
+  runtime: McpRuntime = "source",
 ): string {
-  const args = [`${clonePath}/dist/index.js`, "--target", "local-fleet"];
+  const launch = launchJson(runtime, ["ADOS_MCP_FLEET"]);
+  const args = [...launch.args, "--target", "local-fleet"];
   if (opts.discover) args.push("--discover");
   return JSON.stringify(
-    { mcpServers: { ados: { command: "node", args, env: { ADOS_MCP_FLEET: "${ADOS_MCP_FLEET}" } } } },
+    { mcpServers: { ados: { command: launch.command, args, env: { ADOS_MCP_FLEET: "${ADOS_MCP_FLEET}" } } } },
     null,
     2,
   );
 }
 
-/** The `claude mcp add` command for a whole LAN fleet from a FILE (keys in the file). */
+/**
+ * The `claude mcp add` command for a whole LAN fleet from a FILE (keys in the
+ * file). With the Docker runtime `fleetPath` is ignored and no path is emitted:
+ * the container reads its default `~/.ados/mcp/fleet.json` from the mounted
+ * host `~/.ados/mcp`, so save the file at {@link DEFAULT_FLEET_PATH}.
+ */
 export function localFleetConnectRecipe(
   fleetPath = DEFAULT_FLEET_PATH,
   opts: FleetRecipeOpts = {},
-  clonePath = CLONE_PATH_PLACEHOLDER,
+  runtime: McpRuntime = "source",
 ): string {
-  return `claude mcp add ados -- node ${clonePath}/dist/index.js --target local-fleet ${fleetPath}${discoverFlag(opts)}`;
+  const path = runtime === "docker" ? "" : ` ${fleetPath}`;
+  return `claude mcp add ados -- ${launchCmd(runtime, [])} --target local-fleet${path}${discoverFlag(opts)}`;
 }
 
-/** The one-line check that confirms the fleet answers (per-node ✓/✗), no client. */
+/** The one-line check that confirms the fleet answers (per-node ✓/✗), no client.
+ * The Docker form is a one-shot run that reads the mounted default fleet file. */
 export function localFleetVerifyRecipe(
   fleetPath = DEFAULT_FLEET_PATH,
-  clonePath = CLONE_PATH_PLACEHOLDER,
+  runtime: McpRuntime = "source",
 ): string {
-  return `node ${clonePath}/dist/index.js --target local-fleet ${fleetPath} --verify`;
+  if (runtime === "docker") {
+    return `docker run --rm -v ${MOUNT_SHELL} ${ADOS_MCP_IMAGE} --target local-fleet --verify`;
+  }
+  return `node ${CLONE_PATH_PLACEHOLDER}/dist/index.js --target local-fleet ${fleetPath} --verify`;
 }

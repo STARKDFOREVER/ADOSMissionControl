@@ -15,10 +15,12 @@ import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { useMcpTabStore } from "@/stores/mcp-tab-store";
 import { connectRecipe } from "./mcp-shared";
+import { McpRuntimeToggle } from "./McpRuntimeToggle";
 
 export function RevealCredentialModal() {
   const revealed = useMcpTabStore((s) => s.revealed);
   const clear = useMcpTabStore((s) => s.clearRevealed);
+  const runtime = useMcpTabStore((s) => s.runtime);
   const t = useTranslations("mcp");
   const [copied, setCopied] = useState<"cred" | "recipe" | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -26,7 +28,7 @@ export function RevealCredentialModal() {
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
 
   if (!revealed) return null;
-  const recipe = connectRecipe(revealed.credential);
+  const recipe = connectRecipe(revealed.credential, runtime);
 
   async function copy(what: "cred" | "recipe", text: string) {
     try {
@@ -67,6 +69,7 @@ export function RevealCredentialModal() {
           </div>
         </div>
 
+        <McpRuntimeToggle />
         <div className="flex flex-col gap-1">
           <span className="text-xs font-medium text-text-tertiary">{t("reveal.recipeLabel")}</span>
           <div className="flex items-start gap-2">

@@ -9,6 +9,7 @@
  */
 
 import { create } from "zustand";
+import type { McpRuntime } from "@/components/mcp/mcp-shared";
 
 export interface RevealedCredential {
   credential: string;
@@ -44,6 +45,8 @@ interface McpTabState {
   wizardOpen: boolean;
   revealed: RevealedCredential | null;
   revokeTokenId: string | null;
+  /** How the setup recipes run the server. Session-sticky: not in MCP_TAB_RESET. */
+  runtime: McpRuntime;
   navigate: (view: McpView) => void;
   openWizard: () => void;
   closeWizard: () => void;
@@ -55,6 +58,7 @@ interface McpTabState {
   reveal: (r: RevealedCredential) => void;
   clearRevealed: () => void;
   askRevoke: (tokenId: string | null) => void;
+  setRuntime: (runtime: McpRuntime) => void;
 }
 
 export const useMcpTabStore = create<McpTabState>((set) => ({
@@ -66,6 +70,7 @@ export const useMcpTabStore = create<McpTabState>((set) => ({
   wizardOpen: false,
   revealed: null,
   revokeTokenId: null,
+  runtime: "docker",
   navigate: (view) => set({ view }),
   openWizard: () => set({ wizardOpen: true }),
   closeWizard: () => set({ wizardOpen: false }),
@@ -82,6 +87,7 @@ export const useMcpTabStore = create<McpTabState>((set) => ({
   reveal: (revealed) => set({ revealed, generateOpen: false }),
   clearRevealed: () => set({ revealed: null }),
   askRevoke: (revokeTokenId) => set({ revokeTokenId }),
+  setRuntime: (runtime) => set({ runtime }),
 }));
 
 /** The reset applied on unmount + sign-out (drops any un-dismissed secret). */

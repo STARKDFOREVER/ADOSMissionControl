@@ -15,18 +15,20 @@ import { useTranslations } from "next-intl";
 import { Copy, Check, Rocket, Cloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useMcpTabStore } from "@/stores/mcp-tab-store";
-import { cloneAndBuildRecipe, connectRecipe, mcpJsonSnippet } from "./mcp-shared";
+import { cloneAndBuildRecipe, connectRecipe, dockerPullRecipe, mcpJsonSnippet } from "./mcp-shared";
+import { McpRuntimeToggle } from "./McpRuntimeToggle";
 
 type Snippet = "cli" | "json";
 
 export function McpConnect() {
   const t = useTranslations("mcp");
   const openWizard = useMcpTabStore((s) => s.openWizard);
+  const runtime = useMcpTabStore((s) => s.runtime);
   const [copied, setCopied] = useState<Snippet | "clone" | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const placeholder = t("connectPlaceholder");
-  const recipe = connectRecipe(placeholder);
-  const json = mcpJsonSnippet(placeholder);
+  const recipe = connectRecipe(placeholder, runtime);
+  const json = mcpJsonSnippet(placeholder, runtime);
 
   useEffect(
     () => () => {
@@ -73,7 +75,12 @@ export function McpConnect() {
           <h2 className="text-base font-semibold text-text-primary">{t("local.title")}</h2>
           <p className="text-sm text-text-secondary">{t("local.body")}</p>
         </header>
-        {block("clone", t("wizard.get.title"), cloneAndBuildRecipe())}
+        <McpRuntimeToggle />
+        {block(
+          "clone",
+          t("wizard.get.title"),
+          runtime === "docker" ? dockerPullRecipe() : cloneAndBuildRecipe(),
+        )}
         <div>
           <Button icon={<Rocket size={16} />} onClick={openWizard}>
             {t("local.cta")}

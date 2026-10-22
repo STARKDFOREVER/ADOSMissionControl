@@ -18,7 +18,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { Check, Copy, Loader2, XCircle, Download, Radar } from "lucide-react";
+import { Check, Loader2, XCircle, Download, Radar } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { useMcpTabStore } from "@/stores/mcp-tab-store";
@@ -26,6 +26,8 @@ import { useLocalNodesStore, type LocalNode } from "@/stores/local-nodes-store";
 import { probeAgent } from "@/lib/agent/local-pair-client";
 import {
   cloneAndBuildRecipe,
+  dockerPullRecipe,
+  dockerReachableHost,
   localConnectRecipe,
   localMcpJsonSnippet,
   envExportLine,
@@ -38,47 +40,27 @@ import {
   localFleetEnvJsonSnippet,
   DEFAULT_FLEET_PATH,
   LOCAL_FLEET_FILENAME,
+  type McpRuntime,
 } from "./mcp-shared";
+import { CopyBlock } from "./CopyBlock";
+import { McpRuntimeToggle } from "./McpRuntimeToggle";
 import { downloadBlob } from "@/lib/download";
 
 const STEP_COUNT = 5;
 type NodeVerify = "checking" | "reachable" | "unreachable";
 
-/** A code block with a copy button. */
-function CopyBlock({ text }: { text: string }) {
-  const t = useTranslations("mcp");
-  const [copied, setCopied] = useState(false);
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      /* clipboard unavailable — the text stays selectable */
-    }
-  }
-  return (
-    <div className="flex items-start gap-2">
-      <pre className="flex-1 overflow-x-auto rounded-md border border-border-default bg-bg-tertiary p-3 font-mono text-xs text-text-primary">
-        {text}
-      </pre>
-      <Button
-        variant="secondary"
-        size="sm"
-        icon={copied ? <Check size={14} /> : <Copy size={14} />}
-        onClick={copy}
-      >
-        {copied ? t("reveal.copied") : t("reveal.copy")}
-      </Button>
-    </div>
-  );
+/** The host the recipe dials: a container cannot resolve `.local`, so Docker
+ * prefers the node's IPv4 when known. */
+function recipeHost(n: LocalNode | undefined, runtime: McpRuntime): string {
+  if (!n) return "";
+  return runtime === "docker" ? dockerReachableHost(n.hostname, n.ipv4) : n.hostname;
 }
 
-function toFleetNode(n: LocalNode) {
+function toFleetNode(n: LocalNode, runtime: McpRuntime) {
   return {
     deviceId: n.deviceId,
     name: n.name,
-    host: n.hostname,
+    host: recipeHost(n, runtime),
     apiKey: n.apiKey,
     profile: n.profile,
   };
@@ -89,6 +71,7 @@ export function McpSetupWizard() {
   const close = useMcpTabStore((s) => s.closeWizard);
   const t = useTranslations("mcp");
   const nodes = useLocalNodesStore((s) => s.nodes);
+  const runtime = useMcpTabStore((s) => s.runtime);
 
   const [step, setStep] = useState(0);
   // "all" = control every paired drone (the default, one command); "some" = narrow
@@ -148,15 +131,16 @@ export function McpSetupWizard() {
   }
 
   function downloadFleet() {
-    const blob = new Blob([fleetFileContents(selected.map(toFleetNode))], {
+    const blob = new Blob([fleetFileContents(selected.map((n) => toFleetNode(n, runtime)))], {
       type: "application/json",
     });
     downloadBlob(blob, LOCAL_FLEET_FILENAME);
   }
 
   const one = selected[0];
+  const oneHost = recipeHost(one, runtime);
   // The whole selected fleet as a base64 blob for the one-command, no-file recipe.
-  const fleetB64 = isFleet ? fleetEnvValue(selected.map(toFleetNode)) : "";
+  const fleetB64 = isFleet ? fleetEnvValue(selected.map((n) => toFleetNode(n, runtime))) : "";
   const canAdvance = step !== 2 || selected.length > 0;
   const reachable = Object.values(verify).filter((v) => v === "reachable").length;
 
@@ -199,11 +183,21 @@ export function McpSetupWizard() {
           <div className="flex flex-col gap-3">
             <h3 className="text-sm font-semibold text-text-primary">{t("wizard.prereq.title")}</h3>
             <p className="text-sm text-text-secondary">{t("wizard.prereq.body")}</p>
+            <McpRuntimeToggle />
             <ul className="flex flex-col gap-1.5 text-sm text-text-primary">
-              <li>· {t("wizard.prereq.node")}</li>
-              <li>· {t("wizard.prereq.git")}</li>
-              <li>· {t("wizard.prereq.pnpm")}</li>
-              <li>· {t("wizard.prereq.client")}</li>
+              {runtime === "docker" ? (
+                <>
+                  <li>· {t("wizard.prereq.docker")}</li>
+                  <li>· {t("wizard.prereq.client")}</li>
+                </>
+              ) : (
+                <>
+                  <li>· {t("wizard.prereq.node")}</li>
+                  <li>· {t("wizard.prereq.git")}</li>
+                  <li>· {t("wizard.prereq.pnpm")}</li>
+                  <li>· {t("wizard.prereq.client")}</li>
+                </>
+              )}
             </ul>
           </div>
         ) : null}
@@ -211,9 +205,19 @@ export function McpSetupWizard() {
         {step === 1 ? (
           <div className="flex flex-col gap-3">
             <h3 className="text-sm font-semibold text-text-primary">{t("wizard.get.title")}</h3>
-            <p className="text-sm text-text-secondary">{t("wizard.get.body")}</p>
-            <CopyBlock text={cloneAndBuildRecipe()} />
-            <p className="text-xs text-text-tertiary">{t("wizard.get.note")}</p>
+            {runtime === "docker" ? (
+              <>
+                <p className="text-sm text-text-secondary">{t("wizard.get.dockerBody")}</p>
+                <CopyBlock text={dockerPullRecipe()} />
+                <p className="text-xs text-text-tertiary">{t("wizard.get.dockerNote")}</p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-text-secondary">{t("wizard.get.body")}</p>
+                <CopyBlock text={cloneAndBuildRecipe()} />
+                <p className="text-xs text-text-tertiary">{t("wizard.get.note")}</p>
+              </>
+            )}
           </div>
         ) : null}
 
@@ -328,11 +332,11 @@ export function McpSetupWizard() {
               <>
                 <p className="text-sm text-text-secondary">{t("wizard.add.allBody")}</p>
                 {/* The ONE command — every drone's host + key rides in the env, no file. */}
-                <CopyBlock text={localFleetEnvRecipe(fleetB64, { discover: autoAdopt })} />
+                <CopyBlock text={localFleetEnvRecipe(fleetB64, { discover: autoAdopt }, runtime)} />
                 <details className="text-xs text-text-tertiary">
                   <summary className="cursor-pointer select-none">{t("wizard.add.jsonAlt")}</summary>
                   <div className="mt-2 flex flex-col gap-2">
-                    <CopyBlock text={localFleetEnvJsonSnippet({ discover: autoAdopt })} />
+                    <CopyBlock text={localFleetEnvJsonSnippet({ discover: autoAdopt }, runtime)} />
                     <p>{t("wizard.add.jsonSecretNote", { name: "ADOS_MCP_FLEET" })}</p>
                     <CopyBlock text={envExportLine("ADOS_MCP_FLEET", fleetB64)} />
                   </div>
@@ -348,18 +352,18 @@ export function McpSetupWizard() {
                       </Button>
                     </div>
                     <p>{t("wizard.add.savePath", { path: DEFAULT_FLEET_PATH })}</p>
-                    <CopyBlock text={localFleetConnectRecipe(DEFAULT_FLEET_PATH, { discover: autoAdopt })} />
+                    <CopyBlock text={localFleetConnectRecipe(DEFAULT_FLEET_PATH, { discover: autoAdopt }, runtime)} />
                   </div>
                 </details>
               </>
             ) : (
               <>
                 <p className="text-sm text-text-secondary">{t("wizard.add.localBody")}</p>
-                <CopyBlock text={localConnectRecipe(one?.hostname ?? "", one?.apiKey ?? "")} />
+                <CopyBlock text={localConnectRecipe(oneHost, one?.apiKey ?? "", runtime)} />
                 <details className="text-xs text-text-tertiary">
                   <summary className="cursor-pointer select-none">{t("wizard.add.jsonAlt")}</summary>
                   <div className="mt-2 flex flex-col gap-2">
-                    <CopyBlock text={localMcpJsonSnippet(one?.hostname ?? "")} />
+                    <CopyBlock text={localMcpJsonSnippet(oneHost, runtime)} />
                     <p>{t("wizard.add.jsonSecretNote", { name: "ADOS_MCP_AGENT_KEY" })}</p>
                     <CopyBlock text={envExportLine("ADOS_MCP_AGENT_KEY", one?.apiKey ?? "")} />
                   </div>
@@ -367,7 +371,12 @@ export function McpSetupWizard() {
                 <p className="text-xs text-text-tertiary">{t("wizard.add.keyNote")}</p>
               </>
             )}
-            <p className="text-xs text-text-tertiary">{t("wizard.add.pathNote")}</p>
+            <p className="text-xs text-text-tertiary">
+              {runtime === "docker" ? t("wizard.add.dockerNote") : t("wizard.add.pathNote")}
+            </p>
+            {runtime === "docker" && autoAdopt ? (
+              <p className="text-xs text-status-warning">{t("wizard.add.dockerDiscoverNote")}</p>
+            ) : null}
           </div>
         ) : null}
 
@@ -380,8 +389,8 @@ export function McpSetupWizard() {
             <CopyBlock
               text={
                 isFleet
-                  ? localFleetVerifyRecipe()
-                  : localVerifyRecipe(one?.hostname ?? "", one?.apiKey ?? "")
+                  ? localFleetVerifyRecipe(DEFAULT_FLEET_PATH, runtime)
+                  : localVerifyRecipe(oneHost, one?.apiKey ?? "", runtime)
               }
             />
             {isFleet ? (

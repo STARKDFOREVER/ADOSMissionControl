@@ -8,6 +8,14 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **MCP setup runs the server in Docker by default.** The MCP setup wizard,
+  the Connect panel and the credential reveal dialog have a Docker / From
+  source toggle. Docker needs only Docker: the recipes pull
+  `ghcr.io/altnautica/ados-mcp`, forward keys with `-e NAME` so no secret
+  sits in the `docker` command, and mount `~/.ados/mcp` so the audit trail
+  and the live activity view keep working. Docker recipes dial a drone's
+  IPv4 address when it is known, since `.local` names may not resolve inside
+  a container. The choice holds for the session.
 - **Planner 3D view with editing.** A 2D / 3D switch in the planner bar (or
   the `3` key, or "Toggle 3D view" in the command palette) shows the plan on
   terrain with its path, fences, rally points and pattern boundaries. Click to
