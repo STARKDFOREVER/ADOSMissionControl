@@ -13,11 +13,19 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
-const FLIGHT_LOGS_PATH = path.join(process.cwd(), "convex/cmdFlightLogs.ts");
+// The public functions and the aggregate maintenance helpers they call.
+const FLIGHT_LOGS_PATHS = ["convex/cmdFlightLogs.ts", "convex/lib/flightLogAggregate.ts"].map(
+  (file) => path.join(process.cwd(), file),
+);
+
+async function readFlightLogsSource(): Promise<string> {
+  const parts = await Promise.all(FLIGHT_LOGS_PATHS.map((file) => readFile(file, "utf8")));
+  return parts.join("\n");
+}
 
 describe("flight-log aggregate wiring", () => {
   it("reads the aggregate row in stats + getCount (not a full collect on the hot path)", async () => {
-    const text = await readFile(FLIGHT_LOGS_PATH, "utf8");
+    const text = await readFlightLogsSource();
     // Both surfaces query the single aggregate row.
     const aggregateReads = text.match(/query\("cmd_flightLogAggregates"\)/g) ?? [];
     // upsert/remove maintain it + stats + getCount read it.
@@ -26,7 +34,7 @@ describe("flight-log aggregate wiring", () => {
   });
 
   it("maintains the aggregate on insert, update, and remove", async () => {
-    const text = await readFile(FLIGHT_LOGS_PATH, "utf8");
+    const text = await readFlightLogsSource();
     // New insert adds a contribution; remove subtracts one; update applies
     // the old→new delta.
     expect(text).toContain("applyAggregateDelta(ctx, userId, contributionOf(record))");

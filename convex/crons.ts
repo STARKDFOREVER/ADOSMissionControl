@@ -14,7 +14,7 @@ crons.interval(
 crons.interval(
   "clean-expired-pairing",
   { minutes: 15 },
-  internal.cmdPairing.cleanExpiredRequests
+  internal.cmdPairingCleanup.cleanExpiredRequests
 );
 
 // Rate-limit buckets and anonymous browser sessions are both written by
@@ -24,7 +24,7 @@ crons.interval(
 crons.interval(
   "clean-expired-security-state",
   { minutes: 30 },
-  internal.cmdPairing.cleanExpiredSecurityState
+  internal.cmdPairingCleanup.cleanExpiredSecurityState
 );
 
 // Retention: terminal cloud-relay command rows and exported log windows are
@@ -60,7 +60,7 @@ crons.interval(
 crons.interval(
   "prune-old-plugin-events",
   { hours: 24 },
-  internal.cmdPlugins.pruneOldEvents
+  internal.cmdPluginsMaintenance.pruneOldEvents
 );
 
 crons.interval(

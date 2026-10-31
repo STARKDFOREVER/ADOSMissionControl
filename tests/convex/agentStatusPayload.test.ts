@@ -8,7 +8,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { pushStatusArgs } from "../../convex/cmdDroneStatus";
+import { pushStatusArgs } from "../../convex/lib/pushStatusArgs";
 import {
   MAX_JSON_BODY_BYTES,
   PUSH_STATUS_KEYS,

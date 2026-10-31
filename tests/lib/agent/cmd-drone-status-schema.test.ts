@@ -8,7 +8,7 @@
 import { describe, expect, it } from "vitest";
 
 import schema from "../../../convex/schema";
-import { pushStatusArgs } from "../../../convex/cmdDroneStatus";
+import { pushStatusArgs } from "../../../convex/lib/pushStatusArgs";
 
 const FIELD_KIND = {
   lcdActivePage: "string",

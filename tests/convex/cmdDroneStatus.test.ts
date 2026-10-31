@@ -19,7 +19,15 @@ import { describe, expect, it } from "vitest";
 import * as cmdDroneStatus from "@/../convex/cmdDroneStatus";
 import { invoke, makeCtx } from "./fakeConvexCtx";
 
-const MUTATION_PATH = path.join(process.cwd(), "convex/cmdDroneStatus.ts");
+// The pushStatus validator args are declared across these files.
+const ARGS_PATHS = ["System", "Link", "Radio", "Node"].map((part) =>
+  path.join(process.cwd(), `convex/lib/pushStatusArgs${part}.ts`),
+);
+
+async function readArgsSource(): Promise<string> {
+  const parts = await Promise.all(ARGS_PATHS.map((file) => readFile(file, "utf8")));
+  return parts.join("\n");
+}
 
 const NEW_OPTIONAL_FIELDS = [
   "lcdActivePage",
@@ -53,14 +61,14 @@ describe("pushStatus mutation args", () => {
   it.each(NEW_OPTIONAL_FIELDS)(
     "declares %s on the mutation args with the expected validator",
     async (field) => {
-      const text = await readFile(MUTATION_PATH, "utf8");
+      const text = await readArgsSource();
       const expected = `${field}: ${FIELD_VALIDATOR[field]}`;
       expect(text).toContain(expected);
     },
   );
 
   it("preserves the existing args (deviceId, version, radio, runtimeMode)", async () => {
-    const text = await readFile(MUTATION_PATH, "utf8");
+    const text = await readArgsSource();
     expect(text).toContain("deviceId: v.string(),");
     expect(text).toContain("version: v.string(),");
     expect(text).toContain("radio: v.optional(v.object({");
@@ -72,7 +80,7 @@ describe("pushStatus mutation args", () => {
   // ENTIRE heartbeat once an agent emits a real bool/number. Pin that they
   // are declared at the top level (the radio block also nests them).
   it("declares the top-level WFB USB-health mirror so the heartbeat never throws", async () => {
-    const text = await readFile(MUTATION_PATH, "utf8");
+    const text = await readArgsSource();
     expect(text).toContain(
       "wfbAdapterUsbDegraded: v.optional(v.union(v.boolean(), v.null())),",
     );
@@ -85,7 +93,7 @@ describe("pushStatus mutation args", () => {
   // undeclared in pushStatus — the strict validator would reject the whole
   // heartbeat the moment the relay forwarded it. Pin the declaration.
   it("declares the cameraUsbRecovery object so the relay can forward it", async () => {
-    const text = await readFile(MUTATION_PATH, "utf8");
+    const text = await readArgsSource();
     expect(text).toContain("cameraUsbRecovery: v.optional(");
     // Inner fields are optional + nullable so a slightly older agent
     // payload still round-trips.

@@ -61,7 +61,7 @@ it** — see `.gitignore` in this directory.
    `/opt/relay/.env` on the broker host. This gates the
    `/admin/mqtt-auth-entries` httpAction that the regen script reads.
 3. Deploy the Convex functions (`npx convex deploy`) so the
-   `clientConfig`, `cmdMqttControlGrants`, `cmdPairing.listMqttAuthEntries`, and
+   `clientConfig`, `cmdMqttControlGrants`, `cmdPairingAgent.listMqttAuthEntries`, and
    `/admin/mqtt-auth-entries` paths are live.
 4. Make sure Mission Control has been rebuilt with the grant path landed (this
    monorepo's `src/stores/mqtt-control-grant-store.ts` mints the credential and

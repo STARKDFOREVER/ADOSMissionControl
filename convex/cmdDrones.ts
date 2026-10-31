@@ -210,7 +210,7 @@ export const unpairDrone = mutation({
     if (!userId) throw new Error("Not authenticated");
     const drone = await ctx.db.get(droneId);
     if (!drone || drone.userId !== userId) throw new Error("Not found");
-    await ctx.runMutation(internal.cmdPairing.wipeByDeviceIds, {
+    await ctx.runMutation(internal.cmdPairingCleanup.wipeByDeviceIds, {
       deviceIds: [drone.deviceId],
     });
   },

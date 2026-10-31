@@ -21,8 +21,8 @@ import * as commands from "../../convex/cmdDroneCommands";
 import * as drones from "../../convex/cmdDrones";
 import * as mcpTokens from "../../convex/cmdMcpTokens";
 import * as aiUsage from "../../convex/cmdAiUsage";
-import * as pairing from "../../convex/cmdPairing";
-import * as plugins from "../../convex/cmdPlugins";
+import * as pairingCleanup from "../../convex/cmdPairingCleanup";
+import * as pluginsMaintenance from "../../convex/cmdPluginsMaintenance";
 import { invoke, makeCtx } from "./fakeConvexCtx";
 
 const read = (rel: string) =>
@@ -32,22 +32,22 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 describe("expired-pairing cleanup is cron-only + indexed", () => {
   it("declares cleanExpiredRequests as an internalMutation", async () => {
-    const text = await read("convex/cmdPairing.ts");
+    const text = await read("convex/cmdPairingCleanup.ts");
     expect(text).toContain("export const cleanExpiredRequests = internalMutation");
     // The public mutation form is gone (no client can trigger the scan).
     expect(text).not.toContain("export const cleanExpiredRequests = mutation");
   });
 
-  it("walks the by_expiresAt index instead of a full-table filter scan", async () => {
-    const text = await read("convex/cmdPairing.ts");
-    expect(text).toContain('withIndex("by_expiresAt"');
+  it("walks the unclaimed-expiry index instead of a full-table filter scan", async () => {
+    const text = await read("convex/cmdPairingCleanup.ts");
+    expect(text).toContain('withIndex("by_claimedBy_expiresAt"');
     expect(text).not.toContain('.filter((q) => q.lt(q.field("expiresAt"), now))');
   });
 
   it("is invoked through the internal API from the cron", async () => {
     const crons = await read("convex/crons.ts");
-    expect(crons).toContain("internal.cmdPairing.cleanExpiredRequests");
-    expect(crons).not.toContain("api.cmdPairing.cleanExpiredRequests");
+    expect(crons).toContain("internal.cmdPairingCleanup.cleanExpiredRequests");
+    expect(crons).not.toContain("api.cmdPairingCleanup.cleanExpiredRequests");
   });
 });
 
@@ -163,7 +163,7 @@ describe("the append-only event tables are swept", () => {
       { userId: "u", pluginInstallId: "i", pluginId: "p", type: "crashed", severity: "error", message: "recent", createdAt: now - 29 * DAY_MS },
     ]);
 
-    const result = await invoke(plugins.pruneOldEvents, ctx);
+    const result = await invoke(pluginsMaintenance.pruneOldEvents, ctx);
 
     expect(result).toEqual({ deleted: 1 });
     expect(ctx.db.rows("cmd_pluginEvents").map((r) => r.message)).toEqual(["recent"]);
@@ -201,16 +201,16 @@ describe("the append-only event tables are swept", () => {
     small.db.seed("cmd_pluginEvents", [
       { userId: "u", pluginInstallId: "i", pluginId: "p", type: "started", severity: "info", message: "old", createdAt: now - 31 * DAY_MS },
     ]);
-    await invoke(plugins.pruneOldEvents, small);
+    await invoke(pluginsMaintenance.pruneOldEvents, small);
     expect(small.scheduled).toHaveLength(0);
   });
 
   it("wires both sweeps into the cron schedule as internal functions", async () => {
     const crons = await read("convex/crons.ts");
-    expect(crons).toContain("internal.cmdPlugins.pruneOldEvents");
+    expect(crons).toContain("internal.cmdPluginsMaintenance.pruneOldEvents");
     expect(crons).toContain("internal.cmdMcpTokens.pruneOldAuditEvents");
     expect(crons).toContain("internal.cmdDroneCommands.expireStuckCommands");
-    expect(crons).not.toContain("api.cmdPlugins.pruneOldEvents");
+    expect(crons).not.toContain("api.cmdPluginsMaintenance.pruneOldEvents");
   });
 });
 
@@ -250,7 +250,7 @@ describe("usage and security sweeps", () => {
         lastAttemptAt: now - 2 * DAY_MS, lockedUntil: now + 60_000,
       })),
     );
-    await invoke(pairing.cleanExpiredSecurityState, locked);
+    await invoke(pairingCleanup.cleanExpiredSecurityState, locked);
     expect(locked.scheduled).toHaveLength(0);
   });
 });

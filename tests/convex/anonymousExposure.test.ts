@@ -22,6 +22,8 @@
 import { describe, expect, it } from "vitest";
 
 import * as pairing from "../../convex/cmdPairing";
+import * as pairingAgent from "../../convex/cmdPairingAgent";
+import * as pairingCleanup from "../../convex/cmdPairingCleanup";
 import * as comments from "../../convex/comments";
 import * as contact from "../../convex/contactSubmissions";
 import {
@@ -75,11 +77,11 @@ describe("exposure of the pairing surface", () => {
   it("keeps the agent-facing writers off the public API", () => {
     // These two are reached only through their HTTP routes, which supply the
     // source-address rate-limit bucket and the device's own API key.
-    expect(isPublic(pairing.registerAgent)).toBe(false);
-    expect(isPublic(pairing.listMqttAuthEntries)).toBe(false);
-    expect(isPublic(pairing.wipeByDeviceIds)).toBe(false);
-    expect(isPublic(pairing.cleanExpiredRequests)).toBe(false);
-    expect(isPublic(pairing.cleanExpiredSecurityState)).toBe(false);
+    expect(isPublic(pairingAgent.registerAgent)).toBe(false);
+    expect(isPublic(pairingAgent.listMqttAuthEntries)).toBe(false);
+    expect(isPublic(pairingCleanup.wipeByDeviceIds)).toBe(false);
+    expect(isPublic(pairingCleanup.cleanExpiredRequests)).toBe(false);
+    expect(isPublic(pairingCleanup.cleanExpiredSecurityState)).toBe(false);
   });
 
   it("keeps the operator-facing claim paths public", () => {
@@ -326,7 +328,7 @@ describe("registerAgent (internal, agent-facing)", () => {
   it("requires a non-empty apiKey", async () => {
     const ctx = makeCtx();
     await expect(
-      invoke(pairing.registerAgent, ctx, { ...base, apiKey: "  " }),
+      invoke(pairingAgent.registerAgent, ctx, { ...base, apiKey: "  " }),
     ).rejects.toThrow(/apiKey required/);
     expect(ctx.db.rows("cmd_pairingRequests")).toHaveLength(0);
   });
@@ -345,7 +347,7 @@ describe("registerAgent (internal, agent-facing)", () => {
       },
     ]);
 
-    const result = await invoke(pairing.registerAgent, ctx, {
+    const result = await invoke(pairingAgent.registerAgent, ctx, {
       ...base,
       apiKey: "ados_attacker_supplied_key",
     });
@@ -357,7 +359,7 @@ describe("registerAgent (internal, agent-facing)", () => {
   it("lets the real agent re-register for free, without laddering", async () => {
     const ctx = makeCtx();
     // First contact charges one attempt.
-    expect(await invoke(pairing.registerAgent, ctx, base)).toEqual({
+    expect(await invoke(pairingAgent.registerAgent, ctx, base)).toEqual({
       registered: true,
     });
     const afterFirst = ctx.db
@@ -369,7 +371,7 @@ describe("registerAgent (internal, agent-facing)", () => {
     // allow if it were charged. A throttled beacon is a black video feed and a
     // node that never appears, so this must stay free.
     for (let i = 0; i < 40; i++) {
-      expect(await invoke(pairing.registerAgent, ctx, base)).toEqual({
+      expect(await invoke(pairingAgent.registerAgent, ctx, base)).toEqual({
         registered: true,
       });
     }
@@ -384,14 +386,14 @@ describe("registerAgent (internal, agent-facing)", () => {
     // Each attempt needs a fresh deviceId (a reused one hits the binding), so
     // the source address is the only stable axis — which is what is bucketed.
     for (let i = 0; i < 10; i++) {
-      await invoke(pairing.registerAgent, ctx, {
+      await invoke(pairingAgent.registerAgent, ctx, {
         ...base,
         deviceId: `probe-${i}`,
         pairingCode: "ZZZZ99",
       });
     }
     expect(
-      await invoke(pairing.registerAgent, ctx, {
+      await invoke(pairingAgent.registerAgent, ctx, {
         ...base,
         deviceId: "probe-overflow",
         pairingCode: "ZZZZ99",
@@ -404,7 +406,7 @@ describe("registerAgent (internal, agent-facing)", () => {
     ctx.db.seed("cmd_pairingRequests", [
       { pairingCode: "ABC234", expiresAt: LIVE_EXPIRY, createdBy: "user_alice" },
     ]);
-    const result = await invoke(pairing.registerAgent, ctx, base);
+    const result = await invoke(pairingAgent.registerAgent, ctx, base);
     expect(result).toEqual({ autoMatched: true, userId: "user_alice" });
     expect(ctx.db.rows("cmd_drones")[0]).toMatchObject({
       userId: "user_alice",
@@ -429,7 +431,7 @@ describe("listMqttAuthEntries", () => {
         pairedAt: NOW_ISH,
       })),
     );
-    const result = (await invoke(pairing.listMqttAuthEntries, ctx, {})) as {
+    const result = (await invoke(pairingAgent.listMqttAuthEntries, ctx, {})) as {
       entries: unknown[];
       grants: unknown[];
       truncated: boolean;
@@ -459,7 +461,7 @@ describe("listMqttAuthEntries", () => {
         revokedAt: NOW_ISH,
       },
     ]);
-    const result = (await invoke(pairing.listMqttAuthEntries, ctx, {})) as {
+    const result = (await invoke(pairingAgent.listMqttAuthEntries, ctx, {})) as {
       grants: Array<{ principal: string }>;
     };
     expect(result.grants.map((g) => g.principal)).toEqual(["gcs-op-live"]);

@@ -18,7 +18,7 @@
  */
 
 import { agentKeyMatches } from "./credentials";
-import { jsonHeaders, stringField } from "./heartbeatFields";
+import { jsonHeaders, stringField } from "./heartbeatPrimitives";
 
 /** Capability a plugin half needs to read or write its cloud records. */
 export const CLOUD_RECORDS_CAPABILITY = "cloud.records";

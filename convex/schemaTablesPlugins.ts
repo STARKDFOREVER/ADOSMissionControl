@@ -149,7 +149,7 @@ export const pluginTables = {
 
   // Append-only event log per plugin: lifecycle, capability denials,
   // crashes, operator actions. 30-day retention, swept by the
-  // `prune-old-plugin-events` cron (cmdPlugins.pruneOldEvents).
+  // `prune-old-plugin-events` cron (cmdPluginsMaintenance.pruneOldEvents).
   cmd_pluginEvents: defineTable({
     userId: v.string(),
     pluginInstallId: v.id("cmd_pluginInstalls"),

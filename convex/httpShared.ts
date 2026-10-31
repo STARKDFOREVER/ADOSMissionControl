@@ -15,17 +15,12 @@ import type { ObjectType } from "convex/values";
 import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import { pushStatusArgs } from "./cmdDroneStatus";
+import { pushStatusArgs } from "./lib/pushStatusArgs";
 import { agentKeyMatches, constantTimeEqual } from "./lib/credentials";
 import { sourceBucketKey } from "./lib/rateLimit";
 import { buildStatusPayload, readJsonObject } from "./lib/agentStatusPayload";
-import {
-  commandResultField,
-  commandStatusField,
-  jsonHeaders,
-  numberField,
-  stringField,
-} from "./lib/heartbeatFields";
+import { jsonHeaders, numberField, stringField } from "./lib/heartbeatPrimitives";
+import { commandResultField, commandStatusField } from "./lib/heartbeatStatusFields";
 import { resolvePluginRecordPost } from "./lib/pluginRecordsIngest";
 
 export function registerSharedRoutes(http: HttpRouter): void {
@@ -51,7 +46,7 @@ export function registerSharedRoutes(http: HttpRouter): void {
         );
       }
 
-      const result = await ctx.runMutation(internal.cmdPairing.registerAgent, {
+      const result = await ctx.runMutation(internal.cmdPairingAgent.registerAgent, {
         clientKey: await sourceBucketKey(request),
         deviceId,
         pairingCode,
@@ -126,7 +121,7 @@ export function registerSharedRoutes(http: HttpRouter): void {
       // re-wrap: wrapping would nest it as `{ entries: { entries, ... } }` and
       // the regeneration script reads `.entries[]` directly.
       const payload = await ctx.runQuery(
-        internal.cmdPairing.listMqttAuthEntries,
+        internal.cmdPairingAgent.listMqttAuthEntries,
         {},
       );
       return new Response(

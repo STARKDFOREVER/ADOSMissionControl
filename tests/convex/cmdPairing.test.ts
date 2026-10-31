@@ -17,6 +17,8 @@
 import { describe, expect, it } from "vitest";
 
 import * as pairing from "../../convex/cmdPairing";
+import * as pairingAgent from "../../convex/cmdPairingAgent";
+import * as pairingCleanup from "../../convex/cmdPairingCleanup";
 import { invoke, makeCtx, type FakeCtx } from "./fakeConvexCtx";
 
 const NOW = Date.now();
@@ -303,7 +305,7 @@ describe("wipePairStateForOwnedDevice", () => {
     // wipe stays one code path; dispatch straight at the internal handler.
     Object.assign(ctx, {
       runMutation: (_ref: unknown, args: unknown) =>
-        invoke(pairing.wipeByDeviceIds, ctx, args),
+        invoke(pairingCleanup.wipeByDeviceIds, ctx, args),
     });
 
     const result = await invoke(pairing.wipePairStateForOwnedDevice, ctx, {
@@ -355,7 +357,7 @@ describe("cleanExpiredSecurityState", () => {
       },
     ]);
 
-    const result = await invoke(pairing.cleanExpiredSecurityState, ctx, {});
+    const result = await invoke(pairingCleanup.cleanExpiredSecurityState, ctx, {});
     expect(result).toMatchObject({ deletedBuckets: 1 });
     expect(ctx.db.rows("cmd_authAttempts").map((r) => r.key)).toEqual([
       "claim:session:locked",
@@ -373,8 +375,8 @@ describe("registerAgent pending-request binding", () => {
 
   it("refuses a different key and code on a live pending request", async () => {
     const ctx = makeCtx();
-    await invoke(pairing.registerAgent, ctx, base);
-    const result = await invoke(pairing.registerAgent, ctx, {
+    await invoke(pairingAgent.registerAgent, ctx, base);
+    const result = await invoke(pairingAgent.registerAgent, ctx, {
       ...base,
       clientKey: "ip-digest-bbbb",
       pairingCode: "XYZ789",
@@ -392,14 +394,14 @@ describe("registerAgent pending-request binding", () => {
     ctx.db.seed("cmd_pairingRequests", [
       { deviceId: "dev-9", pairingCode: "ABC234", apiKey: "old-key", expiresAt: NOW - 1 },
     ]);
-    expect(await invoke(pairing.registerAgent, ctx, base)).toEqual({ registered: true });
+    expect(await invoke(pairingAgent.registerAgent, ctx, base)).toEqual({ registered: true });
     expect(ctx.db.rows("cmd_pairingRequests")[0].apiKey).toBe("agent-key");
   });
 
   it("bounds first-contact tries of one code across many source addresses", async () => {
     const ctx = makeCtx();
     for (let i = 0; i < 10; i++) {
-      await invoke(pairing.registerAgent, ctx, {
+      await invoke(pairingAgent.registerAgent, ctx, {
         ...base,
         clientKey: `ip-${i}`,
         deviceId: `probe-${i}`,
@@ -407,7 +409,7 @@ describe("registerAgent pending-request binding", () => {
       });
     }
     expect(
-      await invoke(pairing.registerAgent, ctx, {
+      await invoke(pairingAgent.registerAgent, ctx, {
         ...base,
         clientKey: "ip-fresh",
         deviceId: "probe-fresh",
@@ -456,7 +458,7 @@ describe("cleanExpiredRequests", () => {
     );
     ctx.db.seed("cmd_pairingRequests", [{ pairingCode: "UNCLM1", expiresAt: old + 5000 }]);
 
-    const result = await invoke(pairing.cleanExpiredRequests, ctx, {});
+    const result = await invoke(pairingCleanup.cleanExpiredRequests, ctx, {});
     expect(result).toEqual({ deleted: 1 });
     const left = ctx.db.rows("cmd_pairingRequests");
     expect(left).toHaveLength(300);
@@ -469,7 +471,7 @@ describe("cleanExpiredRequests", () => {
       "cmd_pairingRequests",
       Array.from({ length: 300 }, (_, i) => ({ pairingCode: `U${i}`, expiresAt: NOW - 1000 - i })),
     );
-    await invoke(pairing.cleanExpiredRequests, ctx, {});
+    await invoke(pairingCleanup.cleanExpiredRequests, ctx, {});
     expect(ctx.db.rows("cmd_pairingRequests")).toHaveLength(44);
     expect(ctx.scheduled).toHaveLength(1);
   });

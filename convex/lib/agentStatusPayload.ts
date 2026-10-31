@@ -10,7 +10,8 @@
  *   `unknownFields`. A Convex args validator rejects the WHOLE call on one
  *   undeclared key, so forwarding it would take every node on a newer agent
  *   build dark until a deploy caught up.
- * - Every structured block goes through its coercer in `heartbeatFields`
+ * - Every structured block goes through its coercer in `heartbeatStatusFields` /
+ *   `heartbeatBlockFields`
  *   (snake_case remapped, undeclared inner keys dropped, malformed entries
  *   dropped). A block that cannot be coerced is removed.
  * - Every scalar is checked against its declared validator and dropped when it
@@ -25,23 +26,19 @@
  * @license GPL-3.0-only
  */
 
-import { pushStatusArgs } from "../cmdDroneStatus";
+import { pushStatusArgs } from "./pushStatusArgs";
+import { jsonHeaders, numberArrayField, stringArrayField } from "./heartbeatPrimitives";
+import { crsfField, radioField, serviceListField } from "./heartbeatStatusFields";
 import {
   cameraUsbRecoveryField,
   canBusesField,
   configErrorsField,
-  crsfField,
-  jsonHeaders,
   linkedPeersField,
   manualConnectionUrlsField,
-  numberArrayField,
   peripheralStatesField,
   pluginInventoryField,
-  radioField,
-  serviceListField,
-  stringArrayField,
   videoStreamsField,
-} from "./heartbeatFields";
+} from "./heartbeatBlockFields";
 
 /**
  * Upper bound on a JSON control/heartbeat body. A real heartbeat is low tens

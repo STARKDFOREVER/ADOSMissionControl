@@ -1,7 +1,7 @@
 /**
  * @module cmdPluginsValidators
  * @description Shared Convex value-validators for the plugin registry
- * mutations in `cmdPlugins.ts`. This module defines no registered
+ * mutations in `cmdPlugins.ts` and `lib/pluginInstalls.ts`. This module defines no registered
  * functions, so it is not part of the generated API surface; it exists
  * to keep the registry module under the file-size budget.
  *

@@ -16,23 +16,22 @@
  */
 
 import { v } from "convex/values";
-import { action, internalMutation, mutation, query, type MutationCtx } from "./_generated/server";
+import { action, mutation, query } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
 import {
-  sourceValidator,
   statusValidator,
-  halfValidator,
   eventTypeValidator,
   severityValidator,
-  gcsContributesValidator,
-  gcsIsolationValidator,
-  gcsParametersValidator,
-  flightSkillsValidator,
-  targetActionsValidator,
 } from "./cmdPluginsValidators";
-import { purgeRecordsForRemovedInstall } from "./pluginRecords";
+import {
+  deleteInstallTree,
+  logLifecycleEvent,
+  recordInstallArgs,
+  recordInstallFor,
+} from "./lib/pluginInstalls";
+import { grantPermissionFor, revokePermissionFor } from "./lib/pluginPermissions";
 
 // ──────────────────────────────────────────────────────────────
 // Queries
@@ -303,54 +302,10 @@ export const storeBundle = action({
       throw new Error(`bundle exceeds ${MAX_BUNDLE_BYTES} bytes`);
     }
     const storageId = await ctx.storage.store(blob);
-    await ctx.runMutation(internal.cmdPlugins.recordBundleOwner, { userId, storageId });
+    await ctx.runMutation(internal.cmdPluginsMaintenance.recordBundleOwner, { userId, storageId });
     return storageId;
   },
 });
-
-export const recordBundleOwner = internalMutation({
-  args: { userId: v.string(), storageId: v.id("_storage") },
-  handler: async (ctx, { userId, storageId }) => {
-    await ctx.db.insert("cmd_pluginBundles", { userId, storageId, createdAt: Date.now() });
-  },
-});
-
-/**
- * Delete an install and everything that hangs off it: permission rows, the
- * event log, the stored GCS bundle with its ownership row, and (unless the
- * install is being replaced in place) the plugin records it leaves behind.
- * `keepBundle` names a bundle the replacing install still references (a
- * retried record of the same upload), which is left in place. A replacement
- * passes `keepRecords` so re-installing or upgrading keeps the plugin's
- * history.
- */
-export async function deleteInstallTree(
-  ctx: Pick<MutationCtx, "db" | "storage" | "scheduler">,
-  install: Doc<"cmd_pluginInstalls">,
-  opts: { keepBundle?: Id<"_storage">; keepRecords?: boolean } = {},
-): Promise<void> {
-  const perms = await ctx.db
-    .query("cmd_pluginPermissions")
-    .withIndex("by_install", (q) => q.eq("pluginInstallId", install._id))
-    .collect();
-  for (const p of perms) await ctx.db.delete(p._id);
-  const events = await ctx.db
-    .query("cmd_pluginEvents")
-    .withIndex("by_install", (q) => q.eq("pluginInstallId", install._id))
-    .collect();
-  for (const e of events) await ctx.db.delete(e._id);
-  const storageId = install.bundleStorageId;
-  if (storageId && storageId !== opts.keepBundle) {
-    const owner = await ctx.db
-      .query("cmd_pluginBundles")
-      .withIndex("by_storageId", (q) => q.eq("storageId", storageId))
-      .first();
-    if (owner) await ctx.db.delete(owner._id);
-    await ctx.storage.delete(storageId);
-  }
-  if (!opts.keepRecords) await purgeRecordsForRemovedInstall(ctx, install);
-  await ctx.db.delete(install._id);
-}
 
 /**
  * Record a fresh plugin install. The install dialog calls this AFTER
@@ -359,117 +314,11 @@ export async function deleteInstallTree(
  * `grantPermission` before the plugin can do anything privileged.
  */
 export const recordInstall = mutation({
-  args: {
-    droneId: v.optional(v.string()),
-    pluginId: v.string(),
-    version: v.string(),
-    name: v.string(),
-    source: sourceValidator,
-    sourceUri: v.optional(v.string()),
-    signerId: v.optional(v.string()),
-    manifestHash: v.string(),
-    halves: v.array(halfValidator),
-    declaredPermissions: v.array(
-      v.object({
-        id: v.string(),
-        required: v.boolean(),
-      }),
-    ),
-    bundleStorageId: v.optional(v.id("_storage")),
-    gcsContributes: v.optional(gcsContributesValidator),
-    gcsIsolation: v.optional(gcsIsolationValidator),
-    // The install dialog sends these on EVERY install (see the GCS's
-    // finalize-gcs-install). A Convex args validator rejects the whole call on
-    // an undeclared arg, so a deployment that omits them does not lose the
-    // parameter/skill/target-action contributions -- it fails the install
-    // outright.
-    gcsParameters: v.optional(gcsParametersValidator),
-    flightSkills: v.optional(flightSkillsValidator),
-    targetActions: v.optional(targetActionsValidator),
-  },
+  args: recordInstallArgs,
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("unauthenticated");
-
-    if (args.halves.length === 0) {
-      throw new Error("plugin must declare at least one half");
-    }
-
-    const bundleStorageId = args.bundleStorageId;
-    if (bundleStorageId) {
-      const owner = await ctx.db
-        .query("cmd_pluginBundles")
-        .withIndex("by_storageId", (q) => q.eq("storageId", bundleStorageId))
-        .first();
-      if (!owner || owner.userId !== userId) {
-        throw new Error("bundle was not stored for this user");
-      }
-    }
-
-    // Upsert per drone: installing on drone B leaves drone A's install and
-    // grants alone. Re-installing on the same drone replaces its row, and the
-    // old row's grants, events and bundle go with it.
-    const existing = await ctx.db
-      .query("cmd_pluginInstalls")
-      .withIndex("by_user_drone_plugin", (q) =>
-        q.eq("userId", userId).eq("droneId", args.droneId).eq("pluginId", args.pluginId),
-      )
-      .first();
-    if (existing) {
-      await deleteInstallTree(ctx, existing, { keepBundle: bundleStorageId, keepRecords: true });
-    }
-
-    const installedAt = Date.now();
-    const installId: Id<"cmd_pluginInstalls"> = await ctx.db.insert(
-      "cmd_pluginInstalls",
-      {
-        userId,
-        droneId: args.droneId,
-        pluginId: args.pluginId,
-        version: args.version,
-        name: args.name,
-        source: args.source,
-        sourceUri: args.sourceUri,
-        signerId: args.signerId,
-        manifestHash: args.manifestHash,
-        status: "installed" as const,
-        bundleStorageId: args.bundleStorageId,
-        gcsContributes: args.gcsContributes,
-        gcsIsolation: args.gcsIsolation,
-        gcsParameters: args.gcsParameters,
-        flightSkills: args.flightSkills,
-        targetActions: args.targetActions,
-        halves: args.halves,
-        installedAt,
-      },
-    );
-
-    for (const perm of args.declaredPermissions) {
-      await ctx.db.insert("cmd_pluginPermissions", {
-        userId,
-        pluginInstallId: installId,
-        pluginId: args.pluginId,
-        permissionId: perm.id,
-        granted: false,
-        required: perm.required,
-      });
-    }
-
-    await ctx.db.insert("cmd_pluginEvents", {
-      userId,
-      pluginInstallId: installId,
-      pluginId: args.pluginId,
-      type: "installed" as const,
-      severity: "info" as const,
-      message: `Installed ${args.pluginId} v${args.version}`,
-      payload: {
-        signerId: args.signerId,
-        source: args.source,
-      },
-      createdAt: installedAt,
-    });
-
-    return installId;
+    return await recordInstallFor(ctx, userId, args);
   },
 });
 
@@ -486,39 +335,7 @@ export const grantPermission = mutation({
   handler: async (ctx, { installId, permissionId }) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("unauthenticated");
-    const install = await ctx.db.get(installId);
-    if (!install || install.userId !== userId) {
-      throw new Error("install not found");
-    }
-    const row = await ctx.db
-      .query("cmd_pluginPermissions")
-      .withIndex("by_install_perm", (q) =>
-        q.eq("pluginInstallId", installId).eq("permissionId", permissionId),
-      )
-      .first();
-    if (!row) {
-      throw new Error(
-        `permission ${permissionId} was not declared in the manifest`,
-      );
-    }
-    if (row.granted) return row._id;
-    const now = Date.now();
-    await ctx.db.patch(row._id, {
-      granted: true,
-      grantedAt: now,
-      grantedBy: userId,
-      revokedAt: undefined,
-    });
-    await ctx.db.insert("cmd_pluginEvents", {
-      userId,
-      pluginInstallId: installId,
-      pluginId: install.pluginId,
-      type: "permission_granted" as const,
-      severity: "info" as const,
-      message: `Granted ${permissionId}`,
-      createdAt: now,
-    });
-    return row._id;
+    return await grantPermissionFor(ctx, userId, installId, permissionId);
   },
 });
 
@@ -535,36 +352,7 @@ export const revokePermission = mutation({
   handler: async (ctx, { installId, permissionId }) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("unauthenticated");
-    const install = await ctx.db.get(installId);
-    if (!install || install.userId !== userId) {
-      throw new Error("install not found");
-    }
-    const row = await ctx.db
-      .query("cmd_pluginPermissions")
-      .withIndex("by_install_perm", (q) =>
-        q.eq("pluginInstallId", installId).eq("permissionId", permissionId),
-      )
-      .first();
-    if (!row || !row.granted) return;
-    if (row.required) {
-      throw new Error(
-        `permission ${permissionId} is required by the manifest; remove the plugin instead`,
-      );
-    }
-    const now = Date.now();
-    await ctx.db.patch(row._id, {
-      granted: false,
-      revokedAt: now,
-    });
-    await ctx.db.insert("cmd_pluginEvents", {
-      userId,
-      pluginInstallId: installId,
-      pluginId: install.pluginId,
-      type: "permission_revoked" as const,
-      severity: "warning" as const,
-      message: `Revoked ${permissionId}`,
-      createdAt: now,
-    });
+    await revokePermissionFor(ctx, userId, installId, permissionId);
   },
 });
 
@@ -632,70 +420,3 @@ export const recordEvent = mutation({
     });
   },
 });
-
-// ──────────────────────────────────────────────────────────────
-// Retention sweep (cron-only)
-// ──────────────────────────────────────────────────────────────
-
-/** Plugin lifecycle events are kept for 30 days. */
-const EVENT_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
-/** Bounded so a backlog cannot blow the per-call limits. */
-const EVENT_PRUNE_BATCH = 256;
-
-/**
- * Cron job: delete plugin events past the retention window.
- *
- * `cmd_pluginEvents` is append-only and written at machine cadence (every
- * install, enable, start, stop, crash and capability denial), and the table's
- * own schema comment promised this sweep while nothing swept it. Reads through
- * `by_createdAt` so the cost tracks what is deleted, not the table.
- */
-export const pruneOldEvents = internalMutation({
-  args: {},
-  handler: async (ctx): Promise<{ deleted: number }> => {
-    const cutoff = Date.now() - EVENT_RETENTION_MS;
-    const stale = await ctx.db
-      .query("cmd_pluginEvents")
-      .withIndex("by_createdAt", (q) => q.lt("createdAt", cutoff))
-      .take(EVENT_PRUNE_BATCH);
-    for (const row of stale) {
-      await ctx.db.delete(row._id);
-    }
-    // A full batch means more may be past retention: keep draining now rather
-    // than letting the backlog outgrow one batch per cron tick.
-    if (stale.length === EVENT_PRUNE_BATCH) {
-      await ctx.scheduler.runAfter(0, internal.cmdPlugins.pruneOldEvents, {});
-    }
-    return { deleted: stale.length };
-  },
-});
-
-// ──────────────────────────────────────────────────────────────
-// Internal helpers
-// ──────────────────────────────────────────────────────────────
-
-async function logLifecycleEvent(
-  ctx: MutationCtx,
-  install: Doc<"cmd_pluginInstalls">,
-  status: Doc<"cmd_pluginInstalls">["status"],
-): Promise<void> {
-  const map: Partial<Record<typeof status, Doc<"cmd_pluginEvents">["type"]>> = {
-    installed: "installed",
-    enabled: "enabled",
-    running: "started",
-    disabled: "disabled",
-    crashed: "crashed",
-    removed: "removed",
-  };
-  const eventType = map[status];
-  if (!eventType) return;
-  await ctx.db.insert("cmd_pluginEvents", {
-    userId: install.userId,
-    pluginInstallId: install._id,
-    pluginId: install.pluginId,
-    type: eventType,
-    severity: status === "crashed" ? "error" : "info",
-    message: `Plugin ${install.pluginId} -> ${status}`,
-    createdAt: Date.now(),
-  });
-}

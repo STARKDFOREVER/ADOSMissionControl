@@ -6,7 +6,7 @@
  * would pin the spelling of identifiers, not behaviour: it passes while the
  * code is wrong and fails when the code is merely reformatted. A Convex
  * validator is an ordinary object at runtime and the payload coercion lives
- * in `convex/lib/heartbeatFields.ts` as pure exports, so both are directly
+ * in `convex/lib/heartbeatStatusFields.ts` as pure exports, so both are directly
  * inspectable.
  *
  * What is actually at stake: `pushStatus` takes a strict `v.object()` for
@@ -19,10 +19,10 @@
 
 import { describe, expect, it } from "vitest";
 
-import { pushStatusArgs } from "../../convex/cmdDroneStatus";
+import { pushStatusArgs } from "../../convex/lib/pushStatusArgs";
 import schema from "../../convex/schema";
 import { snakeToCamelObject } from "../../convex/heartbeatCasing";
-import { crsfField, radioField } from "../../convex/lib/heartbeatFields";
+import { crsfField, radioField } from "../../convex/lib/heartbeatStatusFields";
 
 // ── validator introspection ──────────────────────────────────────────
 

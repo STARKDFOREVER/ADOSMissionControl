@@ -87,7 +87,7 @@ truncated=$(printf '%s' "${response}" | jq -r '.truncated // false')
 if [[ "${truncated}" == "true" ]]; then
   echo "regenerate-passwd: Convex truncated the auth payload at its cap;" >&2
   echo "  refusing to write a partial passwd/ACL. Raise MAX_MQTT_AUTH_ENTRIES" >&2
-  echo "  in convex/cmdPairing.ts (both twins) and redeploy." >&2
+  echo "  in convex/lib/pairingCodes.ts (both twins) and redeploy." >&2
   exit 1
 fi
 

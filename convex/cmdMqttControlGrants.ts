@@ -26,7 +26,7 @@
  * returned exactly once, at mint.
  *
  * The broker learns a principal when the host-side password/ACL generator
- * reads it through `cmdPairing.listMqttAuthEntries`, which emits every live,
+ * reads it through `cmdPairingAgent.listMqttAuthEntries`, which emits every live,
  * unrevoked grant. That runs on its own cadence, so the client treats a grant
  * it has not exercised as unproven rather than as authority.
  *
