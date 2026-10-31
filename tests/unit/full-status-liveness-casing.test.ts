@@ -1,7 +1,7 @@
 /**
  * The agent's native status front emits the FC-liveness detail in camelCase
  * (`mavlinkAlive` / `fcLinkHint` / …) while the GCS reads it off
- * `FullStatusResponse` as snake_case. `normalizeFullStatusLiveness` bridges the
+ * `LanStatusFull` as snake_case. `normalizeFullStatusLiveness` bridges the
  * two at the LAN boundary so the gated MAVLink truth + the FC-link diagnostic
  * hint actually reach the LAN-direct render path (the bench pairs locally).
  *
@@ -10,7 +10,7 @@
 
 import { describe, expect, it } from "vitest";
 import { normalizeFullStatusLiveness } from "@/lib/agent/agent-client/system";
-import type { FullStatusResponse } from "@/lib/agent/types";
+import type { StatusFull } from "@/lib/agent/agent-api.generated";
 
 const base = {
   version: "0.91.0",
@@ -21,7 +21,7 @@ const base = {
   fc_port: "/dev/ttyACM0",
   fc_baud: 0,
   services: [],
-} as unknown as FullStatusResponse;
+} as unknown as StatusFull;
 
 describe("normalizeFullStatusLiveness", () => {
   it("lifts the camelCase liveness the native agent emits into snake_case", () => {
@@ -33,7 +33,7 @@ describe("normalizeFullStatusLiveness", () => {
       heartbeatAgeS: 7.5,
       fcSource: "serial",
       fcLinkHint: "msp_detected",
-    } as unknown as FullStatusResponse;
+    } as unknown as StatusFull;
 
     const out = normalizeFullStatusLiveness(raw);
     expect(out.transport_open).toBe(true);
@@ -50,7 +50,7 @@ describe("normalizeFullStatusLiveness", () => {
       mavlinkAlive: false,
       heartbeatAgeS: null,
       fcLinkHint: "no_heartbeat",
-    } as unknown as FullStatusResponse;
+    } as unknown as StatusFull;
 
     const out = normalizeFullStatusLiveness(raw);
     expect(out.heartbeat_age_s).toBeNull();
@@ -67,7 +67,7 @@ describe("normalizeFullStatusLiveness", () => {
       fc_link_hint: "none",
       // a stale camelCase sibling must not override the snake value
       mavlinkAlive: false,
-    } as unknown as FullStatusResponse;
+    } as unknown as StatusFull;
 
     const out = normalizeFullStatusLiveness(raw);
     expect(out.mavlink_alive).toBe(true);

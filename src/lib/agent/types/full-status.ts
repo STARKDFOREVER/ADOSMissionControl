@@ -1,10 +1,13 @@
 /**
  * @module AgentTypes
- * @description Agent consolidated /api/status/full types.
+ * @description Narrowing for the `/api/status/full` blocks. The top-level
+ * shape is generated from the agent's schema (`StatusFull` in
+ * `@/lib/agent/agent-api.generated`); its nested blocks and fold keys arrive
+ * as `unknown`, and the interfaces here name the shapes the GCS reads.
  * @license GPL-3.0-only
  */
 
-import type { NodeFlags } from "../node-flags";
+import type { StatusFull } from "../agent-api.generated";
 import type { BoardInfo, FcSource, HealthInfo } from "./status";
 
 // ── Consolidated ───────────────────────────────────────
@@ -52,164 +55,133 @@ export interface CameraUsbRecovery {
   contentionPeer: string | null;
 }
 
-/** Response from `/api/status/full` (agent v0.3.19+). */
-export interface FullStatusResponse extends NodeFlags {
-  version: string;
-  /** Agent uptime in seconds. Absent when the agent did not report it. */
-  uptime_seconds?: number;
-  board: BoardInfo;
-  health: HealthInfo;
-  fc_connected: boolean;
-  fc_port: string;
-  fc_baud: number;
-  /** Gated MAVLink truth, siblings of `fc_connected`. The current native agent
-   * front emits these in camelCase on the wire; `getFullStatus` normalises them
-   * to these snake-case fields at the fetch boundary
-   * (`normalizeFullStatusLiveness`). Absent on agents that predate the gated
-   * truth (the LAN-direct path then falls back to `fc_connected` alone). */
+/** One `services` row: systemd ActiveState in `state`, the unit's sub-state
+ * in `sub_state`. A unit whose start systemd skipped on an unmet unit
+ * condition reads `state: "idle"`, `reason: "condition_unmet"`. No uptime:
+ * the agent does not measure one here. */
+export interface StatusFullServiceRow {
+  name: string;
+  state: string;
+  sub_state?: string;
+  reason?: string;
+  task_done: boolean;
+  memory_mb?: number;
+}
+
+/** `resources`: any field is absent when the agent could not take that
+ * reading. */
+export interface StatusFullResources {
+  cpu_percent?: number;
+  memory_percent?: number;
+  disk_percent?: number;
+  temperature?: number | null;
+}
+
+/** One per-leg stream on a multi-stream node. `whepUrl` is the agent's
+ * same-origin relative WHEP path, resolved against the reachable host.
+ * `live` is the agent's per-leg liveness sample: `false` = a known-dead leg;
+ * `true` = producing; absent/`null` = not-yet-sampled or an idle on-demand
+ * secondary (treated as selectable, never dead). */
+export interface StatusFullVideoStream {
+  id: string;
+  role?: string;
+  codec?: string;
+  whepUrl: string;
+  /** Relative HLS playlist for this leg (`/hls/<id>/index.m3u8`), read by the
+   * agent's on-box cockpit, not this client. */
+  hls?: string;
+  live?: boolean | null;
+}
+
+/** `video` block. */
+export interface StatusFullVideo {
+  state: string;
+  whep_url: string | null;
+  /** Primary HLS playlist (relative `/hls/main/index.m3u8` on current
+   * agents). Consumed by the agent's own on-box cockpit, which falls back
+   * WHEP→HLS on the drone's local display; Mission Control never plays it,
+   * because HLS sits 2-6 s behind live and a piloting surface cannot present
+   * that as current. */
+  hls_url?: string | null;
+  streams?: StatusFullVideoStream[];
+  /** The hardware encoder failed and the encoder was pinned to software. */
+  encoder_forced_software?: boolean;
+}
+
+/** One `linked_peers` entry: a WFB peer this node reports. */
+export interface StatusFullLinkedPeer {
+  device_id?: string;
+  rssi_dbm?: number | null;
+  role?: string | null;
+  channel?: number | null;
+  seen_at_unix?: number | null;
+}
+
+/** FC liveness in the snake_case the GCS reads. The agent emits these in
+ * camelCase; `normalizeFullStatusLiveness` bridges them at the fetch
+ * boundary. Absent when neither casing was present. */
+export interface SnakeFcLiveness {
   transport_open?: boolean;
   mavlink_alive?: boolean;
   heartbeat_age_s?: number | null;
   fc_source?: FcSource;
-  /** Diagnostic hint for a not-alive link (`"none"` | `"msp_detected"` |
-   * `"no_heartbeat"`). Absent on older agents. */
+  /** `"none"` | `"msp_detected"` | `"no_heartbeat"`. */
   fc_link_hint?: string;
-  /** Protocol family identified on the FC serial link (`"betaflight"` |
-   * `"inav"` for an MSP FC). Drives adapter selection on the LAN-direct path.
-   * Absent on ArduPilot / PX4 / an unidentified FC / older agents. */
+  /** `"betaflight"` | `"inav"` for an MSP FC; absent otherwise. */
   fc_variant?: string;
-  /** The agent's own honest connected-or-reachable verdict, true for a healthy
-   * MSP FC that never emits a MAVLink heartbeat. Absent on older agents. */
-  fc_reachable?: boolean;
-  /** Canonical FC firmware family (`"ardupilot"` | `"px4"` | `"betaflight"` |
-   * `"inav"` | `"unknown"`), distinguishing the two MAVLink stacks. Absent on
-   * older agents. */
+  /** `"ardupilot"` | `"px4"` | `"betaflight"` | `"inav"` | `"unknown"`. */
   fc_firmware?: string;
-  /** True when the FC link reads connected but GCS commands to the FC are
-   * dropped (telemetry-only source). Normalised from the wire `fcCommandDownGated`. */
+  /** The agent's own connected-or-reachable verdict, true for a healthy MSP
+   * FC that never emits a MAVLink heartbeat. */
+  fc_reachable?: boolean;
+  /** The FC link reads connected but GCS commands to the FC are dropped. */
   fc_command_down_gated?: boolean;
-  /** The board's declared NPU throughput in TOPS (0 when none). */
-  npuTops?: number;
-  /** The board's declaration that it carries NPU hardware. */
-  hasAccelerator?: boolean;
-  /** Where perception runs: `"local"` | `"offload"` | `"hybrid"` | `"none"`. */
-  perceptionTier?: string;
-  /** The workstation perception is offloaded to, or null when it runs locally. */
-  perceptionOffloadTarget?: string | null;
-  /** One row per ados-* unit: systemd ActiveState in `state`, the unit's
-   * sub-state in `sub_state`. A unit whose start systemd skipped on an unmet
-   * unit condition reads `state: "idle"`, `reason: "condition_unmet"`. No
-   * uptime: the agent does not measure one here. */
-  services: Array<{ name: string; state: string; sub_state?: string; reason?: string; task_done: boolean; memory_mb?: number }>;
-  /** Any field is absent when the agent could not take that reading. */
-  resources: { cpu_percent?: number; memory_percent?: number; disk_percent?: number; temperature?: number | null };
-  video: {
-    state: string;
-    whep_url: string | null;
-    /** Primary HLS playlist (relative `/hls/main/index.m3u8` on current
-     * agents). Consumed by the AGENT's own on-box cockpit, which falls back
-     * WHEP→HLS on the drone's local display; Mission Control never plays it
-     * and resolves no URL from it, because HLS sits 2-6 s behind live and a
-     * piloting surface cannot present that as current. Modelled here so the
-     * wire contract stays complete, not because this client uses it. Absent
-     * on agents that predate it. */
-    hls_url?: string | null;
-    /** Per-leg video streams on a multi-stream node (each `whepUrl` is the
-     * agent's same-origin relative WHEP path, resolved against the reachable host).
-     * `live` is the agent's per-leg liveness sample: `false` = a known-dead leg;
-     * `true` = producing; absent/`null` = not-yet-sampled or an idle on-demand
-     * secondary (treated as selectable, never dead). */
-    streams?: {
-      id: string;
-      role?: string;
-      codec?: string;
-      whepUrl: string;
-      /** Relative HLS playlist for this leg (`/hls/<id>/index.m3u8`). Same
-       * consumer as `hls_url` above: the agent's on-box cockpit, not this
-       * client. */
-      hls?: string;
-      live?: boolean | null;
-    }[];
-    /** The hardware encoder failed and the encoder was pinned to software.
-     * Absent on agents that predate the field. */
-    encoder_forced_software?: boolean;
-  };
+}
+
+/** `/api/status/full` as `getFullStatus` returns it: the generated wire shape
+ * with the FC liveness bridged to snake_case, its `unknown` blocks narrowed,
+ * and the fold keys it carries through its index signature named. Fold keys
+ * are present only while their `/run/ados` sidecar is fresh. */
+export interface LanStatusFull extends StatusFull, SnakeFcLiveness {
+  board: BoardInfo;
+  health: HealthInfo;
+  services: StatusFullServiceRow[];
+  resources: StatusFullResources;
+  video: StatusFullVideo;
   telemetry: Record<string, unknown>;
-  /** WFB radio snapshot (camelCase) for the LAN-direct path. Optional for older agents. */
-  radio?: Record<string, unknown> | null;
-  /** CRSF / ExpressLRS RC control-lane snapshot: the lane's crsf-stats sidecar
-   * body, folded in VERBATIM (raw snake_case) when the lane is live. The agent
-   * emits it profile-agnostically — a ground station OR a drone running the ELRS
-   * relay lane carries it — and OMITS the key entirely when the lane is down or
-   * its sidecar is stale, never a fabricated all-null block. The store's
-   * `normalizeCrsf` folds the snake_case body onto the CrsfState shape and reads
-   * an absent key as no lane. Optional for older agents. */
+  /** WFB radio snapshot (camelCase). */
+  radio: Record<string, unknown> | null;
+  /** CRSF / ExpressLRS control-lane snapshot: the lane's crsf-stats sidecar
+   * body folded in verbatim (raw snake_case). The key is omitted when the
+   * lane is down or its sidecar is stale. */
   crsf?: Record<string, unknown> | null;
-  /** Native-vs-packaged aggregate for the node. Lets the LAN-direct
-   * path light the same per-node runtime badge the cloud heartbeat
-   * does. Optional for older agents that predate the field. */
-  runtimeMode?: "native" | "hybrid" | "packaged";
-  /** Resolved node profile (wire form, e.g. "drone" | "ground-station" |
-   * "workstation"). Lets the LAN-direct path tell a ground station apart so it
-   * can prefer that profile's ticket-gated MAVLink endpoint. Optional for
-   * older agents that predate the field on the consolidated status. */
-  profile?: string;
-  /** WFB peer this node decoded from a bind PresenceBeacon (a ground node
-   * carries the drone's id; a drone carries the ground node's). Carried on the
-   * LAN-direct status so local-first transitive enrollment works without the
-   * cloud relay. Null / absent when no peer is currently decoded. */
+  /** WFB peer decoded from a bind PresenceBeacon. */
   peerDeviceId?: string | null;
-  /** Peer-reported RSSI in dBm (signed), paired with `peerDeviceId`. */
+  /** Peer-reported RSSI in dBm, paired with `peerDeviceId`. */
   peerRssiDbm?: number | null;
-  /** Every WFB peer this node reports (a ground node can relay more than one
-   * drone). Each entry carries the peer id and, when known, rssi / role /
-   * channel / seen-at. Preferred over the scalar `peerDeviceId`. Absent on
-   * agents that predate the list. */
-  linked_peers?: Array<{
-    device_id?: string;
-    rssi_dbm?: number | null;
-    role?: string | null;
-    channel?: number | null;
-    seen_at_unix?: number | null;
-  }>;
-  /** Air-side camera discovery state ("ready" | "missing" | "error").
-   * Carried at the top level of `/api/status/full` so the LAN-direct
-   * path lights the same "No camera" surfaces the cloud heartbeat does.
-   * Optional / null on agents that predate the surface. */
+  /** Every WFB peer this node reports. Preferred over `peerDeviceId`. */
+  linked_peers?: StatusFullLinkedPeer[];
+  /** Air-side camera discovery state ("ready" | "missing" | "error"). */
   cameraState?: string | null;
-  /** Air-side USB camera recovery state. Carried at the top level of
-   * `/api/status/full`. Absent on agents that predate the surface. */
   cameraUsbRecovery?: CameraUsbRecovery;
-  /** Reconciler verdicts the agent folds in beside the camera keys, each present
-   * only while its `/run/ados` sidecar is fresh. Absent on agents that predate
-   * the readers (the supervisor wrote every one of these sidecars and nothing
-   * read them, so all four rendered empty in the GCS).
-   *
-   * The two object blocks are pass-throughs, typed like their `radio` / `crsf`
-   * siblings above: `agent-capabilities/normalizer.ts` clamps them onto
-   * `ManagementLink` / `WifiPowersave` and reads an absent or malformed block as
-   * no reading. Typing them structurally here would make this module depend on
-   * `feature-types`, which already depends on this one. */
+  /** Pass-through blocks: `agent-capabilities/normalizer.ts` clamps them
+   * onto `ManagementLink` / `WifiPowersave`. */
   managementLink?: Record<string, unknown> | null;
   wifiPowersave?: Record<string, unknown> | null;
   mgmtLinkMode?: "primary" | "wifi_heartbeat" | "none";
   mgmtFailoverIface?: string | null;
   mgmtFailoverReason?: string | null;
-  /** USB-rehome self-heal state: "idle" | "rehoming" (unbind/rebind in
-   * progress or retrying on the cooldown) | "guard_blocked". Recovery has no
-   * attempt budget; `usbRehomeAttempts` counts the current episode. */
+  /** "idle" | "rehoming" | "guard_blocked". */
   usbRehomeState?: "idle" | "rehoming" | "guard_blocked";
   usbRehomeAttempts?: number | null;
   usbRehomeLastResult?: string | null;
-  /** Per-adapter stable-MAC verdicts (`{adapters: [...]}`) from the agent's
-   * mac-pins state. Absent on a node that has pinned nothing. Already camelCase
-   * at the source — never remap it. */
+  /** Per-adapter stable-MAC verdicts (`{adapters: [...]}`), camelCase at the
+   * source. */
   macStability?: Record<string, unknown> | null;
   /** The FC identity reconciler's last verdict, or null before its first
-   * tick. Absent on agents that predate the reconciler. */
-  fc_identity?: FcIdentityVerdictWire | null;
-  /** The router's direct-GCS proxy posture: the configured binds plus the
-   * edges it actually holds. Null when the router has not published it. */
+   * tick. */
+  fc_identity: FcIdentityVerdictWire | null;
+  /** The router's direct-GCS proxy posture, or null when unpublished. */
   mavlink_proxy_posture?: MavlinkProxyPostureWire | null;
   /** True when the FC drops the agent's unsigned frames; null unmeasured. */
   agent_commands_unsigned_rejected_risk?: boolean | null;

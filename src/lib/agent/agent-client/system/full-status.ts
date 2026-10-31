@@ -5,46 +5,24 @@
  */
 
 import type { z } from "zod";
-import type { AgentStatus, FcSource, FullStatusResponse } from "../../types";
+import type { StatusFull } from "../../agent-api.generated";
+import type { FcSource, LanStatusFull, SnakeFcLiveness } from "../../types";
 import { FullStatusResponseSchema } from "../../schemas";
 import { agentRequest, type RequestContext } from "../transport";
 import { agentSupports, fetchVersionInfo } from "../version-cache";
 
 /**
- * Fetch all status data in a single request (agent v0.3.19+).
- * Falls back to null on older agents that don't have this endpoint.
- *
- * Uses /api/version capability negotiation when available so we
- * skip the request entirely (and don't burn a 404 round-trip)
- * against an agent that hasn't advertised status.full.
- */
-/** The five FC-liveness fields the agent emits in camelCase but the GCS reads
- * in snake_case. Both `AgentStatus` and `FullStatusResponse` carry them as
- * optional snake fields. */
-interface SnakeLiveness {
-  transport_open?: boolean;
-  mavlink_alive?: boolean;
-  heartbeat_age_s?: number | null;
-  fc_source?: FcSource;
-  fc_link_hint?: string;
-  fc_firmware?: string;
-  fc_variant?: string;
-  fc_reachable?: boolean;
-  fc_command_down_gated?: boolean;
-}
-
-/**
  * The agent's native status front emits the FC-liveness detail in camelCase
  * (`transportOpen` / `mavlinkAlive` / `heartbeatAgeS` / `fcSource` / `fcLinkHint`,
  * "like the heartbeat"), while the rest of the GCS reads these as snake_case off
- * `AgentStatus` / `FullStatusResponse`. Bridge the two at the LAN boundary: when
+ * `AgentStatus` / `LanStatusFull`. Bridge the two at the LAN boundary: when
  * a snake field is absent but its camelCase sibling is present, copy it across
  * (snake wins for back-compat). Without this the gated MAVLink truth + the
  * FC-link diagnostic hint silently never reach the LAN-direct render path, so a
  * port-open-but-silent link reads as a bare disconnect with no remediation.
  * Returns just the five fields so callers spread it over the source object.
  */
-export function snakeLivenessPatch(obj: SnakeLiveness): SnakeLiveness {
+export function snakeLivenessPatch(obj: SnakeFcLiveness): SnakeFcLiveness {
   const raw: Record<string, unknown> = { ...obj };
   const bool = (snake: boolean | undefined, camel: unknown) =>
     typeof snake === "boolean"
@@ -88,23 +66,33 @@ export function snakeLivenessPatch(obj: SnakeLiveness): SnakeLiveness {
 }
 
 /** Bridge the camelCase liveness on a `/api/status/full` response into the
- * snake_case the GCS reads. Exported for the LAN boundary + tests. */
-export function normalizeFullStatusLiveness(
-  full: FullStatusResponse,
-): FullStatusResponse {
-  return { ...full, ...snakeLivenessPatch(full) };
+ * snake_case the GCS reads, and read its `unknown` blocks through the
+ * `LanStatusFull` narrowing. Exported for the LAN boundary + tests. */
+export function normalizeFullStatusLiveness(full: StatusFull): LanStatusFull {
+  const lan = full as LanStatusFull;
+  return { ...lan, ...snakeLivenessPatch(lan) };
 }
 
+/**
+ * Fetch all status data in a single request (agent v0.3.19+).
+ * Falls back to null on older agents that don't have this endpoint.
+ *
+ * Uses /api/version capability negotiation when available so we
+ * skip the request entirely (and don't burn a 404 round-trip)
+ * against an agent that hasn't advertised status.full.
+ */
 export async function getFullStatus(
   ctx: RequestContext,
-): Promise<FullStatusResponse | null> {
+): Promise<LanStatusFull | null> {
   const info = await fetchVersionInfo(ctx);
   if (info && !agentSupports(info, "status.full")) {
     return null;
   }
   try {
-    const full = await agentRequest<FullStatusResponse>(ctx, "/api/status/full", {
-      schema: FullStatusResponseSchema as z.ZodType<FullStatusResponse>,
+    const full = await agentRequest<StatusFull>(ctx, "/api/status/full", {
+      // The schema checks the subset the GCS depends on; the generated type
+      // is the wire contract.
+      schema: FullStatusResponseSchema as unknown as z.ZodType<StatusFull>,
       allowSchemaFallback: true,
     });
     return normalizeFullStatusLiveness(full);

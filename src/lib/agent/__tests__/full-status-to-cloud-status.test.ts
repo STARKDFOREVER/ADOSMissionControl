@@ -15,15 +15,15 @@ import { describe, it, expect } from "vitest";
 
 import { mapFullStatusToCloudStatus } from "../full-status-to-cloud-status";
 import { planRelayedEnrollment } from "../relayed-peers";
-import type { FullStatusResponse } from "../types";
+import type { LanStatusFull } from "../types";
 
 const SEEN_AT_UNIX = 1_699_999_000; // seconds
 
 /** A minimal, fully-typed `/api/status/full` body carrying only what the mapper
  * reads plus the WFB peer list under test. */
 function fullStatus(
-  linkedPeers: FullStatusResponse["linked_peers"],
-): FullStatusResponse {
+  linkedPeers: LanStatusFull["linked_peers"],
+): LanStatusFull {
   return {
     version: "1.2.3",
     uptime_seconds: 42,
@@ -57,6 +57,33 @@ function fullStatus(
     },
     video: { state: "stopped", whep_url: null },
     telemetry: {},
+    radio: null,
+    fc_identity: null,
+    mesh: null,
+    capture_storage: false,
+    clock: false,
+    gnss: false,
+    lora: false,
+    sensor_hub: false,
+    sim: false,
+    transportOpen: false,
+    mavlinkAlive: false,
+    heartbeatAgeS: null,
+    fcSource: "auto",
+    fcLinkHint: "none",
+    fcVariant: null,
+    fcFirmware: "unknown",
+    fcReachable: false,
+    fcCommandDownGated: false,
+    hasAccelerator: false,
+    npuTops: 0,
+    perceptionTier: "none",
+    perceptionOffloadTarget: null,
+    plugin_loopback_guard: "active",
+    profile: "ground-station",
+    role: null,
+    runtimeMode: "native",
+    relaySecretPresent: false,
     linked_peers: linkedPeers,
   };
 }

@@ -11,16 +11,15 @@ import type {
   AgentStatus,
   ClaimResponse,
   CommandResult,
-  HardwareCheckStatus,
   LogEntry,
   NetworkPeer,
   PairingInfo,
   PeripheralInfo,
   ServiceInfo,
   SetupActionResult,
-  SetupStatus,
   SystemResources,
 } from "@/lib/agent/types";
+import type { HardwareCheckStatus, SetupStatus } from "@/lib/agent/agent-api.generated";
 import type { AgentCapabilities } from "@/lib/agent/feature-types";
 import type {
   CameraLegInput,

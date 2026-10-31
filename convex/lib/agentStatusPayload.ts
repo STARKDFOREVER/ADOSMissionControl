@@ -164,7 +164,7 @@ function fitsValidator(validator: ValidatorShape, value: unknown): boolean {
 export const PUSH_STATUS_KEYS: ReadonlySet<string> = new Set(Object.keys(pushStatusArgs));
 
 /** Keys an agent sends that are deliberately not status: never reported. */
-const STRIPPED_KEYS = new Set(["apiKey", "agentVersion"]);
+export const STRIPPED_KEYS: ReadonlySet<string> = new Set(["apiKey", "agentVersion"]);
 
 export interface StatusPayload {
   /** The arguments to hand to `pushStatus`. */

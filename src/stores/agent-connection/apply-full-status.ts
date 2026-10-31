@@ -23,7 +23,7 @@
 import { normaliseSystemResources } from "@/lib/agent/client";
 import type {
   AgentStatus,
-  FullStatusResponse,
+  LanStatusFull,
   ServiceInfo,
 } from "@/lib/agent/types";
 import { inferCapabilities } from "@/lib/agent/infer-capabilities";
@@ -42,7 +42,7 @@ import { useVideoStore } from "../video-store";
  * rather than landing as `undefined` — `AgentStatusCard` distinguishes the two
  * and falls back to `fc_connected` when the gated MAVLink fields are missing.
  */
-export function fullStatusToAgentStatus(full: FullStatusResponse): AgentStatus {
+export function fullStatusToAgentStatus(full: LanStatusFull): AgentStatus {
   const status = {
     version: full.version,
     uptime_seconds: full.uptime_seconds,
@@ -103,7 +103,7 @@ export function fullStatusToAgentStatus(full: FullStatusResponse): AgentStatus {
  * slice, not from the focused one.
  */
 export function applyFullStatus(
-  full: FullStatusResponse,
+  full: LanStatusFull,
   agentUrl: string | null,
   nodeDeviceId: string | null,
 ): void {
@@ -113,9 +113,9 @@ export function applyFullStatus(
     // Map the consolidated service shape (`state` + camelCase metric fields)
     // into the canonical ServiceInfo through the shared normaliser, so a
     // missing metric stays null and a missing state is not read as stopped.
-    const mapped: ServiceInfo[] = (
-      full.services as Array<Record<string, unknown>>
-    ).map((s) => normalizeServiceInfo(s));
+    const mapped: ServiceInfo[] = full.services.map((s) =>
+      normalizeServiceInfo({ ...s }),
+    );
     useAgentSystemStore.setState({ services: mapped });
   }
   if (full.resources) {

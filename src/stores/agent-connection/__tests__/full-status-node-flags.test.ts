@@ -34,7 +34,7 @@ import {
   selectDeviceCapabilities,
   useAgentCapabilitiesStore,
 } from "@/stores/agent-capabilities-store";
-import type { FullStatusResponse } from "@/lib/agent/types";
+import type { LanStatusFull } from "@/lib/agent/types";
 
 // Top-level fields of a `/api/status/full` body captured from agent 0.104.0 on
 // the simulation bench VM (visor profile, no GNSS receiver or LoRa radio).
@@ -82,7 +82,7 @@ const CAPTURED = {
   runtimeMode: "native",
 };
 
-const full = (body: object) => body as unknown as FullStatusResponse;
+const full = (body: object) => body as unknown as LanStatusFull;
 const URL = "http://192.168.1.50:8080";
 
 describe("LAN status carries the node flags into the capability store", () => {

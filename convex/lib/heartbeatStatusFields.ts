@@ -4,10 +4,15 @@
  * and the snake_case radio and CRSF blocks, reshaped into the camelCase the
  * `pushStatus` validator declares and filtered to its declared keys.
  *
+ * The agent's heartbeat body is `HeartbeatPayload`, generated from the agent's
+ * schema; its `radio` and `crsf` blocks (`RadioBlock`, `CrsfBlock`) arrive in
+ * snake_case and its `services` rows in camelCase.
+ *
  * @license GPL-3.0-only
  */
 
 import { snakeToCamelObject } from "../heartbeatCasing";
+import type { HeartbeatPayload } from "./agentHeartbeat.generated";
 import { pushStatusArgs } from "./pushStatusArgs";
 import { booleanField, declaredKeys, numberField, stringField } from "./heartbeatPrimitives";
 
@@ -23,7 +28,7 @@ export interface ServiceStatusPayload {
 
 export function serviceListField(
   body: Record<string, unknown>,
-  key: string,
+  key: keyof HeartbeatPayload,
 ): ServiceStatusPayload[] | undefined {
   const value = body[key];
   if (!Array.isArray(value)) return undefined;
@@ -141,7 +146,7 @@ export const CRSF_KEYS = declaredKeys(pushStatusArgs.crsf);
  */
 export function radioField(
   body: Record<string, unknown>,
-  key: string,
+  key: keyof HeartbeatPayload,
 ): RadioPayload | undefined {
   const raw = body[key];
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
@@ -202,7 +207,7 @@ export interface CrsfPayload {
  */
 export function crsfField(
   body: Record<string, unknown>,
-  key: string,
+  key: keyof HeartbeatPayload,
 ): CrsfPayload | undefined {
   const remapped = snakeToCamelObject(body[key]) as Record<string, unknown> | undefined;
   if (!remapped) return undefined;

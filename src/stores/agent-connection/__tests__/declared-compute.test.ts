@@ -36,13 +36,13 @@ import {
 } from "@/stores/agent-capabilities-store";
 import { inferCapabilities } from "@/lib/agent/infer-capabilities";
 import { buildHeartbeatExtras } from "@/components/command/bridges/status-mapper";
-import type { AgentStatus, FullStatusResponse } from "@/lib/agent/types";
+import type { AgentStatus, LanStatusFull } from "@/lib/agent/types";
 
 const HOST = "http://192.168.1.50:8080";
 
 /** `/api/status/full` as the agent sends it: no `capabilities` key, compute
  * declared at the top level. */
-function fullStatus(over: Record<string, unknown>): FullStatusResponse {
+function fullStatus(over: Record<string, unknown>): LanStatusFull {
   return {
     version: "0.102.0",
     uptime_seconds: 120,
@@ -60,7 +60,7 @@ function fullStatus(over: Record<string, unknown>): FullStatusResponse {
     fc_baud: 0,
     profile: "drone",
     ...over,
-  } as unknown as FullStatusResponse;
+  } as unknown as LanStatusFull;
 }
 
 function boardStatus(soc: string): AgentStatus {

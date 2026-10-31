@@ -15,7 +15,7 @@ import type {
   CommandTelemetrySnapshot,
   LinkedPeer,
 } from "@/stores/command-fleet-store";
-import type { CameraUsbRecovery, FullStatusResponse } from "./types";
+import type { CameraUsbRecovery, LanStatusFull } from "./types";
 import { normalizeCameraUsbRecovery } from "./camera-recovery";
 
 function numberOrUndefined(value: unknown): number | undefined {
@@ -116,7 +116,7 @@ function mapTelemetry(raw: Record<string, unknown>): CommandTelemetrySnapshot {
 
 /** Pure mapper. Safe to call in tests without any store or network state. */
 export function mapFullStatusToCloudStatus(
-  resp: FullStatusResponse,
+  resp: LanStatusFull,
   node: Pick<
     FleetNodeEntry,
     "deviceId" | "mdnsHost" | "lastIp" | "name"

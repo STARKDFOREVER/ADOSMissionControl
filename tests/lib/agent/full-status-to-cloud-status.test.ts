@@ -11,7 +11,7 @@
 import { describe, expect, it } from "vitest";
 
 import { mapFullStatusToCloudStatus } from "@/lib/agent/full-status-to-cloud-status";
-import type { FullStatusResponse } from "@/lib/agent/types";
+import type { LanStatusFull } from "@/lib/agent/types";
 
 const node = {
   deviceId: "dev-1",
@@ -20,7 +20,7 @@ const node = {
   name: "Dev 1",
 };
 
-function baseResp(overrides: Partial<FullStatusResponse> = {}): FullStatusResponse {
+function baseResp(overrides: Partial<LanStatusFull> = {}): LanStatusFull {
   return {
     version: "0.52.0",
     uptime_seconds: 600,
@@ -49,6 +49,33 @@ function baseResp(overrides: Partial<FullStatusResponse> = {}): FullStatusRespon
     resources: { cpu_percent: 10, memory_percent: 30, disk_percent: 40, temperature: 45 },
     video: { state: "running", whep_url: "http://192.168.1.40:8889/main/whep" },
     telemetry: {},
+    radio: null,
+    fc_identity: null,
+    mesh: null,
+    capture_storage: false,
+    clock: false,
+    gnss: false,
+    lora: false,
+    sensor_hub: false,
+    sim: false,
+    transportOpen: false,
+    mavlinkAlive: false,
+    heartbeatAgeS: null,
+    fcSource: "auto",
+    fcLinkHint: "none",
+    fcVariant: null,
+    fcFirmware: "unknown",
+    fcReachable: false,
+    fcCommandDownGated: false,
+    hasAccelerator: false,
+    npuTops: 0,
+    perceptionTier: "none",
+    perceptionOffloadTarget: null,
+    plugin_loopback_guard: "active",
+    profile: "drone",
+    role: null,
+    runtimeMode: "native",
+    relaySecretPresent: false,
     ...overrides,
   };
 }

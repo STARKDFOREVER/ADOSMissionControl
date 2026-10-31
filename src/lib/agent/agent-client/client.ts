@@ -12,8 +12,7 @@ import type {
   ClaimResponse,
   CommandResult,
   FcSource,
-  FullStatusResponse,
-  HardwareCheckStatus,
+  LanStatusFull,
   LogEntry,
   MavlinkPort,
   NetworkPeer,
@@ -21,10 +20,10 @@ import type {
   PeripheralInfo,
   ServiceInfo,
   SetupActionResult,
-  SetupStatus,
   SystemResources,
   VideoStatus,
 } from "../types";
+import type { HardwareCheckStatus, SetupStatus } from "../agent-api.generated";
 import * as system from "./system";
 import * as setup from "./setup";
 import * as extras from "./extras";
@@ -137,7 +136,7 @@ export class AgentClient {
     return system.restartSupervisor(this.ctx, opts);
   }
 
-  getFullStatus(): Promise<FullStatusResponse | null> {
+  getFullStatus(): Promise<LanStatusFull | null> {
     return system.getFullStatus(this.ctx);
   }
 

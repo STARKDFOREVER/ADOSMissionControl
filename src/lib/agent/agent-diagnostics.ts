@@ -11,7 +11,7 @@
  * @license GPL-3.0-only
  */
 
-import type { FullStatusResponse } from "./types";
+import type { LanStatusFull } from "./types";
 
 /** The identity reconciler's verdict, camelCased. */
 export interface FcIdentityVerdict {
@@ -71,14 +71,17 @@ function text(v: unknown): string | null {
   return typeof v === "string" && v.length > 0 ? v : null;
 }
 
-/** The slice of `/api/status/full` the diagnostics read. */
-export type DiagnosticsSource = Pick<
-  FullStatusResponse,
-  | "fc_identity"
-  | "mavlink_proxy_posture"
-  | "agent_commands_unsigned_rejected_risk"
-  | "injector_arbitration"
-  | "agent_signing"
+/** The slice of `/api/status/full` the diagnostics read. Every key is
+ * optional: the parser coerces whatever it is handed. */
+export type DiagnosticsSource = Partial<
+  Pick<
+    LanStatusFull,
+    | "fc_identity"
+    | "mavlink_proxy_posture"
+    | "agent_commands_unsigned_rejected_risk"
+    | "injector_arbitration"
+    | "agent_signing"
+  >
 > & {
   telemetry?: Record<string, unknown>;
   fc_port?: string;

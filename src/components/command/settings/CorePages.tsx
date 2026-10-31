@@ -17,7 +17,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 
-import type { SetupStatus } from "@/lib/agent/types";
+import type { SetupStatus } from "@/lib/agent/agent-api.generated";
 import {
   ConfigReadonlyRow,
   ConfigSelectField,

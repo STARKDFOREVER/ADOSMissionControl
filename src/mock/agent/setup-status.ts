@@ -11,7 +11,7 @@
 import type {
   HardwareCheckStatus,
   SetupStatus,
-} from "@/lib/agent/types";
+} from "@/lib/agent/agent-api.generated";
 
 export type MockProfile = "drone" | "ground_station";
 export type MockGroundRole = "direct" | "relay" | "receiver";
@@ -35,6 +35,12 @@ export function buildMockSetupStatus(ctx: MockSetupContext): SetupStatus {
     setup_complete: true,
     setup_finalized: true,
     completion_percent: 100,
+    setup_skipped: false,
+    setup_state: "configured",
+    profile_source: "user",
+    paired: true,
+    pairing_code: null,
+    lan_host: "demo-drone.local",
     next_action: "Open Mission Control or revisit any setup step.",
     steps: [
       { id: "welcome", label: "Welcome", state: "complete", detail: "Device identity available", action_label: "", href: "" },
@@ -50,8 +56,8 @@ export function buildMockSetupStatus(ctx: MockSetupContext): SetupStatus {
       { id: "finish", label: "Finish", state: "complete", detail: "Open Mission Control when local telemetry or video is ready", action_label: "Open Mission Control", href: "" },
     ],
     access_urls: [
-      { kind: "setup", label: "Setup webapp", url: "http://demo-drone.local", source: "local", primary: true },
-      { kind: "api", label: "Local API", url: "http://demo-drone.local/api", source: "local", primary: false },
+      { id: "setup", kind: "setup", label: "Setup webapp", url: "http://demo-drone.local", source: "local", primary: true, role: "", codec: "" },
+      { id: "api", kind: "api", label: "Local API", url: "http://demo-drone.local/api", source: "local", primary: false, role: "", codec: "" },
     ],
     network: {
       hostname: "demo-drone",
@@ -60,6 +66,10 @@ export function buildMockSetupStatus(ctx: MockSetupContext): SetupStatus {
       hotspot_enabled: false,
       hotspot_ssid: "",
       local_ips: ["192.168.4.1"],
+      ip_addresses: { wlan0: "192.168.4.1" },
+      rssi_dbm: null,
+      uplink_kind: null,
+      wifi_ssid: null,
     },
     mavlink: {
       connected: isDrone,
@@ -67,12 +77,22 @@ export function buildMockSetupStatus(ctx: MockSetupContext): SetupStatus {
       baud: isDrone ? 921600 : null,
       websocket_url: "ws://demo-drone.local:8765/",
       public_websocket_url: null,
+      authenticated_websocket_path: null,
+      authenticated_websocket_url: null,
+      tcp_url: null,
     },
     video: {
       state: "running",
       whep_url: "http://demo-drone.local:8889/main/whep",
       public_whep_url: null,
       recording: false,
+      encoder: null,
+      encoder_hw: null,
+      hls_url: null,
+      public_hls_url: null,
+      pipeline_state: null,
+      reason: null,
+      streams: [],
     },
     remote_access: {
       provider: "none",
@@ -84,10 +104,8 @@ export function buildMockSetupStatus(ctx: MockSetupContext): SetupStatus {
     },
     cloud_choice: {
       mode: "cloud",
-      paired: true,
       pair_code_required: true,
       backend_url: "https://demo.altnautica.com",
-      backend_reachable: true,
       last_checked: new Date().toISOString(),
     },
     profile_suggestion: {
@@ -95,7 +113,8 @@ export function buildMockSetupStatus(ctx: MockSetupContext): SetupStatus {
       ground_role_hint: groundRoleField === "" ? "direct" : (groundRoleField as MockGroundRole),
       ground_score: profile === "ground_station" ? 7 : 0,
       air_score: isDrone ? 5 : 0,
-      mesh_capable: false,
+      visor_score: 0,
+      source: "detected",
       signals: isDrone
         ? { mavlink_serial: true, oled_i2c: false, buttons_gpio: false, rtl8812: false, uplink: true }
         : { mavlink_serial: false, oled_i2c: true, buttons_gpio: true, rtl8812: true, uplink: true },

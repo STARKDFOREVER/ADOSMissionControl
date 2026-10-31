@@ -6,11 +6,8 @@
  */
 
 import type { z } from "zod";
-import type {
-  HardwareCheckStatus,
-  SetupActionResult,
-  SetupStatus,
-} from "../types";
+import type { SetupActionResult } from "../types";
+import type { HardwareCheckStatus, SetupStatus } from "../agent-api.generated";
 import {
   HardwareCheckStatusSchema,
   SetupActionResultSchema,
@@ -20,7 +17,9 @@ import { agentRequest, type ArmedOverrideOptions, type RequestContext } from "./
 
 export function getSetupStatus(ctx: RequestContext): Promise<SetupStatus> {
   return agentRequest<SetupStatus>(ctx, "/api/v1/setup/status", {
-    schema: SetupStatusSchema as z.ZodType<SetupStatus>,
+    // The schema checks the subset the GCS depends on; the generated type is
+    // the wire contract.
+    schema: SetupStatusSchema as unknown as z.ZodType<SetupStatus>,
     allowSchemaFallback: true,
   });
 }

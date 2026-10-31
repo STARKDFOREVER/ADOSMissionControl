@@ -237,7 +237,7 @@ jobs:
           echo "checking $rows mirrored file(s)"
           if ! sha256sum -c mirror-rows.sha256; then
             echo
-            echo "FAIL: a generated file under src/lib/plugins/ differs from what the agent's"
+            echo "FAIL: a generated file under src/lib/ or convex/lib/ differs from what the agent's"
             echo "  codegen produces. Never edit these by hand: regenerate in the agent repo"
             echo "  (cargo run -p ados-capabilities-codegen) and commit the output here."
             exit 1

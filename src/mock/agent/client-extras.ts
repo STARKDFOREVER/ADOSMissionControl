@@ -14,7 +14,7 @@
 
 import type {
   AgentVersionInfo,
-  FullStatusResponse,
+  LanStatusFull,
   VideoStatus,
 } from "@/lib/agent/types";
 import type { SetupApplyResponse } from "@/lib/agent/agent-client/setup";
@@ -53,7 +53,7 @@ export class MockAgentClientExtras {
   }
 
   /** `null` sends the status poll down its per-endpoint path. */
-  async getFullStatus(): Promise<FullStatusResponse | null> {
+  async getFullStatus(): Promise<LanStatusFull | null> {
     await delay(DEMO_LATENCY_MS);
     return null;
   }

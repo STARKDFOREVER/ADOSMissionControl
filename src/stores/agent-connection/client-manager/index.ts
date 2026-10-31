@@ -12,7 +12,7 @@
  */
 import { AgentClient } from "@/lib/agent/client";
 import { relayRefusalFrom, type RelayRefusal } from "@/lib/agent/agent-client/transport";
-import type { AgentStatus, FullStatusResponse } from "@/lib/agent/types";
+import type { AgentStatus, LanStatusFull } from "@/lib/agent/types";
 import { inferCapabilities } from "@/lib/agent/infer-capabilities";
 import { useAgentSystemStore } from "../../agent-system-store";
 import { useAgentPeripheralsStore } from "../../agent-peripherals-store";

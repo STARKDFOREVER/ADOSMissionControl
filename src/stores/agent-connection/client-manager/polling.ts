@@ -1,6 +1,6 @@
 import { AgentClient } from "@/lib/agent/client";
 import { relayRefusalFrom, type RelayRefusal } from "@/lib/agent/agent-client/transport";
-import type { AgentStatus, FullStatusResponse } from "@/lib/agent/types";
+import type { AgentStatus, LanStatusFull } from "@/lib/agent/types";
 import { inferCapabilities } from "@/lib/agent/infer-capabilities";
 import { useAgentSystemStore } from "../../agent-system-store";
 import { useAgentPeripheralsStore } from "../../agent-peripherals-store";
@@ -82,7 +82,7 @@ export function startAgentPolling(set: SliceSet, get: SliceGet): void {
         // throw as "unsupported" would latch the 4-request fallback on for
         // the connection's life on one lost datagram, so it stays a plain
         // failed poll and the next tick retries the consolidated endpoint.
-        let full: FullStatusResponse | null;
+        let full: LanStatusFull | null;
         try {
           full = await client.getFullStatus();
         } catch {

@@ -31,7 +31,7 @@ vi.hoisted(() => {
 
 import { applyFullStatus } from "@/stores/agent-connection/apply-full-status";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
-import type { FullStatusResponse } from "@/lib/agent/types";
+import type { LanStatusFull } from "@/lib/agent/types";
 
 // `/api/status/full` body (ados-control routes/status_full.rs) with every
 // reconciler sidecar fresh.
@@ -55,7 +55,7 @@ const WITH_VERDICTS = {
   mgmtLinkMode: "primary",
 };
 
-const full = (body: object) => body as unknown as FullStatusResponse;
+const full = (body: object) => body as unknown as LanStatusFull;
 
 describe("LAN status withdraws stale supervisor verdicts", () => {
   beforeEach(() => {

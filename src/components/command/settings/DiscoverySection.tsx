@@ -20,7 +20,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Radar, RefreshCw } from "lucide-react";
 
-import type { SetupAccessUrl } from "@/lib/agent/types";
+import type { SetupAccessUrl } from "@/lib/agent/agent-api.generated";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ConfigToggleField, ConfigReadonlyRow } from "./ConfigFields";

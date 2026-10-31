@@ -55,21 +55,18 @@ export const SetupStepSchema = z
 export const CloudChoiceStatusSchema = z
   .object({
     mode: z.enum(["cloud", "self_hosted", "local"]),
-    paired: z.boolean(),
     pair_code_required: z.boolean(),
     backend_url: z.string(),
-    backend_reachable: z.boolean(),
     last_checked: NullableString,
   })
   .passthrough();
 
 export const ProfileSuggestionSchema = z
   .object({
-    detected: z.enum(["drone", "ground_station", "visor", "unconfigured"]),
+    detected: z.enum(["drone", "ground_station", "visor"]),
     ground_role_hint: z.enum(["direct", "relay", "receiver"]),
     ground_score: NumberLike,
     air_score: NumberLike,
-    mesh_capable: z.boolean(),
     signals: z.record(z.string(), z.boolean()),
     confirmed: z.boolean(),
     detected_at: NullableString,
@@ -160,8 +157,6 @@ export const SetupStatusSchema = z
         error: z.string(),
       })
       .passthrough(),
-    services: z.array(z.record(z.string(), z.unknown())),
-    telemetry: z.record(z.string(), z.unknown()),
     cloud_choice: CloudChoiceStatusSchema.optional(),
     profile_suggestion: ProfileSuggestionSchema.optional(),
     hardware_check: z
