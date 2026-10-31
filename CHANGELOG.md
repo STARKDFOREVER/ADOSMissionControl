@@ -6,6 +6,42 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- The stack deployer (`tools/deploy`, 0.1.1) now builds on the shared
+  `ados-term` crate for its theme, terminal backend, progress renderers,
+  widgets and command runner instead of carrying its own copy.
+- The agent's status, setup-status and heartbeat types are generated from the
+  agent's JSON Schemas (`src/lib/agent/agent-api.generated.ts`,
+  `convex/lib/agentHeartbeat.generated.ts`); a test checks every heartbeat key
+  has a Convex validator.
+- The telemetry deck raises severity alerts for every metric, not only the
+  ones on the visible page.
+- Fewer re-renders during flight: freshness hooks subscribe to their own
+  channel, the map memoizes its markers and lines, and the deck reads one
+  metric table.
+
+### Fixed
+
+- **Setting the operating region could leave a half-written posture.** The
+  region panel now sends one setup apply (`regulatory: {mode, region}`), so the
+  agent writes both fields together and records the operator acknowledgement.
+- The live video player no longer appends a newer segment ahead of a queued
+  one; a dropped segment now jumps to the live edge, and a failed append is
+  retried after trimming instead of being lost.
+- Calibration timers in demo mode stop on disconnect.
+- Electron's socket bridge ignores malformed send/close arguments, and the
+  updater accepts commands only from the main window.
+
+### Security
+
+- `tools/deploy/deploy.sh` runs only a release binary that passes the minisign
+  signature on `SHA256SUMS` and its checksum line, cached per version under
+  `${XDG_CACHE_HOME:-$HOME/.cache}/ados-deploy/<version>`. Without `minisign`, or
+  on any verification failure, it builds from source. It no longer runs an
+  unversioned `./ados-deploy` from the checkout, and Windows shells (Git Bash,
+  MSYS, Cygwin) now get the Windows release asset.
+
 ## [0.61.0] - 2026-10-22
 
 This release covers everything since 0.60.0: fifty-four commits between
