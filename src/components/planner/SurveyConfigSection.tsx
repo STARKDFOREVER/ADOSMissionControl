@@ -1,7 +1,6 @@
 /**
  * @module SurveyConfigSection
  * @description Survey pattern configuration UI: camera profiles, GSD, overlap, advanced settings.
- * Extracted from PatternConfigSections.tsx.
  * @license GPL-3.0-only
  */
 "use client";

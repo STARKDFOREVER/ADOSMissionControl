@@ -9,7 +9,7 @@
 
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { MockProtocol } from "../mock-protocol";
-import { decodeAttitude, decodeHeartbeat } from "@/lib/protocol/mavlink-messages";
+import { decodeAttitude, decodeHeartbeat } from "@/lib/protocol/messages";
 import type { MAVLinkFrame } from "@/lib/protocol/mavlink-parser";
 
 afterEach(() => vi.useRealTimers());

@@ -11,7 +11,7 @@ import {
 import type { MAVLinkFrame } from '@/lib/protocol/mavlink-parser';
 import { createCallbackStore } from '@/lib/protocol/mavlink-adapter-callbacks';
 import { StatusTextAssembler } from '@/lib/protocol/handlers/info-handlers';
-import { decodeMissionItemInt, decodeMissionRequestInt } from '@/lib/protocol/mavlink-messages';
+import { decodeMissionItemInt, decodeMissionRequestInt } from '@/lib/protocol/messages';
 import type { CommandResult, MissionItem, FirmwareHandler, UnifiedFlightMode } from '@/lib/protocol/types';
 
 // ── Fake transport that records every encoded frame ──

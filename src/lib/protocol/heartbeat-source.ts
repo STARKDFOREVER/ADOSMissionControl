@@ -12,7 +12,7 @@
 
 import type { MAVLinkFrame } from './mavlink-parser'
 import type { FrameHandlerState } from './mavlink-adapter-frame-handlers'
-import { decodeHeartbeat } from './mavlink-messages'
+import { decodeHeartbeat } from './messages'
 
 /** MAV_AUTOPILOT_INVALID: the sender is not a flight controller. */
 const MAV_AUTOPILOT_INVALID = 8

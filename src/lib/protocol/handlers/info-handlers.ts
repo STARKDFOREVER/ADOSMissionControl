@@ -14,7 +14,7 @@ import {
   decodeExtendedSysState, decodeSystemTime,
   decodeStatustext, decodeEvent, decodeSerialControl,
   decodeAutopilotVersion,
-} from '../mavlink-messages'
+} from '../messages'
 
 export function handleExtendedSysState(payload: DataView, callbacks: ExtendedSysStateCallback[]): void {
   const data = decodeExtendedSysState(payload)

@@ -19,13 +19,13 @@
  * @module protocol/mavlink-adapter-ftp-ops
  */
 
-import { encodeFileTransferProtocol, FTP_MAX_DATA } from "./mavlink-encoder";
+import { encodeFileTransferProtocol, FTP_MAX_DATA } from "./encoders";
 import {
   decodeFileTransferProtocol,
   FtpOpcode,
   FtpError,
   ftpErrorName,
-} from "./mavlink-messages";
+} from "./messages";
 import type { MAVLinkFrame } from "./mavlink-parser";
 import type { FtpContext } from "./mavlink-adapter-ftp";
 import type { FtpDirEntry } from "./types/protocol";

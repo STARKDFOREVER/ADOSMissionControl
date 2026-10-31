@@ -8,7 +8,7 @@
  */
 
 import type { Transport, ParameterValue, CommandResult, FirmwareHandler, ParameterCallback } from './types'
-import { encodeParamRequestList, encodeParamRequestRead, encodeParamSet } from './mavlink-encoder'
+import { encodeParamRequestList, encodeParamRequestRead, encodeParamSet } from './encoders'
 import { MAV_PARAM_TYPE, usesBytewiseParamValues } from './param-value-codec'
 import { commandRefusal } from './command-refusal'
 

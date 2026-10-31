@@ -8,8 +8,8 @@
  */
 
 import { describe, it, expect, vi } from "vitest";
-import { encodeFileTransferProtocol, FTP_MAX_DATA } from "../mavlink-encoder";
-import { decodeFileTransferProtocol, FtpOpcode, FtpError } from "../mavlink-messages";
+import { encodeFileTransferProtocol, FTP_MAX_DATA } from "../encoders";
+import { decodeFileTransferProtocol, FtpOpcode, FtpError } from "../messages";
 import { MAVLinkParser, crc16Accumulate, CRC_EXTRA, PAYLOAD_LENGTHS, type MAVLinkFrame } from "../mavlink-parser";
 import { downloadFileViaFtp, cancelFtp, handleFileTransferProtocolAck, type FtpContext } from "../mavlink-adapter-ftp";
 import type { Transport } from "../types";

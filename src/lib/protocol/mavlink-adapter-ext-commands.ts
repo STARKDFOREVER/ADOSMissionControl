@@ -5,7 +5,7 @@
  */
 
 import type { CommandResult, FirmwareHandler } from './types'
-import { MAV_CMD_SET_EKF_SOURCE_SET } from './mavlink-encoder'
+import { MAV_CMD_SET_EKF_SOURCE_SET } from './encoders'
 import { encodeCanFrame, encodeCanFdFrame } from './encoders/can-forward'
 
 export interface ExtCommandContext {

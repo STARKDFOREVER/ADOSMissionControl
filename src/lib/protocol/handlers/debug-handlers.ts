@@ -15,7 +15,7 @@ import {
   decodeCameraImageCaptured, decodeCameraTrigger,
   decodeGimbalDeviceAttitudeStatus, decodeObstacleDistance,
   decodeAisVessel, decodeGimbalManagerInformation, decodeGimbalManagerStatus,
-} from '../mavlink-messages'
+} from '../messages'
 
 export function handleNamedValueFloat(payload: DataView, callbacks: DebugCallback[]): void {
   const data = decodeNamedValueFloat(payload)

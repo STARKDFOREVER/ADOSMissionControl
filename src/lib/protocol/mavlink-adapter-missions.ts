@@ -11,7 +11,7 @@ import {
   encodeMissionCount, encodeMissionRequestList, encodeMissionClearAll,
   encodeMissionRequestInt,
   MAV_MISSION_TYPE_FENCE,
-} from './mavlink-encoder'
+} from './encoders'
 import { encodeFenceMissionItems, type FenceMissionItem } from './fence-mission-codec'
 import { createDeadline, createUploadDeadline, sendOpening, type TransferDeadline } from './mission-transfer-deadline'
 

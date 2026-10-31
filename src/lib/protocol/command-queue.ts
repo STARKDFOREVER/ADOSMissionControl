@@ -4,7 +4,7 @@
  */
 
 import type { CommandResult } from "./types";
-import { encodeCommandInt, encodeCommandLong } from "./mavlink-encoder";
+import { encodeCommandInt, encodeCommandLong } from "./encoders";
 import {
   armResend, resendAsCommandInt, retryTemporarilyRejected, transmit,
   type PendingCommand,

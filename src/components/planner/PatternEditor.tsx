@@ -24,11 +24,11 @@ import { cn } from "@/lib/utils";
 import { FleetPluginSlot } from "@/components/plugins/FleetPluginSlot";
 import { useFleetPluginContributions } from "@/hooks/use-fleet-plugin-contributions";
 import { PATTERN_TYPE_OPTIONS, VALID_PATTERN_TYPES } from "./pattern-editor-constants";
-import {
-  SurveyConfig, OrbitConfig, CorridorConfig,
-  SarExpandingSquareConfig, SarSectorSearchConfig, SarParallelTrackConfig,
-  StructureScanConfig,
-} from "./PatternConfigSections";
+import { SurveyConfig } from "./SurveyConfigSection";
+import { OrbitConfig } from "./OrbitConfigSection";
+import { CorridorConfig } from "./CorridorConfigSection";
+import { SarExpandingSquareConfig, SarSectorSearchConfig, SarParallelTrackConfig } from "./SarConfigSections";
+import { StructureScanConfig } from "./StructureScanConfigSection";
 import { FacadeConfig } from "./FacadeConfigSection";
 import { FixedWingLandingConfig } from "./FixedWingLandingConfigSection";
 import { VtolLandingConfig } from "./VtolLandingConfigSection";

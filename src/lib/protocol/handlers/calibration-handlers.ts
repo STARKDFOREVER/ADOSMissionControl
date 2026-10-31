@@ -11,7 +11,7 @@ import type {
 } from '../types'
 import {
   decodeMagCalProgress, decodeMagCalReport, decodeCommandLong,
-} from '../mavlink-messages'
+} from '../messages'
 
 export function handleMagCalProgress(payload: DataView, callbacks: MagCalProgressCallback[]): void {
   const data = decodeMagCalProgress(payload)

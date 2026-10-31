@@ -1,7 +1,6 @@
 /**
  * @module OrbitConfigSection
  * @description Orbit pattern configuration UI.
- * Extracted from PatternConfigSections.tsx.
  * @license GPL-3.0-only
  */
 "use client";

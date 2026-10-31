@@ -1,24 +1,22 @@
 /**
  * Typed shapes for the ADOS Ground Agent REST surface.
  *
- * This file is a thin barrel. The per-domain types live under
- * `types/` (status, radio, network, peripherals, pairing, ui, pic, mesh).
- * Callers continue to import from `@/lib/api/ground-station/types`
- * unchanged.
+ * Per-domain types live in this directory (status, radio, network,
+ * peripherals, pairing, ui, pic, mesh, and others).
  *
  * @module api/ground-station/types
  * @license GPL-3.0-only
  */
 
-export * from "./types/status";
-export * from "./types/radio";
-export * from "./types/crsf";
-export * from "./types/network";
-export * from "./types/peripherals";
-export * from "./types/pairing";
-export * from "./types/ui";
-export * from "./types/pic";
-export * from "./types/mesh";
-export * from "./types/radio-adapters";
-export * from "./types/gnss";
-export * from "./types/lora";
+export * from "./status";
+export * from "./radio";
+export * from "./crsf";
+export * from "./network";
+export * from "./peripherals";
+export * from "./pairing";
+export * from "./ui";
+export * from "./pic";
+export * from "./mesh";
+export * from "./radio-adapters";
+export * from "./gnss";
+export * from "./lora";

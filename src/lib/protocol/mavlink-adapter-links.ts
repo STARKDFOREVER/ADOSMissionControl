@@ -10,7 +10,7 @@
 
 import type { Transport, LinkInfo } from './types'
 import { MAVLinkParser, type MAVLinkFrame } from './mavlink-parser'
-import { decodeHeartbeat, type HeartbeatMsg } from './mavlink-messages'
+import { decodeHeartbeat, type HeartbeatMsg } from './messages'
 import { isAutopilotHeartbeat } from './heartbeat-source'
 import { SigningTransport } from './signing-transport'
 import type { MavlinkSigner } from './mavlink-signer'

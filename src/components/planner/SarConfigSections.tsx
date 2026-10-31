@@ -1,7 +1,6 @@
 /**
  * @module SarConfigSections
  * @description SAR pattern configuration UIs: expanding square, sector search, parallel track.
- * Extracted from PatternConfigSections.tsx.
  * @license GPL-3.0-only
  */
 "use client";

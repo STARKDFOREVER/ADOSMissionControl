@@ -16,7 +16,7 @@ import type {
 import {
   decodeOpticalFlow, decodeOpticalFlowRad, decodeOdometry,
   decodeVisionPositionEstimate, decodeVisionPositionDelta,
-} from '../mavlink-messages';
+} from '../messages';
 
 export function handleOpticalFlow(payload: DataView, callbacks: OpticalFlowCallback[]): void {
   const data = decodeOpticalFlow(payload);

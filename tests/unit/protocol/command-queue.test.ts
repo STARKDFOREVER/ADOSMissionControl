@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 const encodeCommandLong = vi.fn<(...args: number[]) => Uint8Array>(() => new Uint8Array(42));
 const encodeCommandInt = vi.fn<(...args: number[]) => Uint8Array>(() => new Uint8Array(47));
 
-vi.mock('@/lib/protocol/mavlink-encoder', () => ({
+vi.mock('@/lib/protocol/encoders', () => ({
   encodeCommandLong: (...args: number[]) => encodeCommandLong(...args),
   encodeCommandInt: (...args: number[]) => encodeCommandInt(...args),
 }));

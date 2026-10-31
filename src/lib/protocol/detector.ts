@@ -15,8 +15,8 @@ import { MAVLinkParser } from './mavlink-parser'
 import { MspParser } from './msp/msp-parser'
 import { encodeMsp } from './msp/msp-codec'
 import { MSP } from './msp/msp-constants'
-import { encodeHeartbeat } from './mavlink-encoder'
-import { decodeHeartbeat } from './mavlink-messages'
+import { encodeHeartbeat } from './encoders'
+import { decodeHeartbeat } from './messages'
 import { createFirmwareHandler } from './firmware/ardupilot'
 
 /** HEARTBEAT message ID. */

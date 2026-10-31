@@ -10,7 +10,7 @@
  *   - msp-decoders-status.ts  — identity, status, modes, feature flags
  *   - msp-decoders-sensors.ts — IMU, GPS, battery, analog readings
  *   - msp-decoders-motor.ts   — RC channels, motor outputs, motor config
- *   - msp-decoders-config.ts  — PID, rates, filters, serial, OSD, VTX, GPS, failsafe, blackbox
+ *   - decoders/config/*       — PID, rates, filters, serial, OSD, VTX, GPS, failsafe, blackbox
  *
  * Shared DataView helpers live in msp-decode-utils.ts.
  *
@@ -20,4 +20,12 @@
 export * from './msp-decoders-status';
 export * from './msp-decoders-sensors';
 export * from './msp-decoders-motor';
-export * from './msp-decoders-config';
+export * from './decoders/config/pid';
+export * from './decoders/config/filters';
+export * from './decoders/config/failsafe';
+export * from './decoders/config/serial';
+export * from './decoders/config/osd';
+export * from './decoders/config/led';
+export * from './decoders/config/vtx';
+export * from './decoders/config/gps';
+export * from './decoders/config/blackbox';

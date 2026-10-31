@@ -15,7 +15,7 @@ import {
   handleFtpOpAck,
   type FtpContext,
 } from "@/lib/protocol/mavlink-adapter-ftp-ops";
-import { FtpOpcode, FtpError } from "@/lib/protocol/mavlink-messages";
+import { FtpOpcode, FtpError } from "@/lib/protocol/messages";
 
 const FTP_INNER_OFFSET = 3;
 

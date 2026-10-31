@@ -18,7 +18,7 @@ import {
   decodeDistanceSensor, decodeFenceStatus, decodeNavControllerOutput,
   decodeFencePoint, decodeMissionCurrent, decodeMissionItemReached,
   decodeWindCov, decodeMissionItem, decodeAdsbVehicle,
-} from '../mavlink-messages'
+} from '../messages'
 
 export function handleEkfStatus(payload: DataView, callbacks: EkfCallback[]): void {
   const data = decodeEkfStatusReport(payload)

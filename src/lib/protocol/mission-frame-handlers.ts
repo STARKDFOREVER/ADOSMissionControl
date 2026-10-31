@@ -12,8 +12,8 @@ import { decodeFenceMissionItems } from './fence-mission-codec'
 import {
   decodeMissionAck, decodeMissionRequestInt,
   decodeMissionCount, decodeMissionItemInt as decodeMissionItemIntMsg,
-} from './mavlink-messages'
-import { encodeMissionItemInt, encodeMissionRequestInt, encodeMissionAck } from './mavlink-encoder'
+} from './messages'
+import { encodeMissionItemInt, encodeMissionRequestInt, encodeMissionAck } from './encoders'
 
 /** MAV_MISSION_ACCEPTED. */
 const MAV_MISSION_ACCEPTED = 0

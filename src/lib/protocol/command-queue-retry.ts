@@ -7,7 +7,7 @@
  */
 
 import type { CommandResult } from "./types";
-import { encodeCommandInt, encodeCommandLong } from "./mavlink-encoder";
+import { encodeCommandInt, encodeCommandLong } from "./encoders";
 
 const MAV_FRAME_GLOBAL = 0;
 const MAV_FRAME_GLOBAL_RELATIVE_ALT = 3;

@@ -20,7 +20,7 @@ import {
   decodeEstimatorStatus, decodeLocalPositionNed,
   decodeRawImu, decodeRcChannelsRaw, decodeRcChannelsOverride,
   decodeAltitude,
-} from '../mavlink-messages'
+} from '../messages'
 
 const RAD_TO_DEG = 180 / Math.PI
 

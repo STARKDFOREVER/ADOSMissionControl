@@ -10,8 +10,8 @@
 import type { Transport, CommandResult, LogEntry, LogDownloadProgressCallback } from './types'
 import {
   encodeLogRequestList, encodeLogRequestData, encodeLogErase, encodeLogRequestEnd,
-} from './mavlink-encoder'
-import { decodeLogEntry, decodeLogData } from './mavlink-messages'
+} from './encoders'
+import { decodeLogEntry, decodeLogData } from './messages'
 import type { MAVLinkFrame } from './mavlink-parser'
 
 export interface LogListState {

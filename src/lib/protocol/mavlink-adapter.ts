@@ -19,7 +19,7 @@ import type {
   FenceElement, RallyPointItem,
 } from './types'
 import type { MAVLinkFrame } from './mavlink-parser'
-import { encodeHeartbeat } from './mavlink-encoder'
+import { encodeHeartbeat } from './encoders'
 import { MAV_CMD_CAN_FORWARD } from './encoders/can-forward'
 import { CommandQueue } from './command-queue'
 import { TELEMETRY_STALE_MS } from '@/lib/telemetry/freshness'

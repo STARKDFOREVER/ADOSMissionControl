@@ -18,9 +18,9 @@ import {
   decodeMissionAck, decodeMissionRequestInt,
   decodeMissionCount, decodeMissionItemInt as decodeMissionItemIntMsg,
   decodeComponentMetadata,
-} from './mavlink-messages'
+} from './messages'
 import { usesBytewiseParamValues } from './param-value-codec'
-import { encodeRequestDataStream, encodeCommandLong } from './mavlink-encoder'
+import { encodeRequestDataStream, encodeCommandLong } from './encoders'
 import { useSettingsStore } from '@/stores/settings-store'
 import {
   handleAttitude, handleGlobalPosition, handleBattery,

@@ -12,7 +12,7 @@ import {
   encodeSetGpsGlobalOrigin,
   encodeCommandLong,
   buildFrame,
-} from '@/lib/protocol/mavlink-encoder';
+} from '@/lib/protocol/encoders';
 import {
   MAVLinkParser,
   crc16,
@@ -24,7 +24,7 @@ import {
   decodeMissionCount,
   decodeMissionRequestInt,
   decodeMissionAck,
-} from '@/lib/protocol/mavlink-messages';
+} from '@/lib/protocol/messages';
 
 // ── Golden-byte helpers ──
 

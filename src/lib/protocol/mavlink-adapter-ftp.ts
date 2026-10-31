@@ -13,8 +13,8 @@
  */
 
 import type { Transport, FtpDownloadProgressCallback } from './types'
-import { encodeFileTransferProtocol, FTP_MAX_DATA } from './mavlink-encoder'
-import { decodeFileTransferProtocol, FtpOpcode, FtpError, ftpErrorName } from './mavlink-messages'
+import { encodeFileTransferProtocol, FTP_MAX_DATA } from './encoders'
+import { decodeFileTransferProtocol, FtpOpcode, FtpError, ftpErrorName } from './messages'
 import type { MAVLinkFrame } from './mavlink-parser'
 
 const INACTIVITY_MS = 3000
