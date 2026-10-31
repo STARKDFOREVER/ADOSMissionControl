@@ -11,7 +11,7 @@
 import { useCallback, useEffect, useMemo, memo } from "react";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useProgrammingStore, LOGIC_CONDITION_MAX } from "@/stores/programming-store";
-import type { INavLogicCondition } from "@/lib/protocol/msp/msp-decoders-inav";
+import type { INavLogicCondition } from "@/lib/protocol/types/inav";
 import { PanelHeader } from "../../shared/PanelHeader";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
@@ -21,9 +21,7 @@ import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { GitBranch, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useClockStore } from "@/stores/clock-store";
-import { useClockTick } from "@/lib/agent/freshness";
-import { isFresh } from "@/lib/telemetry/freshness";
+import { useIsFresh } from "@/stores/clock-store";
 import { LOGIC_ACTIVATOR_OPTIONS, LOGIC_OPERATION_OPTIONS, LOGIC_OPERAND_TYPE_OPTIONS } from "./programming-constants";
 
 // ── LogicConditionRow ─────────────────────────────────────────
@@ -243,9 +241,7 @@ export function LogicConditionsPanel() {
   }, [selectedProtocol, uploadConditions, toast, t]);
 
   // Live values are shown only while the last status read is recent.
-  useClockTick();
-  const now = useClockStore((s) => s.now);
-  const statusLive = conditionsStatusAt !== null && isFresh(conditionsStatusAt, now);
+  const statusLive = useIsFresh(conditionsStatusAt);
   const statusFor = (idx: number) => (statusLive ? conditionsStatus[idx] : undefined);
 
   return (

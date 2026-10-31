@@ -69,11 +69,47 @@ export function bridgeTelemetry(
   /** This drone's latest SYS_STATUS, frozen into its flight record at arm. */
   let latestSysStatus: SysStatusData | undefined;
 
+  /**
+   * A plain telemetry channel: the selected drone's frames feed the shared
+   * ring, every drone's frames are recorded. Null when the protocol does not
+   * offer the channel.
+   */
+  function plainChannel<T>(
+    subscribe: ((callback: (data: T) => void) => () => void) | undefined,
+    push: (data: T) => void,
+    channel: string,
+  ): (() => () => void) | null {
+    if (!subscribe) return null;
+    return () =>
+      subscribe((data) => {
+        if (isSelected()) push(data);
+        rec(channel, data);
+      });
+  }
+
+  const plainChannels = [
+    plainChannel(protocol.onAttitude.bind(protocol), telemetry.pushAttitude, "attitude"),
+    plainChannel(protocol.onVfr.bind(protocol), telemetry.pushVfr, "vfr"),
+    plainChannel(protocol.onRadio.bind(protocol), telemetry.pushRadio, "radio"),
+    plainChannel(protocol.onEkf.bind(protocol), telemetry.pushEkf, "ekf"),
+    plainChannel(protocol.onVibration.bind(protocol), telemetry.pushVibration, "vibration"),
+    plainChannel(protocol.onServoOutput.bind(protocol), telemetry.pushServoOutput, "servoOutput"),
+    plainChannel(protocol.onWind.bind(protocol), telemetry.pushWind, "wind"),
+    plainChannel(protocol.onTerrain.bind(protocol), telemetry.pushTerrain, "terrain"),
+    plainChannel(protocol.onHomePosition?.bind(protocol), telemetry.pushHomePosition, "homePosition"),
+    plainChannel(protocol.onPowerStatus?.bind(protocol), telemetry.pushPowerStatus, "powerStatus"),
+    plainChannel(protocol.onDistanceSensor?.bind(protocol), telemetry.pushDistanceSensor, "distanceSensor"),
+    plainChannel(protocol.onEstimatorStatus?.bind(protocol), telemetry.pushEstimatorStatus, "estimatorStatus"),
+    plainChannel(protocol.onCameraTrigger?.bind(protocol), telemetry.pushCameraTrigger, "cameraTrigger"),
+    plainChannel(protocol.onNavController?.bind(protocol), telemetry.pushNavController, "navController"),
+    plainChannel(protocol.onLocalPosition?.bind(protocol), telemetry.pushLocalPosition, "localPosition"),
+    plainChannel(protocol.onDebug?.bind(protocol), telemetry.pushDebug, "debug"),
+    plainChannel(protocol.onGimbalAttitude?.bind(protocol), telemetry.pushGimbal, "gimbal"),
+    plainChannel(protocol.onObstacleDistance?.bind(protocol), telemetry.pushObstacle, "obstacle"),
+  ];
+
   return [
-    protocol.onAttitude((data) => {
-      if (isSelected()) telemetry.pushAttitude(data);
-      rec("attitude", data);
-    }),
+    ...plainChannels.flatMap((bind) => (bind ? [bind()] : [])),
 
     protocol.onPosition((data) => {
       if (isSelected()) {
@@ -117,11 +153,6 @@ export function bridgeTelemetry(
       }
     }),
 
-    protocol.onVfr((data) => {
-      if (isSelected()) telemetry.pushVfr(data);
-      rec("vfr", data);
-    }),
-
     protocol.onRc((data) => {
       if (isSelected()) telemetry.pushRc(data);
       rec("rc", data);
@@ -147,32 +178,6 @@ export function bridgeTelemetry(
       }
     }),
 
-    protocol.onRadio((data) => {
-      if (isSelected()) telemetry.pushRadio(data);
-      rec("radio", data);
-    }),
-
-    protocol.onEkf((data) => {
-      if (isSelected()) telemetry.pushEkf(data);
-      rec("ekf", data);
-    }),
-    protocol.onVibration((data) => {
-      if (isSelected()) telemetry.pushVibration(data);
-      rec("vibration", data);
-    }),
-    protocol.onServoOutput((data) => {
-      if (isSelected()) telemetry.pushServoOutput(data);
-      rec("servoOutput", data);
-    }),
-    protocol.onWind((data) => {
-      if (isSelected()) telemetry.pushWind(data);
-      rec("wind", data);
-    }),
-    protocol.onTerrain((data) => {
-      if (isSelected()) telemetry.pushTerrain(data);
-      rec("terrain", data);
-    }),
-
     // Optional telemetry callbacks (bridged with optional chaining)
     // The shared buffer and recording carry the primary IMU only; SCALED_IMU2/3
     // would interleave other sensors' readings into one series. Per-instance
@@ -181,10 +186,6 @@ export function bridgeTelemetry(
       if (data.imu !== 0) return;
       if (isSelected()) telemetry.pushScaledImu(data);
       rec("scaledImu", data);
-    })] : []),
-    ...(protocol.onHomePosition ? [protocol.onHomePosition((data) => {
-      if (isSelected()) telemetry.pushHomePosition(data);
-      rec("homePosition", data);
     })] : []),
     // AUTOPILOT_VERSION carries the board id and firmware version after the
     // handshake; stamp them on the managed drone so a reconnect compares the
@@ -196,14 +197,6 @@ export function bridgeTelemetry(
         firmwareVersionString: `${(v >> 24) & 0xff}.${(v >> 16) & 0xff}.${(v >> 8) & 0xff}`,
       });
     })] : []),
-    ...(protocol.onPowerStatus ? [protocol.onPowerStatus((data) => {
-      if (isSelected()) telemetry.pushPowerStatus(data);
-      rec("powerStatus", data);
-    })] : []),
-    ...(protocol.onDistanceSensor ? [protocol.onDistanceSensor((data) => {
-      if (isSelected()) telemetry.pushDistanceSensor(data);
-      rec("distanceSensor", data);
-    })] : []),
     ...(protocol.onFenceStatus ? [protocol.onFenceStatus((data) => {
       // Single-slot breach state, so it belongs inside the selection gate like
       // every other singleton push here. Ungated, a FENCE_STATUS from ANY
@@ -214,34 +207,6 @@ export function bridgeTelemetry(
         useGeofenceStore.getState().updateBreachState(data.breachStatus, data.breachCount, data.breachType);
       }
       rec("fenceStatus", data);
-    })] : []),
-    ...(protocol.onEstimatorStatus ? [protocol.onEstimatorStatus((data) => {
-      if (isSelected()) telemetry.pushEstimatorStatus(data);
-      rec("estimatorStatus", data);
-    })] : []),
-    ...(protocol.onCameraTrigger ? [protocol.onCameraTrigger((data) => {
-      if (isSelected()) telemetry.pushCameraTrigger(data);
-      rec("cameraTrigger", data);
-    })] : []),
-    ...(protocol.onNavController ? [protocol.onNavController((data) => {
-      if (isSelected()) telemetry.pushNavController(data);
-      rec("navController", data);
-    })] : []),
-    ...(protocol.onLocalPosition ? [protocol.onLocalPosition((data) => {
-      if (isSelected()) telemetry.pushLocalPosition(data);
-      rec("localPosition", data);
-    })] : []),
-    ...(protocol.onDebug ? [protocol.onDebug((data) => {
-      if (isSelected()) telemetry.pushDebug(data);
-      rec("debug", data);
-    })] : []),
-    ...(protocol.onGimbalAttitude ? [protocol.onGimbalAttitude((data) => {
-      if (isSelected()) telemetry.pushGimbal(data);
-      rec("gimbal", data);
-    })] : []),
-    ...(protocol.onObstacleDistance ? [protocol.onObstacleDistance((data) => {
-      if (isSelected()) telemetry.pushObstacle(data);
-      rec("obstacle", data);
     })] : []),
     ...(protocol.onAdsbVehicle ? (() => {
       // The traffic list is a single store slot, so only the selected drone

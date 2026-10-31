@@ -1,6 +1,7 @@
 "use client";
 
 import { useTelemetryStore } from "@/stores/telemetry-store";
+import { useClockStore } from "@/stores/clock-store";
 import { useClockTick } from "@/lib/agent/freshness";
 import { isFresh, type Timestamped } from "@/lib/telemetry/freshness";
 import type { RingBuffer } from "@/lib/ring-buffer";
@@ -55,19 +56,26 @@ type TelemetryChannels = {
 function telemetryChannels(state: ReturnType<typeof useTelemetryStore.getState>): TelemetryChannels {
   return state;
 }
+
+/**
+ * The latest sample of a channel, or `undefined` once it is older than the
+ * telemetry freshness threshold.
+ *
+ * Subscribes to the channel's own latest sample, so a push on another channel
+ * does not re-render the caller; the shared 1 Hz clock re-evaluates freshness
+ * so a channel that goes silent still drops to `undefined`.
+ */
 export function useFreshTelemetry<K extends TelemetryBufferKey>(
   field: K,
 ): TelemetryBufferElement<K> | undefined {
-  useTelemetryStore((s) => s._version);
+  // Every telemetry element carries `timestamp`; the intersection makes that
+  // visible to the freshness gate below.
+  const latest = useTelemetryStore(
+    (s) =>
+      (telemetryChannels(s)[field] as RingBuffer<TelemetryBufferElement<K> & Timestamped>).latest(),
+  );
   useClockTick();
-  // Every telemetry element carries `timestamp`; the mapped accessor restores
-  // the per-channel element type, and the intersection makes that visible to
-  // the freshness gate below.
-  const latest = (
-    telemetryChannels(useTelemetryStore.getState())[field] as RingBuffer<
-      TelemetryBufferElement<K> & Timestamped
-    >
-  ).latest();
+  const now = useClockStore((s) => s.now);
   if (latest === undefined) return undefined;
-  return isFresh(latest.timestamp, Date.now()) ? latest : undefined;
+  return isFresh(latest.timestamp, now) ? latest : undefined;
 }

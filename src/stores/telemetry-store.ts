@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { RingBuffer } from "@/lib/ring-buffer";
 import { createVersionBumper } from "./coalesced-version";
 import type { AttitudeData, PositionData, BatteryData, GpsData, VfrData, RcData, SysStatusData, RadioData, EkfData, VibrationData, ServoOutputData, WindData, TerrainData, LocalPositionData, DebugData, GimbalData, ObstacleData, ScaledImuData, HomePositionData, PowerStatusData, DistanceSensorData, FenceStatusData, EstimatorStatusData, CameraTriggerData, NavControllerData } from "@/lib/types";
-import type { INavAdsbVehicle } from "@/lib/protocol/msp/msp-decoders-inav";
+import type { INavAdsbVehicle } from "@/lib/protocol/types/inav";
 
 /** Generic scalar telemetry sample for derived/quality channels. */
 export interface TelemetrySample {
@@ -35,8 +35,41 @@ export function computeVioQuality(poseCovariance: number[] | undefined): number 
   return q;
 }
 
-interface TelemetryStoreState {
-  _version: number;
+/** Ring capacity per telemetry channel, sized as rate x 60 s of history. */
+export const CHANNEL_CAPACITY = {
+  attitude: 600,        // 10Hz x 60s
+  position: 300,        // 5Hz x 60s
+  battery: 120,         // 2Hz x 60s
+  gps: 300,             // 5Hz x 60s
+  gps2: 300,            // 5Hz x 60s — GPS2_RAW
+  vfr: 600,             // 10Hz x 60s
+  rc: 600,              // 10Hz x 60s
+  sysStatus: 60,        // 1Hz x 60s
+  radio: 120,           // 2Hz x 60s
+  ekf: 60,
+  vibration: 120,
+  servoOutput: 300,
+  wind: 60,
+  terrain: 60,
+  localPosition: 300,   // 5Hz x 60s
+  debug: 300,           // variable
+  gimbal: 60,           // 1Hz x 60s
+  obstacle: 30,         // 0.5Hz x 60s
+  scaledImu: 120,       // 2Hz x 60s
+  homePosition: 12,     // 0.2Hz x 60s
+  powerStatus: 60,      // 1Hz x 60s
+  distanceSensor: 120,  // 2Hz x 60s
+  fenceStatus: 60,      // 1Hz x 60s
+  estimatorStatus: 60,  // 1Hz x 60s
+  cameraTrigger: 100,   // event-driven
+  navController: 120,   // 2Hz x 60s
+  flowQuality: 1000,    // ~10-50Hz, 20-100s window
+  flowDistance: 1000,
+  vioQuality: 1000,
+} as const satisfies Record<keyof TelemetryRings, number>;
+
+/** Every telemetry ring buffer, keyed by channel. */
+interface TelemetryRings {
   attitude: RingBuffer<AttitudeData>;
   position: RingBuffer<PositionData>;
   battery: RingBuffer<BatteryData>;
@@ -66,7 +99,46 @@ interface TelemetryStoreState {
   flowQuality: RingBuffer<TelemetrySample>;
   flowDistance: RingBuffer<NullableTelemetrySample>;
   vioQuality: RingBuffer<TelemetrySample>;
+}
 
+/** A fresh, empty ring per channel at its `CHANNEL_CAPACITY`. */
+function makeRings(): TelemetryRings {
+  const c = CHANNEL_CAPACITY;
+  return {
+    attitude: new RingBuffer(c.attitude),
+    position: new RingBuffer(c.position),
+    battery: new RingBuffer(c.battery),
+    gps: new RingBuffer(c.gps),
+    gps2: new RingBuffer(c.gps2),
+    vfr: new RingBuffer(c.vfr),
+    rc: new RingBuffer(c.rc),
+    sysStatus: new RingBuffer(c.sysStatus),
+    radio: new RingBuffer(c.radio),
+    ekf: new RingBuffer(c.ekf),
+    vibration: new RingBuffer(c.vibration),
+    servoOutput: new RingBuffer(c.servoOutput),
+    wind: new RingBuffer(c.wind),
+    terrain: new RingBuffer(c.terrain),
+    localPosition: new RingBuffer(c.localPosition),
+    debug: new RingBuffer(c.debug),
+    gimbal: new RingBuffer(c.gimbal),
+    obstacle: new RingBuffer(c.obstacle),
+    scaledImu: new RingBuffer(c.scaledImu),
+    homePosition: new RingBuffer(c.homePosition),
+    powerStatus: new RingBuffer(c.powerStatus),
+    distanceSensor: new RingBuffer(c.distanceSensor),
+    fenceStatus: new RingBuffer(c.fenceStatus),
+    estimatorStatus: new RingBuffer(c.estimatorStatus),
+    cameraTrigger: new RingBuffer(c.cameraTrigger),
+    navController: new RingBuffer(c.navController),
+    flowQuality: new RingBuffer(c.flowQuality),
+    flowDistance: new RingBuffer(c.flowDistance),
+    vioQuality: new RingBuffer(c.vioQuality),
+  };
+}
+
+interface TelemetryStoreState extends TelemetryRings {
+  _version: number;
   pushAttitude: (data: AttitudeData) => void;
   pushPosition: (data: PositionData) => void;
   pushBattery: (data: BatteryData) => void;
@@ -160,35 +232,7 @@ export const telemetryBumpPending = bumper.hasPendingBump;
 
 export const useTelemetryStore = create<TelemetryStoreState>((set, get) => ({
   _version: 0,
-  attitude: new RingBuffer<AttitudeData>(600),   // 10Hz x 60s
-  position: new RingBuffer<PositionData>(300),   // 5Hz x 60s
-  battery: new RingBuffer<BatteryData>(120),     // 2Hz x 60s
-  gps: new RingBuffer<GpsData>(300),             // 5Hz x 60s
-  gps2: new RingBuffer<GpsData>(300),            // 5Hz x 60s — GPS2_RAW
-  vfr: new RingBuffer<VfrData>(600),             // 10Hz x 60s
-  rc: new RingBuffer<RcData>(600),               // 10Hz x 60s
-  sysStatus: new RingBuffer<SysStatusData>(60),  // 1Hz x 60s
-  radio: new RingBuffer<RadioData>(120),         // 2Hz x 60s
-  ekf: new RingBuffer<EkfData>(60),
-  vibration: new RingBuffer<VibrationData>(120),
-  servoOutput: new RingBuffer<ServoOutputData>(300),
-  wind: new RingBuffer<WindData>(60),
-  terrain: new RingBuffer<TerrainData>(60),
-  localPosition: new RingBuffer<LocalPositionData>(300),  // 5Hz x 60s
-  debug: new RingBuffer<DebugData>(300),                  // variable
-  gimbal: new RingBuffer<GimbalData>(60),                 // 1Hz x 60s
-  obstacle: new RingBuffer<ObstacleData>(30),             // 0.5Hz x 60s
-  scaledImu: new RingBuffer<ScaledImuData>(120),           // 2Hz x 60s
-  homePosition: new RingBuffer<HomePositionData>(12),      // 0.2Hz x 60s
-  powerStatus: new RingBuffer<PowerStatusData>(60),        // 1Hz x 60s
-  distanceSensor: new RingBuffer<DistanceSensorData>(120), // 2Hz x 60s
-  fenceStatus: new RingBuffer<FenceStatusData>(60),        // 1Hz x 60s
-  estimatorStatus: new RingBuffer<EstimatorStatusData>(60), // 1Hz x 60s
-  cameraTrigger: new RingBuffer<CameraTriggerData>(100),    // event-driven
-  navController: new RingBuffer<NavControllerData>(120),   // 2Hz x 60s
-  flowQuality: new RingBuffer<TelemetrySample>(1000),       // ~10-50Hz, 20-100s window
-  flowDistance: new RingBuffer<NullableTelemetrySample>(1000),
-  vioQuality: new RingBuffer<TelemetrySample>(1000),
+  ...makeRings(),
 
   pushAttitude: (data) => { get().attitude.push(data); scheduleVersionBump(); },
   pushPosition: (data) => { get().position.push(data); scheduleVersionBump(); },
@@ -275,35 +319,7 @@ export const useTelemetryStore = create<TelemetryStoreState>((set, get) => ({
     // the empty rings, not keep drawing the previous drone's last sample.
     set((s) => ({
       _version: s._version + 1,
-      attitude: new RingBuffer<AttitudeData>(600),
-      position: new RingBuffer<PositionData>(300),
-      battery: new RingBuffer<BatteryData>(120),
-      gps: new RingBuffer<GpsData>(300),
-      gps2: new RingBuffer<GpsData>(300),
-      vfr: new RingBuffer<VfrData>(600),
-      rc: new RingBuffer<RcData>(600),
-      sysStatus: new RingBuffer<SysStatusData>(60),
-      radio: new RingBuffer<RadioData>(120),
-      ekf: new RingBuffer<EkfData>(60),
-      vibration: new RingBuffer<VibrationData>(120),
-      servoOutput: new RingBuffer<ServoOutputData>(300),
-      wind: new RingBuffer<WindData>(60),
-      terrain: new RingBuffer<TerrainData>(60),
-      localPosition: new RingBuffer<LocalPositionData>(300),
-      debug: new RingBuffer<DebugData>(300),
-      gimbal: new RingBuffer<GimbalData>(60),
-      obstacle: new RingBuffer<ObstacleData>(30),
-      scaledImu: new RingBuffer<ScaledImuData>(120),
-      homePosition: new RingBuffer<HomePositionData>(12),
-      powerStatus: new RingBuffer<PowerStatusData>(60),
-      distanceSensor: new RingBuffer<DistanceSensorData>(120),
-      fenceStatus: new RingBuffer<FenceStatusData>(60),
-      estimatorStatus: new RingBuffer<EstimatorStatusData>(60),
-      cameraTrigger: new RingBuffer<CameraTriggerData>(100),
-      navController: new RingBuffer<NavControllerData>(120),
-      flowQuality: new RingBuffer<TelemetrySample>(1000),
-      flowDistance: new RingBuffer<NullableTelemetrySample>(1000),
-      vioQuality: new RingBuffer<TelemetrySample>(1000),
+      ...makeRings(),
       navMode: null,
       navState: null,
       navAction: null,

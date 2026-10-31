@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { ChevronDown, SlidersHorizontal } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
+import { useFreshTelemetry, useTelemetryLatest } from "@/hooks/use-telemetry-latest";
 import { useKnownCellCount } from "@/hooks/use-known-cell-count";
-import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { knownRemainingPct, resolveCellCount } from "@/lib/battery";
 import {
@@ -13,33 +12,15 @@ import {
   type TelemetryDeckMetricId,
   DEFAULT_TELEMETRY_DECK_PAGES,
 } from "@/stores/settings-store";
-import { normalizeHeading } from "@/lib/telemetry-utils";
 import { cn } from "@/lib/utils";
-import { useToast } from "@/components/ui/toast";
 import type { DeckSeverityContext } from "./deck-types";
 import { DECK_PAGE_TABS, DECK_PRESETS, METRIC_LABELS_BY_ID } from "./deck-constants";
-import {
-  getSeverity,
-  estimateFlightMinutes,
-  gpsFixKey,
-  trackSeverity,
-  type SeverityTrack,
-} from "./deck-utils";
+import { getSeverity, estimateFlightMinutes, gpsFixKey } from "./deck-utils";
+import { DECK_METRIC_TABLE, readDeckMetrics } from "./deck-metric-table";
+import { useDeckSeverityAlerts } from "./use-deck-severity-alerts";
 import { DeckCell } from "./DeckCell";
 import { DeckCustomizer } from "./DeckCustomizer";
 import { DetachedDeckPortal } from "./DetachedDeckPortal";
-
-/** `value` to `digits` places plus `unit`, or "--" when there is no reading. */
-function fixed(value: number | undefined, digits: number, unit = ""): string {
-  return value === undefined || !Number.isFinite(value) ? "--" : `${value.toFixed(digits)}${unit}`;
-}
-
-/** A 000-359 bearing, or "--" when there is no reading. */
-function bearing3(value: number | undefined): string {
-  return value === undefined || !Number.isFinite(value)
-    ? "--"
-    : `${String(Math.round(normalizeHeading(value))).padStart(3, "0")}°`;
-}
 
 interface TelemetryDeckSlots {
   /** Buttons (customize, expand/collapse, detach) — place inside the status bar flex row. */
@@ -77,18 +58,9 @@ export function useTelemetryDeck(): TelemetryDeckSlots {
   const [customizeOpen, setCustomizeOpen] = useState(false);
   const [draggingMetricId, setDraggingMetricId] = useState<TelemetryDeckMetricId | null>(null);
   const [dragOverMetricId, setDragOverMetricId] = useState<TelemetryDeckMetricId | null>(null);
-  const thresholdRef = useRef<Partial<Record<TelemetryDeckMetricId, SeverityTrack>>>({});
-  const { toast } = useToast();
   const tFix = useTranslations("indicators.gpsFix");
 
   const heading = pos?.heading ?? vfr?.heading;
-  // Undefined until a GPS message arrives. "0 SATS" reads as a receiver that
-  // has locked onto nothing, which is a different claim from having no fix
-  // report at all, and it trips the low-satellite alarm. Fix type carries the
-  // same problem: 0 is "No Fix", which is below the critical threshold.
-  const fixType = gps?.fixType;
-  const satellites = gps?.satellites;
-  const hdop = gps?.hdop;
   const remainingPct = knownRemainingPct(bat?.remaining) ?? undefined;
   const powerWatts = bat?.current !== undefined ? bat.voltage * bat.current : undefined;
   const estimatedMinutes =
@@ -100,130 +72,44 @@ export function useTelemetryDeck(): TelemetryDeckSlots {
 
   // Samples are buffered but none of the deck's core channels is fresh: the
   // link has gone silent, and the operator has to be told why it all reads "--".
-  const buffers = useTelemetryStore.getState();
+  const lastPos = useTelemetryLatest("position");
+  const lastVfr = useTelemetryLatest("vfr");
+  const lastAtt = useTelemetryLatest("attitude");
+  const lastBat = useTelemetryLatest("battery");
   const linkSilent =
     pos === undefined &&
     vfr === undefined &&
     att === undefined &&
     bat === undefined &&
-    (buffers.position.latest() !== undefined ||
-      buffers.vfr.latest() !== undefined ||
-      buffers.attitude.latest() !== undefined ||
-      buffers.battery.latest() !== undefined);
+    (lastPos !== undefined || lastVfr !== undefined || lastAtt !== undefined || lastBat !== undefined);
 
-  const activePageMetrics = telemetryDeckPages[telemetryDeckActivePage] ?? [];
+  const activePageMetrics = useMemo(
+    () => telemetryDeckPages[telemetryDeckActivePage] ?? [],
+    [telemetryDeckPages, telemetryDeckActivePage],
+  );
 
   useEffect(() => {
     if (activePageMetrics.length > 0) return;
     setTelemetryDeckPageMetrics(telemetryDeckActivePage, [...DEFAULT_TELEMETRY_DECK_PAGES[telemetryDeckActivePage]]);
   }, [activePageMetrics.length, setTelemetryDeckPageMetrics, telemetryDeckActivePage]);
 
-  const deckMetricValues = useMemo<Record<TelemetryDeckMetricId, string>>(
-    () => ({
-      relAlt: fixed(pos?.relativeAlt, 1, "m"),
-      airspeed: fixed(vfr?.airspeed ?? pos?.airSpeed, 1, "m/s"),
-      groundspeedMs: fixed(pos?.groundSpeed ?? vfr?.groundspeed, 1, "m/s"),
-      throttle: fixed(vfr?.throttle, 0, "%"),
-      climbRate: fixed(vfr?.climb ?? pos?.climbRate, 1, "m/s"),
-      gpsFix: fixType != null ? tFix(gpsFixKey(fixType)) : "--",
-      satellites: satellites != null ? `${satellites}` : "--",
-      gpsHdop: hdop != null ? hdop.toFixed(1) : "--",
-      batteryVoltage: fixed(bat?.voltage, 1, "V"),
-      batteryCurrent: fixed(bat?.current, 1, "A"),
-      batteryConsumed: fixed(bat?.consumed, 0, "mAh"),
-      roll: fixed(att?.roll, 1, "°"),
-      pitch: fixed(att?.pitch, 1, "°"),
-      yaw: bearing3(att?.yaw ?? heading),
-      wpDistance: fixed(nav?.wpDist, 0, "m"),
-      xtrackError: fixed(nav?.xtrackError, 1, "m"),
-      altError: fixed(nav?.altError, 1, "m"),
-      navBearing: bearing3(nav?.navBearing),
-      targetBearing: bearing3(nav?.targetBearing),
-      windSpeed: fixed(wind?.speed, 1, "m/s"),
-      windDirection: bearing3(wind?.direction),
-      // Every field here comes from one RADIO_STATUS message. With none
-      // received the whole group is unknown, so it reads unknown as a group:
-      // "0 errors" and "0% buffer" are as much a fabricated reading as "0 dBm",
-      // and the buffer figure trips its own critical threshold.
-      radioRssi: radio != null ? `${Math.round(radio.rssi)}` : "--",
-      remrssi: radio != null ? `${Math.round(radio.remrssi)}` : "--",
-      noise: radio != null ? `${Math.round(radio.noise)}` : "--",
-      remnoise: radio != null ? `${Math.round(radio.remnoise)}` : "--",
-      rxerrors: radio != null ? `${Math.round(radio.rxerrors)}` : "--",
-      txbuf: radio != null ? `${Math.round(radio.txbuf)}%` : "--",
-      powerWatts: fixed(powerWatts, 0, "W"),
-      estFlightMin: fixed(estimatedMinutes, 1, "m"),
-      ekfVelRatio: fixed(ekf?.velocityVariance, 2),
-      ekfPosHorizRatio: fixed(ekf?.posHorizVariance, 2),
-      vibeX: fixed(vibration?.vibrationX, 1),
-      vibeY: fixed(vibration?.vibrationY, 1),
-      vibeZ: fixed(vibration?.vibrationZ, 1),
-    }),
-    [att, bat, ekf, estimatedMinutes, fixType, hdop, heading, nav, pos, powerWatts, radio, satellites, tFix, vfr, vibration, wind],
+  const readings = useMemo(
+    () =>
+      readDeckMetrics(
+        { pos, vfr, bat, gps, att, wind, radio, nav, ekf, vibration, heading, powerWatts, estimatedMinutes },
+        { gpsFixLabel: (fixType) => tFix(gpsFixKey(fixType)) },
+      ),
+    [att, bat, ekf, estimatedMinutes, gps, heading, nav, pos, powerWatts, radio, tFix, vfr, vibration, wind],
   );
-
-  // Undefined entries are metrics that were never received. They carry no
-  // threshold verdict, so an absent link or GPS raises no false alarm.
-  const metricRawValues = useMemo<Record<TelemetryDeckMetricId, number | undefined>>(
-    () => ({
-      relAlt: pos?.relativeAlt,
-      airspeed: vfr?.airspeed ?? pos?.airSpeed,
-      groundspeedMs: pos?.groundSpeed ?? vfr?.groundspeed,
-      throttle: vfr?.throttle,
-      climbRate: vfr?.climb ?? pos?.climbRate,
-      gpsFix: fixType,
-      satellites,
-      gpsHdop: hdop,
-      batteryVoltage: bat?.voltage,
-      batteryCurrent: bat?.current,
-      batteryConsumed: bat?.consumed,
-      roll: att?.roll,
-      pitch: att?.pitch,
-      yaw: att?.yaw ?? heading,
-      wpDistance: nav?.wpDist,
-      xtrackError: nav?.xtrackError,
-      altError: nav?.altError,
-      navBearing: nav?.navBearing,
-      targetBearing: nav?.targetBearing,
-      windSpeed: wind?.speed,
-      windDirection: wind?.direction,
-      radioRssi: radio?.rssi,
-      remrssi: radio?.remrssi,
-      noise: radio?.noise,
-      remnoise: radio?.remnoise,
-      rxerrors: radio?.rxerrors,
-      txbuf: radio?.txbuf,
-      powerWatts,
-      estFlightMin: estimatedMinutes,
-      ekfVelRatio: ekf?.velocityVariance,
-      ekfPosHorizRatio: ekf?.posHorizVariance,
-      vibeX: vibration?.vibrationX,
-      vibeY: vibration?.vibrationY,
-      vibeZ: vibration?.vibrationZ,
-    }),
-    [att, bat, ekf, estimatedMinutes, fixType, hdop, heading, nav, pos, powerWatts, radio, satellites, vfr, vibration, wind],
-  );
+  const deckMetricValues = readings.display;
+  const metricRawValues = readings.raw;
 
   const activeDeckMetricIds = useMemo(
-    () => activePageMetrics.filter((id) => Object.prototype.hasOwnProperty.call(deckMetricValues, id)),
-    [activePageMetrics, deckMetricValues],
+    () => activePageMetrics.filter((id) => Object.prototype.hasOwnProperty.call(DECK_METRIC_TABLE, id)),
+    [activePageMetrics],
   );
 
-  // Toast on severity transitions that hold for the dwell window, so a value
-  // flickering across a band edge (fix type, attitude, climb) is not a toast
-  // storm.
-  useEffect(() => {
-    const now = Date.now();
-    for (const metricId of activeDeckMetricIds) {
-      const current = getSeverity(metricId, metricRawValues[metricId], severityContext);
-      const { track, announce } = trackSeverity(thresholdRef.current[metricId], current, now);
-      thresholdRef.current[metricId] = track;
-      if (announce) {
-        const status = announce === "critical" ? "error" : "warning";
-        toast(`${METRIC_LABELS_BY_ID[metricId]} ${announce}: ${deckMetricValues[metricId]}`, status);
-      }
-    }
-  }, [activeDeckMetricIds, deckMetricValues, metricRawValues, severityContext, toast]);
+  useDeckSeverityAlerts(readings, severityContext);
 
   const handleToggleCustomize = () => {
     setCustomizeOpen((prev) => {

@@ -9,8 +9,8 @@ import { useDroneManager } from "@/stores/drone-manager";
 import { useMissionStore } from "@/stores/mission-store";
 import { useFleetDrones } from "@/stores/node-registry/use-fleet-drones";
 import { useDroneMetadataStore } from "@/stores/drone-metadata-store";
-import { useSettingsStore } from "@/stores/settings-store";
-import { projectByBearing, getLineTypeDashArray, GPS_FIX_LABELS } from "@/lib/drawing/geo-utils";
+import { projectByBearing, GPS_FIX_LABELS } from "@/lib/drawing/geo-utils";
+import { useGuidanceLine, useGuidancePathOptions } from "./use-guidance-line";
 import { Pause, Play, Ruler } from "lucide-react";
 import { useDefaultCenter } from "@/hooks/use-default-center";
 import { DEFAULT_ZOOM_UNLOCATED } from "@/lib/map-constants";
@@ -180,21 +180,12 @@ export function OverviewMap({
   const home = useTelemetryLatest("homePosition");
 
   // Guidance line settings
-  const guidanceHdgLength = useSettingsStore((s) => s.guidanceHdgLength);
-  const guidanceHdgWidth = useSettingsStore((s) => s.guidanceHdgWidth);
-  const guidanceHdgLineType = useSettingsStore((s) => s.guidanceHdgLineType);
-  const guidanceHdgColor = useSettingsStore((s) => s.guidanceHdgColor);
-  const guidanceTrackWpLength = useSettingsStore((s) => s.guidanceTrackWpLength);
-  const guidanceTrackWpWidth = useSettingsStore((s) => s.guidanceTrackWpWidth);
-  const guidanceTrackWpLineType = useSettingsStore((s) => s.guidanceTrackWpLineType);
-  const guidanceTrackWpColor = useSettingsStore((s) => s.guidanceTrackWpColor);
-  const guidanceTgtHdgLength = useSettingsStore((s) => s.guidanceTgtHdgLength);
-  const guidanceTgtHdgWidth = useSettingsStore((s) => s.guidanceTgtHdgWidth);
-  const guidanceTgtHdgLineType = useSettingsStore((s) => s.guidanceTgtHdgLineType);
-  const guidanceTgtHdgColor = useSettingsStore((s) => s.guidanceTgtHdgColor);
-  const guidanceHdgEnabled = useSettingsStore((s) => s.guidanceHdgEnabled);
-  const guidanceTrackWpEnabled = useSettingsStore((s) => s.guidanceTrackWpEnabled);
-  const guidanceTgtHdgEnabled = useSettingsStore((s) => s.guidanceTgtHdgEnabled);
+  const hdgGuide = useGuidanceLine("hdg");
+  const trackWpGuide = useGuidanceLine("trackWp");
+  const tgtHdgGuide = useGuidanceLine("tgtHdg");
+  const hdgPathOptions = useGuidancePathOptions(hdgGuide);
+  const trackWpPathOptions = useGuidancePathOptions(trackWpGuide);
+  const tgtHdgPathOptions = useGuidancePathOptions(tgtHdgGuide);
 
   // Fleet drones for multi-drone markers
   const fleetDrones = useFleetDrones();
@@ -210,12 +201,18 @@ export function OverviewMap({
   );
 
   const heading = pos?.heading ?? 0;
-  const selectedIcon = droneIcon(heading, "#00ff41", 24);
+  const headingDeg = Math.round(heading);
+  const selectedIcon = useMemo(() => droneIcon(headingDeg, "#00ff41", 24), [headingDeg]);
 
   // The FC's own home, the point RTL returns to. Hidden until one arrives: the
   // oldest trail point is not home, it walks along the track once the trail
   // ring fills and restarts wherever this GCS first saw the drone.
-  const homePos: [number, number] | null = home ? [home.lat, home.lon] : null;
+  const homeLat = home?.lat;
+  const homeLon = home?.lon;
+  const homePos = useMemo<[number, number] | null>(
+    () => (homeLat !== undefined && homeLon !== undefined ? [homeLat, homeLon] : null),
+    [homeLat, homeLon],
+  );
 
   const defaultCenter = useDefaultCenter();
   const hasGps = dronePos !== null;
@@ -238,23 +235,26 @@ export function OverviewMap({
           : "text-status-error";
 
   // Guidance vector endpoints
+  const hdgLength = hdgGuide.length;
   const hdgLine = useMemo(() => {
-    if (!dronePos || heading === 0 && !pos) return null;
-    const end = projectByBearing(dronePos[0], dronePos[1], heading, guidanceHdgLength);
+    if (!dronePos) return null;
+    const end = projectByBearing(dronePos[0], dronePos[1], heading, hdgLength);
     return [dronePos, end] as [[number, number], [number, number]];
-  }, [dronePos, heading, guidanceHdgLength, pos]);
+  }, [dronePos, heading, hdgLength]);
 
+  const trackWpLength = trackWpGuide.length;
   const trackWpLine = useMemo(() => {
     if (!dronePos || !nav) return null;
-    const end = projectByBearing(dronePos[0], dronePos[1], nav.targetBearing, guidanceTrackWpLength);
+    const end = projectByBearing(dronePos[0], dronePos[1], nav.targetBearing, trackWpLength);
     return [dronePos, end] as [[number, number], [number, number]];
-  }, [dronePos, nav, guidanceTrackWpLength]);
+  }, [dronePos, nav, trackWpLength]);
 
+  const tgtHdgLength = tgtHdgGuide.length;
   const tgtHdgLine = useMemo(() => {
     if (!dronePos || !nav) return null;
-    const end = projectByBearing(dronePos[0], dronePos[1], nav.navBearing, guidanceTgtHdgLength);
+    const end = projectByBearing(dronePos[0], dronePos[1], nav.navBearing, tgtHdgLength);
     return [dronePos, end] as [[number, number], [number, number]];
-  }, [dronePos, nav, guidanceTgtHdgLength]);
+  }, [dronePos, nav, tgtHdgLength]);
 
   // Other fleet drones (exclude the selected one to avoid double-render)
   const otherDrones = useMemo(
@@ -321,23 +321,14 @@ export function OverviewMap({
         )}
 
         {/* Guidance vector polylines */}
-        {guidanceHdgEnabled && hdgLine && (
-          <Polyline
-            positions={hdgLine}
-            pathOptions={{ color: guidanceHdgColor, weight: guidanceHdgWidth, dashArray: getLineTypeDashArray(guidanceHdgLineType), opacity: 0.8 }}
-          />
+        {hdgGuide.enabled && hdgLine && (
+          <Polyline positions={hdgLine} pathOptions={hdgPathOptions} />
         )}
-        {guidanceTrackWpEnabled && trackWpLine && (
-          <Polyline
-            positions={trackWpLine}
-            pathOptions={{ color: guidanceTrackWpColor, weight: guidanceTrackWpWidth, dashArray: getLineTypeDashArray(guidanceTrackWpLineType), opacity: 0.8 }}
-          />
+        {trackWpGuide.enabled && trackWpLine && (
+          <Polyline positions={trackWpLine} pathOptions={trackWpPathOptions} />
         )}
-        {guidanceTgtHdgEnabled && tgtHdgLine && (
-          <Polyline
-            positions={tgtHdgLine}
-            pathOptions={{ color: guidanceTgtHdgColor, weight: guidanceTgtHdgWidth, dashArray: getLineTypeDashArray(guidanceTgtHdgLineType), opacity: 0.8 }}
-          />
+        {tgtHdgGuide.enabled && tgtHdgLine && (
+          <Polyline positions={tgtHdgLine} pathOptions={tgtHdgPathOptions} />
         )}
 
         {/* Selected drone marker (primary, larger) */}

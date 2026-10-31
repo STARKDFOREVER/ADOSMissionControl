@@ -12,9 +12,7 @@ import { useEffect } from "react";
 import { Tv } from "lucide-react";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useDisplayPortStore } from "@/stores/displayport-store";
-import { useClockStore } from "@/stores/clock-store";
-import { useClockTick } from "@/lib/agent/freshness";
-import { isFresh } from "@/lib/telemetry/freshness";
+import { useIsFresh } from "@/stores/clock-store";
 
 export function DisplayPortOsdPanel() {
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
@@ -34,9 +32,7 @@ export function DisplayPortOsdPanel() {
   }, [selectedProtocol, selectedDroneId, attach, detach]);
 
   // Re-evaluated on the shared 1 Hz clock so a stream that stops turns stale.
-  useClockTick();
-  const now = useClockStore((s) => s.now);
-  const live = lastFrameAt !== null && isFresh(lastFrameAt, now);
+  const live = useIsFresh(lastFrameAt);
   const status = lastFrameAt === null ? "waiting" : live ? "live" : "stale";
 
   return (

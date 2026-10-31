@@ -12,9 +12,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useProgrammingStore, GVAR_MAX } from "@/stores/programming-store";
-import { useClockStore } from "@/stores/clock-store";
-import { useClockTick } from "@/lib/agent/freshness";
-import { isFresh } from "@/lib/telemetry/freshness";
+import { useIsFresh } from "@/stores/clock-store";
 import { useArmedLock } from "@/hooks/use-armed-lock";
 import { PanelHeader } from "../../shared/PanelHeader";
 import { Button } from "@/components/ui/button";
@@ -44,9 +42,7 @@ export function GlobalVariablesPanel() {
   const hasLoaded = gvarStatusAt !== null;
   // A value is live only while the last read is recent; older ones are the
   // last values read, not the FC's current state.
-  useClockTick();
-  const now = useClockStore((s) => s.now);
-  const live = gvarStatusAt !== null && isFresh(gvarStatusAt, now);
+  const live = useIsFresh(gvarStatusAt);
 
   // Sparse map of operator edits; an unedited slot shows the last read value.
   const [edits, setEdits] = useState<Record<number, string>>({});

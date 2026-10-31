@@ -39,6 +39,7 @@ import {
   Wifi,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatOr } from "@/lib/format";
 import {
   formatCommandAge,
   type CommandAgentSummary,
@@ -71,10 +72,6 @@ const TILE_CONNECT_TIMEOUT_MS = 15_000;
 
 function pct(value: number | null): string {
   return value == null ? "--" : `${Math.round(value)}%`;
-}
-
-function fixed(value: number | null, digits = 0, suffix = ""): string {
-  return value == null ? "--" : `${value.toFixed(digits)}${suffix}`;
 }
 
 /**
@@ -479,11 +476,11 @@ function ConsoleAgentFeedTile({
             <>
               <StatTile icon={<Battery size={12} />} label={t("battery")} value={pct(agent.telemetry.batteryRemaining)} level={batteryLevel} />
               <StatTile icon={<Satellite size={12} />} label={t("gps")} value={agent.telemetry.gpsSatellites == null ? "--" : `${agent.telemetry.gpsSatellites}`} />
-              <StatTile icon={<MapPin size={12} />} label={t("alt")} value={fixed(agent.telemetry.altitudeRel, 0, "m")} />
+              <StatTile icon={<MapPin size={12} />} label={t("alt")} value={formatOr(agent.telemetry.altitudeRel, 0, "m")} />
               <StatTile icon={<Gauge size={12} />} label={t("mode")} value={agent.telemetry.mode ?? "--"} />
               <StatTile icon={<Cpu size={12} />} label={t("cpu")} value={pct(agent.system.cpuPercent)} />
               <StatTile icon={<Radio size={12} />} label={t("mem")} value={pct(agent.system.memoryPercent)} />
-              <StatTile icon={<Thermometer size={12} />} label={t("temp")} value={fixed(agent.system.temperature, 0, "C")} />
+              <StatTile icon={<Thermometer size={12} />} label={t("temp")} value={formatOr(agent.system.temperature, 0, "C")} />
               <StatTile icon={<Video size={12} />} label={t("video")} value={t(agent.video.state)} />
             </>
           )}
@@ -527,7 +524,7 @@ function ConsoleAgentFeedTile({
                 level="idle"
               />
               <StatTile icon={<Cpu size={12} />} label={t("cpu")} value={pct(agent.system.cpuPercent)} />
-              <StatTile icon={<Thermometer size={12} />} label={t("temp")} value={fixed(agent.system.temperature, 0, "C")} />
+              <StatTile icon={<Thermometer size={12} />} label={t("temp")} value={formatOr(agent.system.temperature, 0, "C")} />
             </>
           )}
 
@@ -536,7 +533,7 @@ function ConsoleAgentFeedTile({
               <StatTile icon={<Cpu size={12} />} label={t("cpu")} value={pct(agent.system.cpuPercent)} />
               <StatTile icon={<Radio size={12} />} label={t("mem")} value={pct(agent.system.memoryPercent)} />
               <StatTile icon={<HardDrive size={12} />} label={t("disk")} value={pct(agent.system.diskPercent)} />
-              <StatTile icon={<Thermometer size={12} />} label={t("temp")} value={fixed(agent.system.temperature, 0, "C")} />
+              <StatTile icon={<Thermometer size={12} />} label={t("temp")} value={formatOr(agent.system.temperature, 0, "C")} />
             </>
           )}
         </div>

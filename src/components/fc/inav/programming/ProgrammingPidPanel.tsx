@@ -10,9 +10,7 @@
 
 import { useCallback, useEffect } from "react";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
-import { useClockStore } from "@/stores/clock-store";
-import { useClockTick } from "@/lib/agent/freshness";
-import { isFresh } from "@/lib/telemetry/freshness";
+import { useIsFresh } from "@/stores/clock-store";
 import { useProgrammingStore, PROGRAMMING_PID_MAX } from "@/stores/programming-store";
 import { PanelHeader } from "../../shared/PanelHeader";
 import { Button } from "@/components/ui/button";
@@ -93,9 +91,7 @@ export function ProgrammingPidPanel() {
 
   // An output is live only while the last status read is recent; a failed or
   // stopped poll leaves the old outputs, which must not read as current.
-  useClockTick();
-  const now = useClockStore((s) => s.now);
-  const statusLive = pidStatusAt !== null && isFresh(pidStatusAt, now);
+  const statusLive = useIsFresh(pidStatusAt);
   const statusFor = (idx: number) => (statusLive ? pidStatus.find((s) => s.id === idx) : undefined);
 
   const setGain = (idx: number, key: "P" | "I" | "D" | "FF", val: number) => {

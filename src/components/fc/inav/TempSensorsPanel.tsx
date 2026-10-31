@@ -10,12 +10,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
-import { useClockStore } from "@/stores/clock-store";
-import { useClockTick } from "@/lib/agent/freshness";
-import { isFresh } from "@/lib/telemetry/freshness";
+import { useIsFresh } from "@/stores/clock-store";
 import { PanelHeader } from "../shared/PanelHeader";
 import { Thermometer } from "lucide-react";
-import type { INavTempSensorConfigEntry } from "@/lib/protocol/msp/msp-decoders-inav";
+import type { INavTempSensorConfigEntry } from "@/lib/protocol/types/inav";
 
 /** Live readings poll period (MSP2_INAV_TEMPERATURES). */
 const READINGS_POLL_MS = 1000;
@@ -71,9 +69,8 @@ export function TempSensorsPanel() {
     return () => clearInterval(timer);
   }, [hasLoaded, selectedProtocol]);
 
-  useClockTick();
-  const now = useClockStore((s) => s.now);
-  const live = readings !== null && isFresh(readings.at, now);
+  const readingsFresh = useIsFresh(readings?.at);
+  const live = readings !== null && readingsFresh;
   const liveReading = (idx: number): string => {
     if (!live) return "—";
     const v = readings.values[idx];

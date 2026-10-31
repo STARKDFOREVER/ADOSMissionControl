@@ -10,7 +10,9 @@
  * @license GPL-3.0-only
  */
 
+import { useEffect } from "react";
 import { create } from "zustand";
+import { isFresh } from "@/lib/telemetry/freshness";
 
 interface ClockState {
   /** Monotonic counter, bumped once per second. */
@@ -55,4 +57,16 @@ export function subscribeToClock(): () => void {
     subscriberCount -= 1;
     if (subscriberCount === 0) stopInterval();
   };
+}
+
+/**
+ * Whether `at` is a live telemetry timestamp on the shared clock.
+ *
+ * The verdict is computed inside the selector, so the caller re-renders only
+ * when it flips, not on every tick. `null`/`undefined` (never received) is
+ * never fresh.
+ */
+export function useIsFresh(at: number | null | undefined): boolean {
+  useEffect(() => subscribeToClock(), []);
+  return useClockStore((s) => at != null && isFresh(at, s.now));
 }
