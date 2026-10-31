@@ -8,20 +8,18 @@
  * through, optional fields are explicitly optional, and unions accept the
  * older legacy shapes the agent has shipped over time.
  *
- * This file is a thin barrel. The per-domain schemas live under
- * `schemas/` (heartbeat, capabilities, navigation, setup, pairing,
- * peripherals, meshnet, command, battery). Callers continue to import from
- * `@/lib/agent/schemas` unchanged.
+ * Per-domain schemas live in this directory (heartbeat, capabilities,
+ * navigation, setup, pairing, peripherals, meshnet, command, battery).
  *
  * @license GPL-3.0-only
  */
 
-export * from "./schemas/heartbeat";
-export * from "./schemas/capabilities";
-export * from "./schemas/navigation";
-export * from "./schemas/setup";
-export * from "./schemas/pairing";
-export * from "./schemas/peripherals";
-export * from "./schemas/meshnet";
-export * from "./schemas/command";
-export * from "./schemas/battery";
+export * from "./heartbeat";
+export * from "./capabilities";
+export * from "./navigation";
+export * from "./setup";
+export * from "./pairing";
+export * from "./peripherals";
+export * from "./meshnet";
+export * from "./command";
+export * from "./battery";
