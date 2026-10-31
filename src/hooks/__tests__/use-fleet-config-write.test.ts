@@ -45,6 +45,7 @@ function recordingClient(): AgentConfigClient & {
       writes.push([key, value]);
       return {} as ConfigWriteResult;
     },
+    applySetup: async () => ({ overall: true, sections: {}, rolled_back: [] }),
   };
 }
 
@@ -182,6 +183,7 @@ describe("writeConfigForNodes", () => {
     const rejecting: AgentConfigClient = {
       getConfig: async () => ({}),
       setConfigValue: async () => ({ error: "unknown formation" }),
+      applySetup: async () => ({ overall: true, sections: {}, rolled_back: [] }),
     };
     const res = await writeConfigForNodes(
       "swarm.default_formation",

@@ -39,9 +39,8 @@ import { usePairingStore } from "@/stores/pairing-store";
 import {
   directClientForNode,
   resolveConfigAccess,
-  setConfigValueViaAccess,
+  applySetupViaAccess,
 } from "@/lib/agent/config-access";
-import { configWriteFailure } from "@/lib/agent/config-write";
 import type { RelayReach } from "@/lib/nodes/relay-reach";
 import { isDemoMode } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
@@ -215,29 +214,19 @@ export function RegulatoryRegionPanel({
     if (resolvedMode === "region" && resolvedRegion === null) return;
     setSaving(true);
     try {
-      // Mode first, then region. The agent coerces both at its config
-      // boundary; an empty region string clears any prior pin. The writes
-      // ride whichever transport resolved for this node.
-      //
-      // `configWriteFailure` covers both failure answers of the write route:
-      // a rejected value (`{error}`) and a config file the node could not
-      // write (`persisted: false`). Neither may report "applied".
-      const modeFailure = configWriteFailure(
-        await setConfigValueViaAccess(
-          access,
-          "network.regulatory.mode",
-          resolvedMode,
-        ),
-      );
-      if (modeFailure) throw new Error(modeFailure);
-      const regionFailure = configWriteFailure(
-        await setConfigValueViaAccess(
-          access,
-          "network.regulatory.region",
-          resolvedRegion ?? "",
-        ),
-      );
-      if (regionFailure) throw new Error(regionFailure);
+      // One setup apply carries mode and region together, so the node never
+      // holds a mixed posture and records the operator acknowledgement. It
+      // rides whichever transport resolved for this node; an armed refusal
+      // arrives as a thrown error.
+      const result = await applySetupViaAccess(access, {
+        regulatory:
+          resolvedMode === "region"
+            ? { mode: "region", region: resolvedRegion }
+            : { mode: "unrestricted" },
+      });
+      if (!result.overall) {
+        throw new Error(result.sections?.regulatory?.message || t("applyFailed"));
+      }
       // Remember the choice against this node so a re-pair / re-flash can
       // re-apply it. Keyed by the agent's stable device id.
       if (activeNode) {

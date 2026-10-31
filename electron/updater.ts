@@ -212,12 +212,20 @@ export function setupAutoUpdater(
     publish({ state: "downloaded", version: info.version });
   });
 
-  ipcMain.handle("update:status", (): UpdateStatus => status);
+  /** Only the main window's own frame may query or drive the updater. */
+  const fromMainWindow = (event: { sender: Electron.WebContents }): boolean =>
+    !win.isDestroyed() && event.sender === win.webContents;
+
+  ipcMain.handle("update:status", (e): UpdateStatus => {
+    if (!fromMainWindow(e)) throw new Error("update:status: unauthorized sender");
+    return status;
+  });
 
   // `autoDownload` is off, so this operator request is the only thing that
   // ever fetches a release. A build that cannot install refuses up front
   // rather than downloading something it can never apply.
-  ipcMain.handle("update:download", async () => {
+  ipcMain.handle("update:download", async (e) => {
+    if (!fromMainWindow(e)) throw new Error("update:download: unauthorized sender");
     if (capability.mode !== "auto") {
       const message = `Cannot download an update: ${describe(capability)}`;
       console.error(`[updater] ${message}`);
@@ -239,7 +247,8 @@ export function setupAutoUpdater(
   // previous handler always called quitAndInstall(), which on a build with
   // nothing installable returns false internally and resolves the renderer's
   // promise as though the install had been accepted.
-  ipcMain.handle("update:install", () => {
+  ipcMain.handle("update:install", (e) => {
+    if (!fromMainWindow(e)) throw new Error("update:install: unauthorized sender");
     if (capability.mode !== "auto") {
       const message = `Cannot install an update: ${describe(capability)}`;
       console.error(`[updater] ${message}`);
@@ -273,7 +282,8 @@ export function setupAutoUpdater(
 
   // An operator-requested check, from the About section. Resolves with the
   // status the check left behind, so the caller can say "up to date".
-  ipcMain.handle("update:check", async (): Promise<UpdateStatus> => {
+  ipcMain.handle("update:check", async (e): Promise<UpdateStatus> => {
+    if (!fromMainWindow(e)) throw new Error("update:check: unauthorized sender");
     if (capability.mode === "off") {
       throw new Error(`Cannot check for updates: ${describe(capability)}`);
     }

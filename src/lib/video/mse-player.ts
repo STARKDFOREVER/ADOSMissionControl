@@ -135,6 +135,12 @@ export class MsePlayer {
   private options: MsePlayerOptions | undefined;
   /** Segments dropped to hold the queue bound, for the reconnect decision. */
   private droppedSegments = 0;
+  /**
+   * Set when a queued segment was dropped. The next `updateend` then seeks to
+   * the live edge regardless of the drift threshold, because a drop is a
+   * known discontinuity in the timeline.
+   */
+  private liveEdgeSeekPending = false;
 
   // Playback-stall watchdog. Tracks currentTime advancement so a frozen
   // decoder (no socket close, no error event) still triggers a reconnect.
@@ -182,6 +188,7 @@ export class MsePlayer {
     this.deviceId = deviceId;
     this.videoElement = videoElement;
     this.droppedSegments = 0;
+    this.liveEdgeSeekPending = false;
     if (videoRelayUrl) this.videoRelayUrl = videoRelayUrl;
     if (options !== undefined) this.options = options;
     if (this.options?.onError !== undefined) this.onError = this.options.onError;
@@ -507,7 +514,9 @@ export class MsePlayer {
       // from racing for the buffer.
       if (this.trimBehindPlayhead()) return;
       this.flushQueue();
-      this.seekToLiveEdgeIfDrifted();
+      const forced = this.liveEdgeSeekPending;
+      this.liveEdgeSeekPending = false;
+      this.seekToLiveEdgeIfDrifted(forced);
     });
     // A sourceBuffer error or abort wedges the decode graph; neither
     // is recoverable by appending more data. Reconnect from scratch.
@@ -532,20 +541,24 @@ export class MsePlayer {
   private enqueue(data: ArrayBuffer): void {
     const buffer = this.sourceBuffer;
     if (!buffer) return;
-    if (!buffer.updating) {
+    // Append directly only when nothing is waiting: a segment that skipped
+    // the queue would land ahead of older bytes and corrupt the timeline.
+    if (!buffer.updating && this.queue.length === 0) {
       try {
         buffer.appendBuffer(data);
         return;
       } catch {
         // Fall through to the queue: a QuotaExceededError here means the
-        // buffer is full and the trim below has not run yet.
+        // buffer is full and the trim has not run yet.
       }
     }
     this.queue.push(data);
     while (this.queue.length > MAX_QUEUED_SEGMENTS) {
       this.queue.shift();
       this.droppedSegments += 1;
+      this.liveEdgeSeekPending = true;
     }
+    this.flushQueue();
   }
 
   /**
@@ -584,7 +597,7 @@ export class MsePlayer {
    * watches a delayed feed with no sign that it is delayed — which on a
    * piloting surface is the whole problem.
    */
-  private seekToLiveEdgeIfDrifted(): void {
+  private seekToLiveEdgeIfDrifted(force = false): void {
     const buffer = this.sourceBuffer;
     const video = this.videoElement;
     if (!buffer || !video) return;
@@ -592,7 +605,7 @@ export class MsePlayer {
       const ranges = buffer.buffered;
       if (ranges.length === 0) return;
       const edge = ranges.end(ranges.length - 1);
-      if (edge - video.currentTime <= MAX_LIVE_DRIFT_S) return;
+      if (!force && edge - video.currentTime <= MAX_LIVE_DRIFT_S) return;
       video.currentTime = Math.max(edge - LIVE_EDGE_MARGIN_S, 0);
       this.lastPlaybackTime = video.currentTime;
       this.lastPlaybackAdvanceAt = Date.now();
@@ -603,10 +616,19 @@ export class MsePlayer {
     const buffer = this.sourceBuffer;
     if (!buffer || buffer.updating || this.queue.length === 0) return;
     const next = this.queue.shift();
-    if (next) {
-      try {
-        buffer.appendBuffer(next);
-      } catch { /* ignore */ }
+    if (!next) return;
+    try {
+      buffer.appendBuffer(next);
+    } catch {
+      // Usually QuotaExceededError: put the segment back and reclaim. The
+      // trim's `updateend` retries the append. When no trim can start, the
+      // segment cannot ever fit, so it is dropped and counted.
+      this.queue.unshift(next);
+      if (!this.trimBehindPlayhead()) {
+        this.queue.shift();
+        this.droppedSegments += 1;
+        this.liveEdgeSeekPending = true;
+      }
     }
   }
 }

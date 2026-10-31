@@ -213,7 +213,7 @@ export class AgentClient {
     return setup.getTouchCalibrationStatus(this.ctx);
   }
 
-  applySetup(update: Record<string, unknown>): Promise<{ ok?: boolean }> {
+  applySetup(update: Record<string, unknown>): Promise<setup.SetupApplyResponse> {
     return setup.applySetup(this.ctx, update);
   }
 

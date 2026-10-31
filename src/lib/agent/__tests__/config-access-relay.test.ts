@@ -54,6 +54,7 @@ const OWN_LAN: PairingRecords = {
 const client: AgentConfigClient = {
   getConfig: vi.fn(async () => ({ video: {} })),
   setConfigValue: vi.fn(async () => ({ status: "ok" })),
+  applySetup: vi.fn(async () => ({ overall: true, sections: {}, rolled_back: [] })),
 };
 
 let calls: { url: string; body: Record<string, unknown> }[] = [];

@@ -237,6 +237,10 @@ export function closeAllSockets(reason: string): void {
 }
 
 /** Register the net IPC handlers and bind pushes to the given window. */
+/** Largest outbound frame accepted from the renderer (1 MiB). MAVLink frames
+ * are a few hundred bytes; anything near this is malformed. */
+const MAX_SEND_BYTES = 1_048_576;
+
 export function setupNetSockets(window: BrowserWindow): void {
   mainWindow = window;
 
@@ -252,12 +256,15 @@ export function setupNetSockets(window: BrowserWindow): void {
   });
   // Fire-and-forget: outbound MAVLink runs at up to 50 Hz, so a promise and
   // reply per frame is pure overhead. A frame from any other sender is ignored.
-  ipcMain.on("net:send", (e, id: string, data: Uint8Array) => {
+  ipcMain.on("net:send", (e, id: unknown, data: unknown) => {
     if (!fromMainWindow(e)) return;
+    if (typeof id !== "string") return;
+    if (!(data instanceof Uint8Array) || data.byteLength > MAX_SEND_BYTES) return;
     sendSocket(id, data);
   });
-  ipcMain.handle("net:close", (e, id: string) => {
+  ipcMain.handle("net:close", (e, id: unknown) => {
     if (!fromMainWindow(e)) throw new Error("net:close: unauthorized sender");
+    if (typeof id !== "string") return;
     closeSocket(id);
   });
 

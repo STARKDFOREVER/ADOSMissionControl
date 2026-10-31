@@ -12,7 +12,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // Hoisted so the module factories below (which vitest lifts above the imports)
 // can close over the same objects the assertions read.
-const { ipcHandlers, autoUpdater } = vi.hoisted(() => ({
+const { ipcHandlers, rawHandlers, mainContents, autoUpdater } = vi.hoisted(() => ({
+  /** Raw handlers, for invoking with an arbitrary sender. */
+  rawHandlers: new Map<string, (...args: unknown[]) => unknown>(),
+  /** The main window's webContents; `fakeWindow` hands out this object. */
+  mainContents: { send: (() => {}) as (...args: unknown[]) => void },
   ipcHandlers: new Map<string, (...args: unknown[]) => unknown>(),
   autoUpdater: {
     autoDownload: true,
@@ -29,7 +33,11 @@ vi.mock("electron", () => ({
   app: { isPackaged: true },
   ipcMain: {
     handle: (channel: string, handler: (...args: unknown[]) => unknown) => {
-      ipcHandlers.set(channel, handler);
+      rawHandlers.set(channel, handler);
+      // Tests invoke as the main window's own frame.
+      ipcHandlers.set(channel, (...args: unknown[]) =>
+        handler({ sender: mainContents }, ...args),
+      );
     },
   },
   BrowserWindow: class {},
@@ -58,7 +66,7 @@ const PACKAGED_APPIMAGE: UpdateEnvironment = {
 function fakeWindow() {
   return {
     isDestroyed: () => false,
-    webContents: { send: vi.fn() },
+    webContents: Object.assign(mainContents, { send: vi.fn() }),
   } as unknown as Parameters<typeof setupAutoUpdater>[0];
 }
 
@@ -179,6 +187,18 @@ describe("setupAutoUpdater", () => {
   it("leaves the updater logger wired to a real sink", () => {
     setupAutoUpdater(fakeWindow(), PACKAGED_WIN);
     expect(autoUpdater.logger).not.toBeNull();
+  });
+
+  it("refuses every update request from a frame other than the main window", async () => {
+    setupAutoUpdater(fakeWindow(), PACKAGED_APPIMAGE);
+    const foreign = { sender: { send: vi.fn() } };
+    for (const channel of ["update:status", "update:download", "update:install", "update:check"]) {
+      await expect(async () => rawHandlers.get(channel)!(foreign)).rejects.toThrow(
+        /unauthorized sender/,
+      );
+    }
+    expect(autoUpdater.downloadUpdate).not.toHaveBeenCalled();
+    expect(autoUpdater.quitAndInstall).not.toHaveBeenCalled();
   });
 
   it("listens for updater errors and reports them", () => {

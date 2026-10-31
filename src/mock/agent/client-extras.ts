@@ -17,6 +17,7 @@ import type {
   FullStatusResponse,
   VideoStatus,
 } from "@/lib/agent/types";
+import type { SetupApplyResponse } from "@/lib/agent/agent-client/setup";
 import type {
   TouchCalibrationStart,
   TouchCalibrationStatus,
@@ -83,9 +84,9 @@ export class MockAgentClientExtras {
     return { calibrated: false, requested: false, request_id: null, calib_mtime_ms: null };
   }
 
-  async applySetup(_update: Record<string, unknown>): Promise<{ ok?: boolean }> {
+  async applySetup(_update: Record<string, unknown>): Promise<SetupApplyResponse> {
     await delay(DEMO_LATENCY_MS);
-    return { ok: true };
+    return { overall: true, sections: {}, rolled_back: [] };
   }
 
   async getVideoStatus(): Promise<VideoStatus | null> {

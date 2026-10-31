@@ -29,6 +29,12 @@ vi.hoisted(() => {
   });
 });
 
+const toastSpy = vi.hoisted(() => vi.fn());
+vi.mock("@/components/ui/toast", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/components/ui/toast")>()),
+  useToast: () => ({ toast: toastSpy }),
+}));
+
 import messages from "../../locales/en.json";
 import { RegulatoryRegionPanel } from "@/components/command/system/RegulatoryRegionPanel";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
@@ -91,11 +97,15 @@ describe("RegulatoryRegionPanel", () => {
     expect(screen.getByText(messages.operatingRegion.postureUnknown)).toBeDefined();
   });
 
-  it("writes a demo region change through the demo's mock client, not the LAN proxy", async () => {
+  it("applies a region change as one setup apply through the node's client", async () => {
     useSettingsStore.setState({ _hasHydrated: true, demoMode: true });
     const setConfigValue = vi.fn(async () => ({ persisted: true }));
+    const applySetup = vi.fn(async () => ({ overall: true, sections: {}, rolled_back: [] }));
     // The demo attaches one mock client and never sets a focused device id.
-    useAgentConnectionStore.setState({ client: { setConfigValue } as never, nodeDeviceId: null });
+    useAgentConnectionStore.setState({
+      client: { setConfigValue, applySetup } as never,
+      nodeDeviceId: null,
+    });
     withNodeRadio("gs-1", { regPosture: "unrestricted" });
     renderPanel("gs-1");
 
@@ -104,7 +114,30 @@ describe("RegulatoryRegionPanel", () => {
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: messages.operatingRegion.applyButton }));
     });
-    expect(setConfigValue).toHaveBeenCalledWith("network.regulatory.mode", "region");
-    expect(setConfigValue).toHaveBeenCalledWith("network.regulatory.region", "DE");
+    expect(applySetup).toHaveBeenCalledTimes(1);
+    expect(applySetup).toHaveBeenCalledWith({ regulatory: { mode: "region", region: "DE" } });
+    expect(setConfigValue).not.toHaveBeenCalled();
+  });
+
+  it("reports a failed regulatory section instead of applied", async () => {
+    useSettingsStore.setState({ _hasHydrated: true, demoMode: true });
+    const applySetup = vi.fn(async () => ({
+      overall: false,
+      sections: { regulatory: { ok: false, message: "region refused" } },
+      rolled_back: [],
+    }));
+    useAgentConnectionStore.setState({
+      client: { setConfigValue: vi.fn(), applySetup } as never,
+      nodeDeviceId: null,
+    });
+    withNodeRadio("gs-1", { regPosture: "unrestricted" });
+    renderPanel("gs-1");
+
+    fireEvent.click(screen.getByRole("combobox"));
+    fireEvent.click(screen.getByRole("option", { name: /Germany \(DE\)/ }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: messages.operatingRegion.applyButton }));
+    });
+    expect(toastSpy).toHaveBeenCalledWith("region refused", "error");
   });
 });

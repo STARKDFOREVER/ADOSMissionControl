@@ -157,13 +157,29 @@ export function getTouchCalibrationStatus(
   );
 }
 
-/** Apply a partial setup config update. Used here to push the LCD
- * theme choice (`{ ui: { theme: "dark" | "light" } }`). */
+/** Per-section result of a setup apply. */
+export interface SetupApplySection {
+  ok: boolean;
+  message: string;
+  data?: Record<string, unknown>;
+}
+
+/** Body of `POST /api/v1/setup/apply`: `overall` is false when any section
+ * failed; `rolled_back` names sections reverted after that failure. */
+export interface SetupApplyResponse {
+  overall: boolean;
+  sections: Record<string, SetupApplySection>;
+  rolled_back: string[];
+}
+
+/** Apply a partial setup update, e.g. the LCD theme
+ * (`{ ui: { theme } }`) or the regulatory posture
+ * (`{ regulatory: { mode, region } }`). */
 export function applySetup(
   ctx: RequestContext,
   update: Record<string, unknown>,
-): Promise<{ ok?: boolean }> {
-  return agentRequest<{ ok?: boolean }>(ctx, "/api/v1/setup/apply", {
+): Promise<SetupApplyResponse> {
+  return agentRequest<SetupApplyResponse>(ctx, "/api/v1/setup/apply", {
     method: "POST",
     body: JSON.stringify(update),
   });

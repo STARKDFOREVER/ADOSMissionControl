@@ -55,6 +55,7 @@ import {
   CONFIG_PROXY_RELAY_UPSTREAM_TIMEOUT_MS,
   CONFIG_PROXY_UPSTREAM_TIMEOUT_MS,
 } from "@/lib/agent/config-proxy-budget";
+import type { SetupApplyResponse } from "@/lib/agent/agent-client/setup";
 
 /** The slice of the agent client the config surface needs. Structural, so
  * tests (and any future transport) can satisfy it without the full client
@@ -62,6 +63,7 @@ import {
 export interface AgentConfigClient {
   getConfig(): Promise<Record<string, unknown>>;
   setConfigValue(key: string, value: string): Promise<ConfigWriteResult>;
+  applySetup(update: Record<string, unknown>): Promise<SetupApplyResponse>;
 }
 
 /** A LAN target the server-side config proxy can reach on the operator's
@@ -354,6 +356,21 @@ export async function setConfigValueViaAccess(
     return (
       json && typeof json === "object" && !Array.isArray(json) ? json : {}
     ) as ConfigWriteResult;
+  }
+  throw new Error(NO_PATH_MESSAGE);
+}
+
+/** Apply a partial setup update (`POST /api/v1/setup/apply`) over whichever
+ * transport reaches the node. The agent applies every section in the update
+ * as one transaction, so a multi-field change cannot land half-way. */
+export async function applySetupViaAccess(
+  access: ConfigAccess,
+  update: Record<string, unknown>,
+): Promise<SetupApplyResponse> {
+  if (access.mode === "direct") return access.client.applySetup(update);
+  const envelope = proxyEnvelopeFor(access);
+  if (envelope) {
+    return (await proxyConfigRequest(envelope, "POST", update)) as SetupApplyResponse;
   }
   throw new Error(NO_PATH_MESSAGE);
 }

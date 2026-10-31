@@ -85,6 +85,7 @@ function pairedDrone(
 const stubClient: AgentConfigClient = {
   getConfig: async () => ({}),
   setConfigValue: async () => ({}),
+  applySetup: async () => ({ overall: true, sections: {}, rolled_back: [] }),
 };
 
 beforeEach(() => {

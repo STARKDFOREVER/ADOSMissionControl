@@ -242,6 +242,43 @@ describe("MsePlayer", () => {
     player.stop();
   });
 
+  it("never appends a new segment ahead of a queued one", () => {
+    const player = startPlayer(fakeVideo());
+    const sb = ms.sourceBuffer;
+    const first = new ArrayBuffer(8);
+    const second = new ArrayBuffer(16);
+
+    // The init segment is in flight, so `first` queues.
+    FakeWebSocket.last!.onmessage?.({ data: first });
+    expect(sb.appended).not.toContain(first);
+    // The buffer goes idle without an `updateend` reaching the drain (for
+    // example after a refused append), leaving `first` queued.
+    sb.updating = false;
+    FakeWebSocket.last!.onmessage?.({ data: second });
+
+    expect(sb.appended.indexOf(first)).toBeGreaterThan(0);
+    expect(sb.appended).not.toContain(second);
+    sb.settle();
+    expect(sb.appended.indexOf(second)).toBeGreaterThan(sb.appended.indexOf(first));
+    player.stop();
+  });
+
+  it("seeks to the live edge after a queue overflow drop", () => {
+    const video = fakeVideo();
+    const player = startPlayer(video);
+    const sb = ms.sourceBuffer;
+    // Overflow the queue while the init append is in flight.
+    for (let i = 0; i < 20; i++) {
+      FakeWebSocket.last!.onmessage?.({ data: new ArrayBuffer(8) });
+    }
+    // Drift below the normal threshold still seeks after a drop.
+    video.currentTime = 4.8;
+    sb.range = { start: 4, end: 5 };
+    sb.settle();
+    expect(video.currentTime).toBeCloseTo(4.85);
+    player.stop();
+  });
+
   it("reconnects when playback freezes while the socket stays open", () => {
     const video = fakeVideo();
     const player = startPlayer(video);
