@@ -10,8 +10,8 @@ use std::path::PathBuf;
 
 use crate::cli::Args;
 use crate::result::FailureAccumulator;
-use crate::ui::ProgressSink;
 use crate::wizard::state::DeployConfig;
+use ados_term::progress::ProgressSink;
 
 /// Per-run state shared across the step graph.
 #[derive(Debug)]

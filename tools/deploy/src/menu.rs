@@ -11,9 +11,9 @@ use std::path::Path;
 use crate::cli::Args;
 use crate::deploy;
 use crate::shell;
-use crate::ui::tty::Tty;
-use crate::ui::Theme;
-use crate::wizard::widgets::{select_list, Choice, Flow};
+use ados_term::tty::Tty;
+use ados_term::widgets::{select_list, Choice, Flow};
+use ados_term::Theme;
 
 /// A top-level action.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -83,7 +83,7 @@ const ITEMS: &[(&str, &str, Action)] = &[
 /// Run the interactive menu loop until the operator quits. On a non-terminal
 /// (CI / piped) the menu is unavailable; the caller should use an action arg.
 pub fn run(theme: &Theme, repo_root: &Path, args: &Args) -> anyhow::Result<()> {
-    if !Tty::is_available() {
+    if !Tty::is_available_stdio() {
         println!(
             "{}",
             theme.dim(
@@ -106,7 +106,7 @@ pub fn run(theme: &Theme, repo_root: &Path, args: &Args) -> anyhow::Result<()> {
             .collect();
 
         let picked = {
-            let mut tty = match Tty::open()? {
+            let mut tty = match Tty::open_stdio()? {
                 Some(t) => t,
                 None => return Ok(()),
             };
@@ -167,7 +167,7 @@ fn desktop_build(theme: &Theme, repo_root: &Path) {
         ("Linux (.AppImage)", "desktop:build:linux"),
     ];
     let picked = {
-        let mut tty = match Tty::open() {
+        let mut tty = match Tty::open_stdio() {
             Ok(Some(t)) => t,
             _ => return,
         };
@@ -267,8 +267,8 @@ fn system_check(theme: &Theme) {
 /// Node launchers go through the Windows-aware spawn so the check is accurate
 /// on every OS.
 fn probe(program: &str, args: &[&str]) -> Option<String> {
-    let mut cmd = if crate::exec::is_node_tool(program) {
-        crate::exec::node_command(program, args)
+    let mut cmd = if crate::node::is_node_tool(program) {
+        crate::node::node_command(program, args)
     } else {
         let mut c = std::process::Command::new(program);
         c.args(args);

@@ -1,8 +1,8 @@
 //! `ados-deploy` entry point.
 
 use ados_deploy::cli::{Args, RunMode};
-use ados_deploy::ui::Theme;
 use ados_deploy::{deploy, env, menu};
+use ados_term::Theme;
 
 fn main() -> anyhow::Result<()> {
     let args = Args::from_env();

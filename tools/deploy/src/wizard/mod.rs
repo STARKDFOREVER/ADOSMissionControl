@@ -1,8 +1,5 @@
-//! The interactive wizard: pure frame compositor + widget grammar (vendored from
-//! the drone-agent installer), plus the deploy-specific screens.
+//! The interactive wizard: the deploy-specific screens over the `ados_term`
+//! frame compositor and widgets.
 
-pub mod frame;
-pub mod render;
 pub mod screens;
 pub mod state;
-pub mod widgets;

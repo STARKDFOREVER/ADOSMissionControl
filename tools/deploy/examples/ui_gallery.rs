@@ -8,13 +8,12 @@
 //!
 //! Run:  cargo run --example ui_gallery   (writes tools/deploy/assets/gallery/)
 
-use ados_deploy::graph::StepOutcome;
-use ados_deploy::ui::events::{ProgressEvent, DEPLOY_FOOTER, DEPLOY_GROUPS};
-use ados_deploy::ui::export;
-use ados_deploy::ui::fullscreen;
-use ados_deploy::ui::theme::{ColorTier, Theme};
-use ados_deploy::wizard::frame::{self, Chrome, Screen, TermSize};
-use ados_deploy::wizard::render;
+use ados_deploy::ui::DEPLOY_SPEC;
+use ados_term::frame::{self, Chrome, Screen, TermSize};
+use ados_term::progress::{export, fullscreen, ProgressEvent};
+use ados_term::render;
+use ados_term::theme::{ColorTier, Theme};
+use ados_term::StepOutcome;
 
 fn theme() -> Theme {
     Theme {
@@ -358,9 +357,8 @@ fn deploy_grid(th: &Theme, sz: TermSize, stop: usize) -> Vec<String> {
     fullscreen::sample_grid(
         th,
         sz,
-        DEPLOY_GROUPS,
+        &DEPLOY_SPEC,
         "ADOS · Deploying",
-        DEPLOY_FOOTER,
         events,
         3,
         (30 + stop * 12) as u64,

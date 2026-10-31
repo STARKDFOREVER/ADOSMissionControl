@@ -5,7 +5,7 @@
 #   curl -sSL https://raw.githubusercontent.com/altnautica/ADOSMissionControl/main/tools/deploy/deploy.sh | sh
 #
 # Local-first (repo-only): clone ADOSMissionControl, then run from inside it:
-#   ./tools/deploy/deploy.sh          (prebuilt binary if present, else cargo)
+#   ./tools/deploy/deploy.sh          (verified prebuilt release binary, else cargo)
 #   cargo run --manifest-path tools/deploy/Cargo.toml
 #
 # The deployer operates on a repo checkout (it builds the Mission Control image
@@ -33,41 +33,78 @@ fi
 
 cd "$DIR/tools/deploy"
 
-# 2. Launch. Preference order: a cached/committed prebuilt binary, then a
-#    best-effort fetch of the matching GitHub release asset, then a cargo build.
+# 2. Launch. Preference order: a verified prebuilt cached for this exact
+#    version, then a fresh download of the matching GitHub release asset that
+#    must pass the release signature and checksum, then a cargo build. Nothing
+#    downloaded is ever executed unverified.
+RELEASE_PUBKEY="RWQ/CJ1+gk7rjVfGSoy6MOL50e8TmO30KD/J+goaEj+WMI1uzEf92rHN"
+RELEASES="https://github.com/altnautica/ADOSMissionControl/releases/download"
+
 OS="$(uname -s 2>/dev/null || echo unknown)"
-BIN="./ados-deploy"
-[ "$OS" = "Windows_NT" ] && BIN="./ados-deploy.exe"
-
-if [ -x "$BIN" ]; then
-  exec "$BIN" "$@"
-fi
-
-# Best-effort: download the prebuilt release binary for this platform + version.
-# The release job publishes ados-deploy-<target> assets on ados-deploy-v* tags;
-# a missing release / unsupported platform simply falls through to cargo.
 ARCH="$(uname -m 2>/dev/null || echo unknown)"
 TARGET=""
+EXT=""
 case "$OS" in
   Darwin) case "$ARCH" in arm64|aarch64) TARGET="aarch64-apple-darwin" ;; x86_64) TARGET="x86_64-apple-darwin" ;; esac ;;
   Linux)  case "$ARCH" in x86_64|amd64) TARGET="x86_64-unknown-linux-gnu" ;; esac ;;
+  MINGW*|MSYS*|CYGWIN*) case "$ARCH" in x86_64|amd64) TARGET="x86_64-pc-windows-msvc"; EXT=".exe" ;; esac ;;
 esac
 VER="$(grep -m1 '^version' Cargo.toml 2>/dev/null | tr -cd '0-9.')"
-if [ -n "$TARGET" ] && [ -n "$VER" ] && command -v curl >/dev/null 2>&1; then
-  ASSET="https://github.com/altnautica/ADOSMissionControl/releases/download/ados-deploy-v${VER}/ados-deploy-${TARGET}"
-  say "fetching a prebuilt ados-deploy ($TARGET, v$VER)"
-  if curl -fsSL "$ASSET" -o "$BIN.tmp" 2>/dev/null; then
-    chmod +x "$BIN.tmp" && mv "$BIN.tmp" "$BIN" && exec "$BIN" "$@"
+
+# Check one asset's line of a (signature-verified) SHA256SUMS in the cwd.
+check_sum() {
+  grep "  $1\$" SHA256SUMS > "$1.sha256" || return 1
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum -c --ignore-missing --status "$1.sha256"
+  elif command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 -c --status "$1.sha256"
+  else
+    return 1
   fi
-  rm -f "$BIN.tmp" 2>/dev/null || true
-  say "(no prebuilt for this version/platform; building from source)"
+}
+
+# Download <asset>, SHA256SUMS and its signature into $DL_DIR, verify the
+# signature against the release key and the asset against its checksum line,
+# then move the binary into the versioned cache. Any failure leaves no file.
+fetch_verified() {
+  base="$RELEASES/ados-deploy-v$VER"
+  rm -rf "$DL_DIR" && mkdir -p "$DL_DIR" || return 1
+  curl -fsSL "$base/$ASSET" -o "$DL_DIR/$ASSET" 2>/dev/null &&
+    curl -fsSL "$base/SHA256SUMS" -o "$DL_DIR/SHA256SUMS" 2>/dev/null &&
+    curl -fsSL "$base/SHA256SUMS.minisig" -o "$DL_DIR/SHA256SUMS.minisig" 2>/dev/null || return 1
+  (cd "$DL_DIR" && minisign -Vqm SHA256SUMS -P "$RELEASE_PUBKEY" >/dev/null 2>&1 && check_sum "$ASSET") || {
+    say "(the prebuilt failed signature or checksum verification; refusing it)"
+    return 1
+  }
+  chmod +x "$DL_DIR/$ASSET" && mv -f "$DL_DIR/$ASSET" "$BIN"
+}
+
+if [ -n "$TARGET" ] && [ -n "$VER" ]; then
+  CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/ados-deploy/$VER"
+  ASSET="ados-deploy-$TARGET$EXT"
+  BIN="$CACHE/$ASSET"
+  DL_DIR="$CACHE/.tmp"
+  if [ -x "$BIN" ]; then
+    exec "$BIN" "$@"
+  fi
+  if ! command -v minisign >/dev/null 2>&1; then
+    say "minisign not found; building from source"
+  elif command -v curl >/dev/null 2>&1; then
+    say "fetching a prebuilt ados-deploy ($TARGET, v$VER)"
+    if fetch_verified; then
+      rm -rf "$DL_DIR"
+      exec "$BIN" "$@"
+    fi
+    rm -rf "$DL_DIR" "$BIN" 2>/dev/null || true
+    say "(no verified prebuilt for this version/platform; building from source)"
+  fi
 fi
 
 if command -v cargo >/dev/null 2>&1; then
   say "building ados-deploy (first run compiles; subsequent runs are instant)"
   exec cargo run --release --quiet -- "$@"
 else
-  echo "No prebuilt ados-deploy binary and Rust is not installed."
+  echo "No verified prebuilt ados-deploy binary and Rust is not installed."
   echo "Install Rust from https://rustup.rs and re-run, or use a release binary."
   exit 1
 fi

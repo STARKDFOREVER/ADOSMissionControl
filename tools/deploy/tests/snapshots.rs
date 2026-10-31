@@ -3,13 +3,13 @@
 //! Every composed frame line must be exactly `cols` display columns wide across
 //! terminal sizes, color tiers, and the ASCII glyph tier, so the charcoal
 //! background paints edge to edge with no ragged rows. This is the same
-//! invariant the vendored `wizard::frame` tests enforce, exercised here through
+//! invariant the `ados_term::frame` tests enforce, exercised here through
 //! the public compositor with representative deployer content (menu + a wizard
 //! review body). The pure per-stage bodies are a later extension.
 
-use ados_deploy::ui::theme::{ColorTier, Theme};
-use ados_deploy::wizard::frame::{self, Chrome, Screen, TermSize};
-use ados_deploy::wizard::render;
+use ados_term::frame::{self, Chrome, Screen, TermSize};
+use ados_term::render;
+use ados_term::theme::{ColorTier, Theme};
 
 fn sizes() -> Vec<TermSize> {
     vec![

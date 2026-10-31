@@ -19,15 +19,17 @@ use crate::ctx::Ctx;
 use crate::docker;
 use crate::graph::run_graph;
 use crate::shell;
-use crate::ui::tty::Tty;
-use crate::ui::{self, RenderMode, Theme};
+use crate::ui::DEPLOY_SPEC;
 use crate::wizard::screens;
 use crate::wizard::state::DeployConfig;
+use ados_term::progress::{self, ModeFlags, RenderMode};
+use ados_term::tty::Tty;
+use ados_term::Theme;
 use plan::Plan;
 
 /// Run the deploy wizard (or non-interactive build) and then plan/execute.
 pub fn run_wizard(theme: &Theme, repo_root: &Path, args: &Args) -> anyhow::Result<()> {
-    let interactive = !args.plan && !args.non_interactive && Tty::is_available();
+    let interactive = !args.plan && !args.non_interactive && Tty::is_available_stdio();
     let cfg: DeployConfig = if interactive {
         match screens::run(theme, args, repo_root)? {
             Some(c) => c,
@@ -47,8 +49,13 @@ pub fn run_wizard(theme: &Theme, repo_root: &Path, args: &Args) -> anyhow::Resul
 
     // Pause for Enter at the end only when a human is watching: a scripted /
     // non-interactive / --yes run returns immediately.
-    let pause = !args.non_interactive && !args.yes && Tty::is_available();
-    execute(theme, repo_root, &cfg, ui::detect_mode(args), pause)
+    let pause = !args.non_interactive && !args.yes && Tty::is_available_stdio();
+    let mode = progress::detect_mode(ModeFlags {
+        json: args.json,
+        quiet: args.quiet,
+        plain: args.plain,
+    });
+    execute(theme, repo_root, &cfg, mode, pause)
 }
 
 /// Run the deploy state machine for a prepared config (no wizard). Used by
@@ -67,14 +74,14 @@ fn execute(
     base_mode: RenderMode,
     pause: bool,
 ) -> anyhow::Result<()> {
-    let (mode, tty) = ui::resolve_live_mode(base_mode, None);
-    let (sink, handle) = ui::start(
+    let (mode, tty) = progress::resolve_live_mode(base_mode, None, Tty::open_stdio);
+    let (sink, handle) = progress::start(
         mode,
         "Deploying the ADOS stack…".to_string(),
         *theme,
         tty,
-        ui::DEPLOY_GROUPS,
-        ui::DEPLOY_FOOTER,
+        DEPLOY_SPEC,
+        false,
     );
 
     let mut ctx = Ctx::for_deploy(cfg.clone(), repo_root.to_path_buf(), sink.clone());

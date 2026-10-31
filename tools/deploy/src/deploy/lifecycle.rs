@@ -6,9 +6,9 @@ use std::path::Path;
 
 use crate::docker;
 use crate::shell;
-use crate::ui::tty::Tty;
-use crate::ui::Theme;
-use crate::wizard::widgets::{confirm_card, select_list, Choice, Flow};
+use ados_term::tty::Tty;
+use ados_term::widgets::{confirm_card, select_list, Choice, Flow};
+use ados_term::Theme;
 
 /// The self-host `.env` path relative to the repo root.
 const ENV_REL: &str = "tools/selfhost/.env";
@@ -36,7 +36,7 @@ pub fn manage(theme: &Theme, repo_root: &Path) {
     let mut default = 0usize;
     loop {
         let picked = {
-            let mut tty = match Tty::open() {
+            let mut tty = match Tty::open_stdio() {
                 Ok(Some(t)) => t,
                 _ => return,
             };
@@ -176,7 +176,7 @@ pub fn teardown(theme: &Theme, repo_root: &Path) {
         return;
     }
     let purge = {
-        let mut tty = match Tty::open() {
+        let mut tty = match Tty::open_stdio() {
             Ok(Some(t)) => t,
             _ => return,
         };

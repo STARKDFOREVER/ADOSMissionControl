@@ -4,8 +4,8 @@
 //! same order for real. Secrets are always redacted.
 
 use crate::env_files;
-use crate::ui::Theme;
 use crate::wizard::state::{DeployConfig, Scope, Tls};
+use ados_term::Theme;
 
 /// The compose file, relative to the repo root (commands run with cwd = root).
 pub const COMPOSE_FILE: &str = "tools/selfhost/docker-compose.yml";

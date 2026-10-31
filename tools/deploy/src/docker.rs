@@ -7,7 +7,7 @@ use std::process::Command;
 use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 
-use crate::exec::{self, CmdResult};
+use ados_term::exec::{self, CmdResult};
 
 /// The compose file, relative to the repo root (commands run with cwd = root).
 pub const COMPOSE_REL: &str = "tools/selfhost/docker-compose.yml";
@@ -94,7 +94,7 @@ pub fn convex_command(
 ) -> Command {
     // `node_command` resolves the `.cmd` shim on Windows (`npx` won't spawn via a
     // bare `Command::new`); on unix it is a plain `Command::new(program)`.
-    let mut cmd = exec::node_command(program, args);
+    let mut cmd = crate::node::node_command(program, args);
     cmd.current_dir(cwd);
     cmd.env_remove("CONVEX_URL");
     cmd.env_remove("CONVEX_DEPLOY_KEY");

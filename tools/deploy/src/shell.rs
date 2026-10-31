@@ -20,8 +20,7 @@ use std::io::Write;
 use std::path::Path;
 use std::process::Command;
 
-use crate::exec;
-use crate::ui::theme::Theme;
+use ados_term::Theme;
 
 /// Ignore SIGINT + SIGQUIT in the current (parent) process for the guard's
 /// lifetime, restoring the previous dispositions on drop. Unix only.
@@ -88,8 +87,8 @@ pub fn run_foreground(
 ) -> RunOutcome {
     // Node launchers (`npm`/`npx`) are `.cmd` shims on Windows that need the
     // `cmd /C` path; everything else spawns directly.
-    let mut cmd = if exec::is_node_tool(program) {
-        exec::node_command(program, args)
+    let mut cmd = if crate::node::is_node_tool(program) {
+        crate::node::node_command(program, args)
     } else {
         let mut c = Command::new(program);
         c.args(args);
