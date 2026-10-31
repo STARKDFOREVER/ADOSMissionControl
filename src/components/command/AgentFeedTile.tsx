@@ -1,7 +1,5 @@
 "use client";
 
-// Exempt from the 500-line rule: one tile with a body per node profile, all
-// reading the same freshness-gated slot; the bodies are small and co-located.
 /**
  * @module AgentFeedTile
  * @description One multi-agent Command overview tile. Renders a per-profile
@@ -10,13 +8,12 @@
  * @license GPL-3.0-only
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
   Activity,
   Battery,
   Cpu,
-  Expand,
   Gauge,
   HardDrive,
   HeartPulse,
@@ -24,12 +21,8 @@ import {
   MapPin,
   Network,
   Pause,
-  Pin,
-  PinOff,
-  Play,
   Power,
   Radio,
-  RefreshCw,
   Satellite,
   SignalHigh,
   Thermometer,
@@ -48,14 +41,12 @@ import { useAgentVideoSession } from "@/hooks/use-agent-video-session";
 import { usePairedWhepKey } from "@/hooks/use-whep-key";
 import { useBatteryBand } from "@/lib/battery-bands";
 import { StatTile } from "@/components/command/shared/StatTile";
-import type { StatusLevel } from "@/lib/status-level";
-import { StatusDot } from "@/components/ui/status-dot";
-import { Badge } from "@/components/ui/badge";
 import { NodeGlyph } from "@/components/command/nodes/node-glyph";
-import { profileTypeKey } from "@/components/command/nodes/NodeRow";
-import { linkStateReach } from "@/components/hardware/radio/labels";
-import { agentEffProfile, profileTint, type EffProfile } from "@/lib/nodes/node-profile";
-import { useDeviceControlAuthority, useControlAuthorityNotice } from "@/hooks/use-node-control-authority";
+import { profileTint } from "@/lib/nodes/node-profile";
+import { pct, tileEffProfile } from "./agent-feed-tile-format";
+import { TileActions } from "./AgentFeedTileActions";
+import { TileBadges } from "./AgentFeedTileBadges";
+import { useConnectWatchdog, useFeedVideoRetry } from "./use-feed-video-retry";
 
 interface AgentFeedTileProps {
   agent: CommandAgentSummary;
@@ -66,224 +57,9 @@ interface AgentFeedTileProps {
   onTogglePause: (deviceId: string) => void;
 }
 
-// A tile that has been "connecting" longer than this is wedged. Force a
-// fresh session attempt rather than spinning the placeholder forever.
-const TILE_CONNECT_TIMEOUT_MS = 15_000;
-
-function pct(value: number | null): string {
-  return value == null ? "--" : `${Math.round(value)}%`;
-}
-
-/**
- * Pick the presentation profile for a fleet tile from the summary, mirroring
- * the node-detail `effectiveNodeProfile` view-model (which keys on a
- * `SurfaceContext` this fleet tile does not have). A `drone`-profile node with
- * a live flight controller but no companion computer (no CPU/Mem/Temp and no
- * camera pipeline) is a bare flight controller, surfaced as its own kind.
- */
-function tileEffProfile(agent: CommandAgentSummary): EffProfile {
-  const profile = agentEffProfile(agent.profile);
-  if (profile !== "drone") return profile;
-  const noCompanion =
-    agent.system.cpuPercent == null &&
-    agent.system.memoryPercent == null &&
-    agent.system.temperature == null;
-  const noVideo = !agent.video.whepUrl && !agent.video.active;
-  if (agent.system.fcReachable && noCompanion && noVideo) {
-    return "flight-controller";
-  }
-  return "drone";
-}
-
-function livenessLevel(liveness: CommandAgentSummary["liveness"]): StatusLevel {
-  return liveness === "live" ? "good" : liveness === "stale" ? "serious" : "offline";
-}
 
 export function AgentFeedTile(props: AgentFeedTileProps) {
   return <ConsoleAgentFeedTile {...props} />;
-}
-
-// The 4-button action cluster (pin, pause, retry, open) or a compact
-// pin+open cluster for the profiles that have no video feed.
-function TileActions({
-  agent,
-  pinned,
-  paused,
-  showVideoControls,
-  onOpen,
-  onTogglePin,
-  onTogglePause,
-  onRetry,
-}: {
-  agent: CommandAgentSummary;
-  pinned: boolean;
-  paused: boolean;
-  showVideoControls: boolean;
-  onOpen: (deviceId: string) => void;
-  onTogglePin: (deviceId: string) => void;
-  onTogglePause: (deviceId: string) => void;
-  onRetry: () => void;
-}) {
-  const t = useTranslations("commandFleet");
-  return (
-    <div className="flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onTogglePin(agent.identity.deviceId);
-        }}
-        className="rounded bg-scrim/55 p-1 text-text-secondary hover:text-text-primary"
-        title={pinned ? t("unpin") : t("pin")}
-      >
-        {pinned ? <PinOff size={13} /> : <Pin size={13} />}
-      </button>
-      {showVideoControls && (
-        <>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onTogglePause(agent.identity.deviceId);
-            }}
-            className="rounded bg-scrim/55 p-1 text-text-secondary hover:text-text-primary"
-            title={paused ? t("resume") : t("pause")}
-          >
-            {paused ? <Play size={13} /> : <Pause size={13} />}
-          </button>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onRetry();
-            }}
-            className="rounded bg-scrim/55 p-1 text-text-secondary hover:text-text-primary"
-            title={t("retry")}
-          >
-            <RefreshCw size={13} />
-          </button>
-        </>
-      )}
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onOpen(agent.identity.deviceId);
-        }}
-        className="rounded bg-accent-primary p-1 text-bg-primary hover:opacity-90"
-        title={t("open")}
-      >
-        <Expand size={13} />
-      </button>
-    </div>
-  );
-}
-
-// The profile-correct badge cluster, shared by the video overlay and the
-// no-video header. Colour is never the only channel — the liveness dot carries
-// an accessible label.
-function TileBadges({
-  effProfile,
-  agent,
-}: {
-  effProfile: EffProfile;
-  agent: CommandAgentSummary;
-}) {
-  const t = useTranslations("commandFleet");
-  const tNode = useTranslations("nodeConsole");
-  // Separate from the liveness badge on purpose: a tile can be live and
-  // uncommandable at once, and one badge cannot carry both.
-  const authority = useControlAuthorityNotice(
-    useDeviceControlAuthority(agent.identity.deviceId),
-  );
-  const live = agent.liveness;
-  const liveLevel = livenessLevel(live);
-  const liveVariant = live === "live" ? "success" : live === "stale" ? "warning" : "neutral";
-  const radio = agent.radio;
-  const reach = radio ? linkStateReach(radio.state) : "down";
-  const roleLabel =
-    agent.role === "direct"
-      ? t("roleDirect")
-      : agent.role === "relay"
-        ? t("roleRelay")
-        : agent.role === "receiver"
-          ? t("roleReceiver")
-          : null;
-  const pairedShort = radio?.pairedWithDeviceId
-    ? radio.pairedWithDeviceId.slice(0, 8)
-    : null;
-  const typeBadge =
-    effProfile === "ground-station"
-      ? t("profileGround")
-      : effProfile === "drone"
-        ? t("profileDrone")
-        : tNode(`type.${profileTypeKey(effProfile)}`);
-
-  return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      <Badge variant={liveVariant} className="gap-1">
-        <StatusDot status={liveLevel} size="xs" pulse={live === "live"} label={t(live)} />
-        {t(live)}
-      </Badge>
-      <Badge variant="info">{typeBadge}</Badge>
-      {authority.show && (
-        <Badge
-          variant={authority.level === "warning" ? "warning" : "neutral"}
-          className="gap-1"
-        >
-          {/* The dot carries the full sentence as its aria-label and title. */}
-          <StatusDot
-            status={authority.level}
-            size="xs"
-            label={authority.detail}
-          />
-          {authority.label}
-        </Badge>
-      )}
-      {effProfile === "drone" && (
-        <>
-          <Badge variant={agent.system.fcReachable ? "success" : "neutral"}>
-            {agent.system.fcReachable ? t("fcOn") : t("fcOff")}
-          </Badge>
-          {agent.telemetry.armed != null && (
-            <Badge variant={agent.telemetry.armed ? "error" : "neutral"}>
-              {agent.telemetry.armed ? t("armed") : t("disarmed")}
-            </Badge>
-          )}
-        </>
-      )}
-      {effProfile === "flight-controller" && agent.telemetry.armed != null && (
-        <Badge variant={agent.telemetry.armed ? "error" : "neutral"}>
-          {agent.telemetry.armed ? t("armed") : t("disarmed")}
-        </Badge>
-      )}
-      {effProfile === "ground-station" && (
-        <>
-          {roleLabel && <Badge variant="neutral">{roleLabel}</Badge>}
-          <Badge
-            variant={
-              reach === "unproven"
-                ? "warning"
-                : reach === "up"
-                  ? "success"
-                  : "neutral"
-            }
-          >
-            {reach === "unproven"
-              ? t("linkUnverified")
-              : reach === "up"
-                ? t("linked")
-                : t("noLink")}
-          </Badge>
-          {pairedShort && (
-            <Badge variant="neutral" className="font-mono normal-case tracking-normal">
-              {t("paired")} {pairedShort}
-            </Badge>
-          )}
-        </>
-      )}
-    </div>
-  );
 }
 
 function ConsoleAgentFeedTile({
@@ -296,7 +72,7 @@ function ConsoleAgentFeedTile({
 }: AgentFeedTileProps) {
   const t = useTranslations("commandFleet");
   const [videoEl, setVideoEl] = useState<HTMLVideoElement | null>(null);
-  const [retryKey, setRetryKey] = useState(0);
+  const { retryKey, retry } = useFeedVideoRetry();
 
   const effProfile = tileEffProfile(agent);
   const hasVideoArea = effProfile === "drone" || effProfile === "ground-station";
@@ -330,15 +106,7 @@ function ConsoleAgentFeedTile({
   const connecting = session.state === "connecting";
   const failed = session.state === "failed";
 
-  useEffect(() => {
-    if (!connecting) return;
-    const handle = setTimeout(() => {
-      setRetryKey((k) => k + 1);
-    }, TILE_CONNECT_TIMEOUT_MS);
-    return () => clearTimeout(handle);
-  }, [connecting]);
-
-  const retry = useCallback(() => setRetryKey((k) => k + 1), []);
+  useConnectWatchdog(connecting, retry);
   const radio = agent.radio;
 
   return (
@@ -541,4 +309,3 @@ function ConsoleAgentFeedTile({
     </article>
   );
 }
-

@@ -1,125 +1,19 @@
-/**
- * @module MsePlayer
- * @description WebSocket to MediaSource Extensions player for cloud video streaming.
- * Connects to the configured video relay at `<relay>/ws/stream/{deviceId}` and
- * feeds fragmented MP4 data into a browser <video> element. The relay URL is
- * resolved from clientConfig with a managed default (see config/endpoints).
- *
- * The codec is read from the stream's own init segment rather than assumed;
- * see `./fmp4-codec` for why a hardcoded codec string is a silent black
- * screen rather than an error.
- *
- * @license GPL-3.0-only
- */
-
-import { OFFICIAL_VIDEO_RELAY_URL } from "@/lib/config/endpoints";
-import { codecStringFromInitSegment, mseTypeFor } from "./fmp4-codec";
-
-/**
- * Cross-environment timer handle: `number` under the DOM lib, `Timeout`
- * under Node's, and this module is type-checked against both.
- */
-type TimerHandle = ReturnType<typeof setTimeout>;
-
-const VIDEO_RELAY_URL_DEFAULT = OFFICIAL_VIDEO_RELAY_URL;
-
-// Fixed delay before every reconnect: after a transport drop, a detected
-// stall, a refused or failed token mint, or a session failure. The session
-// never gives up on its own; only `stop()` ends it.
-const RECONNECT_DELAY_MS = 3000;
-/**
- * A dial (token mint plus WebSocket handshake) that has not opened within
- * this long is abandoned and retried. A socket hung in CONNECTING raises no
- * close and the stall watchdog only judges an open socket, so without this
- * deadline the tile would wait on it indefinitely.
- */
-const CONNECT_DEADLINE_MS = 5000;
-/**
- * Consecutive sockets that closed before opening which are retried silently.
- * The relay answers a refused token with a bare HTTP 401 on the upgrade,
- * which a browser surfaces only as a close before `open`. The first such
- * close is usually an expired token and the next dial mints a fresh one;
- * from the second in a row on, the refusal is reported while retrying
- * continues on the same fixed cadence.
- */
-const SILENT_PRE_OPEN_RETRIES = 1;
-// How often the playback-stall watchdog samples currentTime.
-const STALL_CHECK_INTERVAL_MS = 1000;
-// currentTime frozen for at least this long while the socket is open
-// means the decoder has wedged; force a fresh connection.
-const PLAYBACK_STALL_TIMEOUT_MS = 5000;
-
-/**
- * Segments allowed to pile up while the source buffer is busy.
- *
- * The queue was unbounded. A source buffer that cannot keep up — a stalled
- * decoder, a backgrounded tab, a relay burst — grew it for as long as the
- * socket stayed open, so the failure mode of a slow decoder was memory
- * growth with no ceiling. Twelve segments is a couple of seconds of media at
- * the relay's segment cadence: enough to ride out a hiccup, not enough to be
- * a leak.
- */
-const MAX_QUEUED_SEGMENTS = 12;
-
-/** Media kept behind `currentTime`, for a scrub back and for decode context. */
-const RETAINED_BEHIND_S = 5;
-
-/**
- * Drift from the live edge that triggers a seek, and where to land.
- *
- * 0.6 s / 0.15 s, not 2 s / 0.3 s. This is a piloting feed: allowing two
- * seconds of drift before chasing, then landing 300 ms behind the edge, is up
- * to 2.3 s of delay the operator has no indication of. The tighter pair still
- * leaves ~5 frames of decode headroom at 30 fps.
- */
-const MAX_LIVE_DRIFT_S = 0.6;
-/** Where to land relative to the leading edge, leaving decode headroom. */
-const LIVE_EDGE_MARGIN_S = 0.15;
-
-/** Why a session failed, so a surface can say something specific. */
-export type MsePlayerErrorCode =
-  | "mse-unsupported"
-  | "codec-unknown"
-  | "codec-unsupported"
-  | "source-buffer-rejected"
-  | "relay-token-unavailable"
-  | "relay-refused";
-
-export interface MsePlayerError {
-  code: MsePlayerErrorCode;
-  message: string;
-}
-
-export interface MsePlayerOptions {
-  /**
-   * Called each time the session hits a failure. Every failure except
-   * `mse-unsupported` is followed by a reconnect on the fixed cadence, so a
-   * caller shows the message until the element's `playing` event says frames
-   * flow again.
-   *
-   * These used to be bare `return`s, which is how the codec mismatch became
-   * a silent black screen: the pane stayed connected, empty and quiet.
-   */
-  onError?: (err: MsePlayerError) => void;
-  /**
-   * Fetches a viewer token scoped to THIS device, called before every
-   * connection attempt so a reconnect never presents an expired one.
-   * A rejection is reported as `relay-token-unavailable` with the
-   * rejection's message, and the dial is retried.
-   *
-   * The relay refuses an unauthenticated upgrade. A browser `WebSocket`
-   * cannot set an `Authorization` header, so the token rides in the query
-   * string.
-   */
-  getRelayToken?: () => Promise<string>;
-}
+import { MseBufferPipeline } from "./buffer-pipeline";
+import {
+  CONNECT_DEADLINE_MS,
+  PLAYBACK_STALL_TIMEOUT_MS,
+  RECONNECT_DELAY_MS,
+  SILENT_PRE_OPEN_RETRIES,
+  STALL_CHECK_INTERVAL_MS,
+  VIDEO_RELAY_URL_DEFAULT,
+  type TimerHandle,
+} from "./constants";
+import type { MsePlayerError, MsePlayerErrorCode, MsePlayerOptions } from "./types";
 
 export class MsePlayer {
   private ws: WebSocket | null = null;
   private mediaSource: MediaSource | null = null;
-  private sourceBuffer: SourceBuffer | null = null;
   private videoElement: HTMLVideoElement | null = null;
-  private queue: ArrayBuffer[] = [];
   private deviceId: string = "";
   private videoRelayUrl: string = VIDEO_RELAY_URL_DEFAULT;
   private reconnectTimer: TimerHandle | null = null;
@@ -133,14 +27,6 @@ export class MsePlayer {
    * that failed after one successful minute went silent again.
    */
   private options: MsePlayerOptions | undefined;
-  /** Segments dropped to hold the queue bound, for the reconnect decision. */
-  private droppedSegments = 0;
-  /**
-   * Set when a queued segment was dropped. The next `updateend` then seeks to
-   * the live edge regardless of the drift threshold, because a drop is a
-   * known discontinuity in the timeline.
-   */
-  private liveEdgeSeekPending = false;
 
   // Playback-stall watchdog. Tracks currentTime advancement so a frozen
   // decoder (no socket close, no error event) still triggers a reconnect.
@@ -165,6 +51,15 @@ export class MsePlayer {
    * session was torn down or replaced does not open a socket for it.
    */
   private sessionSeq = 0;
+  private readonly pipeline = new MseBufferPipeline({
+    video: () => this.videoElement,
+    fail: (code, message) => this.fail(code, message),
+    scheduleReconnect: () => this.scheduleReconnect(),
+    onLiveEdgeSeek: (currentTime) => {
+      this.lastPlaybackTime = currentTime;
+      this.lastPlaybackAdvanceAt = Date.now();
+    },
+  });
 
   start(
     deviceId: string,
@@ -187,8 +82,7 @@ export class MsePlayer {
     this.tearingDown = false;
     this.deviceId = deviceId;
     this.videoElement = videoElement;
-    this.droppedSegments = 0;
-    this.liveEdgeSeekPending = false;
+    this.pipeline.resetCounters();
     if (videoRelayUrl) this.videoRelayUrl = videoRelayUrl;
     if (options !== undefined) this.options = options;
     if (this.options?.onError !== undefined) this.onError = this.options.onError;
@@ -288,8 +182,7 @@ export class MsePlayer {
       } catch { /* ignore */ }
     }
     this.mediaSource = null;
-    this.sourceBuffer = null;
-    this.queue = [];
+    this.pipeline.detach();
     if (this.videoElement) {
       if (this.videoElement.src) {
         URL.revokeObjectURL(this.videoElement.src);
@@ -455,7 +348,7 @@ export class MsePlayer {
     // cadence (the stream's codec can change when the drone's pipeline is
     // reconfigured). Later segments of the doomed session are ignored.
     if (this.reconnectScheduled) return;
-    if (!this.sourceBuffer && !this.openSourceBuffer(data)) {
+    if (!this.pipeline.hasSourceBuffer && !this.pipeline.open(this.mediaSource, data)) {
       this.scheduleReconnect();
       return;
     }
@@ -463,172 +356,7 @@ export class MsePlayer {
     // NOT followed by a trim: `enqueue` has just called `appendBuffer`, so
     // `updating` is true and `remove()` would throw. The trim runs from
     // `updateend`, the only moment it is legal.
-    this.enqueue(data);
+    this.pipeline.push(data);
   }
 
-  /**
-   * Create the source buffer for the codec the init segment declares.
-   * Returns false when the session cannot proceed; the reason has already
-   * been reported through {@link fail}.
-   */
-  private openSourceBuffer(initSegment: ArrayBuffer): boolean {
-    const codec = codecStringFromInitSegment(initSegment);
-    if (!codec) {
-      this.fail(
-        "codec-unknown",
-        "the stream's first segment carries no codec configuration this player can read",
-      );
-      return false;
-    }
-    const mimeType = mseTypeFor(codec);
-    if (
-      typeof MediaSource.isTypeSupported === "function" &&
-      !MediaSource.isTypeSupported(mimeType)
-    ) {
-      this.fail(
-        "codec-unsupported",
-        `this browser cannot decode ${mimeType}`,
-      );
-      return false;
-    }
-    try {
-      this.sourceBuffer = this.mediaSource!.addSourceBuffer(mimeType);
-    } catch (err) {
-      this.fail(
-        "source-buffer-rejected",
-        `addSourceBuffer(${mimeType}) was refused: ${
-          err instanceof Error ? err.message : String(err)
-        }`,
-      );
-      return false;
-    }
-    this.sourceBuffer.addEventListener("updateend", () => {
-      // Reclaim before appending more. `remove()` is only legal while the
-      // buffer is idle, which is exactly here — calling it right after an
-      // append (as this used to) hit the `updating` guard every time, so
-      // the trim never ran on a live stream and the buffer grew until the
-      // browser raised QuotaExceededError and the feed froze.
-      //
-      // A removal raises its own `updateend`, which re-enters this handler
-      // and does the flush then; returning here keeps the two operations
-      // from racing for the buffer.
-      if (this.trimBehindPlayhead()) return;
-      this.flushQueue();
-      const forced = this.liveEdgeSeekPending;
-      this.liveEdgeSeekPending = false;
-      this.seekToLiveEdgeIfDrifted(forced);
-    });
-    // A sourceBuffer error or abort wedges the decode graph; neither
-    // is recoverable by appending more data. Reconnect from scratch.
-    this.sourceBuffer.addEventListener("error", () => {
-      this.scheduleReconnect();
-    });
-    this.sourceBuffer.addEventListener("abort", () => {
-      this.scheduleReconnect();
-    });
-    return true;
-  }
-
-  /**
-   * Append now, or queue behind the in-flight append.
-   *
-   * The queue is bounded and drops the OLDEST segment on overflow: this is a
-   * live feed, so the newest bytes are the ones worth keeping, and an
-   * unbounded queue turns a slow decoder into unbounded memory growth. A
-   * drop is a discontinuity, so it also arms the live-edge seek — otherwise
-   * playback sits behind the gap for the rest of the session.
-   */
-  private enqueue(data: ArrayBuffer): void {
-    const buffer = this.sourceBuffer;
-    if (!buffer) return;
-    // Append directly only when nothing is waiting: a segment that skipped
-    // the queue would land ahead of older bytes and corrupt the timeline.
-    if (!buffer.updating && this.queue.length === 0) {
-      try {
-        buffer.appendBuffer(data);
-        return;
-      } catch {
-        // Fall through to the queue: a QuotaExceededError here means the
-        // buffer is full and the trim has not run yet.
-      }
-    }
-    this.queue.push(data);
-    while (this.queue.length > MAX_QUEUED_SEGMENTS) {
-      this.queue.shift();
-      this.droppedSegments += 1;
-      this.liveEdgeSeekPending = true;
-    }
-    this.flushQueue();
-  }
-
-  /**
-   * Trim everything more than {@link RETAINED_BEHIND_S} behind the playhead.
-   *
-   * Returns true when a removal was started, in which case the buffer is
-   * busy and the caller must wait for the next `updateend`.
-   *
-   * The old rule only trimmed once `currentTime > 10`, which never fires on
-   * a stream that never advances — precisely the wedged case where the
-   * buffer most needs reclaiming.
-   */
-  private trimBehindPlayhead(): boolean {
-    const buffer = this.sourceBuffer;
-    const video = this.videoElement;
-    if (!buffer || !video || buffer.updating) return false;
-    const cutoff = video.currentTime - RETAINED_BEHIND_S;
-    if (cutoff <= 0) return false;
-    try {
-      if (buffer.buffered.length > 0 && buffer.buffered.start(0) < cutoff) {
-        buffer.remove(0, cutoff);
-        return true;
-      }
-    } catch {
-      // A remove can still be refused mid-teardown; the next updateend retries.
-    }
-    return false;
-  }
-
-  /**
-   * Pull the playhead up to the buffer's leading edge when it has fallen
-   * behind.
-   *
-   * MSE plays from wherever `currentTime` is and nothing pulls it forward,
-   * so after a stall, a dropped segment, or a backgrounded tab the operator
-   * watches a delayed feed with no sign that it is delayed — which on a
-   * piloting surface is the whole problem.
-   */
-  private seekToLiveEdgeIfDrifted(force = false): void {
-    const buffer = this.sourceBuffer;
-    const video = this.videoElement;
-    if (!buffer || !video) return;
-    try {
-      const ranges = buffer.buffered;
-      if (ranges.length === 0) return;
-      const edge = ranges.end(ranges.length - 1);
-      if (!force && edge - video.currentTime <= MAX_LIVE_DRIFT_S) return;
-      video.currentTime = Math.max(edge - LIVE_EDGE_MARGIN_S, 0);
-      this.lastPlaybackTime = video.currentTime;
-      this.lastPlaybackAdvanceAt = Date.now();
-    } catch { /* ignore */ }
-  }
-
-  private flushQueue(): void {
-    const buffer = this.sourceBuffer;
-    if (!buffer || buffer.updating || this.queue.length === 0) return;
-    const next = this.queue.shift();
-    if (!next) return;
-    try {
-      buffer.appendBuffer(next);
-    } catch {
-      // Usually QuotaExceededError: put the segment back and reclaim. The
-      // trim's `updateend` retries the append. When no trim can start, the
-      // segment cannot ever fit, so it is dropped and counted.
-      this.queue.unshift(next);
-      if (!this.trimBehindPlayhead()) {
-        this.queue.shift();
-        this.droppedSegments += 1;
-        this.liveEdgeSeekPending = true;
-      }
-    }
-  }
 }
