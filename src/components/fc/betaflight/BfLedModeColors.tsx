@@ -9,7 +9,7 @@
 "use client";
 
 import { Select } from "@/components/ui/select";
-import type { BfLedModeColor, HsvColor } from "@/lib/protocol/msp/decoders/config/led";
+import type { BfLedModeColor, HsvColor } from "@/lib/protocol/types/betaflight";
 import {
   BF_LED_MODES,
   BF_LED_DIRECTIONS,

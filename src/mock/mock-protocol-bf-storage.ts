@@ -8,7 +8,7 @@
  */
 
 import type { CommandResult, MspOsdConfig, MspOsdGeneralConfig } from "@/lib/protocol/types";
-import type { MspVtxTablePowerLevel } from "@/lib/protocol/msp/msp-decoders-ext";
+import type { MspVtxTablePowerLevel } from "@/lib/protocol/types/betaflight";
 import type { DisplayPortOp } from "@/lib/protocol/msp/decoders/config/displayport";
 
 /** Demo VTX table: a four-level SmartAudio power table. */

@@ -9,7 +9,7 @@
 "use client";
 
 import { useGeozoneStore } from "@/stores/geozone-store";
-import type { INavGeozoneVertex } from "@/lib/protocol/msp/msp-decoders-inav";
+import type { INavGeozoneVertex } from "@/lib/protocol/types/inav";
 
 const INPUT_CLASS =
   "bg-bg-tertiary border border-border-default rounded px-2 py-1 text-xs font-mono text-text-primary focus:outline-none focus:border-accent-primary";

@@ -19,7 +19,7 @@
 import { describe, it, expect } from "vitest";
 import definitions from "./fixtures/mavlink-definitions.json";
 import { CRC_EXTRA, PAYLOAD_LENGTHS } from "../mavlink-crc-extra";
-import { MSG_NAMES } from "../mavlink-adapter-frame-handlers";
+import { MSG_NAMES } from "../messages/msg-names";
 import * as decoders from "../mavlink-messages";
 import * as cmds from "../mavlink-adapter-commands";
 import { setCurrentMissionItem, type MissionContext } from "../mavlink-adapter-missions";

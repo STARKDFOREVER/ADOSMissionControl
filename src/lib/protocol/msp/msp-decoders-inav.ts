@@ -11,56 +11,14 @@
  *
  * This module is a facade over the decoders/inav/ folder: implementation
  * lives in per-feature files (nav, battery, mixer, osd, tuning, sensors,
- * programming, geozones, settings-common) plus shared types/constants/helpers.
+ * programming, geozones, settings-common) plus shared constants/helpers. The
+ * decoded result types live in `protocol/types/inav`.
  *
  * @module protocol/msp/msp-decoders-inav
  */
 
 // ── Constants + waypoint action enum ─────────────────────────
 export { INAV_MSP, INAV_WP_ACTION, INAV_WP_FLAG_LAST, INAV_LIMITS } from "./decoders/inav/constants";
-
-// ── Decoded result types ─────────────────────────────────────
-export type {
-  INavWaypoint,
-  INavStatus,
-  INavActiveProfiles,
-  INavMisc2,
-  INavSafehome,
-  INavAnalog,
-  INavMisc,
-  INavBatteryConfig,
-  INavRateProfile,
-  INavAirSpeed,
-  INavMixer,
-  INavOsdLayoutsHeader,
-  INavOsdAlarms,
-  INavOsdPreferences,
-  INavMcBraking,
-  INavTimerOutputModeEntry,
-  INavOutputMappingExt2Entry,
-  INavTempSensorConfigEntry,
-  INavCalibrationData,
-  INavServoMixerRule,
-  INavLogicCondition,
-  INavGvarStatus,
-  INavProgrammingPid,
-  INavProgrammingPidStatus,
-  INavPid,
-  INavFwApproach,
-  INavCustomOsdElementsInfo,
-  INavCustomOsdField,
-  INavCustomOsdElement,
-  INavRateDynamics,
-  INavEzTune,
-  INavServoConfig,
-  INavGeozone,
-  INavGeozoneVertex,
-  INavAdsbVehicle,
-  INavCommonSetting,
-  INavSettingInfo,
-  INavPgList,
-  MotorMixerRule,
-} from "./decoders/inav/types";
 
 // ── Navigation: waypoints, status, safehome, nav config, misc, FW approach ──
 export {

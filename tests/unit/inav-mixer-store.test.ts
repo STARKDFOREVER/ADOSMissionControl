@@ -10,7 +10,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { useMixerStore } from '@/stores/mixer-store'
 import type { DroneProtocol } from '@/lib/protocol/types'
-import type { MotorMixerRule, INavServoMixerRule } from '@/lib/protocol/msp/msp-decoders-inav'
+import type { MotorMixerRule, INavServoMixerRule } from '@/lib/protocol/types/inav'
 
 function makeMotorRule(throttle = 1, roll = 0.5, pitch = -0.5, yaw = 0): MotorMixerRule {
   return { throttle, roll, pitch, yaw }

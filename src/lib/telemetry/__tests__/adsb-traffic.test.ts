@@ -10,7 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createAdsbTrafficTable } from "../adsb-traffic";
 import { TELEMETRY_STALE_MS } from "../freshness";
 import type { AdsbContact } from "@/lib/protocol/types";
-import type { INavAdsbVehicle } from "@/lib/protocol/msp/msp-decoders-inav";
+import type { INavAdsbVehicle } from "@/lib/protocol/types/inav";
 
 function contact(icao: number, over: Partial<AdsbContact> = {}): AdsbContact {
   return {

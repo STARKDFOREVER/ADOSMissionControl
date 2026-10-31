@@ -15,6 +15,7 @@ import {
   inavAccelCaptureOutcome,
   wait,
 } from "./msp-calibration";
+import { FcSection } from "@/components/fc/shared/FcSection";
 
 type Tone = "info" | "success" | "error";
 
@@ -154,7 +155,7 @@ export function InavCalibration() {
 
   return (
     <>
-      <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
+      <FcSection>
         <h3 className="text-sm font-medium text-text-primary">{t("inavAccelTitle")}</h3>
         <p className="text-xs text-text-tertiary">{t("inavAccelDesc")}</p>
         {readError && <Note tone="error" text={readError} />}
@@ -175,9 +176,9 @@ export function InavCalibration() {
         <Button size="sm" variant="primary" loading={accBusy} disabled={accBusy || flags === null || isHardBlocked} onClick={captureOrientation}>
           {t("inavAccelCapture")}
         </Button>
-      </div>
+      </FcSection>
 
-      <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
+      <FcSection>
         <h3 className="text-sm font-medium text-text-primary">{t("inavCompassTitle")}</h3>
         <p className="text-xs text-text-tertiary">{t("inavCompassDesc")}</p>
         {magLeft !== null && <Note tone="info" text={t("inavCompassRunning", { seconds: magLeft })} />}
@@ -186,7 +187,7 @@ export function InavCalibration() {
         <Button size="sm" variant="primary" disabled={magLeft !== null || flags === null || isHardBlocked} onClick={calibrateCompass}>
           {t("inavCompassStart")}
         </Button>
-      </div>
+      </FcSection>
 
       <div className="border border-border-default bg-bg-secondary p-4 space-y-2">
         <h3 className="text-sm font-medium text-text-primary">{t("inavLevelTitle")}</h3>

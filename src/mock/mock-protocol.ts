@@ -6,7 +6,7 @@
 
 import type {
   DroneProtocol, Transport, VehicleInfo, CommandResult, ParameterValue,
-  ProtocolCapabilities, FirmwareHandler, MissionItem, UnifiedFlightMode,
+  ProtocolCapabilities, CommandQueueSnapshot, FirmwareHandler, MissionItem, UnifiedFlightMode,
   LogEntry, LogDownloadProgressCallback, FtpDownloadProgressCallback, AccelCalPosition,
   SysStatusCallback, RadioCallback, EkfCallback, VibrationCallback,
   ServoOutputCallback, WindCallback, TerrainCallback, ScaledImuCallback,
@@ -29,7 +29,7 @@ import { BETAFLIGHT_MOCK_PARAMS } from "./mock-params-betaflight";
 import { createCallbackArrays, bindOnMethods } from "./mock-protocol-callbacks";
 import type { ManualControlSample } from "./mock-control-samples";
 import * as E from "./mock-protocol-emitters";
-import { mockStartCalibration, type CalibrationContext } from "./mock-protocol-calibration";
+import { mockStartCalibration, type CalibrationContext, type CalTimer } from "./mock-protocol-calibration";
 import { MockFlightState } from "./mock-protocol-flight";
 import { handleSerialCommand, startTelemetryTick, type TelemetryTickContext } from "./mock-protocol-serial";
 import { MOCK_FENCE_POLYGON, MOCK_VEHICLE_INFO, HELI_VEHICLE_INFO, PX4_VEHICLE_INFO, PX4_VTOL_VEHICLE_INFO, ARDUPLANE_VEHICLE_INFO, ARDUPLANE_VTOL_VEHICLE_INFO, ARDUPLANE_TAILSITTER_VEHICLE_INFO, ARDUPLANE_TILTROTOR_VEHICLE_INFO, ARDUROVER_VEHICLE_INFO, ARDUBOAT_VEHICLE_INFO, ARDUSUB_VEHICLE_INFO, BETAFLIGHT_VEHICLE_INFO, INAV_FW_VEHICLE_INFO } from "./mock-protocol-data";
@@ -57,8 +57,7 @@ export class MockProtocol implements DroneProtocol {
   private defaults: MockParam[];
   private cbs = createCallbackArrays();
   private _on = bindOnMethods(this.cbs);
-  private accelCalTimers: ReturnType<typeof setTimeout>[] = [];
-  private compassCalTimers: ReturnType<typeof setTimeout | typeof setInterval>[] = [];
+  private calTimers: CalTimer[] = [];
   private tickTimers: ReturnType<typeof setInterval>[] = [];
   private imageCounter = { value: 0 };
   private _rcChannelValues: number[] = Array(16).fill(1500);
@@ -158,7 +157,7 @@ export class MockProtocol implements DroneProtocol {
   async connect(_t: Transport): Promise<VehicleInfo> { this._connected = true; return this._vehicleInfo; }
   async disconnect(): Promise<void> {
     const was = this._connected;
-    this.stopMockTelemetryTick(); this.clearAccelTimers(); this.clearCompassTimers(); this._connected = false;
+    this.stopMockTelemetryTick(); this.clearCalTimers(); this._connected = false;
     if (was) for (const cb of [...this.disconnectCbs]) cb();
   }
   private disconnectCbs: Array<() => void> = [];
@@ -326,30 +325,30 @@ export class MockProtocol implements DroneProtocol {
   async startCalibration(type: "accel" | "gyro" | "compass" | "level" | "airspeed" | "baro" | "rc" | "esc" | "compassmot"): Promise<CommandResult> {
     const ctx: CalibrationContext = {
       vehicleFirmwareType: this._vehicleInfo.firmwareType, isPX4: this._vehicleInfo.firmwareType === "px4",
-      accelCalTimers: this.accelCalTimers, compassCalTimers: this.compassCalTimers,
+      calTimers: this.calTimers,
       magCalProgressCbs: this.cbs.magCalProgressCbs, magCalReportCbs: this.cbs.magCalReportCbs, accelCalPosCbs: this.cbs.accelCalPosCbs,
       emitStatusText: (s, t) => this.emitStatusText(s, t), emitAccelCalPos: (p) => E.emitAccelCalPos(this.cbs, p),
-      clearAccelTimers: () => this.clearAccelTimers(), clearCompassTimers: () => this.clearCompassTimers(),
+      clearCalTimers: () => this.clearCalTimers(),
     };
     return mockStartCalibration(ctx, type);
   }
   confirmAccelCalPos(position: number): void {
     const t = setTimeout(() => {
       if (position + 1 <= 6) E.emitAccelCalPos(this.cbs, (position + 1) as AccelCalPosition);
-      else { this.emitStatusText(5, "Calibration successful"); setTimeout(() => this.emitStatusText(5, "PreArm: Accels calibrated requires reboot"), 200); }
+      else { this.emitStatusText(5, "Calibration successful"); this.calTimers.push(setTimeout(() => this.emitStatusText(5, "PreArm: Accels calibrated requires reboot"), 200)); }
     }, 800);
-    this.accelCalTimers.push(t);
+    this.calTimers.push(t);
   }
   async acceptCompassCal(): Promise<CommandResult> { return ok("Compass calibration accepted"); }
-  async cancelCompassCal(): Promise<CommandResult> { this.clearCompassTimers(); return ok("Compass calibration cancelled"); }
-  async cancelCalibration(): Promise<CommandResult> { this.clearAccelTimers(); return ok("Calibration cancelled"); }
+  async cancelCompassCal(): Promise<CommandResult> { this.clearCalTimers(); return ok("Compass calibration cancelled"); }
+  async cancelCalibration(): Promise<CommandResult> { this.clearCalTimers(); return ok("Calibration cancelled"); }
   async startGnssMagCal(yawDeg: number): Promise<CommandResult> {
     this.emitStatusText(6, "[cal] calibration started: 2");
-    setTimeout(() => { this.emitStatusText(6, "[cal] progress <50>"); setTimeout(() => this.emitStatusText(6, "[cal] calibration done: mag"), 1000); }, 500);
+    this.calTimers.push(setTimeout(() => { this.emitStatusText(6, "[cal] progress <50>"); this.calTimers.push(setTimeout(() => this.emitStatusText(6, "[cal] calibration done: mag"), 1000)); }, 500));
     return ok(`Compass calibration for yaw ${yawDeg}° started`);
   }
-  private clearAccelTimers(): void { for (const t of this.accelCalTimers) clearTimeout(t); this.accelCalTimers = []; }
-  private clearCompassTimers(): void { for (const t of this.compassCalTimers) { clearTimeout(t as ReturnType<typeof setTimeout>); clearInterval(t as ReturnType<typeof setInterval>); } this.compassCalTimers = []; }
+  /** clearTimeout also cancels interval handles (shared timer id space). */
+  private clearCalTimers(): void { for (const t of this.calTimers) clearTimeout(t as ReturnType<typeof setTimeout>); this.calTimers.length = 0; }
 
   // ── Log Download / FTP (delegated) ─────────────────────
   private files = new MockFcFiles();
@@ -418,7 +417,7 @@ export class MockProtocol implements DroneProtocol {
   onDisplayPort(cb: (op: DisplayPortOp) => void): () => void {
     const id = startMockDisplayPort(cb);
     this.tickTimers.push(id);
-    return () => clearInterval(id);
+    return () => { clearInterval(id); this.tickTimers = this.tickTimers.filter((t) => t !== id); };
   }
 
   // ── Motor Test / Reboot ────────────────────────────────
@@ -489,5 +488,7 @@ export class MockProtocol implements DroneProtocol {
   // ── Info ───────────────────────────────────────────────
   getVehicleInfo(): VehicleInfo { return this._vehicleInfo; }
   getCapabilities(): ProtocolCapabilities { return this.handler.getCapabilities(); }
+  getCommandQueueSnapshot(): CommandQueueSnapshot { return { pendingCount: 0, entries: [] }; }
+  setDiagnosticsEnabled(_enabled: boolean): void {}
   getFirmwareHandler(): FirmwareHandler { return this.handler; }
 }

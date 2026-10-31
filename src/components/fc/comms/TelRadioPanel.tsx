@@ -17,8 +17,9 @@ import { ParamFieldLabel } from "../parameters/ParamFieldLabel";
 import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
 import {
   TELRADIO_PARAMS, OPTIONAL_TELRADIO_PARAMS,
-  radioLevel, Card, RssiBar, LiveStat,
+  radioLevel, RssiBar, LiveStat,
 } from "./telradio-helpers";
+import { FcSection } from "@/components/fc/shared/FcSection";
 
 /** PX4 has no SERIALn_* or SYSID_* parameters (it uses MAV_n_* and MAV_SYS_ID). */
 const NO_PARAMS: string[] = [];
@@ -104,7 +105,7 @@ export function TelRadioPanel() {
           />
 
           {/* Link Status */}
-          <Card icon={<Signal size={14} />} title="Link Status" description="Live RADIO_STATUS telemetry">
+          <FcSection icon={<Signal size={14} />} title="Link Status" description="Live RADIO_STATUS telemetry">
             {latestRadio ? (
               <div className="space-y-3">
                 <RssiBar label="Local RSSI" value={latestRadio.rssi} />
@@ -124,12 +125,12 @@ export function TelRadioPanel() {
                 No live radio telemetry: RADIO_STATUS not received recently
               </p>
             )}
-          </Card>
+          </FcSection>
 
           {!isPx4 && (
             <>
               {/* Serial Port Config */}
-              <Card icon={<Radio size={14} />} title="Serial Port Configuration" description="Protocol and baud rate for telemetry ports">
+              <FcSection icon={<Radio size={14} />} title="Serial Port Configuration" description="Protocol and baud rate for telemetry ports">
                 <div className="space-y-4">
                   <div>
                     <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">SERIAL1 (TELEM1)</span>
@@ -146,10 +147,10 @@ export function TelRadioPanel() {
                     </div>
                   </div>
                 </div>
-              </Card>
+              </FcSection>
 
               {/* System ID */}
-              <Card icon={<Radio size={14} />} title="System Identification" description="MAVLink system and GCS IDs for multi-vehicle setups">
+              <FcSection icon={<Radio size={14} />} title="System Identification" description="MAVLink system and GCS IDs for multi-vehicle setups">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {idField("SYSID_THISMAV", "Vehicle System ID")}
                   {idField("SYSID_MYGCS", "GCS System ID")}
@@ -157,7 +158,7 @@ export function TelRadioPanel() {
                 <p className="text-[10px] text-text-tertiary mt-1">
                   Each vehicle on the same link needs a unique SYSID_THISMAV. Default GCS ID is 255.
                 </p>
-              </Card>
+              </FcSection>
             </>
           )}
 

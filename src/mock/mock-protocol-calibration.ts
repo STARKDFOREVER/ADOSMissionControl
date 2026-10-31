@@ -19,15 +19,27 @@ import type {
 export interface CalibrationContext {
   vehicleFirmwareType: string;
   isPX4: boolean;
-  accelCalTimers: ReturnType<typeof setTimeout>[];
-  compassCalTimers: ReturnType<typeof setTimeout | typeof setInterval>[];
+  /** Every timeout/interval handle a calibration run schedules. */
+  calTimers: CalTimer[];
   magCalProgressCbs: MagCalProgressCallback[];
   magCalReportCbs: MagCalReportCallback[];
   accelCalPosCbs: AccelCalPosCallback[];
   emitStatusText(severity: number, text: string): void;
   emitAccelCalPos(position: AccelCalPosition): void;
-  clearAccelTimers(): void;
-  clearCompassTimers(): void;
+  /** Clears every handle in `calTimers` (cancel, new run, disconnect). */
+  clearCalTimers(): void;
+}
+
+export type CalTimer = ReturnType<typeof setTimeout | typeof setInterval>;
+
+function after(ctx: CalibrationContext, fn: () => void, ms: number): void {
+  ctx.calTimers.push(setTimeout(fn, ms));
+}
+
+function every(ctx: CalibrationContext, fn: () => void, ms: number): ReturnType<typeof setInterval> {
+  const iv = setInterval(fn, ms);
+  ctx.calTimers.push(iv);
+  return iv;
 }
 
 function ok(message = "OK"): CommandResult {
@@ -42,12 +54,12 @@ export function mockStartCalibration(
 
   if (type === "accel") {
     if (ctx.isPX4) {
-      ctx.clearAccelTimers();
+      ctx.clearCalTimers();
       const sides = ["back", "front", "left", "right", "up", "down"];
       ctx.emitStatusText(6, "[cal] calibration started: 4");
       let progress = 0;
       let sideIdx = 0;
-      const iv = setInterval(() => {
+      const iv = every(ctx, () => {
         progress += 8;
         if (sideIdx < sides.length) {
           ctx.emitStatusText(6, `[cal] progress <${Math.min(progress, 95)}>`);
@@ -61,18 +73,16 @@ export function mockStartCalibration(
           ctx.emitStatusText(6, "[cal] calibration done: accel");
         }
       }, 500);
-      ctx.accelCalTimers.push(iv);
     } else {
-      ctx.clearAccelTimers();
-      const t = setTimeout(() => ctx.emitAccelCalPos(1 as AccelCalPosition), 500);
-      ctx.accelCalTimers.push(t);
+      ctx.clearCalTimers();
+      after(ctx, () => ctx.emitAccelCalPos(1 as AccelCalPosition), 500);
     }
   } else if (type === "compass") {
     if (ctx.isPX4) {
-      ctx.clearCompassTimers();
+      ctx.clearCalTimers();
       ctx.emitStatusText(6, "[cal] calibration started: 2");
       let progress = 0;
-      const iv = setInterval(() => {
+      const iv = every(ctx, () => {
         progress += 10;
         if (progress < 100) {
           ctx.emitStatusText(6, `[cal] progress <${progress}>`);
@@ -81,7 +91,6 @@ export function mockStartCalibration(
           ctx.emitStatusText(6, "[cal] calibration done: mag");
         }
       }, 500);
-      ctx.compassCalTimers.push(iv);
     } else {
       mockStartArduCompassCal(ctx);
     }
@@ -89,18 +98,18 @@ export function mockStartCalibration(
     return { success: true, resultCode: 0, message: "RC calibration ready — follow on-screen instructions" };
   } else if (type === "esc") {
     ctx.emitStatusText(3, "WARNING: ESC calibration will spin motors! Remove props!");
-    setTimeout(() => ctx.emitStatusText(6, "ESC calibration: Set throttle to maximum"), 1000);
-    setTimeout(() => ctx.emitStatusText(6, "ESC calibration: 50%"), 2000);
-    setTimeout(() => ctx.emitStatusText(5, "ESC calibration successful"), 3500);
+    after(ctx, () => ctx.emitStatusText(6, "ESC calibration: Set throttle to maximum"), 1000);
+    after(ctx, () => ctx.emitStatusText(6, "ESC calibration: 50%"), 2000);
+    after(ctx, () => ctx.emitStatusText(5, "ESC calibration successful"), 3500);
   } else if (type === "compassmot") {
-    setTimeout(() => ctx.emitStatusText(6, "CompassMot: Increasing throttle..."), 1000);
-    setTimeout(() => ctx.emitStatusText(6, "CompassMot interference: 12% — Good"), 3000);
-    setTimeout(() => ctx.emitStatusText(5, "CompassMot calibration successful"), 4000);
+    after(ctx, () => ctx.emitStatusText(6, "CompassMot: Increasing throttle..."), 1000);
+    after(ctx, () => ctx.emitStatusText(6, "CompassMot interference: 12% — Good"), 3000);
+    after(ctx, () => ctx.emitStatusText(5, "CompassMot calibration successful"), 4000);
   } else if (type === "gyro") {
     if (ctx.isPX4) {
       ctx.emitStatusText(6, "[cal] calibration started: 5");
       let progress = 0;
-      const iv = setInterval(() => {
+      const iv = every(ctx, () => {
         progress += 20;
         if (progress < 100) {
           ctx.emitStatusText(6, `[cal] progress <${progress}>`);
@@ -110,16 +119,16 @@ export function mockStartCalibration(
         }
       }, 400);
     } else {
-      setTimeout(() => ctx.emitStatusText(6, "Gyro calibration started"), 200);
-      setTimeout(() => ctx.emitStatusText(6, "Gyro calibration: 50%"), 1000);
-      setTimeout(() => ctx.emitStatusText(5, "Gyro cal done"), 1800);
-      setTimeout(() => ctx.emitStatusText(5, "gyro calibration successful"), 2000);
+      after(ctx, () => ctx.emitStatusText(6, "Gyro calibration started"), 200);
+      after(ctx, () => ctx.emitStatusText(6, "Gyro calibration: 50%"), 1000);
+      after(ctx, () => ctx.emitStatusText(5, "Gyro cal done"), 1800);
+      after(ctx, () => ctx.emitStatusText(5, "gyro calibration successful"), 2000);
     }
   } else if (type === "level") {
     if (ctx.isPX4) {
       ctx.emitStatusText(6, "[cal] calibration started: 6");
       let progress = 0;
-      const iv = setInterval(() => {
+      const iv = every(ctx, () => {
         progress += 25;
         if (progress < 100) {
           ctx.emitStatusText(6, `[cal] progress <${progress}>`);
@@ -129,16 +138,16 @@ export function mockStartCalibration(
         }
       }, 350);
     } else {
-      setTimeout(() => ctx.emitStatusText(6, "Level calibration started"), 200);
-      setTimeout(() => ctx.emitStatusText(5, "Trim OK: roll=0.00 pitch=0.00 yaw=0.00"), 1500);
-      setTimeout(() => ctx.emitStatusText(5, "level calibration successful"), 2000);
+      after(ctx, () => ctx.emitStatusText(6, "Level calibration started"), 200);
+      after(ctx, () => ctx.emitStatusText(5, "Trim OK: roll=0.00 pitch=0.00 yaw=0.00"), 1500);
+      after(ctx, () => ctx.emitStatusText(5, "level calibration successful"), 2000);
     }
   } else {
     if (ctx.isPX4) {
       const calTypeId = type === "airspeed" ? 7 : 8;
       ctx.emitStatusText(6, `[cal] calibration started: ${calTypeId}`);
       let progress = 0;
-      const iv = setInterval(() => {
+      const iv = every(ctx, () => {
         progress += 20;
         if (progress < 100) {
           ctx.emitStatusText(6, `[cal] progress <${progress}>`);
@@ -148,8 +157,8 @@ export function mockStartCalibration(
         }
       }, 500);
     } else {
-      setTimeout(() => ctx.emitStatusText(6, `${type} calibration: 50%`), 1000);
-      setTimeout(() => ctx.emitStatusText(5, `${type} calibration successful`), 2000);
+      after(ctx, () => ctx.emitStatusText(6, `${type} calibration: 50%`), 1000);
+      after(ctx, () => ctx.emitStatusText(5, `${type} calibration successful`), 2000);
     }
   }
 
@@ -157,14 +166,14 @@ export function mockStartCalibration(
 }
 
 function mockStartArduCompassCal(ctx: CalibrationContext): void {
-  ctx.clearCompassTimers();
+  ctx.clearCalTimers();
   let pct0 = 0;
   let pct1 = 0;
   let tick = 0;
   const mask0 = new Uint8Array(10);
   const mask1 = new Uint8Array(10);
 
-  const iv = setInterval(() => {
+  const iv = every(ctx, () => {
     tick++;
     const angle0 = tick * 0.3;
     const angle1 = tick * 0.25;
@@ -203,7 +212,7 @@ function mockStartArduCompassCal(ctx: CalibrationContext): void {
 
     if (pct0 >= 100 && pct1 >= 100) {
       clearInterval(iv);
-      const t0 = setTimeout(() => {
+      after(ctx, () => {
         for (const cb of ctx.magCalReportCbs) {
           cb({
             compassId: 0, calStatus: 4, autosaved: 0,
@@ -216,7 +225,7 @@ function mockStartArduCompassCal(ctx: CalibrationContext): void {
         }
       }, 300);
       const compass1Fails = Math.random() < 0.3;
-      const t1 = setTimeout(() => {
+      after(ctx, () => {
         for (const cb of ctx.magCalReportCbs) {
           cb({
             compassId: 1, calStatus: compass1Fails ? 6 : 4, autosaved: 0,
@@ -228,8 +237,6 @@ function mockStartArduCompassCal(ctx: CalibrationContext): void {
           });
         }
       }, 500);
-      ctx.compassCalTimers.push(t0, t1);
     }
   }, 250);
-  ctx.compassCalTimers.push(iv);
 }

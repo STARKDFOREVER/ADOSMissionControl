@@ -40,10 +40,10 @@ import * as ranges from './msp-adapter/ranges'
 import type { MspSerialPort } from './msp/decoders/config/serial'
 import type { BfRxConfig } from './msp/decoders/config/rx'
 import type { MspOsdConfig, MspOsdGeneralConfig } from './msp/decoders/config/osd'
-import type { HsvColor, BfLedModeColor } from './msp/decoders/config/led'
+import type { HsvColor, BfLedModeColor } from '@/lib/protocol/types/betaflight'
 import { decodeMspDisplayPort, type DisplayPortOp } from './msp/decoders/config/displayport'
 import type { MspAdjustmentRange, MspModeBox, MspModeRange } from './msp/msp-decoders-status'
-import type { MspVtxTablePowerLevel } from './msp/msp-decoders-ext'
+import type { MspVtxTablePowerLevel } from '@/lib/protocol/types/betaflight'
 import { decodeMspBoardInfo } from './msp/msp-decoders-status'
 import {
   getFlashSummary,
@@ -51,24 +51,7 @@ import {
   eraseBlackboxFlash,
   type BlackboxDownloadProgress,
 } from './msp/msp-blackbox'
-import type {
-  INavSafehome,
-  INavGeozone,
-  INavGeozoneVertex,
-  INavActiveProfiles,
-  INavBatteryConfig,
-  INavMixer,
-  INavServoConfig,
-  INavMcBraking,
-  INavRateDynamics,
-  INavTimerOutputModeEntry,
-  INavOutputMappingExt2Entry,
-  INavTempSensorConfigEntry,
-  INavCalibrationData,
-  MotorMixerRule,
-  INavServoMixerRule,
-  INavFwApproach,
-} from './msp/msp-decoders-inav'
+import type { INavSafehome, INavGeozone, INavGeozoneVertex, INavActiveProfiles, INavBatteryConfig, INavMixer, INavServoConfig, INavMcBraking, INavRateDynamics, INavTimerOutputModeEntry, INavOutputMappingExt2Entry, INavTempSensorConfigEntry, INavCalibrationData, MotorMixerRule, INavServoMixerRule, INavFwApproach } from '@/lib/protocol/types/inav'
 import { INAV_LIMITS } from './msp/decoders/inav/constants'
 
 function u8(buf: Uint8Array, offset: number): number { return buf[offset] }

@@ -16,7 +16,7 @@ import { PanelHeader } from "../shared/PanelHeader";
 import { Button } from "@/components/ui/button";
 import { Sliders, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { INavServoConfig } from "@/lib/protocol/msp/msp-decoders-inav";
+import type { INavServoConfig } from "@/lib/protocol/types/inav";
 
 // platformType 0 = MULTIROTOR. Servos are only meaningful on other platforms.
 const PLATFORM_MULTIROTOR = 0;

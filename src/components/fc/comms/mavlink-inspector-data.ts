@@ -1,5 +1,5 @@
 import type { MAVLinkFrame } from "@/lib/protocol/mavlink-parser";
-import { MSG_NAMES } from "@/lib/protocol/mavlink-adapter-frame-handlers";
+import { MSG_NAMES } from "@/lib/protocol/messages/msg-names";
 import { decodeHeartbeat, decodeSysStatus } from "@/lib/protocol/messages/core";
 import { decodeAttitude, decodeGpsRawInt, decodeGlobalPositionInt } from "@/lib/protocol/messages/telemetry";
 

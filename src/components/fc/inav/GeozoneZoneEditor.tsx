@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { GeozoneMapEditor } from "./GeozoneMapEditor";
 import { GeozoneCircleFields } from "./GeozoneCircleFields";
-import type { INavGeozoneVertex } from "@/lib/protocol/msp/msp-decoders-inav";
+import type { INavGeozoneVertex } from "@/lib/protocol/types/inav";
 import { Plus, Trash2, ChevronDown, ChevronRight, Map } from "lucide-react";
 import { cn } from "@/lib/utils";
 

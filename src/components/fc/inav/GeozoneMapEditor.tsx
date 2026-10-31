@@ -10,7 +10,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { DrawingManager } from "@/lib/drawing/drawing-manager";
-import type { INavGeozoneVertex } from "@/lib/protocol/msp/msp-decoders-inav";
+import type { INavGeozoneVertex } from "@/lib/protocol/types/inav";
 import { GEOZONE_VERTEX_MAX } from "@/stores/geozone-store";
 import { Button } from "@/components/ui/button";
 import { MapPin, Trash2, Check, X, RotateCcw } from "lucide-react";

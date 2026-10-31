@@ -14,6 +14,7 @@ import type { DroneSigningState } from "@/stores/signing-store";
 import { KeyAgeNudge } from "../KeyAgeNudge";
 import { SigningHistorySection } from "../SigningHistorySection";
 import { SigningDebugSection } from "../SigningDebugSection";
+import { FcSection } from "@/components/fc/shared/FcSection";
 
 export interface SigningEnabledSectionProps {
   droneId: string;
@@ -59,7 +60,7 @@ export function SigningEnabledSection({
   const settling = state.enrollmentState === "unconfirmed" || state.enrollmentState === "disable_unconfirmed";
 
   return (
-    <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
+    <FcSection>
       <KeyAgeNudge
         droneId={droneId}
         enrolledAt={state.enrolledAt}
@@ -220,6 +221,6 @@ export function SigningEnabledSection({
       </div>
       <SigningHistorySection droneId={droneId} />
       <SigningDebugSection droneId={droneId} />
-    </div>
+    </FcSection>
   );
 }

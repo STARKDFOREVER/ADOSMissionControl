@@ -12,6 +12,7 @@ import { PanelHeader } from "../shared/PanelHeader";
 import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import { MapPin, Navigation, ShieldAlert, Save, HardDrive, Info } from "lucide-react";
 import { gpsParamNames, GPS_PROVIDER_OPTIONS, SBAS_MODE_OPTIONS, SANITY_CHECK_OPTIONS } from "./gps-constants";
+import { FcSection } from "@/components/fc/shared/FcSection";
 
 export function GpsPanel() {
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
@@ -49,11 +50,7 @@ export function GpsPanel() {
         />
 
         {/* GPS Protocol */}
-        <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
-          <div className="flex items-center gap-2 mb-1">
-            <Navigation size={14} className="text-accent-primary" />
-            <h2 className="text-sm font-medium text-text-primary">GPS Protocol</h2>
-          </div>
+        <FcSection icon={<Navigation size={14} />} title="GPS Protocol">
           <Select
             label="Provider"
             options={GPS_PROVIDER_OPTIONS}
@@ -110,15 +107,10 @@ export function GpsPanel() {
               <span className="text-xs text-text-secondary">Galileo Support</span>
             </label>
           </div>
-        </div>
+        </FcSection>
 
         {/* GPS Rescue */}
-        <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
-          <div className="flex items-center gap-2 mb-1">
-            <ShieldAlert size={14} className="text-accent-primary" />
-            <h2 className="text-sm font-medium text-text-primary">GPS Rescue</h2>
-            <span className="text-[10px] text-text-tertiary ml-auto">Betaflight return-to-home</span>
-          </div>
+        <FcSection icon={<ShieldAlert size={14} />} title="GPS Rescue" actions={<span className="text-[10px] text-text-tertiary ml-auto">Betaflight return-to-home</span>}>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <Input
@@ -212,7 +204,7 @@ export function GpsPanel() {
               GPS Rescue must also be enabled as a mode in the Modes tab (assign to an AUX channel) for it to be active.
             </p>
           </div>
-        </div>
+        </FcSection>
 
         {/* Save */}
         <div className="flex items-center gap-3 pt-2 pb-4">

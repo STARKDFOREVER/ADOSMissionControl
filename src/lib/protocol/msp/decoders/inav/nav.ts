@@ -10,14 +10,7 @@
 
 import { readU8, readU16, readU32, readS16, readS32 } from "./helpers";
 import { writeU8, writeI32, writeBits16 } from "../../../encoders/bounds";
-import type {
-  INavWaypoint,
-  INavStatus,
-  INavMisc2,
-  INavSafehome,
-  INavMisc,
-  INavFwApproach,
-} from "./types";
+import type { INavWaypoint, INavStatus, INavMisc2, INavSafehome, INavMisc, INavFwApproach } from "@/lib/protocol/types/inav";
 
 // ── Waypoint decoder/encoder ─────────────────────────────────
 

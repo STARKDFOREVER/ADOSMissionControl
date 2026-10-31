@@ -17,7 +17,7 @@ import { useClockTick } from "@/lib/agent/freshness";
 import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
 import { isFresh } from "@/lib/telemetry/freshness";
 import { useToast } from "@/components/ui/toast";
-import type { INavAdsbVehicle } from "@/lib/protocol/msp/msp-decoders-inav";
+import type { INavAdsbVehicle } from "@/lib/protocol/types/inav";
 import { haversineDistance } from "@/lib/geo/distance";
 
 // ── Proximity constants ──────────────────────────────────────

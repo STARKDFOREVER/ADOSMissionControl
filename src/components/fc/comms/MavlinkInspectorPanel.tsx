@@ -5,7 +5,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { Radio, Filter, Pause, Play, Download, Trash2, ArrowUpDown } from "lucide-react";
 import { RingBuffer } from "@/lib/ring-buffer";
-import { MSG_NAMES } from "@/lib/protocol/mavlink-adapter-frame-handlers";
+import { MSG_NAMES } from "@/lib/protocol/messages/msg-names";
 import { useDiagnosticsStore } from "@/stores/diagnostics-store";
 import {
   decodePayload,

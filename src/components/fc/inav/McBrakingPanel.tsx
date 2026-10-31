@@ -15,7 +15,7 @@ import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { PanelHeader } from "../shared/PanelHeader";
 import { Button } from "@/components/ui/button";
 import { Braces, Upload } from "lucide-react";
-import type { INavMcBraking } from "@/lib/protocol/msp/msp-decoders-inav";
+import type { INavMcBraking } from "@/lib/protocol/types/inav";
 import { MC_BRAKING_RANGES, clampMcBraking } from "./mc-braking-ranges";
 
 // platformType 0 = MULTIROTOR. MC braking applies only to multirotors.

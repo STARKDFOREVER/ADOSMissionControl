@@ -6,11 +6,6 @@
 
 import type { ProtocolCapabilities, VehicleClass } from '../types'
 
-// TODO: PX4 Component Metadata Protocol (MAVLink FTP) — deferred, LOW priority
-// PX4 supports downloading parameter metadata via MAVLink FTP protocol.
-// This would enable parameter descriptions, valid ranges, and units in the UI.
-// For now, supportsParamMetadata is not in ProtocolCapabilities; add when implemented.
-
 export const PX4_CAPABILITIES: ProtocolCapabilities = {
   supportsArming: true,
   supportsFlightModes: true,

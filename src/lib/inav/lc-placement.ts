@@ -9,7 +9,7 @@
  * @module lib/inav/lc-placement
  */
 
-import type { INavLogicCondition } from "@/lib/protocol/msp/msp-decoders-inav";
+import type { INavLogicCondition } from "@/lib/protocol/types/inav";
 
 /** logicOperandType_e LOGIC_CONDITION_OPERAND_TYPE_LOGIC_CONDITION. */
 const OPERAND_TYPE_LC = 4;

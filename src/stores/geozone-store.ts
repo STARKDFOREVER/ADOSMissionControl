@@ -8,7 +8,8 @@
 
 import { create } from 'zustand'
 import type { DroneProtocol } from '@/lib/protocol/types'
-import { INAV_LIMITS, type INavGeozone, type INavGeozoneVertex } from '@/lib/protocol/msp/msp-decoders-inav'
+import { INAV_LIMITS } from '@/lib/protocol/msp/msp-decoders-inav'
+import type { INavGeozone, INavGeozoneVertex } from '@/lib/protocol/types/inav'
 import { formatErrorMessage } from '@/lib/utils'
 import { droneSlices, type DroneKeyed } from './drone-slices'
 

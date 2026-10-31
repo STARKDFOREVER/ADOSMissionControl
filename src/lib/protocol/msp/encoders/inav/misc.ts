@@ -4,7 +4,7 @@
  * @module protocol/msp/encoders/inav/misc
  */
 
-import type { INavMisc } from '../../msp-decoders-inav';
+import type { INavMisc } from '@/lib/protocol/types/inav';
 import { writeU8, writeU16 } from './_helpers';
 
 /**

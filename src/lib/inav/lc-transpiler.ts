@@ -18,7 +18,7 @@
  * @module lib/inav/lc-transpiler
  */
 
-import type { INavLogicCondition } from "@/lib/protocol/msp/msp-decoders-inav";
+import type { INavLogicCondition } from "@/lib/protocol/types/inav";
 
 const MAX_LOGIC_CONDITIONS = 64;
 

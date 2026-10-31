@@ -10,8 +10,8 @@ import { formatErrorMessage } from '@/lib/utils'
 import {
   INAV_MSP,
   decodeMspINavFwApproach,
-  type INavFwApproach,
 } from '../../msp/msp-decoders-inav'
+import type { INavFwApproach } from '@/lib/protocol/types/inav'
 import { encodeMspINavSetFwApproach } from '../../msp/msp-encoders-inav'
 import { NOT_CONNECTED, dv } from './helpers'
 

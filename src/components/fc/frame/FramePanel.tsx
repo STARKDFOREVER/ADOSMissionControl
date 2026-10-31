@@ -19,13 +19,14 @@ import {
 } from "@/lib/motor-layouts";
 import { Select } from "@/components/ui/select";
 import { Save, HardDrive, Box, Zap, Info } from "lucide-react";
-import { FrameConfigLog, FrameCard, type ConfigLogEntry } from "./FrameConfigLog";
+import { FrameConfigLog, type ConfigLogEntry } from "./FrameConfigLog";
 import {
   ROVER_FRAME_CLASS_OPTIONS,
   ROVER_FRAME_TYPE_OPTIONS,
   SUB_FRAME_CONFIG_OPTIONS,
 } from "./ardupilot-frame-enums";
 import { withCurrent } from "./enum-options";
+import { FcSection } from "@/components/fc/shared/FcSection";
 
 const MotorDiagram3D = dynamic(
   () => import("../motors/MotorDiagram3D").then((m) => ({ default: m.MotorDiagram3D })),
@@ -169,31 +170,31 @@ export function FramePanel() {
             <PanelHeader title="Frame Configuration" subtitle="Vehicle frame class, type, and motor layout" icon={<Box size={16} />} loading={loading} loadProgress={loadProgress} hasLoaded={hasLoaded} onRead={refresh} connected={connected} error={error} />
 
             {isFixedWingOnly && (
-              <FrameCard icon={<Box size={14} />} title="Frame Configuration" description="Not applicable for this vehicle type">
+              <FcSection icon={<Box size={14} />} title="Frame Configuration" description="Not applicable for this vehicle type">
                 <div className="py-6 text-center space-y-2">
                   <p className="text-xs text-text-secondary">Frame configuration is not applicable for fixed-wing aircraft.</p>
                   <p className="text-[10px] text-text-tertiary">QuadPlane frame settings (Q_FRAME_CLASS) are available when your plane has VTOL motors configured.</p>
                 </div>
-              </FrameCard>
+              </FcSection>
             )}
 
             {hasLoaded && isRover && (
-              <FrameCard icon={<Box size={14} />} title="Frame Selection" description="Rover frame class and motor arrangement">
+              <FcSection icon={<Box size={14} />} title="Frame Selection" description="Rover frame class and motor arrangement">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <Select label="FRAME_CLASS" options={withCurrent(ROVER_FRAME_CLASS_OPTIONS, params.get("FRAME_CLASS"))} value={String(params.get("FRAME_CLASS") ?? "")} onChange={(v) => handleLocalChange("FRAME_CLASS", Number(v))} disabled={isHardBlocked} />
                   <Select label="FRAME_TYPE" options={withCurrent(ROVER_FRAME_TYPE_OPTIONS, params.get("FRAME_TYPE"))} value={String(params.get("FRAME_TYPE") ?? "")} onChange={(v) => handleLocalChange("FRAME_TYPE", Number(v))} disabled={isHardBlocked} />
                 </div>
-              </FrameCard>
+              </FcSection>
             )}
 
             {hasLoaded && isSub && (
-              <FrameCard icon={<Box size={14} />} title="Frame Selection" description="Thruster configuration">
+              <FcSection icon={<Box size={14} />} title="Frame Selection" description="Thruster configuration">
                 <Select label="FRAME_CONFIG" options={withCurrent(SUB_FRAME_CONFIG_OPTIONS, params.get("FRAME_CONFIG"))} value={String(params.get("FRAME_CONFIG") ?? "")} onChange={(v) => handleLocalChange("FRAME_CONFIG", Number(v))} disabled={isHardBlocked} />
-              </FrameCard>
+              </FcSection>
             )}
 
             {showMultirotor && (
-              <FrameCard icon={<Box size={14} />} title="Frame Selection" description="Select airframe class and configuration type">
+              <FcSection icon={<Box size={14} />} title="Frame Selection" description="Select airframe class and configuration type">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <Select label={classParam} options={FRAME_CLASS_OPTIONS} value={String(frameClass)} onChange={(v) => handleLocalChange(classParam, Number(v))} disabled={isHardBlocked} searchable />
                   <Select
@@ -225,11 +226,11 @@ export function FramePanel() {
                     <p className="text-[10px] text-text-secondary leading-relaxed">{classNote}</p>
                   </div>
                 )}
-              </FrameCard>
+              </FcSection>
             )}
 
             {showMultirotor && (
-              <FrameCard icon={<Zap size={14} />} title="Motor Layout" description={`${className} ${typeName} — ${motorCountStr}`}>
+              <FcSection icon={<Zap size={14} />} title="Motor Layout" description={`${className} ${typeName} — ${motorCountStr}`}>
                 {loading && !layout ? (
                   <div className="h-[360px] flex items-center justify-center text-xs text-text-tertiary bg-bg-tertiary animate-pulse">Loading parameters...</div>
                 ) : layout ? (
@@ -240,7 +241,7 @@ export function FramePanel() {
                     {classDescription && frameClass !== 0 && <p className="text-[10px] text-text-tertiary">{classDescription}. {classParam} will still be sent to the flight controller.</p>}
                   </div>
                 )}
-              </FrameCard>
+              </FcSection>
             )}
 
             {showMultirotor && (

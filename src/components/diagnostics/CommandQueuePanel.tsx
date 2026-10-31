@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useDiagnosticsStore } from "@/stores/diagnostics-store";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
-import type { MAVLinkAdapter } from "@/lib/protocol/mavlink-adapter";
 import { ListOrdered } from "lucide-react";
 
 // Known MAV_CMD names for display
@@ -45,12 +44,10 @@ export function CommandQueuePanel() {
   // is pending; nothing counts sent/acknowledged/failed commands, so no totals
   // are shown. The store is written only when the pending set changed.
   useEffect(() => {
-    if (!protocol) return;
+    const getSnapshot = protocol?.getCommandQueueSnapshot?.bind(protocol);
+    if (!getSnapshot) return;
     const interval = setInterval(() => {
-      const adapter = protocol as MAVLinkAdapter;
-      if (typeof adapter.getCommandQueueSnapshot !== "function") return;
-
-      const qs = adapter.getCommandQueueSnapshot();
+      const qs = getSnapshot();
       if (qs.entries.length > 0) setNow(Date.now());
       const prev = useDiagnosticsStore.getState().commandQueueSnapshot;
       const unchanged =

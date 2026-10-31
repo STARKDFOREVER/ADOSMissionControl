@@ -4,12 +4,7 @@
  * @module protocol/msp/encoders/inav/osd
  */
 
-import type {
-  INavOsdAlarms,
-  INavOsdPreferences,
-  INavCustomOsdElement,
-  INavCustomOsdElementsInfo,
-} from '../../msp-decoders-inav';
+import type { INavOsdAlarms, INavOsdPreferences, INavCustomOsdElement, INavCustomOsdElementsInfo } from '@/lib/protocol/types/inav';
 
 /**
  * Encode MSP2_INAV_OSD_SET_ALARMS (0x2015) payload.

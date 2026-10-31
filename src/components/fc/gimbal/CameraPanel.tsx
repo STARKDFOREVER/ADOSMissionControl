@@ -17,9 +17,9 @@ import { ParamFieldLabel } from "../parameters/ParamFieldLabel";
 import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
 import {
   CAMERA_PARAMS, OPTIONAL_CAMERA_PARAMS, CAM_TYPE_OPTIONS, PX4_TRIG_MODE_OPTIONS,
-  CameraCard as Card,
 } from "./camera-constants";
 import { withCurrent as withCurrentOption } from "../frame/enum-options";
+import { FcSection } from "@/components/fc/shared/FcSection";
 
 export function CameraPanel() {
   const {
@@ -144,18 +144,18 @@ export function CameraPanel() {
           )}
 
           {/* Camera Type */}
-          <Card icon={<Camera size={14} />} title="Camera Configuration" description="Camera type and trigger method">
+          <FcSection icon={<Camera size={14} />} title="Camera Configuration" description="Camera type and trigger method">
             <Select
               label={lbl(isPx4 ? "CAM1_TYPE — Trigger Mode" : "CAM1_TYPE — Camera Type")}
               options={typeOptions}
               value={p("CAM1_TYPE")}
               onChange={(v) => set("CAM1_TYPE", v)}
             />
-          </Card>
+          </FcSection>
 
           {/* Servo Trigger Settings */}
           {camEnabled && showServo && (
-            <Card icon={<Aperture size={14} />} title="Servo Trigger" description="PWM values for servo-based shutter">
+            <FcSection icon={<Aperture size={14} />} title="Servo Trigger" description="PWM values for servo-based shutter">
               {params.has("CAM1_SERVO_OFF") && (
                 <Input
                   label={lbl("CAM1_SERVO_OFF — Servo Off PWM")}
@@ -193,12 +193,12 @@ export function CameraPanel() {
                   onChange={(e) => set("CAM1_DURATION", e.target.value)}
                 />
               )}
-            </Card>
+            </FcSection>
           )}
 
           {/* Distance Trigger */}
           {camEnabled && params.has("CAM1_TRIGG_DIST") && (
-            <Card icon={<Ruler size={14} />} title="Distance Trigger" description="Automatic capture at distance intervals">
+            <FcSection icon={<Ruler size={14} />} title="Distance Trigger" description="Automatic capture at distance intervals">
               <Input
                 label={lbl("CAM1_TRIGG_DIST — Trigger Distance")}
                 type="number"
@@ -209,12 +209,12 @@ export function CameraPanel() {
                 onChange={(e) => set("CAM1_TRIGG_DIST", e.target.value)}
               />
               <p className="text-[10px] text-text-tertiary">Set to 0 to disable distance-based triggering</p>
-            </Card>
+            </FcSection>
           )}
 
           {/* Survey Helper */}
           {camEnabled && (
-            <Card icon={<Calculator size={14} />} title="Survey Helper" description="Calculate trigger distance from survey parameters">
+            <FcSection icon={<Calculator size={14} />} title="Survey Helper" description="Calculate trigger distance from survey parameters">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 <div>
                   <label className="text-[10px] text-text-tertiary block mb-1">Altitude</label>
@@ -256,12 +256,12 @@ export function CameraPanel() {
                   </Button>
                 </div>
               )}
-            </Card>
+            </FcSection>
           )}
 
           {/* Manual Trigger */}
           {camEnabled && connected && (
-            <Card icon={<Camera size={14} />} title="Manual Trigger" description="Trigger camera manually">
+            <FcSection icon={<Camera size={14} />} title="Manual Trigger" description="Trigger camera manually">
               <div className="flex items-center gap-3">
                 <Button size="sm" onClick={handleTrigger}>
                   <Aperture size={12} className="mr-1" /> Trigger Camera
@@ -270,12 +270,12 @@ export function CameraPanel() {
                   Images: {imageCount}
                 </span>
               </div>
-            </Card>
+            </FcSection>
           )}
 
           {/* Interval Trigger */}
           {camEnabled && connected && (
-            <Card icon={<Timer size={14} />} title="Interval Trigger" description="Trigger camera at a fixed time interval">
+            <FcSection icon={<Timer size={14} />} title="Interval Trigger" description="Trigger camera at a fixed time interval">
               <div className="flex items-center gap-3">
                 <Input
                   label="Interval"
@@ -300,7 +300,7 @@ export function CameraPanel() {
                   Active: triggering every {intervalSec}s ({imageCount} images taken)
                 </p>
               )}
-            </Card>
+            </FcSection>
           )}
 
           {/* Save */}

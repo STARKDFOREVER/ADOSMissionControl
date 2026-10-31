@@ -15,6 +15,7 @@ import { usePanelScroll } from "@/hooks/use-panel-scroll";
 import type { MspAdjustmentRange } from "@/lib/protocol/types";
 import { PwmRangeSlider, stepToPwm, pwmToStep } from "./PwmRangeSlider";
 import { ADJUSTMENT_FUNCTIONS, AUX_CHANNELS, adjustmentFunctionLabel } from "./adjustment-constants";
+import { FcSection } from "@/components/fc/shared/FcSection";
 
 /** Betaflight MAX_ADJUSTMENT_RANGE_COUNT. */
 const MAX_ADJUSTMENTS = 30;
@@ -128,7 +129,7 @@ export function AdjustmentsPanel() {
 
         {/* Live RC channel preview */}
         {hasLoaded && latestRc && (
-          <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
+          <FcSection>
             <div className="flex items-center gap-2 mb-1">
               <span className="text-accent-primary"><Radio size={14} /></span>
               <div>
@@ -153,7 +154,7 @@ export function AdjustmentsPanel() {
                 );
               })}
             </div>
-          </div>
+          </FcSection>
         )}
 
         {hasLoaded && (
@@ -162,7 +163,7 @@ export function AdjustmentsPanel() {
               <p className="text-center py-4 text-text-tertiary text-xs">No adjustments configured.</p>
             )}
             {ranges.map((r, i) => (
-              <div key={i} className="border border-border-default bg-bg-secondary p-4 space-y-3">
+              <FcSection key={i}>
                 <div className="flex items-center gap-3">
                   <span className="text-xs font-medium text-text-primary">Adjustment {i + 1}</span>
                   <span className="text-[10px] text-text-tertiary">{adjustmentFunctionLabel(r.adjustmentFunction)}</span>
@@ -203,7 +204,7 @@ export function AdjustmentsPanel() {
                     dirty={JSON.stringify(r) !== JSON.stringify(original[i])}
                   />
                 </div>
-              </div>
+              </FcSection>
             ))}
             <Button variant="secondary" size="sm" icon={<Plus size={12} />} onClick={addAdjustment} disabled={ranges.length >= MAX_ADJUSTMENTS}>
               Add Adjustment

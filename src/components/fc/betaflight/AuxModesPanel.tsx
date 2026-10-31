@@ -10,10 +10,12 @@ import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { usePanelScroll } from "@/hooks/use-panel-scroll";
 import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
+import { useArmedLock } from "@/hooks/use-armed-lock";
 import type { MspModeBox, MspModeRange } from "@/lib/protocol/types";
 import { PanelHeader } from "../shared/PanelHeader";
 import { ToggleRight, Save, Plus, Trash2, Radio } from "lucide-react";
 import { PwmRangeSlider, stepToPwm, pwmToStep } from "./PwmRangeSlider";
+import { FcSection } from "@/components/fc/shared/FcSection";
 
 // ── Constants ─────────────────────────────────────────────────
 
@@ -26,23 +28,6 @@ const MAX_RANGES = 20;
 
 /** A slot is in use when it has a PWM window or follows another mode. */
 const isConfigured = (r: MspModeRange) => r.rangeStart < r.rangeEnd || (r.linkedTo ?? 0) > 0;
-
-function AuxCard({ icon, title, description, children }: {
-  icon: React.ReactNode; title: string; description: string; children: React.ReactNode;
-}) {
-  return (
-    <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
-      <div className="flex items-center gap-2 mb-1">
-        <span className="text-accent-primary">{icon}</span>
-        <div>
-          <h2 className="text-sm font-medium text-text-primary">{title}</h2>
-          <p className="text-[10px] text-text-tertiary">{description}</p>
-        </div>
-      </div>
-      {children}
-    </div>
-  );
-}
 
 // ── Component ─────────────────────────────────────────────────
 
@@ -62,6 +47,7 @@ export function AuxModesPanel() {
   const [error, setError] = useState<string | null>(null);
 
   const connected = !!selectedProtocol;
+  const { isArmed, lockMessage } = useArmedLock();
   const protocolCanSave = !!selectedProtocol?.setModeRanges;
 
   const modeName = useCallback(
@@ -167,7 +153,7 @@ export function AuxModesPanel() {
             onRead={readFromFc} connected={connected} error={error} />
 
           {hasLoaded && latestRc && (
-            <AuxCard icon={<Radio size={14} />} title="Live RC Channels" description="Current AUX channel PWM values">
+            <FcSection icon={<Radio size={14} />} title="Live RC Channels" description="Current AUX channel PWM values">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {Array.from({ length: 8 }, (_, i) => {
                   const chIndex = i + 4;
@@ -186,7 +172,7 @@ export function AuxModesPanel() {
                   );
                 })}
               </div>
-            </AuxCard>
+            </FcSection>
           )}
 
           {hasLoaded && allModes.active.length > 0 && (
@@ -194,7 +180,7 @@ export function AuxModesPanel() {
               {allModes.active.map((boxId) => {
                 const modeRanges = rangesByMode.get(boxId) ?? [];
                 return (
-                  <AuxCard key={boxId} icon={<ToggleRight size={14} />} title={modeName(boxId)} description={`Box ID ${boxId}`}>
+                  <FcSection key={boxId} icon={<ToggleRight size={14} />} title={modeName(boxId)} description={`Box ID ${boxId}`}>
                     <div className="space-y-3">
                       {modeRanges.map(({ range, index }) => (
                         <div key={index} className="space-y-2">
@@ -226,14 +212,14 @@ export function AuxModesPanel() {
                       <Button variant="ghost" size="sm" icon={<Plus size={12} />} onClick={() => addRange(boxId)}
                         disabled={ranges.length >= MAX_RANGES}>Add Range</Button>
                     </div>
-                  </AuxCard>
+                  </FcSection>
                 );
               })}
             </div>
           )}
 
           {hasLoaded && addModeOptions.length > 0 && (
-            <AuxCard icon={<Plus size={14} />} title="Add Mode" description="Assign a new mode to an AUX channel">
+            <FcSection icon={<Plus size={14} />} title="Add Mode" description="Assign a new mode to an AUX channel">
               <div className="flex items-end gap-3">
                 <div className="flex-1">
                   <Select label="Mode" options={addModeOptions} value={selectedAddMode} onChange={setAddModeId} searchable searchPlaceholder="Search modes..." />
@@ -241,7 +227,7 @@ export function AuxModesPanel() {
                 <Button variant="secondary" size="sm" icon={<Plus size={12} />} onClick={() => addRange(Number(selectedAddMode))}
                   disabled={ranges.length >= MAX_RANGES}>Add</Button>
               </div>
-            </AuxCard>
+            </FcSection>
           )}
 
           {hasLoaded && allModes.active.length === 0 && (
@@ -249,7 +235,7 @@ export function AuxModesPanel() {
           )}
 
           <div className="flex items-center gap-3 pt-2 pb-4">
-            <Button variant="primary" size="lg" icon={<Save size={14} />} disabled={!isDirty || !connected || !protocolCanSave} loading={saving} onClick={saveToFc}>
+            <Button variant="primary" size="lg" icon={<Save size={14} />} disabled={!isDirty || !connected || !protocolCanSave || isArmed} title={isArmed ? lockMessage : undefined} loading={saving} onClick={saveToFc}>
               Save to Flight Controller
             </Button>
             {!protocolCanSave && connected && <span className="text-[10px] text-text-tertiary">This connection cannot write mode ranges</span>}

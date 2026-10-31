@@ -6,6 +6,7 @@ import { useParamPanelActions } from "@/hooks/use-param-panel-actions";
 import { useParamLabel } from "@/hooks/use-param-label";
 import { useParamMetadataMap } from "@/hooks/use-param-metadata";
 import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
+import { useArmedLock } from "@/hooks/use-armed-lock";
 import { PanelHeader } from "../shared/PanelHeader";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,7 @@ import { Lightbulb, Save, HardDrive, Palette } from "lucide-react";
 import { ParamFieldLabel } from "../parameters/ParamFieldLabel";
 import { EnumSelect } from "../parameters/EnumSelect";
 import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
+import { FcSection } from "@/components/fc/shared/FcSection";
 
 const LED_PARAMS = [
   "NTF_LED_TYPES", "NTF_LED_LEN", "NTF_LED_BRIGHT", "NTF_LED_OVERRIDE",
@@ -48,6 +50,7 @@ export function LedPanel() {
   const lbl = (raw: string) => <ParamFieldLabel raw={pl(raw)} metadata={metadata} />;
 
   const connected = !!getProtocol();
+  const { isArmed, lockMessage } = useArmedLock();
   const hasDirty = dirtyParams.size > 0;
 
   const ledTypes = params.get("NTF_LED_TYPES") ?? 0;
@@ -81,7 +84,7 @@ export function LedPanel() {
 
           {/* Betaflight: redirect to CLI */}
           {firmwareType === 'betaflight' && hasLoaded && (
-            <Card icon={<Lightbulb size={14} />} title="Betaflight LED Strip" description="LED strip configuration for Betaflight">
+            <FcSection icon={<Lightbulb size={14} />} title="Betaflight LED Strip" description="LED strip configuration for Betaflight">
               <p className="text-xs text-text-secondary">
                 Betaflight LED strip uses packed position/function/color bitmasks that are best configured through the CLI.
               </p>
@@ -93,13 +96,13 @@ export function LedPanel() {
                 <p><span className="text-accent-primary">led 0 0,0::C:0</span> — Example: set LED 0</p>
                 <p><span className="text-accent-primary">color</span> — Show/set LED colors</p>
               </div>
-            </Card>
+            </FcSection>
           )}
 
           {/* LED Types (ArduPilot / PX4) */}
           {firmwareType !== 'betaflight' && (
             <>
-              <Card icon={<Lightbulb size={14} />} title="LED Types" description="Select enabled LED hardware (bitmask)">
+              <FcSection icon={<Lightbulb size={14} />} title="LED Types" description="Select enabled LED hardware (bitmask)">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                   {LED_TYPE_BITS.map(({ bit, label }) => {
                     const checked = (ledTypes & (1 << bit)) !== 0;
@@ -121,10 +124,10 @@ export function LedPanel() {
                 <div className="mt-2 text-[10px] text-text-tertiary font-mono">
                   Bitmask: {ledTypes} (0x{ledTypes.toString(16).toUpperCase()})
                 </div>
-              </Card>
+              </FcSection>
 
               {/* Strip Length & Brightness */}
-              <Card icon={<Lightbulb size={14} />} title="Strip Settings" description="LED count and brightness level">
+              <FcSection icon={<Lightbulb size={14} />} title="Strip Settings" description="LED count and brightness level">
                 <Input
                   label={lbl("NTF_LED_LEN — Strip Length")}
                   type="number"
@@ -153,12 +156,12 @@ export function LedPanel() {
                     ))}
                   </div>
                 </div>
-              </Card>
+              </FcSection>
 
               {/* Colour source: NTF_LED_OVERRIDE selects where the LED
                   colours come from (an enum), it is not a colour value. */}
               {override !== undefined && (
-                <Card icon={<Palette size={14} />} title="Colour Source" description="Where the notification LED takes its colours from">
+                <FcSection icon={<Palette size={14} />} title="Colour Source" description="Where the notification LED takes its colours from">
                   <label className="text-xs text-text-secondary block mb-1">{lbl("NTF_LED_OVERRIDE — Colour Source")}</label>
                   {overrideMeta?.values && overrideMeta.values.size > 0 ? (
                     <EnumSelect
@@ -174,11 +177,11 @@ export function LedPanel() {
                       onChange={(e) => setLocalValue("NTF_LED_OVERRIDE", Math.trunc(Number(e.target.value) || 0))}
                     />
                   )}
-                </Card>
+                </FcSection>
               )}
 
               {/* LED Preview */}
-              <Card icon={<Lightbulb size={14} />} title="Pattern Preview" description="Visual representation of LED strip">
+              <FcSection icon={<Lightbulb size={14} />} title="Pattern Preview" description="Visual representation of LED strip">
                 <div className="flex gap-1.5 flex-wrap py-2">
                   {Array.from({ length: Math.min(ledLen, 32) }, (_, i) => (
                     <div
@@ -195,7 +198,7 @@ export function LedPanel() {
                     <span className="text-[10px] text-text-tertiary self-center ml-1">+{ledLen - 32} more</span>
                   )}
                 </div>
-              </Card>
+              </FcSection>
             </>
           )}
 
@@ -205,7 +208,8 @@ export function LedPanel() {
               variant="primary"
               size="lg"
               icon={<Save size={14} />}
-              disabled={!hasDirty || !connected}
+              disabled={!hasDirty || !connected || isArmed}
+              title={isArmed ? lockMessage : undefined}
               loading={saving}
               onClick={handleSave}
             >
@@ -216,6 +220,8 @@ export function LedPanel() {
                 variant="secondary"
                 size="lg"
                 icon={<HardDrive size={14} />}
+                disabled={isArmed}
+                title={isArmed ? lockMessage : undefined}
                 onClick={handleFlash}
               >
                 Write to Flash
@@ -234,27 +240,3 @@ export function LedPanel() {
   );
 }
 
-function Card({
-  icon,
-  title,
-  description,
-  children,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  description: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
-      <div className="flex items-center gap-2 mb-1">
-        <span className="text-accent-primary">{icon}</span>
-        <div>
-          <h2 className="text-sm font-medium text-text-primary">{title}</h2>
-          <p className="text-[10px] text-text-tertiary">{description}</p>
-        </div>
-      </div>
-      {children}
-    </div>
-  );
-}

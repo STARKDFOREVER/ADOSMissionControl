@@ -6,13 +6,7 @@
  */
 
 import { readU8, readU16 } from "./helpers";
-import type {
-  INavRateProfile,
-  INavMcBraking,
-  INavPid,
-  INavRateDynamics,
-  INavEzTune,
-} from "./types";
+import type { INavRateProfile, INavMcBraking, INavPid, INavRateDynamics, INavEzTune } from "@/lib/protocol/types/inav";
 
 // ── iNav RATE PROFILE decoder ────────────────────────────────
 

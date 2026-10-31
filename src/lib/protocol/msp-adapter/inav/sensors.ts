@@ -12,9 +12,8 @@ import {
   decodeMspINavTempSensorConfig,
   decodeMspINavTemperatures,
   decodeMspINavCalibrationData,
-  type INavTempSensorConfigEntry,
-  type INavCalibrationData,
 } from '../../msp/msp-decoders-inav'
+import type { INavTempSensorConfigEntry, INavCalibrationData } from '@/lib/protocol/types/inav'
 import { dv } from './helpers'
 
 export async function inavGetTempSensorConfigs(queue: MspSerialQueue | null): Promise<INavTempSensorConfigEntry[]> {

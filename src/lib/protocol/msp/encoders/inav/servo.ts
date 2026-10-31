@@ -4,7 +4,7 @@
  * @module protocol/msp/encoders/inav/servo
  */
 
-import type { INavServoConfig, INavServoMixerRule } from '../../msp-decoders-inav';
+import type { INavServoConfig, INavServoMixerRule } from '@/lib/protocol/types/inav';
 import { writeU8 } from './_helpers';
 
 /**

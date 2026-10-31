@@ -27,7 +27,7 @@ import {
   CRC_EXTRA,
   PAYLOAD_LENGTHS,
 } from "../mavlink-parser";
-import { MSG_NAMES } from "../mavlink-adapter-frame-handlers";
+import { MSG_NAMES } from "../messages/msg-names";
 
 /** id / CRC_EXTRA / canonical length, from the MAVLink message definitions. */
 const DEFS = {

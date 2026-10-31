@@ -36,13 +36,7 @@ import { inavHandler } from "@/lib/protocol/firmware/inav";
 import { ParamAbsentError } from "@/lib/protocol/mavlink-adapter-params";
 import { SettingsError } from "@/lib/protocol/msp/settings";
 import { INAV_WP_FLAG_LAST, INAV_WP_ACTION, INAV_LIMITS } from "@/lib/protocol/msp/msp-decoders-inav";
-import type {
-  INavWaypoint, INavSafehome, INavGeozone, INavGeozoneVertex, MotorMixerRule, INavServoMixerRule,
-  INavEzTune, INavOsdAlarms, INavOsdPreferences, INavOsdLayoutsHeader,
-  INavActiveProfiles, INavBatteryConfig, INavMixer, INavServoConfig, INavMcBraking, INavGvarStatus,
-  INavTimerOutputModeEntry, INavOutputMappingExt2Entry, INavTempSensorConfigEntry, INavCalibrationData,
-  INavCustomOsdElement, INavCustomOsdElementsInfo,
-} from "@/lib/protocol/msp/msp-decoders-inav";
+import type { INavWaypoint, INavSafehome, INavGeozone, INavGeozoneVertex, MotorMixerRule, INavServoMixerRule, INavEzTune, INavOsdAlarms, INavOsdPreferences, INavOsdLayoutsHeader, INavActiveProfiles, INavBatteryConfig, INavMixer, INavServoConfig, INavMcBraking, INavGvarStatus, INavTimerOutputModeEntry, INavOutputMappingExt2Entry, INavTempSensorConfigEntry, INavCalibrationData, INavCustomOsdElement, INavCustomOsdElementsInfo } from "@/lib/protocol/types/inav";
 import type { SettingValue, SettingInfo } from "@/lib/protocol/msp/settings";
 import { SettingType } from "@/lib/protocol/msp/settings";
 import { createCallbackArrays } from "./mock-protocol-callbacks";

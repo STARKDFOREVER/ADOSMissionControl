@@ -19,6 +19,7 @@
 import { create } from "zustand";
 import type { RosterCamera } from "@/lib/agent/camera-roster-types";
 import type { CameraPatch } from "@/lib/agent/camera-roster";
+import { keyedRecord } from "@/stores/drone-slices";
 
 /** One drone's camera-management state. */
 export interface DroneCameras {
@@ -61,22 +62,21 @@ interface CameraManagerState {
   clearForDrone: (droneId: string) => void;
 }
 
+const drones = keyedRecord<DroneCameras>(() => EMPTY_DRONE_CAMERAS);
+
 /** Merge a partial update into one drone's slice, seeding from empty. */
 function patchDrone(
   state: CameraManagerState,
   droneId: string,
   next: Partial<DroneCameras>,
 ): Partial<CameraManagerState> {
-  const current = state.byDrone[droneId] ?? EMPTY_DRONE_CAMERAS;
-  return {
-    byDrone: { ...state.byDrone, [droneId]: { ...current, ...next } },
-  };
+  return { byDrone: drones.patch(state.byDrone, droneId, next) };
 }
 
 export const useCameraManagerStore = create<CameraManagerState>((set, get) => ({
   byDrone: {},
 
-  camerasFor: (droneId) => get().byDrone[droneId] ?? EMPTY_DRONE_CAMERAS,
+  camerasFor: (droneId) => drones.get(get().byDrone, droneId),
 
   beginLoad: (droneId) =>
     set((state) => patchDrone(state, droneId, { loading: true, error: null })),
@@ -112,10 +112,8 @@ export const useCameraManagerStore = create<CameraManagerState>((set, get) => ({
 
   clearForDrone: (droneId) =>
     set((state) => {
-      if (!(droneId in state.byDrone)) return state;
-      const byDrone = { ...state.byDrone };
-      delete byDrone[droneId];
-      return { byDrone };
+      const byDrone = drones.forget(state.byDrone, droneId);
+      return byDrone ? { byDrone } : state;
     }),
 }));
 

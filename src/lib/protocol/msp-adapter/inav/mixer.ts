@@ -16,13 +16,8 @@ import {
   decodeMspINavServoConfig,
   decodeMspCommonMotorMixer,
   decodeMspINavServoMixer,
-  type INavMixer,
-  type INavOutputMappingExt2Entry,
-  type INavTimerOutputModeEntry,
-  type INavServoConfig,
-  type MotorMixerRule,
-  type INavServoMixerRule,
 } from '../../msp/msp-decoders-inav'
+import type { INavMixer, INavOutputMappingExt2Entry, INavTimerOutputModeEntry, INavServoConfig, MotorMixerRule, INavServoMixerRule } from '@/lib/protocol/types/inav'
 import {
   encodeMspINavSelectMixerProfile,
   encodeMspINavSetTimerOutputMode,

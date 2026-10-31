@@ -13,7 +13,7 @@ import { writeU8, writeU16, writeI16, writeI32, writeBits16, setU8 } from "../bo
 import { encodeManualControl } from "../control";
 import { encodeMissionItemInt } from "../mission";
 import { encodeMspSetWp } from "../../msp/decoders/inav/nav";
-import type { INavWaypoint } from "../../msp/decoders/inav/types";
+import type { INavWaypoint } from "@/lib/protocol/types/inav";
 
 describe("checked integer writers", () => {
   function dv(size = 8): DataView {

@@ -18,8 +18,8 @@ import {
   encodeMspINavSetOsdPreferences,
   encodeMspINavSetCustomOsdElement,
 } from "@/lib/protocol/msp/msp-encoders-inav";
-import type { INavFwApproach, INavOsdAlarms, INavOsdPreferences, INavCustomOsdElement, INavCustomOsdField, INavCustomOsdElementsInfo } from "@/lib/protocol/msp/msp-decoders-inav";
-import type { INavEzTune } from "@/lib/protocol/msp/msp-decoders-inav";
+import type { INavFwApproach, INavOsdAlarms, INavOsdPreferences, INavCustomOsdElement, INavCustomOsdField, INavCustomOsdElementsInfo } from "@/lib/protocol/types/inav";
+import type { INavEzTune } from "@/lib/protocol/types/inav";
 import { decodeMspINavCustomOsdElement } from "@/lib/protocol/msp/msp-decoders-inav";
 
 // ── EzTune encoder ────────────────────────────────────────────

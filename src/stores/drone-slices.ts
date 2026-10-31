@@ -73,3 +73,30 @@ export function droneSlices<S extends object>(keys: readonly (keyof S)[], empty:
     },
   }
 }
+
+/** Immutable helpers over a `Record<key, T>` held in a store field. */
+export interface KeyedRecord<T> {
+  /** The entry for `key`, or a fresh empty one. */
+  get(rec: Readonly<Record<string, T>>, key: string): T
+  /** A new record with `key` replaced by `value`. */
+  set(rec: Readonly<Record<string, T>>, key: string, value: T): Record<string, T>
+  /** A new record with `next` merged into `key`'s entry (seeded from empty). */
+  patch(rec: Readonly<Record<string, T>>, key: string, next: Partial<T>): Record<string, T>
+  /** A new record without `key`, or null when it held no entry. */
+  forget(rec: Readonly<Record<string, T>>, key: string): Record<string, T> | null
+}
+
+export function keyedRecord<T>(empty: () => T): KeyedRecord<T> {
+  const get = (rec: Readonly<Record<string, T>>, key: string): T => rec[key] ?? empty()
+  return {
+    get,
+    set: (rec, key, value) => ({ ...rec, [key]: value }),
+    patch: (rec, key, next) => ({ ...rec, [key]: { ...get(rec, key), ...next } }),
+    forget(rec, key) {
+      if (!(key in rec)) return null
+      const out = { ...rec }
+      delete out[key]
+      return out
+    },
+  }
+}

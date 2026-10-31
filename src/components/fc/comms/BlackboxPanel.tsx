@@ -20,6 +20,7 @@ import {
   formatBytes, type DataflashSummary,
 } from "./blackbox-constants";
 import { downloadBlob } from "@/lib/download";
+import { FcSection } from "@/components/fc/shared/FcSection";
 
 export function BlackboxPanel() {
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
@@ -114,16 +115,11 @@ export function BlackboxPanel() {
       <div className="max-w-2xl space-y-6">
         <PanelHeader title="Blackbox" subtitle="Flight data recording device and logging rate" icon={<Database size={16} />} loading={loading} loadProgress={loadProgress} hasLoaded={hasLoaded} onRead={refresh} connected={connected} error={error} />
 
-        <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
-          <div className="flex items-center gap-2 mb-1"><Database size={14} className="text-accent-primary" /><h2 className="text-sm font-medium text-text-primary">Logging Device</h2></div>
+        <FcSection icon={<Database size={14} />} title="Logging Device">
           <Select label="Device" options={DEVICE_OPTIONS} value={p("BF_BLACKBOX_DEVICE")} onChange={(v) => set("BF_BLACKBOX_DEVICE", v)} />
-        </div>
+        </FcSection>
 
-        <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
-          <div className="flex items-center gap-2 mb-1">
-            <Database size={14} className="text-accent-primary" /><h2 className="text-sm font-medium text-text-primary">Log Rate</h2>
-            <span className="text-[10px] font-mono text-accent-primary ml-auto">{rateNum}/{rateDenom} = {ratePercentage}% of PID loop</span>
-          </div>
+        <FcSection icon={<Database size={14} />} title="Log Rate" actions={<span className="text-[10px] font-mono text-accent-primary ml-auto">{rateNum}/{rateDenom} = {ratePercentage}% of PID loop</span>}>
           <div className="grid grid-cols-2 gap-3">
             <Input label="Numerator" type="number" step="1" min="1" max="32" value={p("BF_BLACKBOX_RATE_NUM", "1")} onChange={(e) => set("BF_BLACKBOX_RATE_NUM", e.target.value)} />
             <Input label="Denominator" type="number" step="1" min="1" max="32" value={p("BF_BLACKBOX_RATE_DENOM", "1")} onChange={(e) => set("BF_BLACKBOX_RATE_DENOM", e.target.value)} />
@@ -134,11 +130,10 @@ export function BlackboxPanel() {
               return (<button key={preset.label} type="button" onClick={() => handleRatePreset(preset.num, preset.denom)} className={cn("px-2 py-1 text-[10px] font-mono border transition-colors", isActive ? "bg-accent-primary/20 border-accent-primary text-accent-primary" : "bg-bg-tertiary border-border-default text-text-secondary hover:border-text-tertiary")}>{preset.label}</button>);
             })}
           </div>
-        </div>
+        </FcSection>
 
         {deviceType > 0 && deviceType <= 2 && (
-          <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
-            <div className="flex items-center gap-2 mb-1"><Database size={14} className="text-accent-primary" /><h2 className="text-sm font-medium text-text-primary">{deviceType === 1 ? "Flash Storage" : "SD Card Storage"}</h2></div>
+          <FcSection icon={<Database size={14} />} title={deviceType === 1 ? "Flash Storage" : "SD Card Storage"}>
             {flashLoading && (<div className="flex items-center gap-2 py-4"><Loader2 size={14} className="animate-spin text-accent-primary" /><span className="text-xs text-text-secondary">Reading storage info...</span></div>)}
             {!flashLoading && flashInfo && (
               <>
@@ -168,7 +163,7 @@ export function BlackboxPanel() {
                 {flashUnsupported ? "This connection cannot read onboard log storage." : "Could not read storage info from the flight controller."}
               </p>
             )}
-          </div>
+          </FcSection>
         )}
 
         <div className="flex items-center gap-3 pt-2 pb-4">

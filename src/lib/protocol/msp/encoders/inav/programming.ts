@@ -4,7 +4,7 @@
  * @module protocol/msp/encoders/inav/programming
  */
 
-import type { INavLogicCondition, INavProgrammingPid } from '../../msp-decoders-inav';
+import type { INavLogicCondition, INavProgrammingPid } from '@/lib/protocol/types/inav';
 import { writeU8, writeU16, writeS32 } from './_helpers';
 
 /**

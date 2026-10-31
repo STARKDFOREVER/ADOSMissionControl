@@ -27,6 +27,7 @@ import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import {
   SENSOR_TYPES, INSTANCES, ENABLE_OPTIONS, TRIGGER_OPTIONS, LIMITS, PARAM_NAMES, OPTIONAL_NAMES,
 } from "./px4-thermal-params";
+import { FcSection } from "@/components/fc/shared/FcSection";
 
 
 export function Px4ThermalCalPanel() {
@@ -72,8 +73,7 @@ export function Px4ThermalCalPanel() {
           />
 
           {/* Enables */}
-          <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
-            <h2 className="text-sm font-medium text-text-primary">Compensation</h2>
+          <FcSection title="Compensation">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               {SENSOR_TYPES.map((t) => (
                 <Select
@@ -85,11 +85,10 @@ export function Px4ThermalCalPanel() {
                 />
               ))}
             </div>
-          </div>
+          </FcSection>
 
           {/* Calibration trigger */}
-          <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
-            <h2 className="text-sm font-medium text-text-primary">Run Calibration</h2>
+          <FcSection title="Run Calibration">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               {SENSOR_TYPES.map((t) => (
                 <Select
@@ -123,15 +122,14 @@ export function Px4ThermalCalPanel() {
                 ranges below show what each sensor was calibrated across.
               </p>
             </div>
-          </div>
+          </FcSection>
 
           {/* Per-sensor calibration state */}
           {SENSOR_TYPES.map((t) => {
             const rows = INSTANCES.filter((i) => has(`TC_${t.key}${i}_ID`) && num(`TC_${t.key}${i}_ID`) !== 0);
             if (rows.length === 0) return null;
             return (
-              <div key={t.key} className="border border-border-default bg-bg-secondary p-4 space-y-3">
-                <h2 className="text-sm font-medium text-text-primary">{t.label}</h2>
+              <FcSection key={t.key} title={t.label}>
                 {rows.map((i) => (
                   <div key={i} className="space-y-2 border-t border-border-default first:border-t-0 pt-3 first:pt-0">
                     <div className="text-[11px] text-text-tertiary">
@@ -166,7 +164,7 @@ export function Px4ThermalCalPanel() {
                     </div>
                   </div>
                 ))}
-              </div>
+              </FcSection>
             );
           })}
 

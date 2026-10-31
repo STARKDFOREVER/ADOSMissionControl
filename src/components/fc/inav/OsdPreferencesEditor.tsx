@@ -8,7 +8,7 @@
 "use client";
 
 import { Select } from "@/components/ui/select";
-import type { INavOsdPreferences } from "@/lib/protocol/msp/msp-decoders-inav";
+import type { INavOsdPreferences } from "@/lib/protocol/types/inav";
 import {
   ADSB_WARNING_STYLE_OPTIONS,
   CROSSHAIRS_OPTIONS,

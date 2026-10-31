@@ -16,12 +16,7 @@ import {
   STATUS_POLL_RETRY_MS,
 } from "@/stores/programming-store";
 import type { DroneProtocol } from "@/lib/protocol/types";
-import type {
-  INavLogicCondition,
-  INavGvarStatus,
-  INavProgrammingPid,
-  INavProgrammingPidStatus,
-} from "@/lib/protocol/msp/msp-decoders-inav";
+import type { INavLogicCondition, INavGvarStatus, INavProgrammingPid, INavProgrammingPidStatus } from "@/lib/protocol/types/inav";
 import { inavDownloadLogicConditions } from "@/lib/protocol/msp-adapter/inav/programming";
 import { encodeMspINavSetLogicCondition } from "@/lib/protocol/msp/msp-encoders-inav";
 

@@ -5,32 +5,10 @@
  */
 
 import { readU8, readU16, readU32 } from '../../msp-decode-utils';
-
-export interface MspLedStripConfig {
-  leds: number[];
-}
-
-/** One entry of the 16-colour configurable HSV palette. */
-export interface HsvColor {
-  h: number; // 0..359
-  s: number; // 0..255
-  v: number; // 0..255
-}
+import type { MspLedStripConfig, HsvColor, BfLedModeColor } from '../../../types/betaflight';
 
 /** Betaflight's configurable colour palette length (LED_CONFIGURABLE_COLOR_COUNT). */
 export const LED_COLOR_COUNT = 16;
-
-/**
- * One mode-colour assignment: which palette colour a given (mode, function)
- * pair uses. `mode` 0..5 = flight-mode groups (each with 6 direction funcs),
- * `mode` 6 = special-colour group, `mode` 7 = aux-channel selector (its
- * `color` field carries the RC aux channel, not a palette index).
- */
-export interface BfLedModeColor {
-  mode: number;
-  fun: number;
-  color: number;
-}
 
 /**
  * MSP_LED_COLORS (46) — 16 sequential HSV entries, 4 bytes each (hue U16,

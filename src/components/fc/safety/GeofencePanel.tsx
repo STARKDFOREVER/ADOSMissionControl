@@ -20,7 +20,8 @@ import { Shield, HardDrive, Save, MapPin, ArrowUp, Circle, Download, Upload, Plu
 import { cn } from "@/lib/utils";
 import { ParamFieldLabel } from "../parameters/ParamFieldLabel";
 import { ParamEnumSelect, useParamEnums } from "../shared/ParamEnumSelect";
-import { Card, FenceEnableToggle, FenceTypeBits, FENCE_TYPE_BITS, ParamInput, AltitudeBandViz } from "./geofence-components";
+import { FenceEnableToggle, FenceTypeBits, FENCE_TYPE_BITS, ParamInput, AltitudeBandViz } from "./geofence-components";
+import { FcSection } from "@/components/fc/shared/FcSection";
 
 // ── Constants ────────────────────────────────────────────────
 
@@ -148,31 +149,31 @@ function ArduPilotGeofencePanel() {
             icon={<Shield size={16} />} loading={loading} loadProgress={loadProgress}
             hasLoaded={hasLoaded} onRead={refresh} connected={connected} error={error} />
 
-          <Card icon={<Shield size={14} />} title="Geofence Enable" description="Master enable for fence enforcement">
+          <FcSection icon={<Shield size={14} />} title="Geofence Enable" description="Master enable for fence enforcement">
             <FenceEnableToggle label={pl("FENCE_ENABLE")} enabled={fenceEnable !== 0} onChange={(v) => setLocalValue("FENCE_ENABLE", v)} />
-          </Card>
+          </FcSection>
 
-          <Card icon={<MapPin size={14} />} title="Fence Type" description="Select which fence boundaries to enforce (bitmask)">
+          <FcSection icon={<MapPin size={14} />} title="Fence Type" description="Select which fence boundaries to enforce (bitmask)">
             <FenceTypeBits value={fenceType} onChange={(v) => setLocalValue("FENCE_TYPE", v)} />
-          </Card>
+          </FcSection>
 
           {hasCircleFence && (
-            <Card icon={<Circle size={14} />} title="Circle Fence" description="Maximum horizontal distance from home">
+            <FcSection icon={<Circle size={14} />} title="Circle Fence" description="Maximum horizontal distance from home">
               <ParamInput label={lbl("FENCE_RADIUS — Max Radius")} value={fenceRadius} unit="m" min={0} step={10} onChange={(v) => setLocalValue("FENCE_RADIUS", v)} />
               <ParamInput label={lbl("FENCE_MARGIN — Warning Margin")} value={fenceMargin} unit="m" min={0} step={1} onChange={(v) => setLocalValue("FENCE_MARGIN", v)} />
-            </Card>
+            </FcSection>
           )}
 
           {hasAltFence && (
-            <Card icon={<ArrowUp size={14} />} title="Altitude Fence" description="Altitude ceiling and floor">
+            <FcSection icon={<ArrowUp size={14} />} title="Altitude Fence" description="Altitude ceiling and floor">
               {hasCeiling && <ParamInput label={lbl("FENCE_ALT_MAX — Max Altitude")} value={fenceAltMax} unit="m" min={0} step={5} onChange={(v) => setLocalValue("FENCE_ALT_MAX", v)} />}
               {hasFloor && <ParamInput label={lbl("FENCE_ALT_MIN — Min Altitude")} value={fenceAltMin} unit="m" min={-100} step={0.5} onChange={(v) => setLocalValue("FENCE_ALT_MIN", v)} />}
               <AltitudeBandViz altMin={hasFloor ? fenceAltMin : null} altMax={hasCeiling ? fenceAltMax : null} />
-            </Card>
+            </FcSection>
           )}
 
           {hasPolygonFence && (
-            <Card icon={<MapPin size={14} />} title="Polygon Fence" description="Polygon boundary fence">
+            <FcSection icon={<MapPin size={14} />} title="Polygon Fence" description="Polygon boundary fence">
               <div className="text-xs text-text-secondary">Polygon vertices: <span className="font-mono text-text-primary">{fenceTotal}</span></div>
               <div className="flex gap-2 mt-2">
                 <button onClick={handleUpload}
@@ -190,7 +191,7 @@ function ArduPilotGeofencePanel() {
               {fenceStatus === "on-aircraft" && <p className="text-[10px] font-mono text-status-success mt-1">Fence points uploaded</p>}
               {fenceStatus === "older-on-aircraft" && <p className="text-[10px] font-mono text-status-warning mt-1">Aircraft holds an older fence</p>}
               {downloadState === "downloaded" && <p className="text-[10px] font-mono text-status-success mt-1">Fence points downloaded</p>}
-            </Card>
+            </FcSection>
           )}
           <ConfirmDialog
             open={confirmClear}
@@ -202,7 +203,7 @@ function ArduPilotGeofencePanel() {
             variant="danger"
           />
 
-          <Card icon={<MapPin size={14} />} title="Zones" description="Inclusion (must stay inside) and exclusion (must stay outside) zones">
+          <FcSection icon={<MapPin size={14} />} title="Zones" description="Inclusion (must stay inside) and exclusion (must stay outside) zones">
             {zones.length === 0 && <p className="text-[10px] text-text-tertiary">No zones defined. Add zones using the buttons below.</p>}
             {zones.map((zone) => (
               <div key={zone.id} className="flex items-center justify-between py-1.5 border-b border-border-default last:border-0">
@@ -227,14 +228,14 @@ function ArduPilotGeofencePanel() {
                 <Plus size={10} />Exclusion
               </button>
             </div>
-          </Card>
+          </FcSection>
 
-          <Card icon={<Shield size={14} />} title="Breach Action" description="Action taken when fence is breached">
+          <FcSection icon={<Shield size={14} />} title="Breach Action" description="Action taken when fence is breached">
             <ParamEnumSelect label={lbl("FENCE_ACTION")} values={enumValues("FENCE_ACTION")} value={fenceAction} onChange={(v) => setLocalValue("FENCE_ACTION", v)} />
-          </Card>
+          </FcSection>
 
           {breachStatus > 0 && (
-            <Card icon={<Shield size={14} />} title="Breach Active" description="Current fence breach information">
+            <FcSection icon={<Shield size={14} />} title="Breach Active" description="Current fence breach information">
               <div className="flex items-center gap-3">
                 <span className="w-2.5 h-2.5 rounded-full bg-status-error animate-pulse" />
                 <div>
@@ -242,7 +243,7 @@ function ArduPilotGeofencePanel() {
                   <p className="text-[10px] text-text-tertiary font-mono">Total breaches: {breachCount}</p>
                 </div>
               </div>
-            </Card>
+            </FcSection>
           )}
 
           <div className="flex items-center gap-3 pt-2 pb-4">

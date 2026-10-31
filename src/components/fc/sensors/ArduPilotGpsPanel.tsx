@@ -27,6 +27,7 @@ import {
   AP_GPS_MB_TYPE_OPTIONS,
   resolveApGpsName,
 } from "./ap-gps-constants";
+import { FcSection } from "@/components/fc/shared/FcSection";
 
 /**
  * ArduPilot GPS configuration panel.
@@ -96,11 +97,7 @@ export function ArduPilotGpsPanel() {
         />
 
         {/* Receivers */}
-        <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
-          <div className="flex items-center gap-2 mb-1">
-            <Satellite size={14} className="text-accent-primary" />
-            <h2 className="text-sm font-medium text-text-primary">Receivers</h2>
-          </div>
+        <FcSection icon={<Satellite size={14} />} title="Receivers">
           {type1 ? (
             <Select
               label="GPS 1 Type"
@@ -149,14 +146,10 @@ export function ArduPilotGpsPanel() {
           <p className="text-[10px] text-text-tertiary">
             Blend Mask bits (used when Auto Switch = Blend): 1 = horizontal position, 2 = vertical position, 4 = speed.
           </p>
-        </div>
+        </FcSection>
 
         {/* Constellations & rate */}
-        <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
-          <div className="flex items-center gap-2 mb-1">
-            <Navigation size={14} className="text-accent-primary" />
-            <h2 className="text-sm font-medium text-text-primary">Constellations &amp; Rate</h2>
-          </div>
+        <FcSection icon={<Navigation size={14} />} title="Constellations & Rate">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {rateMs ? (
               <Select
@@ -208,15 +201,11 @@ export function ArduPilotGpsPanel() {
               />
             </div>
           ) : hasLoaded && notOnFirmware("GNSS constellation mask")}
-        </div>
+        </FcSection>
 
         {/* GPS for yaw + antenna offsets */}
         {(mbType || posNames.some(Boolean) || has("GPS_DRV_OPTIONS")) && (
-          <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
-            <div className="flex items-center gap-2 mb-1">
-              <Compass size={14} className="text-accent-primary" />
-              <h2 className="text-sm font-medium text-text-primary">GPS for Yaw &amp; Antenna Offsets</h2>
-            </div>
+          <FcSection icon={<Compass size={14} />} title="GPS for Yaw & Antenna Offsets">
             {mbType && (
               <Select
                 label="Moving Baseline Type"
@@ -253,7 +242,7 @@ export function ArduPilotGpsPanel() {
                 GPS-for-yaw needs a moving-baseline receiver pair (GPS types 17/18 or 22/23). The antenna offset is the position of the primary antenna in the body frame.
               </p>
             </div>
-          </div>
+          </FcSection>
         )}
 
         {/* Save */}

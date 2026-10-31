@@ -4,7 +4,7 @@
  * @module protocol/msp/encoders/inav/timer
  */
 
-import type { INavTimerOutputModeEntry } from '../../msp-decoders-inav';
+import type { INavTimerOutputModeEntry } from '@/lib/protocol/types/inav';
 
 /**
  * Encode MSP2_INAV_SET_TIMER_OUTPUT_MODE (0x200F) payload for one timer. The

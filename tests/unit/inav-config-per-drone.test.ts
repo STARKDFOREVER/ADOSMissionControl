@@ -8,7 +8,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useMixerStore } from '@/stores/mixer-store'
 import type { DroneProtocol } from '@/lib/protocol/types'
-import type { MotorMixerRule } from '@/lib/protocol/msp/msp-decoders-inav'
+import type { MotorMixerRule } from '@/lib/protocol/types/inav'
 
 const RULE: MotorMixerRule = { throttle: 1, roll: -1, pitch: 1, yaw: -1 }
 

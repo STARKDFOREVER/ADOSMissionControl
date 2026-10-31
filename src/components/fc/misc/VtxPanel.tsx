@@ -18,7 +18,8 @@ import {
   VTX_TYPE_LABELS, VTX_TYPE_NONE, PIT_MODE_OPTIONS, LOW_POWER_DISARM_OPTIONS,
   BAND_NAMES, CHANNEL_COUNT,
 } from "./vtx-constants";
-import type { MspVtxTablePowerLevel } from "@/lib/protocol/msp/msp-decoders-ext";
+import type { MspVtxTablePowerLevel } from "@/lib/protocol/types/betaflight";
+import { FcSection } from "@/components/fc/shared/FcSection";
 
 export function VtxPanel() {
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
@@ -104,16 +105,12 @@ export function VtxPanel() {
         />
 
         {/* VTX Type: detected by the FC, not configurable */}
-        <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
-          <div className="flex items-center gap-2 mb-1">
-            <Radio size={14} className="text-accent-primary" />
-            <h2 className="text-sm font-medium text-text-primary">VTX Type</h2>
-          </div>
+        <FcSection icon={<Radio size={14} />} title="VTX Type">
           <p className="text-xs font-mono text-text-primary">
             {vtxType === undefined ? "—" : `${vtxType} — ${VTX_TYPE_LABELS[vtxType] ?? "Unknown"}`}
           </p>
           <p className="text-[10px] text-text-tertiary">Detected by the flight controller from the connected device.</p>
-        </div>
+        </FcSection>
 
         {(vtxType === 0 || vtxType === VTX_TYPE_NONE) && hasLoaded && (
           <div className="border border-status-warning/30 bg-status-warning/5 p-4 flex items-center gap-3">
@@ -129,7 +126,7 @@ export function VtxPanel() {
         {vtxType !== undefined && vtxType !== 0 && (
           <>
             {/* Band / Channel Grid */}
-            <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
+            <FcSection>
               <div className="flex items-center gap-2 mb-1">
                 <Radio size={14} className="text-accent-primary" />
                 <h2 className="text-sm font-medium text-text-primary">Band / Channel</h2>
@@ -188,14 +185,10 @@ export function VtxPanel() {
                   </tbody>
                 </table>
               </div>
-            </div>
+            </FcSection>
 
             {/* Power / Pit Mode / Low Power */}
-            <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
-              <div className="flex items-center gap-2 mb-1">
-                <Radio size={14} className="text-accent-primary" />
-                <h2 className="text-sm font-medium text-text-primary">Power Settings</h2>
-              </div>
+            <FcSection icon={<Radio size={14} />} title="Power Settings">
               {powerLevels !== null && powerLevels.length === 0 ? (
                 <p className="text-[10px] text-text-tertiary">
                   This flight controller reports no VTX power table, so the power level cannot be labelled.
@@ -221,14 +214,10 @@ export function VtxPanel() {
                 value={p("BF_VTX_LOW_POWER_DISARM")}
                 onChange={(v) => set("BF_VTX_LOW_POWER_DISARM", v)}
               />
-            </div>
+            </FcSection>
 
             {/* Frequency Override */}
-            <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
-              <div className="flex items-center gap-2 mb-1">
-                <Radio size={14} className="text-accent-primary" />
-                <h2 className="text-sm font-medium text-text-primary">Frequency Override</h2>
-              </div>
+            <FcSection icon={<Radio size={14} />} title="Frequency Override">
               <Input
                 label="Manual Frequency (MHz)"
                 type="number"
@@ -242,7 +231,7 @@ export function VtxPanel() {
               <p className="text-[10px] text-text-tertiary">
                 Set to 0 to use band/channel selection above. Non-zero overrides band/channel.
               </p>
-            </div>
+            </FcSection>
           </>
         )}
 

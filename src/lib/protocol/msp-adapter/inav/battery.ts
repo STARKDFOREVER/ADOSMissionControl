@@ -14,9 +14,8 @@ import {
   decodeMspINavBatteryConfig,
   decodeMspINavStatus,
   decodeMspINavStatusMixerProfile,
-  type INavActiveProfiles,
-  type INavBatteryConfig,
 } from '../../msp/msp-decoders-inav'
+import type { INavActiveProfiles, INavBatteryConfig } from '@/lib/protocol/types/inav'
 import {
   encodeMspINavSetBatteryConfig,
   encodeMspINavSelectBatteryProfile,

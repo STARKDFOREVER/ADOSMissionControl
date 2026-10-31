@@ -6,14 +6,7 @@
  */
 
 import { readU8, readU16, readS16, readU32 } from "./helpers";
-import type {
-  INavMixer,
-  INavTimerOutputModeEntry,
-  INavOutputMappingExt2Entry,
-  INavServoMixerRule,
-  INavServoConfig,
-  MotorMixerRule,
-} from "./types";
+import type { INavMixer, INavTimerOutputModeEntry, INavOutputMappingExt2Entry, INavServoMixerRule, INavServoConfig, MotorMixerRule } from "@/lib/protocol/types/inav";
 
 // ── iNav MIXER decoder ───────────────────────────────────────
 

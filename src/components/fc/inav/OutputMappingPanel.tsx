@@ -16,10 +16,7 @@ import { PanelHeader } from "../shared/PanelHeader";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Cpu, Upload } from "lucide-react";
-import type {
-  INavOutputMappingExt2Entry,
-  INavTimerOutputModeEntry,
-} from "@/lib/protocol/msp/msp-decoders-inav";
+import type { INavOutputMappingExt2Entry, INavTimerOutputModeEntry } from "@/lib/protocol/types/inav";
 import { TIMER_OUTPUT_MODE_OPTIONS, timerUsageLabel } from "./inav-output-mapping";
 
 // ── Component ─────────────────────────────────────────────────

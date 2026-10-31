@@ -11,7 +11,7 @@ import { describe, it, expect, beforeEach, vi, type MockInstance } from "vitest"
 import { useSafehomeStore, SAFEHOME_MAX } from "@/stores/safehome-store";
 import { useGeozoneStore, GEOZONE_MAX, GEOZONE_VERTEX_MAX, GEOZONE_SHAPE, GEOZONE_TYPE } from "@/stores/geozone-store";
 import type { DroneProtocol } from "@/lib/protocol/types";
-import type { INavSafehome, INavGeozone, INavGeozoneVertex } from "@/lib/protocol/msp/msp-decoders-inav";
+import type { INavSafehome, INavGeozone, INavGeozoneVertex } from "@/lib/protocol/types/inav";
 
 // ── Fake protocol helpers ─────────────────────────────────────
 

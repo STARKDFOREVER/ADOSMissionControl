@@ -5,7 +5,7 @@
  */
 
 import { readU8, readU16, readS16, readS32, readU32 } from "./helpers";
-import type { INavAnalog, INavBatteryConfig } from "./types";
+import type { INavAnalog, INavBatteryConfig } from "@/lib/protocol/types/inav";
 
 // ── iNav ANALOG decoder ──────────────────────────────────────
 

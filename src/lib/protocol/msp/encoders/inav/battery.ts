@@ -4,7 +4,7 @@
  * @module protocol/msp/encoders/inav/battery
  */
 
-import type { INavBatteryConfig } from '../../msp-decoders-inav';
+import type { INavBatteryConfig } from '@/lib/protocol/types/inav';
 import { writeU8, writeU16, writeU32 } from './_helpers';
 
 /**

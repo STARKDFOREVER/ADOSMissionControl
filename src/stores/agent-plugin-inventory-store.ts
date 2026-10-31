@@ -22,6 +22,7 @@
  */
 
 import { create } from "zustand";
+import { keyedRecord } from "@/stores/drone-slices";
 
 /**
  * Per-model delivery outcome the agent reports for a plugin's declared
@@ -77,6 +78,8 @@ interface AgentPluginInventoryActions {
 export type AgentPluginInventoryStore = AgentPluginInventoryState &
   AgentPluginInventoryActions;
 
+const devices = keyedRecord<AgentPluginInventoryEntry[]>(() => []);
+
 export const useAgentPluginInventoryStore = create<AgentPluginInventoryStore>(
   (set) => ({
     byDevice: {},
@@ -84,16 +87,14 @@ export const useAgentPluginInventoryStore = create<AgentPluginInventoryStore>(
     setForDevice(deviceId, entries) {
       if (!deviceId) return;
       set((state) => ({
-        byDevice: { ...state.byDevice, [deviceId]: entries },
+        byDevice: devices.set(state.byDevice, deviceId, entries),
       }));
     },
 
     clearDevice(deviceId) {
       set((state) => {
-        if (!(deviceId in state.byDevice)) return state;
-        const next = { ...state.byDevice };
-        delete next[deviceId];
-        return { byDevice: next };
+        const next = devices.forget(state.byDevice, deviceId);
+        return next ? { byDevice: next } : state;
       });
     },
 

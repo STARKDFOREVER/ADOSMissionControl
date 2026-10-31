@@ -26,8 +26,8 @@ import type { MissionItem } from '@/lib/protocol/types'
 import {
   INAV_WP_ACTION,
   INAV_WP_FLAG_LAST,
-  type INavWaypoint,
 } from '@/lib/protocol/msp/msp-decoders-inav'
+import type { INavWaypoint } from '@/lib/protocol/types/inav'
 import {
   MAV_FRAME_GLOBAL,
   MAV_FRAME_GLOBAL_INT,

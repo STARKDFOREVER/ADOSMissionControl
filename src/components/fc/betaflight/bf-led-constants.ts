@@ -10,7 +10,7 @@
 
 // Exempt from 300 LOC soft rule: protocol data table + bit codec.
 
-import type { HsvColor } from "@/lib/protocol/msp/decoders/config/led";
+import type { HsvColor } from "@/lib/protocol/types/betaflight";
 
 /** HSV (h 0-359, s/v 0-255) → CSS hex, for palette swatch previews. */
 export function hsvToHex({ h, s, v }: HsvColor): string {

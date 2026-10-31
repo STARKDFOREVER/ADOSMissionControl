@@ -37,6 +37,7 @@ import {
   caSurfaceFields,
   caTiltFields,
 } from "./px4-control-allocation-constants";
+import { FcSection } from "@/components/fc/shared/FcSection";
 
 const AIRFRAME_FIELDS: CaField[] = [
   { param: "CA_AIRFRAME", label: "Airframe", kind: "enum" },
@@ -109,8 +110,7 @@ export function Px4ControlAllocationPanel() {
             onRead={refresh} connected={connected} error={error}
           />
 
-          <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
-            <h2 className="text-sm font-medium text-text-primary">Airframe</h2>
+          <FcSection title="Airframe">
             {AIRFRAME_FIELDS.map(renderField)}
             <div className="grid grid-cols-[180px_1fr] items-center gap-3">
               <div>
@@ -121,27 +121,24 @@ export function Px4ControlAllocationPanel() {
                 {revValue === 0 ? "None" : `${revValue} — set bits…`}
               </Button>
             </div>
-          </div>
+          </FcSection>
 
-          <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
-            <h2 className="text-sm font-medium text-text-primary">Rotors</h2>
+          <FcSection title="Rotors">
             {renderField({ param: "CA_ROTOR_COUNT", label: "Rotor count", kind: "enum" })}
             {rotorCount > 0
               ? indexedCards(rotorCount, caRotorFields, "Rotor")
               : hasLoaded && <p className="text-[10px] text-text-tertiary">Set a rotor count to configure rotor coefficients.</p>}
-          </div>
+          </FcSection>
 
-          <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
-            <h2 className="text-sm font-medium text-text-primary">Control Surfaces</h2>
+          <FcSection title="Control Surfaces">
             {renderField({ param: "CA_SV_CS_COUNT", label: "Surface count", kind: "enum" })}
             {surfaceCount > 0 && indexedCards(surfaceCount, caSurfaceFields, "Surface")}
-          </div>
+          </FcSection>
 
-          <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
-            <h2 className="text-sm font-medium text-text-primary">Tilt Servos</h2>
+          <FcSection title="Tilt Servos">
             {renderField({ param: "CA_SV_TL_COUNT", label: "Tilt-servo count", kind: "enum" })}
             {tiltCount > 0 && indexedCards(tiltCount, caTiltFields, "Tilt")}
-          </div>
+          </FcSection>
 
           <div className="flex items-center gap-3 pt-2 pb-4">
             <Button variant="primary" size="lg" icon={<Save size={14} />} disabled={!hasDirty || !connected} loading={saving} onClick={handleSave}>Save to Flight Controller</Button>

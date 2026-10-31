@@ -8,12 +8,7 @@
 
 import { create } from 'zustand'
 import type { DroneProtocol } from '@/lib/protocol/types'
-import type {
-  INavLogicCondition,
-  INavGvarStatus,
-  INavProgrammingPid,
-  INavProgrammingPidStatus,
-} from '@/lib/protocol/msp/msp-decoders-inav'
+import type { INavLogicCondition, INavGvarStatus, INavProgrammingPid, INavProgrammingPidStatus } from '@/lib/protocol/types/inav'
 import { placeLogicProgram, type PlacementResult } from '@/lib/inav/lc-placement'
 import { formatErrorMessage } from '@/lib/utils'
 import { droneSlices, type DroneKeyed } from './drone-slices'

@@ -11,7 +11,7 @@
 import { useMixerStore } from "@/stores/mixer-store";
 import { Button } from "@/components/ui/button";
 import { Plus, Trash2 } from "lucide-react";
-import type { MotorMixerRule } from "@/lib/protocol/msp/msp-decoders-inav";
+import type { MotorMixerRule } from "@/lib/protocol/types/inav";
 
 const INPUT_CLASS =
   "bg-bg-tertiary border border-border-default rounded px-2 py-1 text-xs font-mono text-text-primary focus:outline-none focus:border-accent-primary w-full";

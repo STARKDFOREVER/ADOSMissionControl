@@ -34,16 +34,7 @@ import type { MissionItem, LogEntry, LogDownloadProgressCallback, FtpDownloadPro
 import type { FirmwareHandler } from './firmware';
 import type { MAVLinkFrame } from '../mavlink-parser';
 // iNav-specific types : optional so MAVLink adapter needs no changes
-import type {
-  INavSafehome, INavGeozone, INavGeozoneVertex,
-  INavActiveProfiles, INavBatteryConfig, INavMixer, INavServoConfig,
-  INavMcBraking, INavRateDynamics, INavTimerOutputModeEntry, INavOutputMappingExt2Entry,
-  INavTempSensorConfigEntry, INavCalibrationData, INavLogicCondition,
-  INavGvarStatus, INavProgrammingPid, INavProgrammingPidStatus,
-  INavEzTune, INavFwApproach, INavOsdAlarms, INavOsdPreferences, INavOsdLayoutsHeader,
-  INavCustomOsdElement, INavCustomOsdElementsInfo,
-  MotorMixerRule, INavServoMixerRule,
-} from '../msp/msp-decoders-inav';
+import type { INavSafehome, INavGeozone, INavGeozoneVertex, INavActiveProfiles, INavBatteryConfig, INavMixer, INavServoConfig, INavMcBraking, INavRateDynamics, INavTimerOutputModeEntry, INavOutputMappingExt2Entry, INavTempSensorConfigEntry, INavCalibrationData, INavLogicCondition, INavGvarStatus, INavProgrammingPid, INavProgrammingPidStatus, INavEzTune, INavFwApproach, INavOsdAlarms, INavOsdPreferences, INavOsdLayoutsHeader, INavCustomOsdElement, INavCustomOsdElementsInfo, MotorMixerRule, INavServoMixerRule } from './inav';
 // Name-based settings surface (iNav). types → msp is the existing import
 // direction (see the iNav decoders import above), so this introduces no cycle.
 import type { SettingInfo, SettingValue } from '../msp/settings';
@@ -53,10 +44,9 @@ import type { MspSerialPort } from '../msp/decoders/config/serial';
 import type { MspOsdConfig, MspOsdGeneralConfig } from '../msp/decoders/config/osd';
 // Betaflight receiver config shape (MSP_RX_CONFIG).
 import type { BfRxConfig } from '../msp/decoders/config/rx';
-import type { HsvColor, BfLedModeColor } from '../msp/decoders/config/led';
 import type { DisplayPortOp } from '../msp/decoders/config/displayport';
 import type { MspModeBox, MspModeRange, MspAdjustmentRange } from '../msp/msp-decoders-status';
-import type { MspVtxTablePowerLevel } from '../msp/msp-decoders-ext';
+import type { HsvColor, BfLedModeColor, MspVtxTablePowerLevel } from './betaflight';
 
 // Re-export the settings value/metadata shapes so consumers can import them
 // from the protocol contract barrel rather than reaching into the MSP layer.
@@ -65,7 +55,7 @@ export { settingNumber } from '../msp/settings';
 export type { MspSerialPort } from '../msp/decoders/config/serial';
 export type { MspOsdConfig, MspOsdGeneralConfig } from '../msp/decoders/config/osd';
 export type { BfRxConfig } from '../msp/decoders/config/rx';
-export type { HsvColor, BfLedModeColor } from '../msp/decoders/config/led';
+export type { HsvColor, BfLedModeColor } from './betaflight';
 export type { MspModeBox, MspModeRange, MspAdjustmentRange } from '../msp/msp-decoders-status';
 
 import type { SettingsCapability, CliSettingsCapability } from './settings';
@@ -570,4 +560,16 @@ export interface DroneProtocol {
   getVehicleInfo(): VehicleInfo | null;
   getCapabilities(): ProtocolCapabilities;
   getFirmwareHandler(): FirmwareHandler | null;
+
+  // ── Diagnostics ──────────────────────────────────────────
+  /** Snapshot of commands awaiting COMMAND_ACK. */
+  getCommandQueueSnapshot?(): CommandQueueSnapshot;
+  /** Toggle per-frame hex logging into the diagnostics store. */
+  setDiagnosticsEnabled?(enabled: boolean): void;
+}
+
+/** Pending-command view returned by {@link DroneProtocol.getCommandQueueSnapshot}. */
+export interface CommandQueueSnapshot {
+  pendingCount: number;
+  entries: { ticket: number; command: number; retryCount: number; sentAt: number }[];
 }

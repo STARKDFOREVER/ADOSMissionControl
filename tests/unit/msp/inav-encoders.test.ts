@@ -10,7 +10,7 @@ import {
   encodeMspINavSelectMixerProfile,
   encodeMspINavSetBatteryConfig,
 } from '@/lib/protocol/msp/msp-encoders-inav'
-import type { INavWaypoint, INavSafehome } from '@/lib/protocol/msp/msp-decoders-inav'
+import type { INavWaypoint, INavSafehome } from '@/lib/protocol/types/inav'
 
 // ── Helpers ───────────────────────────────────────────────────
 

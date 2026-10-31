@@ -25,6 +25,7 @@ import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { PanelHeader } from "../shared/PanelHeader";
 import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import type { ParamMetadata } from "@/lib/protocol/param-metadata";
+import { FcSection } from "@/components/fc/shared/FcSection";
 
 const SRC_SETS = [1, 2, 3] as const;
 const SRC_FIELDS = [
@@ -154,12 +155,11 @@ export function ArduPilotNonGpsPanel() {
             const present = SRC_FIELDS.some((f) => params.has(`EK3_SRC${n}_${f.field}`));
             if (!present) return null;
             return (
-              <div key={n} className="border border-border-default bg-bg-secondary p-4 space-y-3">
-                <h2 className="text-sm font-medium text-text-primary">Source Set {n}</h2>
+              <FcSection key={n} title={'Source Set {n}'}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {SRC_FIELDS.map((f) => field(`EK3_SRC${n}_${f.field}`, f.label))}
                 </div>
-              </div>
+              </FcSection>
             );
           })}
 
@@ -171,8 +171,7 @@ export function ArduPilotNonGpsPanel() {
 
           {/* External nav */}
           {hasViso && (
-            <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
-              <h2 className="text-sm font-medium text-text-primary">External Navigation (VISO)</h2>
+            <FcSection title="External Navigation (VISO)">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {field("VISO_TYPE", "Type")}
                 {field("VISO_DELAY_MS", "Delay")}
@@ -181,13 +180,12 @@ export function ArduPilotNonGpsPanel() {
                 {field("VISO_ORIENT", "Orientation")}
                 {field("VISO_SCALE", "Scale")}
               </div>
-            </div>
+            </FcSection>
           )}
 
           {/* Beacon */}
           {hasBcn && (
-            <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
-              <h2 className="text-sm font-medium text-text-primary">Beacon (BCN)</h2>
+            <FcSection title="Beacon (BCN)">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {field("BCN_TYPE", "Type")}
                 {field("BCN_LATITUDE", "Origin Latitude")}
@@ -195,7 +193,7 @@ export function ArduPilotNonGpsPanel() {
                 {field("BCN_ALT", "Origin Altitude")}
                 {field("BCN_ORIENT_YAW", "Orientation Yaw")}
               </div>
-            </div>
+            </FcSection>
           )}
 
           {/* Save */}

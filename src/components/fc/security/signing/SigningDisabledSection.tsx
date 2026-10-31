@@ -10,6 +10,7 @@
 
 import { ShieldOff } from "lucide-react";
 import { EnrollmentProgress } from "../EnrollmentProgress";
+import { FcSection } from "@/components/fc/shared/FcSection";
 
 export interface SigningDisabledSectionProps {
   busy: boolean;
@@ -36,7 +37,7 @@ export function SigningDisabledSection({
   onAgentHoldsKeyChange,
 }: SigningDisabledSectionProps) {
   return (
-    <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
+    <FcSection>
       <div className="flex items-center gap-2 text-text-primary">
         <ShieldOff size={16} aria-hidden="true" />
         <span className="font-medium">MAVLink signing is off</span>
@@ -91,6 +92,6 @@ export function SigningDisabledSection({
           </button>
         </div>
       )}
-    </div>
+    </FcSection>
   );
 }

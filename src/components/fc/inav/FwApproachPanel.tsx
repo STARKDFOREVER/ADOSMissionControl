@@ -16,7 +16,7 @@ import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { PanelHeader } from "../shared/PanelHeader";
 import { Select } from "@/components/ui/select";
 import { Plane } from "lucide-react";
-import type { INavFwApproach } from "@/lib/protocol/msp/msp-decoders-inav";
+import type { INavFwApproach } from "@/lib/protocol/types/inav";
 
 // platformType 0 = MULTIROTOR. FW Approach is only relevant for non-multirotor platforms.
 const PLATFORM_MULTIROTOR = 0;

@@ -6,12 +6,7 @@
  */
 
 import { readU8, readU16, readU32, readS16, readS32, readCString } from "./helpers";
-import type {
-  INavAirSpeed,
-  INavTempSensorConfigEntry,
-  INavCalibrationData,
-  INavAdsbVehicle,
-} from "./types";
+import type { INavAirSpeed, INavTempSensorConfigEntry, INavCalibrationData, INavAdsbVehicle } from "@/lib/protocol/types/inav";
 
 // ── iNav AIR SPEED decoder ───────────────────────────────────
 

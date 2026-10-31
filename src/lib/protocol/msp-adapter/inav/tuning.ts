@@ -12,10 +12,8 @@ import {
   decodeMspINavMcBraking,
   decodeMspINavRateDynamics,
   decodeMspINavEzTune,
-  type INavMcBraking,
-  type INavRateDynamics,
-  type INavEzTune,
 } from '../../msp/msp-decoders-inav'
+import type { INavMcBraking, INavRateDynamics, INavEzTune } from '@/lib/protocol/types/inav'
 import {
   encodeMspINavSetMcBraking,
   encodeMspINavSetRateDynamics,

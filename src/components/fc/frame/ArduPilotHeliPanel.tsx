@@ -25,6 +25,7 @@ import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { PanelHeader } from "../shared/PanelHeader";
 import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import type { ParamMetadata } from "@/lib/protocol/param-metadata";
+import { FcSection } from "@/components/fc/shared/FcSection";
 
 const SWASH_PARAMS = [
   "H_SW_TYPE", "H_COL_MIN", "H_COL_MAX", "H_COL_MID",
@@ -109,12 +110,11 @@ export function ArduPilotHeliPanel() {
     const present = names.filter(([n]) => params.has(n));
     if (present.length === 0) return null;
     return (
-      <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
-        <h2 className="text-sm font-medium text-text-primary">{title}</h2>
+      <FcSection title={title}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {present.map(([n, l]) => field(n, l))}
         </div>
-      </div>
+      </FcSection>
     );
   };
 

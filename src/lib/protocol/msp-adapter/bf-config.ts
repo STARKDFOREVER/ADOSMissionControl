@@ -15,10 +15,12 @@ import { decodeMspSerialConfig, decodeMspSerialConfig2, type MspSerialPort } fro
 import { decodeMspRxConfig, decodeMspRxMap, type BfRxConfig } from '../msp/decoders/config/rx'
 import { encodeMspSetSerialConfig, encodeMspSetSerialConfig2, encodeMspSendDshotCommand, encodeMspSetRxConfig, encodeMspSetRxMap } from '../msp/encoders/config'
 import { decodeMspOsdConfig, type MspOsdConfig, type MspOsdGeneralConfig } from '../msp/decoders/config/osd'
-import { decodeMspLedStripConfig, decodeMspLedColors, decodeMspLedStripModeColors, type HsvColor, type BfLedModeColor } from '../msp/decoders/config/led'
+import { decodeMspLedStripConfig, decodeMspLedColors, decodeMspLedStripModeColors } from '../msp/decoders/config/led'
+import type { HsvColor, BfLedModeColor } from '@/lib/protocol/types/betaflight'
 import { encodeMspSetOsdConfig, encodeMspOsdCharWrite, encodeMspSetLedStripConfigEntry, encodeMspSetLedColors, encodeMspSetLedStripModeColor, encodeMspSetOsdGeneralConfig } from '../msp/encoders/osd-led'
 import { decodeMspVtxConfig } from '../msp/decoders/config/vtx'
-import { decodeMspVtxTablePowerLevel, type MspVtxTablePowerLevel } from '../msp/msp-decoders-ext'
+import { decodeMspVtxTablePowerLevel } from '../msp/msp-decoders-ext'
+import type { MspVtxTablePowerLevel } from '@/lib/protocol/types/betaflight'
 
 const OK: CommandResult = { success: true, resultCode: 0, message: 'OK' }
 

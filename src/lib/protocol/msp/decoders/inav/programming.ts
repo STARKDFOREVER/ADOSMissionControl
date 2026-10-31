@@ -6,12 +6,7 @@
  */
 
 import { readU8, readU16, readS32 } from "./helpers";
-import type {
-  INavLogicCondition,
-  INavGvarStatus,
-  INavProgrammingPid,
-  INavProgrammingPidStatus,
-} from "./types";
+import type { INavLogicCondition, INavGvarStatus, INavProgrammingPid, INavProgrammingPidStatus } from "@/lib/protocol/types/inav";
 
 // ── iNav LOGIC CONDITIONS decoder ────────────────────────────
 

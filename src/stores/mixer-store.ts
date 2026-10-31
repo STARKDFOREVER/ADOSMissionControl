@@ -8,7 +8,7 @@
 
 import { create } from 'zustand'
 import type { DroneProtocol } from '@/lib/protocol/types'
-import type { MotorMixerRule, INavServoMixerRule } from '@/lib/protocol/msp/msp-decoders-inav'
+import type { MotorMixerRule, INavServoMixerRule } from '@/lib/protocol/types/inav'
 import { formatErrorMessage } from '@/lib/utils'
 import { droneSlices, type DroneKeyed } from './drone-slices'
 

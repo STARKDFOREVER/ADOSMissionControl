@@ -1,7 +1,8 @@
 /**
- * Decoded result types for iNav MSP decoders.
+ * iNav domain types: the decoded shapes of iNav MSP responses, shared by the
+ * decoders, the adapter and the configuration panels.
  *
- * @module protocol/msp/decoders/inav/types
+ * @module protocol/types/inav
  */
 
 export interface INavWaypoint {

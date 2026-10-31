@@ -8,12 +8,8 @@ import {
   encodeMspINavSetGeozone,
   encodeMspINavSetGeozoneVertex,
 } from '@/lib/protocol/msp/msp-encoders-inav'
-import {
-  decodeMspINavGeozone,
-  decodeMspINavGeozoneVertex,
-  type INavGeozone,
-  INAV_MSP,
-} from '@/lib/protocol/msp/msp-decoders-inav'
+import { decodeMspINavGeozone, decodeMspINavGeozoneVertex, INAV_MSP } from '@/lib/protocol/msp/msp-decoders-inav'
+import type { INavGeozone } from '@/lib/protocol/types/inav'
 import { inavDownloadGeozones, inavUploadGeozones } from '@/lib/protocol/msp-adapter/inav/mission'
 import type { MspSerialQueue } from '@/lib/protocol/msp/msp-serial-queue'
 

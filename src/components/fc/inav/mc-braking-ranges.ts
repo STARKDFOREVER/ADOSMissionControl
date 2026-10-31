@@ -6,7 +6,7 @@
  * @license GPL-3.0-only
  */
 
-import type { INavMcBraking } from "@/lib/protocol/msp/msp-decoders-inav";
+import type { INavMcBraking } from "@/lib/protocol/types/inav";
 
 export const MC_BRAKING_RANGES: Record<keyof INavMcBraking, { min: number; max: number }> = {
   speedThreshold: { min: 0, max: 1000 },

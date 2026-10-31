@@ -13,7 +13,7 @@
 
 import { describe, it, expect } from "vitest";
 import { INavMockProtocol } from "@/mock/inav-mock-protocol";
-import type { INavServoConfig } from "@/lib/protocol/msp/msp-decoders-inav";
+import type { INavServoConfig } from "@/lib/protocol/types/inav";
 
 // ── Factory helpers ──────────────────────────────────────────
 

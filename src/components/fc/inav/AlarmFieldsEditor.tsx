@@ -8,7 +8,7 @@
 
 "use client";
 
-import type { INavOsdAlarms } from "@/lib/protocol/msp/msp-decoders-inav";
+import type { INavOsdAlarms } from "@/lib/protocol/types/inav";
 
 /**
  * Bounds are the firmware setting ranges (osd_*_alarm in the iNav settings

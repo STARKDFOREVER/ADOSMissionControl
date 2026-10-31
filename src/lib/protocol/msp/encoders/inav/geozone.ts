@@ -4,7 +4,7 @@
  * @module protocol/msp/encoders/inav/geozone
  */
 
-import type { INavGeozone, INavGeozoneVertex } from '../../msp-decoders-inav';
+import type { INavGeozone, INavGeozoneVertex } from '@/lib/protocol/types/inav';
 import { writeU8, writeS32, writeU32 } from './_helpers';
 
 /**

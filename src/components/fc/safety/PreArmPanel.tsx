@@ -33,6 +33,7 @@ import {
   HelpCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { FcSection } from "@/components/fc/shared/FcSection";
 
 // ── Component ────────────────────────────────────────────────
 
@@ -120,7 +121,7 @@ export function PreArmPanel() {
         </div>
 
         {/* Sensor Status */}
-        <Section icon={<Activity size={14} />} title="Sensor Status" subtitle={`${healthyCount}/${totalPresent} sensors healthy`}>
+        <FcSection icon={<Activity size={14} />} title="Sensor Status" description={`${healthyCount}/${totalPresent} sensors healthy`}>
           <SensorHealthGrid showAll={showAllSensors} />
           <button
             onClick={() => setShowAllSensors(!showAllSensors)}
@@ -128,36 +129,36 @@ export function PreArmPanel() {
           >
             {showAllSensors ? "Show present only" : "Show all 32 sensor bits"}
           </button>
-        </Section>
+        </FcSection>
 
         {/* EKF Status */}
-        <Section icon={<Activity size={14} />} title="EKF Status" subtitle="Extended Kalman Filter variance">
+        <FcSection icon={<Activity size={14} />} title="EKF Status" description="Extended Kalman Filter variance">
           <EkfStatusBars />
-        </Section>
+        </FcSection>
 
         {/* Vibration */}
-        <Section icon={<Activity size={14} />} title="Vibration" subtitle="Accelerometer vibration levels (m/s/s)">
+        <FcSection icon={<Activity size={14} />} title="Vibration" description="Accelerometer vibration levels (m/s/s)">
           <VibrationGauges />
-        </Section>
+        </FcSection>
 
         {/* GPS */}
-        <Section icon={<Activity size={14} />} title="GPS" subtitle="Position fix and satellite info">
+        <FcSection icon={<Activity size={14} />} title="GPS" description="Position fix and satellite info">
           <GpsSkyView />
-        </Section>
+        </FcSection>
 
         {/* Pre-Arm Checks */}
-        <Section icon={<ShieldCheck size={14} />} title="Pre-Arm Checks" subtitle="Flight readiness verification">
+        <FcSection icon={<ShieldCheck size={14} />} title="Pre-Arm Checks" description="Flight readiness verification">
           <PreArmChecks />
-        </Section>
+        </FcSection>
 
         {/* Vision navigation channel. Visible only when the EKF is on
             a vision-bound source set (VIO or OF). The channel snapshot
             is populated by the telemetry bridge from the vision-nav
             plugin's companion-state and navigation events. */}
         {visionMode && (
-          <Section icon={<Eye size={14} />} title={t("title")} subtitle="Companion process and EKF origin">
+          <FcSection icon={<Eye size={14} />} title={t("title")} description="Companion process and EKF origin">
             <VisionChannelRow state={vision} />
-          </Section>
+          </FcSection>
         )}
 
         {/* MSP arming flags. Shown for Betaflight and iNav (each decoded with
@@ -237,31 +238,6 @@ export function PreArmPanel() {
 }
 
 // ── Sub-components ────────────────────────────────────────────
-
-function Section({
-  icon,
-  title,
-  subtitle,
-  children,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  subtitle: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
-      <div className="flex items-center gap-2 mb-1">
-        <span className="text-accent-primary">{icon}</span>
-        <div>
-          <h2 className="text-sm font-medium text-text-primary">{title}</h2>
-          <p className="text-[10px] text-text-tertiary">{subtitle}</p>
-        </div>
-      </div>
-      {children}
-    </div>
-  );
-}
 
 function VisionChannelRow({ state }: { state: PrearmChannelState }) {
   // Default copy for the "ready" snapshot — bridge may override via

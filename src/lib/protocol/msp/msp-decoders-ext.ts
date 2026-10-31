@@ -12,6 +12,8 @@
  * @module protocol/msp/msp-decoders-ext
  */
 
+import type { MspVtxTablePowerLevel } from '../types/betaflight';
+
 // ── DataView helpers ─────────────────────────────────────────
 
 function readU8(dv: DataView, offset: number): number {
@@ -78,12 +80,6 @@ export interface MspVtxTableBand {
   bandLetter: string;
   isFactoryBand: boolean;
   frequencies: number[];
-}
-
-export interface MspVtxTablePowerLevel {
-  powerNumber: number;
-  powerValue: number;
-  powerLabel: string;
 }
 
 export interface MspMcuInfo {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { liveTraffic } from "../TrafficPill";
-import type { INavAdsbVehicle } from "@/lib/protocol/msp/msp-decoders-inav";
+import type { INavAdsbVehicle } from "@/lib/protocol/types/inav";
 
 const T0 = 1_000_000;
 

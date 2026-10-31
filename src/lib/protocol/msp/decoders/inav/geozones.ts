@@ -5,7 +5,7 @@
  */
 
 import { readU8, readS32, readU32 } from "./helpers";
-import type { INavGeozone, INavGeozoneVertex } from "./types";
+import type { INavGeozone, INavGeozoneVertex } from "@/lib/protocol/types/inav";
 
 // ── iNav GEOZONE decoder ──────────────────────────────────────
 

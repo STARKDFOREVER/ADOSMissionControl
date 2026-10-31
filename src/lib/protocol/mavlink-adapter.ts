@@ -13,7 +13,7 @@
  */
 
 import type {
-  DroneProtocol, Transport, VehicleInfo, CommandResult,
+  DroneProtocol, CommandQueueSnapshot, Transport, VehicleInfo, CommandResult,
   MissionItem, FirmwareHandler, ProtocolCapabilities, UnifiedFlightMode,
   LogDownloadProgressCallback, FtpDownloadProgressCallback, LinkInfo, GuidedGotoOptions,
   FenceElement, RallyPointItem,
@@ -448,7 +448,8 @@ export class MAVLinkAdapter implements DroneProtocol {
     return this.st.firmwareHandler?.getCapabilities() ?? NO_CAPABILITIES
   }
   getFirmwareHandler(): FirmwareHandler | null { return this.st.firmwareHandler }
-  getCommandQueueSnapshot() { return { pendingCount: this.commandQueue.pendingCount, entries: this.commandQueue.getSnapshot() } }
+  setDiagnosticsEnabled(enabled: boolean): void { this.diagnosticsEnabled = enabled }
+  getCommandQueueSnapshot(): CommandQueueSnapshot { return { pendingCount: this.commandQueue.pendingCount, entries: this.commandQueue.getSnapshot() } }
 
   /**
    * The command queue's sender. Unlike `sendWrapped` it lets a transport

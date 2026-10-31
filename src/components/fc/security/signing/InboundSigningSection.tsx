@@ -16,6 +16,7 @@
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useSigningStore } from "@/stores/signing-store";
 import { useSettingsStore } from "@/stores/settings-store";
+import { FcSection } from "@/components/fc/shared/FcSection";
 
 export function InboundSigningSection() {
   const protocol = useDroneManager(selectSelectedProtocol);
@@ -25,7 +26,7 @@ export function InboundSigningSection() {
   const links = protocol?.linkInfo ?? [];
 
   return (
-    <section className="border border-border-default bg-bg-secondary p-4 space-y-3">
+    <FcSection>
       <div>
         <h2 className="text-sm font-semibold text-text-primary">Inbound verification</h2>
         <p className="text-xs text-text-tertiary">
@@ -76,6 +77,6 @@ export function InboundSigningSection() {
           verification is dropped. A vehicle that does not sign its replies goes silent.
         </span>
       </label>
-    </section>
+    </FcSection>
   );
 }

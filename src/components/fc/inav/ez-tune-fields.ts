@@ -7,7 +7,7 @@
  * @license GPL-3.0-only
  */
 
-import type { INavEzTune } from "@/lib/protocol/msp/msp-decoders-inav";
+import type { INavEzTune } from "@/lib/protocol/types/inav";
 
 export type EzTuneSliderKey = Exclude<keyof INavEzTune, "enabled">;
 

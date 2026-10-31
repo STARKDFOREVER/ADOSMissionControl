@@ -20,11 +20,7 @@ import { Monitor, ChevronDown, ChevronRight, Upload, Type } from "lucide-react";
 import { AlarmFieldsEditor } from "./AlarmFieldsEditor";
 import { OsdPreferencesEditor } from "./OsdPreferencesEditor";
 import { parseMcmFont } from "../betaflight/bf-osd-font";
-import type {
-  INavOsdLayoutsHeader,
-  INavOsdAlarms,
-  INavOsdPreferences,
-} from "@/lib/protocol/msp/msp-decoders-inav";
+import type { INavOsdLayoutsHeader, INavOsdAlarms, INavOsdPreferences } from "@/lib/protocol/types/inav";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   const [open, setOpen] = useState(true);

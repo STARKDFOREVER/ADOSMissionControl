@@ -19,7 +19,7 @@ import { Select } from "@/components/ui/select";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
-import type { HsvColor, BfLedModeColor } from "@/lib/protocol/msp/decoders/config/led";
+import type { HsvColor, BfLedModeColor } from "@/lib/protocol/types/betaflight";
 import {
   type BfLed, unpackLed, packLed, toggleFlag, hsvToHex,
   BF_LED_FUNCTIONS, BF_LED_DIRECTIONS, BF_LED_OVERLAYS, BF_LED_COLOR_COUNT,

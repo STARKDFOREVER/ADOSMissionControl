@@ -6,7 +6,7 @@
  */
 
 import { readU8, readU16, readS16, readS32, readU32, readFloat32, readCString } from "./helpers";
-import type { INavCommonSetting, INavSettingInfo, INavPgList } from "./types";
+import type { INavCommonSetting, INavSettingInfo, INavPgList } from "@/lib/protocol/types/inav";
 
 /** MODE_LOOKUP flag in the setting mode byte (firmware setting_mode_e bit 6). */
 const MODE_LOOKUP = 1 << 6; // 0x40

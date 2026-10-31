@@ -10,6 +10,7 @@
 import { create } from "zustand";
 import { RingBuffer } from "@/lib/ring-buffer";
 import type { RadioAdapter } from "@/lib/api/ground-station/types";
+import { keyedRecord } from "@/stores/drone-slices";
 
 /** Samples kept per receive chain (one per adapter reading). */
 export const RSSI_HISTORY_CAPACITY = 60;
@@ -28,6 +29,8 @@ interface AdapterRssiHistoryState {
   clear: () => void;
 }
 
+const nodes = keyedRecord<AdapterRssiHistory>(() => ({}));
+
 const lastRecorded = new Map<string, readonly RadioAdapter[]>();
 
 export const useAdapterRssiHistoryStore = create<AdapterRssiHistoryState>((set, get) => ({
@@ -36,7 +39,7 @@ export const useAdapterRssiHistoryStore = create<AdapterRssiHistoryState>((set, 
   record: (nodeKey, adapters) => {
     if (adapters.length === 0 || lastRecorded.get(nodeKey) === adapters) return;
     lastRecorded.set(nodeKey, adapters);
-    const node: AdapterRssiHistory = { ...(get().byNode[nodeKey] ?? {}) };
+    const node: AdapterRssiHistory = { ...nodes.get(get().byNode, nodeKey) };
     for (const a of adapters) {
       const rings = node[a.iface] ?? [];
       a.rssi_dbm.forEach((v, chain) => {
@@ -45,7 +48,7 @@ export const useAdapterRssiHistoryStore = create<AdapterRssiHistoryState>((set, 
       });
       node[a.iface] = rings;
     }
-    set((s) => ({ byNode: { ...s.byNode, [nodeKey]: node }, rev: s.rev + 1 }));
+    set((s) => ({ byNode: nodes.set(s.byNode, nodeKey, node), rev: s.rev + 1 }));
   },
   clear: () => {
     lastRecorded.clear();

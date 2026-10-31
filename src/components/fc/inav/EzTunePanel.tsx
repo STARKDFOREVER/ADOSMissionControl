@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Sliders, Upload } from "lucide-react";
 import { useSettingsParams } from "@/hooks/use-settings-params";
 import type { DroneProtocol } from "@/lib/protocol/types";
-import type { INavEzTune } from "@/lib/protocol/msp/msp-decoders-inav";
+import type { INavEzTune } from "@/lib/protocol/types/inav";
 import { EZ_TUNE_DEFAULTS, EZ_TUNE_FIELDS, ezTuneRangeError, type EzTuneSliderKey } from "./ez-tune-fields";
 
 // ── Helpers ───────────────────────────────────────────────────

@@ -20,10 +20,20 @@ vi.mock("@/components/diagnostics/PerformancePanel", () => ({ PerformancePanel: 
 
 afterEach(() => selectTestProtocol(null));
 
+function fakeLink() {
+  const link = {
+    diagnosticsEnabled: false,
+    setDiagnosticsEnabled(enabled: boolean) {
+      link.diagnosticsEnabled = enabled;
+    },
+  };
+  return link;
+}
+
 describe("DiagnosticsPanel frame logging", () => {
   it("follows a drone switch while the Frames tab is open", () => {
-    const first = { diagnosticsEnabled: false };
-    const second = { diagnosticsEnabled: false };
+    const first = fakeLink();
+    const second = fakeLink();
     selectTestProtocol(first, {}, "d1");
     render(<DiagnosticsPanel />);
     fireEvent.click(screen.getByRole("button", { name: /frames/i }));
@@ -39,7 +49,7 @@ describe("DiagnosticsPanel frame logging", () => {
     render(<DiagnosticsPanel />);
     fireEvent.click(screen.getByRole("button", { name: /frames/i }));
 
-    const late = { diagnosticsEnabled: false };
+    const late = fakeLink();
     act(() => selectTestProtocol(late));
     expect(late.diagnosticsEnabled).toBe(true);
 

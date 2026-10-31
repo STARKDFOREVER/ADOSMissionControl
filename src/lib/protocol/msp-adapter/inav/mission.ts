@@ -16,11 +16,8 @@ import {
   decodeMspINavGeozoneVertex,
   INAV_WP_FLAG_LAST,
   INAV_WP_ACTION,
-  type INavWaypoint,
-  type INavSafehome,
-  type INavGeozone,
-  type INavGeozoneVertex,
 } from '../../msp/msp-decoders-inav'
+import type { INavWaypoint, INavSafehome, INavGeozone, INavGeozoneVertex } from '@/lib/protocol/types/inav'
 import {
   encodeMspSetWp,
   encodeMspINavSetSafehome,

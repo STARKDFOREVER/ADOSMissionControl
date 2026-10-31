@@ -84,27 +84,3 @@ export const BEEPER_DEFS: BeeperDef[] = [
   { bit: 22, label: "RC_SMOOTHING_INIT_FAIL" },
 ];
 
-export function BfCard({
-  icon,
-  title,
-  description,
-  children,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  description: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
-      <div className="flex items-center gap-2 mb-1">
-        <span className="text-accent-primary">{icon}</span>
-        <div>
-          <h2 className="text-sm font-medium text-text-primary">{title}</h2>
-          <p className="text-[10px] text-text-tertiary">{description}</p>
-        </div>
-      </div>
-      {children}
-    </div>
-  );
-}

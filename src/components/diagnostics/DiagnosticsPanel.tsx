@@ -11,7 +11,6 @@ import { RingBufferPanel } from "./RingBufferPanel";
 import { PerformancePanel } from "./PerformancePanel";
 import { useDiagnosticsStore } from "@/stores/diagnostics-store";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
-import type { MAVLinkAdapter } from "@/lib/protocol/mavlink-adapter";
 import {
   Clock,
   Activity,
@@ -37,12 +36,10 @@ export function DiagnosticsPanel() {
   // Keyed on the selected protocol, so a drone switch moves the flag to the
   // new link and clears it on the old one.
   useEffect(() => {
-    if (!protocol || !("diagnosticsEnabled" in protocol)) return;
-    const adapter = protocol as MAVLinkAdapter;
-    adapter.diagnosticsEnabled = activeTab === "frames";
-    return () => {
-      adapter.diagnosticsEnabled = false;
-    };
+    const setEnabled = protocol?.setDiagnosticsEnabled?.bind(protocol);
+    if (!setEnabled) return;
+    setEnabled(activeTab === "frames");
+    return () => setEnabled(false);
   }, [activeTab, protocol]);
 
   const tabs: { key: DiagTab; label: string; Icon: React.ComponentType<{ size?: number }> }[] = [

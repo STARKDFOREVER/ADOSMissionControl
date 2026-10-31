@@ -6,7 +6,7 @@
 
 import { describe, expect, it } from 'vitest'
 import { clampMcBraking } from '@/components/fc/inav/mc-braking-ranges'
-import type { INavMcBraking } from '@/lib/protocol/msp/msp-decoders-inav'
+import type { INavMcBraking } from '@/lib/protocol/types/inav'
 
 const IN_RANGE: INavMcBraking = {
   speedThreshold: 150, disengageSpeed: 75, timeout: 2000, boostFactor: 100,

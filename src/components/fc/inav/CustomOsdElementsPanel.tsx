@@ -17,10 +17,7 @@ import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { PanelHeader } from "../shared/PanelHeader";
 import { Type } from "lucide-react";
-import type {
-  INavCustomOsdElement,
-  INavCustomOsdElementsInfo,
-} from "@/lib/protocol/msp/msp-decoders-inav";
+import type { INavCustomOsdElement, INavCustomOsdElementsInfo } from "@/lib/protocol/types/inav";
 
 const MAX_TEXT_LEN = 16;
 

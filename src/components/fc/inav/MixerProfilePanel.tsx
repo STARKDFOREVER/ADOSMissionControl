@@ -18,7 +18,7 @@ import { PanelHeader } from "../shared/PanelHeader";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Settings2, Upload } from "lucide-react";
-import type { INavMixer } from "@/lib/protocol/msp/msp-decoders-inav";
+import type { INavMixer } from "@/lib/protocol/types/inav";
 import { MotorMixerTable } from "./MotorMixerTable";
 import { ServoMixerTable } from "./ServoMixerTable";
 

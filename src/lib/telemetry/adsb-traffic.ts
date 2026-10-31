@@ -12,7 +12,7 @@
  */
 
 import type { AdsbContact } from "@/lib/protocol/types";
-import type { INavAdsbVehicle } from "@/lib/protocol/msp/msp-decoders-inav";
+import type { INavAdsbVehicle } from "@/lib/protocol/types/inav";
 import { TELEMETRY_STALE_MS } from "./freshness";
 
 const PRUNE_INTERVAL_MS = 1_000;

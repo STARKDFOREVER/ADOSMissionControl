@@ -4,7 +4,7 @@
  * @module protocol/msp/encoders/inav/motor-mixer
  */
 
-import type { MotorMixerRule } from '../../msp-decoders-inav';
+import type { MotorMixerRule } from '@/lib/protocol/types/inav';
 import { writeU8, writeU16 } from './_helpers';
 
 /** Mixer weight range the FC stores; it clamps the wire value to 0..4 then subtracts 2. */

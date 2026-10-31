@@ -5,14 +5,7 @@
  */
 
 import { readU8, readU16, readS16 } from "./helpers";
-import type {
-  INavOsdLayoutsHeader,
-  INavOsdAlarms,
-  INavOsdPreferences,
-  INavCustomOsdElementsInfo,
-  INavCustomOsdElement,
-  INavCustomOsdField,
-} from "./types";
+import type { INavOsdLayoutsHeader, INavOsdAlarms, INavOsdPreferences, INavCustomOsdElementsInfo, INavCustomOsdElement, INavCustomOsdField } from "@/lib/protocol/types/inav";
 
 // ── iNav OSD decoders ────────────────────────────────────────
 

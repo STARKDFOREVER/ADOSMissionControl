@@ -4,7 +4,7 @@
  * @module protocol/msp/encoders/inav/fw-approach
  */
 
-import type { INavFwApproach } from '../../msp-decoders-inav';
+import type { INavFwApproach } from '@/lib/protocol/types/inav';
 import { writeU8, writeS32 } from './_helpers';
 
 /**

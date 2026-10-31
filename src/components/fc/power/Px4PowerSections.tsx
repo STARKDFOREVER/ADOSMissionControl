@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Battery, Zap, ShieldAlert } from "lucide-react";
 import { StarredParam } from "../parameters/ParamStar";
 import { ParamEnumSelect } from "../shared/ParamEnumSelect";
+import { FcSection } from "@/components/fc/shared/FcSection";
 
 /** Present on every PX4 build. */
 export const PX4_POWER_PARAMS = [
@@ -53,11 +54,7 @@ export function Px4PowerSections({
 
   return (
     <>
-      <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
-        <div className="flex items-center gap-2 mb-1">
-          <Battery size={14} className="text-accent-primary" />
-          <h2 className="text-sm font-medium text-text-primary">Battery Settings</h2>
-        </div>
+      <FcSection icon={<Battery size={14} />} title="Battery Settings">
         {enumField("BATT_MONITOR", "Battery 1 Source")}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <StarredParam param="BATT_CAPACITY">
@@ -71,14 +68,10 @@ export function Px4PowerSections({
           </StarredParam>
         </div>
         <p className="text-[10px] text-text-tertiary">Capacity -1 means unknown; internal resistance -1 lets PX4 estimate it.</p>
-      </div>
+      </FcSection>
 
       {hasAnalog && (
-        <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
-          <div className="flex items-center gap-2 mb-1">
-            <Zap size={14} className="text-accent-primary" />
-            <h2 className="text-sm font-medium text-text-primary">Power Module Calibration</h2>
-          </div>
+        <FcSection icon={<Zap size={14} />} title="Power Module Calibration">
           {params.has("BATT_VOLT_MULT") && (
             <Input label={lbl("BATT_VOLT_MULT — Voltage Divider")} type="number" step="0.01"
               value={str("BATT_VOLT_MULT")} onChange={(e) => setLocalValue("BATT_VOLT_MULT", num(e.target.value))} />
@@ -91,14 +84,10 @@ export function Px4PowerSections({
             <Input label={lbl("BATT_AMP_OFFSET — Current Sensor Zero Offset")} type="number" step="0.001" unit="V"
               value={str("BATT_AMP_OFFSET")} onChange={(e) => setLocalValue("BATT_AMP_OFFSET", num(e.target.value))} />
           )}
-        </div>
+        </FcSection>
       )}
 
-      <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
-        <div className="flex items-center gap-2 mb-1">
-          <ShieldAlert size={14} className="text-accent-primary" />
-          <h2 className="text-sm font-medium text-text-primary">Battery Failsafe</h2>
-        </div>
+      <FcSection icon={<ShieldAlert size={14} />} title="Battery Failsafe">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {THRESHOLDS.map((t) => (
             <StarredParam key={t.name} param={t.name}>
@@ -111,7 +100,7 @@ export function Px4PowerSections({
           Thresholds are the fraction of charge remaining (0.15 = 15 % left), not volts.
         </p>
         {enumField("BATT_FS_LOW_ACT", "Battery Failsafe Action")}
-      </div>
+      </FcSection>
     </>
   );
 }

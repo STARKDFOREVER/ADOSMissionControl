@@ -14,12 +14,8 @@ import {
   decodeMspINavOsdPreferences,
   decodeMspINavCustomOsdElementsInfo,
   decodeMspINavCustomOsdElement,
-  type INavOsdLayoutsHeader,
-  type INavOsdAlarms,
-  type INavOsdPreferences,
-  type INavCustomOsdElement,
-  type INavCustomOsdElementsInfo,
 } from '../../msp/msp-decoders-inav'
+import type { INavOsdLayoutsHeader, INavOsdAlarms, INavOsdPreferences, INavCustomOsdElement, INavCustomOsdElementsInfo } from '@/lib/protocol/types/inav'
 import {
   encodeMspINavSetOsdAlarms,
   encodeMspINavSetOsdPreferences,

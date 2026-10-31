@@ -4,11 +4,7 @@
  * @module protocol/msp/encoders/inav/tuning
  */
 
-import type {
-  INavMcBraking,
-  INavRateDynamics,
-  INavEzTune,
-} from '../../msp-decoders-inav';
+import type { INavMcBraking, INavRateDynamics, INavEzTune } from '@/lib/protocol/types/inav';
 import { writeU8, writeU16 } from './_helpers';
 
 /**

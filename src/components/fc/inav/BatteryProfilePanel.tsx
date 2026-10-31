@@ -16,7 +16,7 @@ import { PanelHeader } from "../shared/PanelHeader";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { BatteryCharging, Upload } from "lucide-react";
-import type { INavBatteryConfig } from "@/lib/protocol/msp/msp-decoders-inav";
+import type { INavBatteryConfig } from "@/lib/protocol/types/inav";
 
 // ── Constants ─────────────────────────────────────────────────
 

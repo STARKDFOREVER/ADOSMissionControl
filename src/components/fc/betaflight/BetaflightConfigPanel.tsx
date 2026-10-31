@@ -20,7 +20,8 @@ import {
   Shield,
   Bell,
 } from "lucide-react";
-import { bfConfigParamNames, featureDefsForApi, BEEPER_DEFS, BfCard as Card } from "./bf-config-constants";
+import { bfConfigParamNames, featureDefsForApi, BEEPER_DEFS } from "./bf-config-constants";
+import { FcSection } from "@/components/fc/shared/FcSection";
 
 export function BetaflightConfigPanel() {
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
@@ -117,7 +118,7 @@ export function BetaflightConfigPanel() {
           />
 
           {/* Feature Toggles */}
-          <Card
+          <FcSection
             icon={<ToggleRight size={14} />}
             title={`Feature Toggles (${enabledFeatureCount}/${featureDefs.length} enabled)`}
             description="Enable or disable firmware features (BF_FEATURE_MASK)"
@@ -152,10 +153,10 @@ export function BetaflightConfigPanel() {
               Mask: {featureMask} (0x
               {featureMask.toString(16).toUpperCase().padStart(8, "0")})
             </div>
-          </Card>
+          </FcSection>
 
           {/* Arming Configuration */}
-          <Card
+          <FcSection
             icon={<Shield size={14} />}
             title="Arming"
             description="Auto-disarm timeout and small angle limit"
@@ -186,10 +187,10 @@ export function BetaflightConfigPanel() {
               Auto-disarm: seconds of inactivity before motors auto-disarm (0 = disabled).
               Small angle: maximum tilt angle in degrees that allows arming.
             </p>
-          </Card>
+          </FcSection>
 
           {/* Beeper Configuration */}
-          <Card
+          <FcSection
             icon={<Bell size={14} />}
             title={`Beeper Configuration (${enabledBeeperCount}/${BEEPER_DEFS.length} enabled)`}
             description="Toggle individual beeper conditions (BF_BEEPER_DISABLED_MASK is inverted: bit=1 disables)"
@@ -220,7 +221,7 @@ export function BetaflightConfigPanel() {
               Disabled mask: {beeperMask} (0x
               {beeperMask.toString(16).toUpperCase().padStart(8, "0")})
             </div>
-          </Card>
+          </FcSection>
 
           {/* Save */}
           <div className="flex items-center gap-3 pt-2 pb-4">

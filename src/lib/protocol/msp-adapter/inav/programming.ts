@@ -15,11 +15,8 @@ import {
   decodeMspINavGvarStatus,
   decodeMspINavProgrammingPid,
   decodeMspINavProgrammingPidStatus,
-  type INavLogicCondition,
-  type INavGvarStatus,
-  type INavProgrammingPid,
-  type INavProgrammingPidStatus,
 } from '../../msp/msp-decoders-inav'
+import type { INavLogicCondition, INavGvarStatus, INavProgrammingPid, INavProgrammingPidStatus } from '@/lib/protocol/types/inav'
 import {
   encodeMspINavSetLogicCondition,
   encodeMspINavSetProgrammingPid,
