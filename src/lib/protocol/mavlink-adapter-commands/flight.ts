@@ -4,7 +4,7 @@
  */
 
 import type { CommandResult, UnifiedFlightMode, GuidedGotoOptions } from '../types'
-import { encodeManualControl, encodeSetGpsGlobalOrigin } from '../encoders'
+import { encodeACFlyK9ManualControl, encodeACFlyK9SetHomePosition, encodeManualControl, encodeSetGpsGlobalOrigin } from '../encoders'
 import type { CommandContext } from './context'
 import { MAV_FRAME_GLOBAL } from './context'
 
@@ -20,7 +20,16 @@ export function cmdSetFlightMode(ctx: CommandContext, mode: UnifiedFlightMode): 
   if (!ctx.firmwareHandler) {
     return Promise.resolve({ success: false, resultCode: -1, message: 'No firmware handler' })
   }
-  const { baseMode, customMode } = ctx.firmwareHandler.encodeFlightMode(mode)
+  const encodedMode = ctx.firmwareHandler.encodeFlightMode(mode)
+  const { baseMode, customMode } = encodedMode
+  if (encodedMode.customSubMode !== undefined) {
+    return ctx.sendCommandLong(176, [
+      encodedMode.baseMode,
+      encodedMode.customMode,
+      encodedMode.customSubMode,
+      0, 0, 0, 0,
+    ])
+  }
   // PX4 reads DO_SET_MODE with the two mode levels de-packed: param2 = main_mode,
   // param3 = sub_mode. It casts the low byte of param2 to the main mode, so the
   // packed custom_mode value would be read as main 0 and rejected. The packed
@@ -50,6 +59,16 @@ export function cmdReturnToLaunch(ctx: CommandContext): Promise<CommandResult> {
  * sequence does exactly that).
  */
 export function cmdLand(ctx: CommandContext, at?: { lat: number; lon: number }): Promise<CommandResult> {
+  if (ctx.firmwareHandler?.firmwareType === 'acfly-k9') {
+    if (at) {
+      return Promise.resolve({
+        success: false,
+        resultCode: 3,
+        message: 'ACFly K9 NAV_LAND uses the documented fixed location sentinels; land-at coordinates are not supported',
+      })
+    }
+    return ctx.sendCommandLong(21, [0, 0, 0, 0, 1000, 1000, 0])
+  }
   if (!at) return ctx.sendCommandLong(21, [0, 0, 0, 0, 0, 0, 0])
   return ctx.sendCommandInt(21, [0, 0, 0, 0], Math.round(at.lat * 1e7), Math.round(at.lon * 1e7), 0, 3)
 }
@@ -64,6 +83,9 @@ export function cmdLand(ctx: CommandContext, at?: { lat: number; lon: number }):
  * NaN: "no yaw" and "take off from the current position".
  */
 export function cmdTakeoff(ctx: CommandContext, altitude: number): Promise<CommandResult> {
+  if (ctx.firmwareHandler?.firmwareType === 'acfly-k9') {
+    return ctx.sendCommandLong(24, [0, 0, 0, 0, 0, 0, altitude])
+  }
   if (ctx.firmwareHandler?.firmwareType === 'px4') {
     if (ctx.homeAltitudeAmsl === null) {
       return Promise.resolve({
@@ -79,14 +101,22 @@ export function cmdTakeoff(ctx: CommandContext, altitude: number): Promise<Comma
 
 /**
  * MANUAL_CONTROL from a normalized stick frame. Roll, pitch, and yaw are -1..1
- * and map to the full -1000..1000 axis range. Throttle is 0..1 and maps to
- * 0..1000, the range the message defines for a vehicle with no reverse thrust.
+ * and map to the full -1000..1000 axis range. K9 uses the same signed range
+ * for throttle and its MAVLink 2 extension fields; other firmware retains the
+ * standard non-reversing 0..1000 throttle mapping.
  */
 export function cmdSendManualControl(ctx: CommandContext, roll: number, pitch: number, throttle: number, yaw: number, buttons: number): void {
   if (!ctx.transport?.isConnected) return
   const clampAxis = (v: number) => Math.max(-1, Math.min(1, Number.isFinite(v) ? v : 0))
   const x = Math.round(clampAxis(pitch) * 1000)
   const y = Math.round(clampAxis(roll) * 1000)
+  if (ctx.firmwareHandler?.firmwareType === 'acfly-k9') {
+    const throttleInput = Number.isFinite(throttle) ? throttle : 0.5
+    const z = Math.round(clampAxis(throttleInput * 2 - 1) * 1000)
+    const r = Math.round(clampAxis(yaw) * 1000)
+    ctx.transport.send(encodeACFlyK9ManualControl(ctx.targetSysId, x, y, z, r, buttons, ctx.sysId, ctx.compId))
+    return
+  }
   const z = Math.round(Math.max(0, Math.min(1, Number.isFinite(throttle) ? throttle : 0)) * 1000)
   const r = Math.round(clampAxis(yaw) * 1000)
   ctx.transport.send(encodeManualControl(ctx.targetSysId, x, y, z, r, buttons, ctx.sysId, ctx.compId))
@@ -120,6 +150,17 @@ export function cmdGuidedGoto(
 ): Promise<CommandResult> {
   if (!ctx.transport?.isConnected) {
     return Promise.resolve({ success: false, resultCode: -1, message: 'Not connected' })
+  }
+  if (ctx.firmwareHandler?.firmwareType === 'acfly-k9') {
+    const changeMode = options?.changeMode ?? true
+    return ctx.sendCommandInt(
+      192,
+      [-1, (changeMode ? 1 : 0) | 2, 0, Number.NaN],
+      Math.round(lat * 1e7),
+      Math.round(lon * 1e7),
+      alt,
+      0,
+    )
   }
   // MAV_CMD_DO_REPOSITION (192) as a COMMAND_INT so lat/lon keep 1e7 integer
   // precision. It used to be a raw transport write that reported success on
@@ -155,7 +196,48 @@ export function cmdResumeMission(ctx: CommandContext): Promise<CommandResult> {
  * PX4 both accept an explicit location (param1 = 0); param4 is the home yaw
  * on PX4, where NaN leaves it unset rather than pointing home north.
  */
-export function cmdSetHome(ctx: CommandContext, useCurrent: boolean, lat = 0, lon = 0, alt = 0): Promise<CommandResult> {
+export function cmdSetHome(
+  ctx: CommandContext,
+  useCurrent: boolean,
+  lat = 0,
+  lon = 0,
+  alt = 0,
+  approach?: { lat: number; lon: number; alt: number },
+): Promise<CommandResult> {
+  if (ctx.firmwareHandler?.firmwareType === 'acfly-k9') {
+    if (useCurrent) {
+      return Promise.resolve({
+        success: false,
+        resultCode: 3,
+        message: 'ACFly K9 SET_HOME_POSITION requires explicit coordinates; current-position home is not defined by its protocol',
+      })
+    }
+    if (!ctx.transport?.isConnected) {
+      return Promise.resolve({ success: false, resultCode: -1, message: 'Not connected' })
+    }
+    ctx.transport.send(encodeACFlyK9SetHomePosition(
+      Math.round(lat * 1e7),
+      Math.round(lon * 1e7),
+      Math.round(alt * 1000),
+      ctx.targetSysId,
+      Date.now() * 1000,
+      approach && {
+        latitudeE7: Math.round(approach.lat * 1e7),
+        longitudeE7: Math.round(approach.lon * 1e7),
+        altitudeMm: Math.round(approach.alt * 1000),
+      },
+      ctx.sysId,
+      ctx.compId,
+    ))
+    return Promise.resolve({ success: true, resultCode: 0, message: 'ACFly K9 SET_HOME_POSITION sent' })
+  }
+  if (approach) {
+    return Promise.resolve({
+      success: false,
+      resultCode: 3,
+      message: `Approach-point home configuration is not supported by ${ctx.firmwareHandler?.firmwareType ?? 'unknown firmware'}`,
+    })
+  }
   if (useCurrent) {
     return ctx.sendCommandInt(179, [1, 0, 0, Number.NaN], 0, 0, 0, MAV_FRAME_GLOBAL)
   }

@@ -98,7 +98,13 @@ export interface DroneProtocolBase {
   commitParamsToFlash(): Promise<CommandResult>;
 
   // ── Field Operations ──────────────────────────────────────
-  setHome(useCurrent: boolean, lat?: number, lon?: number, alt?: number): Promise<CommandResult>;
+  setHome(
+    useCurrent: boolean,
+    lat?: number,
+    lon?: number,
+    alt?: number,
+    approach?: { lat: number; lon: number; alt: number },
+  ): Promise<CommandResult>;
   changeSpeed(speedType: number, speed: number): Promise<CommandResult>;
   setYaw(angle: number, speed: number, direction: number, relative: boolean): Promise<CommandResult>;
   setGeoFenceEnabled(enabled: boolean): Promise<CommandResult>;

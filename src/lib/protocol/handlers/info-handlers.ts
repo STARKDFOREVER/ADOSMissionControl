@@ -115,13 +115,12 @@ export function decodeBoardId(boardVersion: number, firmwareType: FirmwareType |
   return id > 0 ? id : undefined
 }
 
-export function handleAutopilotVersion(
+export function decodeAutopilotVersionData(
   payload: DataView,
-  callbacks: AutopilotVersionCallback[],
   firmwareType: FirmwareType | undefined,
 ): AutopilotVersionData {
   const raw = decodeAutopilotVersion(payload)
-  const data: AutopilotVersionData = {
+  return {
     capabilities: raw.capabilities,
     flightSwVersion: raw.flightSwVersion,
     middlewareSwVersion: raw.middlewareSwVersion,
@@ -130,6 +129,14 @@ export function handleAutopilotVersion(
     boardId: decodeBoardId(raw.boardVersion, firmwareType),
     uid: raw.uid,
   }
+}
+
+export function handleAutopilotVersion(
+  payload: DataView,
+  callbacks: AutopilotVersionCallback[],
+  firmwareType: FirmwareType | undefined,
+): AutopilotVersionData {
+  const data = decodeAutopilotVersionData(payload, firmwareType)
   for (const cb of callbacks) cb(data)
   return data
 }

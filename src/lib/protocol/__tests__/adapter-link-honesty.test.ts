@@ -82,6 +82,70 @@ function systemTime(bootMs: number): Uint8Array {
   return buildFrame(2, new Uint8Array(dv.buffer), 1, 1, 0);
 }
 
+function autopilotVersion(boardVersion: number): Uint8Array {
+  const payload = new Uint8Array(78);
+  const view = new DataView(payload.buffer);
+  view.setUint32(16, (1 << 24) | (2 << 16) | (3 << 8), true);
+  view.setUint32(28, boardVersion, true);
+  return buildFrame(148, payload, 1, 1, 0);
+}
+
+function acflyK9BatteryStatus(): Uint8Array {
+  const payload = new Uint8Array(72);
+  const view = new DataView(payload.buffer);
+  view.setUint32(0, 252, true); // 25.2 V
+  view.setUint32(4, 12000, true);
+  view.setUint32(8, 7, true);
+  view.setUint16(12, 0, true);
+  view.setInt16(14, 25, true);
+  view.setUint16(16, 10, true);
+  view.setInt16(18, 123, true); // 12.3 A
+  view.setUint8(20, 2);
+  view.setUint8(21, 95);
+  view.setUint8(22, 80);
+  view.setUint8(23, 6);
+  return buildFrame(602, payload, 1, 1, 0);
+}
+
+function acflyK9EscTelemetry(): Uint8Array {
+  const payload = new Uint8Array(48);
+  const view = new DataView(payload.buffer);
+  view.setUint16(0, 80, true);
+  view.setUint8(4, 80);
+  view.setUint8(5, 1);
+  view.setUint16(6, 0, true);
+  view.setUint32(8, 9000, true);
+  view.setFloat32(12, 22.5, true);
+  view.setFloat32(16, 8.25, true);
+  view.setInt16(20, 300, true);
+  view.setInt16(22, 280, true);
+  return buildFrame(500, payload, 1, 1, 0);
+}
+
+function acflyK9PayloadTelemetry(): Uint8Array {
+  const payload = new Uint8Array(48);
+  const view = new DataView(payload.buffer);
+  view.setUint16(0, 81, true);
+  view.setUint8(4, 81);
+  view.setUint8(5, 2);
+  view.setUint32(6, 1, true); // hook locked
+  view.setUint16(10, 75, true); // 7.5 kg
+  view.setInt16(16, -12, true);
+  return buildFrame(500, payload, 1, 1, 0);
+}
+
+function acflyK9MissionCurrent(): Uint8Array {
+  const payload = new Uint8Array(38);
+  const view = new DataView(payload.buffer);
+  view.setUint16(0, 9, true);
+  view.setUint16(2, 6, true);
+  view.setFloat32(22, 24.5, true);
+  view.setFloat32(26, 3.5, true);
+  view.setFloat32(30, 7.25, true);
+  view.setFloat32(34, 10, true);
+  return buildFrame(42, payload, 1, 1, 0);
+}
+
 function missionAck(type: number, missionType: number): Uint8Array {
   return buildFrame(47, new Uint8Array([255, 190, type, missionType]), 1, 1, 0);
 }
@@ -124,6 +188,108 @@ describe("command path honesty", () => {
     const result = await adapter.arm();
     expect(result.success).toBe(false);
     expect(result.message).toBe("Send failed: socket closing");
+  });
+});
+
+describe("firmware identification", () => {
+  it("switches the active firmware handler when AUTOPILOT_VERSION identifies an ACFly K9", async () => {
+    const { adapter, link } = await connected();
+    expect(adapter.getFirmwareHandler()?.firmwareType).toBe("ardupilot-copter");
+    let callbackFirmwareType: string | undefined;
+    adapter.onAutopilotVersion(() => {
+      callbackFirmwareType = adapter.getVehicleInfo()?.firmwareType;
+    });
+
+    link.emit(autopilotVersion(5));
+
+    expect(adapter.getFirmwareHandler()?.firmwareType).toBe("acfly-k9");
+    expect(callbackFirmwareType).toBe("acfly-k9");
+    expect(adapter.getVehicleInfo()).toMatchObject({
+      firmwareType: "acfly-k9",
+      firmwareVersionString: "1.2.3",
+    });
+  });
+
+  it("does not reclassify other board versions as ACFly K9", async () => {
+    const { adapter, link } = await connected();
+
+    link.emit(autopilotVersion(4));
+
+    expect(adapter.getFirmwareHandler()?.firmwareType).toBe("ardupilot-copter");
+    expect(adapter.getVehicleInfo()?.firmwareType).toBe("ardupilot-copter");
+  });
+
+  it("routes ACFly K9 battery telemetry into the shared battery callback", async () => {
+    const { adapter, link } = await connected();
+    const batteries: unknown[] = [];
+    adapter.onBattery((data) => batteries.push(data));
+    link.emit(autopilotVersion(5));
+
+    link.emit(acflyK9BatteryStatus());
+
+    expect(batteries).toHaveLength(1);
+    expect(batteries[0]).toMatchObject({
+      id: 2,
+      voltage: 25.2,
+      current: 12.3,
+      remaining: 80,
+      temperature: 25,
+    });
+  });
+
+  it("routes ACFly K9 component-extension ESC messages to the dedicated callback", async () => {
+    const { adapter, link } = await connected();
+    const esc: unknown[] = [];
+    adapter.onACFlyK9EscTelemetry((data) => esc.push(data));
+    link.emit(autopilotVersion(5));
+
+    link.emit(acflyK9EscTelemetry());
+
+    expect(esc).toHaveLength(1);
+    expect(esc[0]).toMatchObject({
+      motorId: 1,
+      rpm: 9000,
+      voltage: 22.5,
+      current: 8.25,
+      escTemperature: 30,
+      motorTemperature: 28,
+    });
+  });
+
+  it("routes ACFly K9 component-extension payload messages to their dedicated callback", async () => {
+    const { adapter, link } = await connected();
+    const payloadTelemetry: unknown[] = [];
+    adapter.onACFlyK9PayloadTelemetry((data) => payloadTelemetry.push(data));
+    link.emit(autopilotVersion(5));
+
+    link.emit(acflyK9PayloadTelemetry());
+
+    expect(payloadTelemetry).toHaveLength(1);
+    expect(payloadTelemetry[0]).toMatchObject({
+      moduleId: 2,
+      hookLocked: true,
+      cargoWeightKg: 7.5,
+      speedCmPerSecond: -12,
+    });
+  });
+
+  it("routes extended MISSION_CURRENT fields only to the ACFly K9 callback", async () => {
+    const { adapter, link } = await connected();
+    const reports: unknown[] = [];
+    adapter.onACFlyK9MissionCurrent((data) => reports.push(data));
+    link.emit(autopilotVersion(5));
+
+    link.emit(acflyK9MissionCurrent());
+
+    expect(reports).toHaveLength(1);
+    expect(reports[0]).toMatchObject({
+      seq: 9,
+      resumeSeq: 6,
+      distance: 24.5,
+      triggerInterval: 3.5,
+      speed: 7.25,
+      radius: 10,
+    });
   });
 });
 

@@ -10,3 +10,4 @@ export * from './peripheral';
 export * from './peripheral-ext';
 export * from './ftp';
 export * from './vision';
+export * from './acfly-k9';

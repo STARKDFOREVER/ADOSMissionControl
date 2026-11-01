@@ -23,7 +23,8 @@ import { usesBytewiseParamValues } from './param-value-codec'
 import { encodeRequestDataStream, encodeCommandLong } from './encoders'
 import { useSettingsStore } from '@/stores/settings-store'
 import {
-  handleAttitude, handleGlobalPosition, handleBattery,
+  handleAttitude, handleGlobalPosition, handleBattery, handleACFlyK9Battery,
+  handleACFlyK9ComponentExtension43,
   handleGpsRaw, handleVfrHud, handleRcChannels,
   handleSysStatus, handleRadioStatus, handlePowerStatus,
   handleScaledImu, handleScaledPressure, handleEstimatorStatus, handleLocalPosition,
@@ -33,7 +34,7 @@ import {
   handleEkfStatus, handleVibration, handleServoOutput,
   handleWind, handleTerrainReport, handleHomePosition,
   handleDistanceSensor, handleFenceStatus, handleNavControllerOutput,
-  handleFencePoint, handleMissionCurrent, handleMissionItemReached,
+  handleFencePoint, handleMissionCurrent, handleACFlyK9MissionCurrent, handleMissionItemReached,
   handleWindCov, handleMissionItemLegacy, handleAdsbVehicle,
 } from './handlers/nav-safety-handlers'
 import {
@@ -42,7 +43,8 @@ import {
 import {
   handleExtendedSysState, handleSystemTime, type StatusTextAssembler,
   handleEvent, handleSerialControl,
-  handleAutopilotVersion as handleAutopilotVersionMsg,
+  decodeAutopilotVersionData,
+  decodeBoardId,
 } from './handlers/info-handlers'
 import {
   handleNamedValueFloat, handleNamedValueInt, handleDebugValue,
@@ -63,6 +65,8 @@ import { useDiagnosticsStore } from '@/stores/diagnostics-store'
 import type { CommandQueue } from './command-queue'
 import { handleHeartbeat } from './heartbeat-source'
 import { MSG_NAMES } from './messages/msg-names'
+import { createFirmwareHandlerByType } from './firmware/ardupilot'
+import { ACFLYK9_BOARD_VERSION } from './firmware/acfly-k9'
 
 /**
  * The adapter's one mutable protocol state. Frame handlers, the transfer
@@ -181,9 +185,16 @@ export function routeFrame(s: FrameHandlerState, frame: MAVLinkFrame, p: DataVie
     case 125: handlePowerStatus(p, c.powerStatusCallbacks); break
     case 141: handleAltitude(p, c.altitudeCallbacks); break
     case 147: handleBattery(p, c.batteryCallbacks); break
+    case 602: if (s.firmwareHandler?.firmwareType === 'acfly-k9') handleACFlyK9Battery(p, c.batteryCallbacks); break
+    case 500: if (s.firmwareHandler?.firmwareType === 'acfly-k9') handleACFlyK9ComponentExtension43(p, c.acflyK9EscTelemetryCallbacks, c.acflyK9PayloadTelemetryCallbacks); break
     case 36:  handleServoOutput(p, c.servoOutputCallbacks); break
     case 39:  handleMissionItemLegacy(p, c.missionItemCallbacks); break
-    case 42:  handleMissionCurrent(p, c.missionProgressCallbacks); break
+    case 42:
+      handleMissionCurrent(p, c.missionProgressCallbacks)
+      if (s.firmwareHandler?.firmwareType === 'acfly-k9') {
+        handleACFlyK9MissionCurrent(p, c.acflyK9MissionCurrentCallbacks)
+      }
+      break
     case 46:  handleMissionItemReached(p, c.missionProgressCallbacks); break
     case 62:  handleNavControllerOutput(p, c.navControllerCallbacks); break
     case 132: handleDistanceSensor(p, c.distanceSensorCallbacks); break
@@ -336,17 +347,24 @@ function handleParamValueFrame(s: FrameHandlerState, frame: MAVLinkFrame): void 
 }
 
 function handleAutopilotVersionFrame(s: FrameHandlerState, frame: MAVLinkFrame): void {
-  const data = handleAutopilotVersionMsg(frame.payload, s.cbs.autopilotVersionCallbacks, s.firmwareHandler?.firmwareType)
+  let data = decodeAutopilotVersionData(frame.payload, s.firmwareHandler?.firmwareType)
+  if (data.boardVersion === ACFLYK9_BOARD_VERSION && s.firmwareHandler?.firmwareType !== 'acfly-k9') {
+    s.firmwareHandler = createFirmwareHandlerByType('acfly-k9')
+    data = { ...data, boardId: decodeBoardId(data.boardVersion, s.firmwareHandler.firmwareType) }
+  }
   if (s.vehicleInfo) {
     const major = (data.flightSwVersion >> 24) & 0xff
     const minor = (data.flightSwVersion >> 16) & 0xff
     const patch = (data.flightSwVersion >> 8) & 0xff
     s.vehicleInfo = {
       ...s.vehicleInfo,
+      firmwareType: s.firmwareHandler?.firmwareType ?? s.vehicleInfo.firmwareType,
+      vehicleClass: s.firmwareHandler?.vehicleClass ?? s.vehicleInfo.vehicleClass,
       firmwareVersionString: `${major}.${minor}.${patch}`,
       boardId: data.boardId,
     }
   }
+  for (const cb of s.cbs.autopilotVersionCallbacks) cb(data)
 }
 
 function handleComponentMetadataFrame(s: FrameHandlerState, frame: MAVLinkFrame): void {

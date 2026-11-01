@@ -36,6 +36,8 @@ export const CRC_EXTRA: ReadonlyMap<number, number> = new Map([
   [76, 152],  // COMMAND_LONG
   [77, 143],  // COMMAND_ACK
   [147, 154], // BATTERY_STATUS
+  [500, 243], // ACFly K9 COMPONENT_EXTENSION43
+  [602, 159], // ACFly K9 BATTERY_STATUS_ACFLY
   [126, 220], // SERIAL_CONTROL
   [253, 83],  // STATUSTEXT
   [42, 28],   // MISSION_CURRENT
@@ -52,6 +54,7 @@ export const CRC_EXTRA: ReadonlyMap<number, number> = new Map([
   [193, 71],  // EKF_STATUS_REPORT (ArduPilot dialect)
   [66, 148],  // REQUEST_DATA_STREAM
   [242, 104], // HOME_POSITION
+  [243, 85],  // ACFly K9 SET_HOME_POSITION
   [148, 178], // AUTOPILOT_VERSION
   [125, 203], // POWER_STATUS
   [132, 85],  // DISTANCE_SENSOR
@@ -139,8 +142,10 @@ export const PAYLOAD_LENGTHS: ReadonlyMap<number, number> = new Map([
   [77, 10],   // COMMAND_ACK (3 base + progress/result_param2/target_system/target_component)
   [126, 81],  // SERIAL_CONTROL (79 base + target_system/target_component)
   [147, 54],  // BATTERY_STATUS (36 base + time_remaining/charge_state/voltages_ext/mode/fault_bitmask)
+  [500, 48],   // ACFly K9 COMPONENT_EXTENSION43
+  [602, 72],   // ACFly K9 BATTERY_STATUS_ACFLY
   [253, 54],  // STATUSTEXT (severity + 50 chars + 3 id bytes)
-  [42, 18],   // MISSION_CURRENT (2 base + total/mission_state/mission_mode/mission_id/fence_id/rally_points_id)
+  [42, 38],   // MISSION_CURRENT + ACFly K9 extensions through radius at offset 34
   [43, 3],    // MISSION_REQUEST_LIST (2 base + 1 missionType extension)
   [45, 3],    // MISSION_CLEAR_ALL (2 base + 1 missionType extension)
   [46, 2],    // MISSION_ITEM_REACHED
@@ -154,6 +159,7 @@ export const PAYLOAD_LENGTHS: ReadonlyMap<number, number> = new Map([
   [193, 26],  // EKF_STATUS_REPORT (22 base + airspeed_variance extension)
   [66, 6],    // REQUEST_DATA_STREAM
   [242, 60],  // HOME_POSITION (52 base + time_usec)
+  [243, 61],  // ACFly K9 SET_HOME_POSITION
   [148, 78],  // AUTOPILOT_VERSION (60 base + uid2)
   [125, 6],   // POWER_STATUS
   [132, 39],  // DISTANCE_SENSOR (14 base + horizontal_fov/vertical_fov/quaternion/signal_quality)

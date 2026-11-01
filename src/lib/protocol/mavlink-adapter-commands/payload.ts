@@ -8,6 +8,22 @@ import type { CommandContext } from './context'
 import { MAV_MOUNT_MODE_MAVLINK_TARGETING } from './context'
 
 export function cmdSetServo(ctx: CommandContext, servoNumber: number, pwm: number): Promise<CommandResult> {
+  if (ctx.firmwareHandler?.firmwareType === 'acfly-k9') {
+    if (!Number.isInteger(servoNumber) || servoNumber < 1 || servoNumber > 14) {
+      return Promise.resolve({
+        success: false,
+        resultCode: 3,
+        message: `ACFly K9 PWM channel must be an integer from 1 to 14; received ${servoNumber}`,
+      })
+    }
+    if (!Number.isInteger(pwm) || pwm < 0 || pwm > 65000) {
+      return Promise.resolve({
+        success: false,
+        resultCode: 3,
+        message: `ACFly K9 PWM value must be an integer from 0 to 65000; received ${pwm}`,
+      })
+    }
+  }
   return ctx.sendCommandLong(183, [servoNumber, pwm, 0, 0, 0, 0, 0])
 }
 

@@ -66,6 +66,35 @@ beforeEach(() => {
 });
 
 describe("drone-manager <-> node-registry lifecycle", () => {
+  it("updates the managed vehicle identity when firmware is classified after connect", async () => {
+    const { protocol, transport, vehicleInfo } = await makeDrone();
+    useDroneManager.getState().addDrone(
+      "fc-k9",
+      "ACFly K9",
+      protocol,
+      transport,
+      { ...vehicleInfo, firmwareType: "ardupilot-copter" },
+      { type: "serial", firmwareType: "ardupilot-copter" },
+    );
+
+    useDroneManager.getState().updateVehicleIdentity("fc-k9", {
+      firmwareType: "acfly-k9",
+      vehicleClass: "unknown",
+      firmwareVersionString: "1.2.3",
+    });
+
+    const drone = useDroneManager.getState().drones.get("fc-k9");
+    expect(drone?.vehicleInfo).toMatchObject({
+      firmwareType: "acfly-k9",
+      vehicleClass: "unknown",
+      firmwareVersionString: "1.2.3",
+    });
+    expect(drone?.connectionMeta).toMatchObject({
+      firmwareType: "acfly-k9",
+      vehicle: { firmwareType: "acfly-k9" },
+    });
+  });
+
   it("addDrone attaches a direct FC to the registry so it projects a fleet card", async () => {
     const { protocol, transport, vehicleInfo } = await makeDrone();
 

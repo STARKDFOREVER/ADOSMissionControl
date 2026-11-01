@@ -192,9 +192,12 @@ export function bridgeTelemetry(
     // full identity.
     ...(protocol.onAutopilotVersion ? [protocol.onAutopilotVersion((data) => {
       const v = data.flightSwVersion;
+      const vehicleInfo = protocol.getVehicleInfo();
       useDroneManager.getState().updateVehicleIdentity(droneId, {
         boardId: data.boardId,
         firmwareVersionString: `${(v >> 24) & 0xff}.${(v >> 16) & 0xff}.${(v >> 8) & 0xff}`,
+        firmwareType: vehicleInfo?.firmwareType,
+        vehicleClass: vehicleInfo?.vehicleClass,
       });
     })] : []),
     ...(protocol.onFenceStatus ? [protocol.onFenceStatus((data) => {
@@ -224,6 +227,15 @@ export function bridgeTelemetry(
         len: data.len,
         data: data.data,
       });
+    })] : []),
+    ...(protocol.onACFlyK9EscTelemetry ? [protocol.onACFlyK9EscTelemetry((data) => {
+      rec("acflyK9EscTelemetry", data);
+    })] : []),
+    ...(protocol.onACFlyK9PayloadTelemetry ? [protocol.onACFlyK9PayloadTelemetry((data) => {
+      rec("acflyK9PayloadTelemetry", data);
+    })] : []),
+    ...(protocol.onACFlyK9MissionCurrent ? [protocol.onACFlyK9MissionCurrent((data) => {
+      rec("acflyK9MissionCurrent", data);
     })] : []),
 
     // Vision-navigation quality channels. The plugin-side emitter

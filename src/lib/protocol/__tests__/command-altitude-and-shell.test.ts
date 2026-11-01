@@ -18,12 +18,18 @@
 import { describe, it, expect } from "vitest";
 import {
   cmdTakeoff,
+  cmdLand,
+  cmdGuidedGoto,
+  cmdSendManualControl,
+  cmdSetFlightMode,
   cmdSetHome,
+  cmdSetServo,
   cmdSendSerialData,
   type CommandContext,
 } from "../mavlink-adapter-commands";
 import { CommandQueue } from "../command-queue";
 import { createPX4Handler } from "../firmware/px4";
+import { acflyK9Handler } from "../firmware/acfly-k9";
 import type { CommandResult, FirmwareType } from "../types";
 
 type SentLong = { command: number; params: number[] };
@@ -98,6 +104,115 @@ describe("DO_SET_HOME", () => {
     await cmdSetHome(ctx, true);
     expect(ints[0].command).toBe(179);
     expect(ints[0].params[0]).toBe(1);
+  });
+});
+
+describe("ACFly K9 flight mode command", () => {
+  it("sends the K9 main and submode in COMMAND_LONG params 2 and 3", async () => {
+    const { ctx, longs } = ctxWith("acfly-k9", null);
+    ctx.firmwareHandler = acflyK9Handler;
+
+    await cmdSetFlightMode(ctx, "RTL");
+
+    expect(longs).toEqual([{
+      command: 176,
+      params: [1, 4, 5, 0, 0, 0, 0],
+    }]);
+  });
+});
+
+describe("ACFly K9 flight commands", () => {
+  it("uses the relative-altitude takeoff command documented for K9", async () => {
+    const { ctx, longs } = ctxWith("acfly-k9", null);
+    ctx.firmwareHandler = acflyK9Handler;
+
+    await cmdTakeoff(ctx, 12);
+
+    expect(longs).toEqual([{ command: 24, params: [0, 0, 0, 0, 0, 0, 12] }]);
+  });
+
+  it("includes the K9 land yaw/location sentinels", async () => {
+    const { ctx, longs } = ctxWith("acfly-k9", null);
+    ctx.firmwareHandler = acflyK9Handler;
+
+    await cmdLand(ctx);
+
+    expect(longs).toEqual([{ command: 21, params: [0, 0, 0, 0, 1000, 1000, 0] }]);
+    const at = await cmdLand(ctx, { lat: 21, lon: 113 });
+    expect(at.success).toBe(false);
+    expect(longs).toHaveLength(1);
+  });
+
+  it("uses K9 reposition flags and global altitude while honoring changeMode=false", async () => {
+    const { ctx, ints } = ctxWith("acfly-k9", null);
+    ctx.firmwareHandler = acflyK9Handler;
+
+    await cmdGuidedGoto(ctx, 21.1234567, 113.1234567, 120);
+    await cmdGuidedGoto(ctx, 21.1234567, 113.1234567, 120, { changeMode: false });
+
+    expect(ints).toHaveLength(2);
+    expect(ints[0]).toMatchObject({
+      command: 192,
+      params: [-1, 3, 0, Number.NaN],
+      x: 211234567,
+      y: 1131234567,
+      z: 120,
+      frame: 0,
+    });
+    expect(ints[1].params[1]).toBe(2);
+  });
+
+  it("sends signed throttle and the K9 MANUAL_CONTROL extension", () => {
+    const { ctx, frames } = ctxWith("acfly-k9", null);
+    ctx.firmwareHandler = acflyK9Handler;
+
+    cmdSendManualControl(ctx, 0.25, -0.5, 0.75, 0.1, 0);
+
+    expect(frames).toHaveLength(1);
+    expect(frames[0][1]).toBe(26);
+    const payload = new DataView(frames[0].buffer, frames[0].byteOffset + 10, 26);
+    expect(payload.getInt16(0, true)).toBe(-500);
+    expect(payload.getInt16(2, true)).toBe(250);
+    expect(payload.getInt16(4, true)).toBe(500);
+    expect(payload.getUint8(13)).toBe(0x80);
+  });
+
+  it("sends explicit SET_HOME_POSITION but refuses undocumented current-position mode", async () => {
+    const { ctx, frames } = ctxWith("acfly-k9", null);
+    ctx.firmwareHandler = acflyK9Handler;
+
+    const result = await cmdSetHome(ctx, false, 21.1234567, 113.1234567, 123.45, {
+      lat: 23.1234567,
+      lon: 114.1234567,
+      alt: 250,
+    });
+    expect(result.success).toBe(true);
+    expect(frames).toHaveLength(1);
+    expect(frames[0][7] | (frames[0][8] << 8) | (frames[0][9] << 16)).toBe(243);
+    const payload = new DataView(frames[0].buffer, frames[0].byteOffset + 10, 61);
+    expect(payload.getInt32(0, true)).toBe(211234567);
+    expect(payload.getInt32(4, true)).toBe(1131234567);
+    expect(payload.getInt32(8, true)).toBe(123450);
+    expect(payload.getInt32(40, true)).toBe(231234567);
+    expect(payload.getInt32(44, true)).toBe(1141234567);
+    expect(payload.getFloat32(48, true)).toBe(250000);
+
+    const unsupported = await cmdSetHome(ctx, true);
+    expect(unsupported.success).toBe(false);
+    expect(frames).toHaveLength(1);
+  });
+
+  it("enforces the documented K9 PWM channel and duty ranges", async () => {
+    const { ctx, longs } = ctxWith("acfly-k9", null);
+    ctx.firmwareHandler = acflyK9Handler;
+
+    expect((await cmdSetServo(ctx, 1, 0)).success).toBe(true);
+    expect((await cmdSetServo(ctx, 14, 65000)).success).toBe(true);
+    expect((await cmdSetServo(ctx, 0, 1000)).success).toBe(false);
+    expect((await cmdSetServo(ctx, 1, 65001)).success).toBe(false);
+    expect(longs).toHaveLength(2);
+    expect(longs[0].command).toBe(183);
+    expect(longs[1].params.slice(0, 2)).toEqual([14, 65000]);
   });
 });
 

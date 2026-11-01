@@ -18,8 +18,13 @@ export interface FirmwareHandler {
   readonly firmwareType: FirmwareType;
   readonly vehicleClass: VehicleClass;
 
-  /** Convert a unified mode name to the baseMode + customMode pair the FC expects. */
-  encodeFlightMode(mode: UnifiedFlightMode): { baseMode: number; customMode: number };
+  /** Convert a unified mode name to the mode fields the FC expects. */
+  encodeFlightMode(mode: UnifiedFlightMode): {
+    baseMode: number;
+    customMode: number;
+    /** Separate submode parameter used by ACFly K9's mode command. */
+    customSubMode?: number;
+  };
 
   /** Convert a raw customMode from HEARTBEAT into a unified mode name. */
   decodeFlightMode(customMode: number): UnifiedFlightMode;

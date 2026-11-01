@@ -169,11 +169,13 @@ export class MAVLinkAdapter implements DroneProtocol {
     this.heartbeatInterval = setInterval(() => {
       const link = this.commandTransport
       if (link?.isConnected && link.canCommand) {
-        this.sendWrapped(encodeHeartbeat(this.st.sysId, this.st.compId))
+        const baseMode = this.st.firmwareHandler?.firmwareType === 'acfly-k9' ? 192 : 0
+        this.sendWrapped(encodeHeartbeat(this.st.sysId, this.st.compId, baseMode))
       }
     }, 1000)
     if (transport.canCommand) {
-      this.sendWrapped(encodeHeartbeat(this.st.sysId, this.st.compId))
+      const baseMode = this.st.firmwareHandler?.firmwareType === 'acfly-k9' ? 192 : 0
+      this.sendWrapped(encodeHeartbeat(this.st.sysId, this.st.compId, baseMode))
     }
     // Stream rates are requested once per (re)connection, never on a timer:
     // a periodic re-send overrode the operator's SRn_/MAVn_ edits and the
@@ -316,7 +318,9 @@ export class MAVLinkAdapter implements DroneProtocol {
   async pauseMission() { return cmds.cmdPauseMission(this.cc) }
   async resumeMission() { return cmds.cmdResumeMission(this.cc) }
   async commitParamsToFlash() { return cmds.cmdCommitParamsToFlash(this.cc) }
-  async setHome(uc: boolean, lat = 0, lon = 0, alt = 0) { return cmds.cmdSetHome(this.cc, uc, lat, lon, alt) }
+  async setHome(uc: boolean, lat = 0, lon = 0, alt = 0, approach?: { lat: number; lon: number; alt: number }) {
+    return cmds.cmdSetHome(this.cc, uc, lat, lon, alt, approach)
+  }
   async changeSpeed(st: number, sp: number) { return cmds.cmdChangeSpeed(this.cc, st, sp) }
   async setYaw(a: number, s: number, d: number, r: boolean) { return cmds.cmdSetYaw(this.cc, a, s, d, r) }
   async setGeoFenceEnabled(e: boolean) { return cmds.cmdSetGeoFenceEnabled(this.cc, e) }
@@ -441,6 +445,9 @@ export class MAVLinkAdapter implements DroneProtocol {
   onOdometry = this.cbm.onOdometry
   onVisionPositionEstimate = this.cbm.onVisionPositionEstimate
   onVisionPositionDelta = this.cbm.onVisionPositionDelta
+  onACFlyK9EscTelemetry = this.cbm.onACFlyK9EscTelemetry
+  onACFlyK9PayloadTelemetry = this.cbm.onACFlyK9PayloadTelemetry
+  onACFlyK9MissionCurrent = this.cbm.onACFlyK9MissionCurrent
 
   // ── Info ────────────────────────────────────────────────
   getVehicleInfo(): VehicleInfo | null { return this.st.vehicleInfo }

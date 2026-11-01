@@ -29,6 +29,8 @@ import type {
   CanFrameCallback, CanFdFrameCallback,
   OpticalFlowCallback, OpticalFlowRadCallback, OdometryCallback,
   VisionPositionEstimateCallback, VisionPositionDeltaCallback,
+  ACFlyK9EscTelemetryCallback, ACFlyK9PayloadTelemetryCallback,
+  ACFlyK9MissionCurrentCallback,
 } from './types'
 
 /** All callback arrays stored by the adapter. */
@@ -92,6 +94,9 @@ export interface CallbackStore {
   odometryCallbacks: OdometryCallback[]
   visionPositionEstimateCallbacks: VisionPositionEstimateCallback[]
   visionPositionDeltaCallbacks: VisionPositionDeltaCallback[]
+  acflyK9EscTelemetryCallbacks: ACFlyK9EscTelemetryCallback[]
+  acflyK9PayloadTelemetryCallbacks: ACFlyK9PayloadTelemetryCallback[]
+  acflyK9MissionCurrentCallbacks: ACFlyK9MissionCurrentCallback[]
 }
 
 /** Create a fresh empty callback store. */
@@ -156,6 +161,9 @@ export function createCallbackStore(): CallbackStore {
     odometryCallbacks: [],
     visionPositionEstimateCallbacks: [],
     visionPositionDeltaCallbacks: [],
+    acflyK9EscTelemetryCallbacks: [],
+    acflyK9PayloadTelemetryCallbacks: [],
+    acflyK9MissionCurrentCallbacks: [],
   }
 }
 
@@ -230,5 +238,8 @@ export function bindCallbackMethods(cbs: CallbackStore) {
     onOdometry: (cb: OdometryCallback) => sub(cbs.odometryCallbacks, cb),
     onVisionPositionEstimate: (cb: VisionPositionEstimateCallback) => sub(cbs.visionPositionEstimateCallbacks, cb),
     onVisionPositionDelta: (cb: VisionPositionDeltaCallback) => sub(cbs.visionPositionDeltaCallbacks, cb),
+    onACFlyK9EscTelemetry: (cb: ACFlyK9EscTelemetryCallback) => sub(cbs.acflyK9EscTelemetryCallbacks, cb),
+    onACFlyK9PayloadTelemetry: (cb: ACFlyK9PayloadTelemetryCallback) => sub(cbs.acflyK9PayloadTelemetryCallbacks, cb),
+    onACFlyK9MissionCurrent: (cb: ACFlyK9MissionCurrentCallback) => sub(cbs.acflyK9MissionCurrentCallbacks, cb),
   }
 }

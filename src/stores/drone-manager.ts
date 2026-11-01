@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type {
   DroneProtocol,
+  FirmwareType,
   Transport,
   VehicleInfo,
 } from "@/lib/protocol/types";
@@ -57,6 +58,8 @@ const unexpectedDisconnectListeners = new Set<DisconnectListener>();
 export interface VehicleIdentityPatch {
   boardId?: number;
   firmwareVersionString?: string;
+  firmwareType?: FirmwareType;
+  vehicleClass?: VehicleInfo["vehicleClass"];
 }
 
 export interface DroneManagerState {
@@ -356,17 +359,28 @@ export const useDroneManager = create<DroneManagerState>((set, get) => ({
     const info = drone.vehicleInfo;
     const boardId = patch.boardId ?? info.boardId;
     const firmwareVersionString = patch.firmwareVersionString ?? info.firmwareVersionString;
+    const firmwareType = patch.firmwareType ?? info.firmwareType;
+    const vehicleClass = patch.vehicleClass ?? info.vehicleClass;
     const vehicle = drone.connectionMeta?.vehicle;
     if (
       boardId === info.boardId &&
       firmwareVersionString === info.firmwareVersionString &&
-      (!vehicle || vehicle.boardId === boardId)
+      firmwareType === info.firmwareType &&
+      vehicleClass === info.vehicleClass &&
+      (!vehicle || (vehicle.boardId === boardId && vehicle.firmwareType === firmwareType)) &&
+      (!drone.connectionMeta || drone.connectionMeta.firmwareType === firmwareType)
     ) {
       return;
     }
-    drone.vehicleInfo = { ...info, boardId, firmwareVersionString };
+    drone.vehicleInfo = { ...info, boardId, firmwareVersionString, firmwareType, vehicleClass };
     if (drone.connectionMeta && vehicle) {
-      drone.connectionMeta = { ...drone.connectionMeta, vehicle: { ...vehicle, boardId } };
+      drone.connectionMeta = {
+        ...drone.connectionMeta,
+        firmwareType,
+        vehicle: { ...vehicle, boardId, firmwareType },
+      };
+    } else if (drone.connectionMeta) {
+      drone.connectionMeta = { ...drone.connectionMeta, firmwareType };
     }
     touchDrones();
   },

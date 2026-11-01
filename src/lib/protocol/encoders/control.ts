@@ -50,6 +50,39 @@ export function encodeManualControl(
   return buildFrame(69, payload, sysId, compId);
 }
 
+/** Encode the 26-byte ACFly K9 MANUAL_CONTROL extension payload. */
+export function encodeACFlyK9ManualControl(
+  targetSys: number,
+  x: number,
+  y: number,
+  z: number,
+  r: number,
+  buttons: number,
+  sysId = 255,
+  compId = 190,
+): Uint8Array {
+  const payload = new Uint8Array(26);
+  const dv = new DataView(payload.buffer);
+  requireAxis(x, "manual control pitch");
+  requireAxis(y, "manual control roll");
+  requireAxis(z, "manual control throttle");
+  requireAxis(r, "manual control yaw");
+  writeI16(dv, 0, x, "manual control pitch");
+  writeI16(dv, 2, y, "manual control roll");
+  writeI16(dv, 4, z, "manual control throttle");
+  writeI16(dv, 6, r, "manual control yaw");
+  writeU16(dv, 8, buttons, "manual control buttons");
+  setU8(payload, 10, targetSys, "manual control target system");
+  writeU16(dv, 11, 0, "manual control buttons2");
+  payload[13] = 0x80;
+  writeI16(dv, 14, 0, "manual control s");
+  writeI16(dv, 16, 0, "manual control t");
+  for (let offset = 18; offset <= 24; offset += 2) {
+    writeI16(dv, offset, 0x7fff, `manual control extended axis ${offset}`);
+  }
+  return buildFrame(69, payload, sysId, compId);
+}
+
 function requireAxis(value: number, field: string): void {
   if (!Number.isInteger(value) || value < AXIS_MIN || value > AXIS_MAX) {
     throw new RangeError(

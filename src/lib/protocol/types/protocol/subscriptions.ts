@@ -5,7 +5,7 @@
  */
 
 import type { CommandResult } from '../core';
-import type { AttitudeCallback, PositionCallback, BatteryCallback, GpsCallback, VfrCallback, RcCallback, StatusTextCallback, EventCallback, HeartbeatCallback, ParameterCallback, SerialDataCallback, SysStatusCallback, RadioCallback, MissionProgressCallback, EkfCallback, VibrationCallback, ServoOutputCallback, WindCallback, TerrainCallback, MagCalProgressCallback, MagCalReportCallback, AccelCalPosCallback, HomePositionCallback, AutopilotVersionCallback, PowerStatusCallback, DistanceSensorCallback, FenceStatusCallback, NavControllerCallback, ScaledImuCallback, ScaledPressureCallback, EstimatorStatusCallback, CameraTriggerCallback, LinkStateCallback, LocalPositionCallback, DebugCallback, GimbalAttitudeCallback, ObstacleDistanceCallback, AdsbVehicleCallback, CameraImageCapturedCallback, ExtendedSysStateCallback, FencePointCallback, SystemTimeCallback, RawImuCallback, RcChannelsRawCallback, RcChannelsOverrideCallback, MissionItemCallback, AltitudeCallback, WindCovCallback, AisVesselCallback, GimbalManagerInfoCallback, GimbalManagerStatusCallback, CanFrameCallback, CanFdFrameCallback, OpticalFlowCallback, OpticalFlowRadCallback, OdometryCallback, VisionPositionEstimateCallback, VisionPositionDeltaCallback } from '../callbacks';
+import type { AttitudeCallback, PositionCallback, BatteryCallback, GpsCallback, VfrCallback, RcCallback, StatusTextCallback, EventCallback, HeartbeatCallback, ParameterCallback, SerialDataCallback, SysStatusCallback, RadioCallback, MissionProgressCallback, EkfCallback, VibrationCallback, ServoOutputCallback, WindCallback, TerrainCallback, MagCalProgressCallback, MagCalReportCallback, AccelCalPosCallback, HomePositionCallback, AutopilotVersionCallback, PowerStatusCallback, DistanceSensorCallback, FenceStatusCallback, NavControllerCallback, ScaledImuCallback, ScaledPressureCallback, EstimatorStatusCallback, CameraTriggerCallback, LinkStateCallback, LocalPositionCallback, DebugCallback, GimbalAttitudeCallback, ObstacleDistanceCallback, AdsbVehicleCallback, CameraImageCapturedCallback, ExtendedSysStateCallback, FencePointCallback, SystemTimeCallback, RawImuCallback, RcChannelsRawCallback, RcChannelsOverrideCallback, MissionItemCallback, AltitudeCallback, WindCovCallback, AisVesselCallback, GimbalManagerInfoCallback, GimbalManagerStatusCallback, CanFrameCallback, CanFdFrameCallback, OpticalFlowCallback, OpticalFlowRadCallback, OdometryCallback, VisionPositionEstimateCallback, VisionPositionDeltaCallback, ACFlyK9EscTelemetryCallback, ACFlyK9PayloadTelemetryCallback, ACFlyK9MissionCurrentCallback } from '../callbacks';
 
 /** Telemetry subscription members of {@link DroneProtocol}. */
 export interface DroneProtocolSubscriptions {
@@ -69,6 +69,12 @@ export interface DroneProtocolSubscriptions {
   onGimbalManagerStatus?(callback: GimbalManagerStatusCallback): () => void;
   onCanFrame?(callback: CanFrameCallback): () => void;
   onCanFdFrame?(callback: CanFdFrameCallback): () => void;
+  /** ACFly K9 CAN ESC telemetry from COMPONENT_EXTENSION43 message_type 80. */
+  onACFlyK9EscTelemetry?(callback: ACFlyK9EscTelemetryCallback): () => void;
+  /** ACFly K9 winch/payload telemetry from COMPONENT_EXTENSION43 message_type 81. */
+  onACFlyK9PayloadTelemetry?(callback: ACFlyK9PayloadTelemetryCallback): () => void;
+  /** ACFly K9 MISSION_CURRENT extensions, including resume vector and leg data. */
+  onACFlyK9MissionCurrent?(callback: ACFlyK9MissionCurrentCallback): () => void;
 
   // ── CAN passthrough ──────────────────────────────────────
   /** Enable MAVLink CAN_FORWARD on the given bus (1 or 2; 0 disables). */

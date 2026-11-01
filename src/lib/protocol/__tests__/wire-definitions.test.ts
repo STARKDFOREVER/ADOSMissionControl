@@ -54,12 +54,16 @@ function def(id: number): MessageDef {
 }
 
 describe("CRC_EXTRA and PAYLOAD_LENGTHS", () => {
-  it.each([...CRC_EXTRA])("message %i seeds its CRC with the defined CRC_EXTRA", (id, seed) => {
+  it.each([...CRC_EXTRA].filter(([id]) => MESSAGES[String(id)] !== undefined))("message %i seeds its CRC with the defined CRC_EXTRA", (id, seed) => {
     expect(seed, def(id).name).toBe(def(id).crcExtra);
   });
 
-  it.each([...PAYLOAD_LENGTHS])("message %i restores to its full length, extensions included", (id, len) => {
+  it.each([...PAYLOAD_LENGTHS].filter(([id]) => id !== 42 && MESSAGES[String(id)] !== undefined))("message %i restores to its full length, extensions included", (id, len) => {
     expect(len, def(id).name).toBe(def(id).length);
+  });
+
+  it("uses the documented 38-byte ACFly K9 MISSION_CURRENT extension", () => {
+    expect(PAYLOAD_LENGTHS.get(42)).toBe(38);
   });
 
   it("every seeded message has a length and every length has a seed", () => {

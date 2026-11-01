@@ -11,6 +11,7 @@ export type FirmwareType =
   | "ardupilot-rover"
   | "ardupilot-sub"
   | "px4"
+  | "acfly-k9"
   | "betaflight"
   | "inav"
   | "unknown";
@@ -33,6 +34,7 @@ export type UnifiedFlightMode =
   | "LAND"
   | "CIRCLE"
   | "POSHOLD"
+  | "ACFLYK9_POSHOLD_AVOID"
   | "AUTOTUNE"
   | "MANUAL"
   // ArduPlane specific

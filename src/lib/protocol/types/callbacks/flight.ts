@@ -67,3 +67,19 @@ export type MissionProgressCallback = (data: {
   currentSeq: number;
   reachedSeq?: number;
 }) => void;
+
+export type ACFlyK9MissionCurrentCallback = (data: {
+  timestamp: number;
+  seq: number;
+  resumeSeq: number;
+  /** Channel 2 value in the documented range 0-10000; INT16_MAX is invalid. */
+  flag?: number;
+  heading: number;
+  vectorX: number;
+  vectorY: number;
+  vectorZ: number;
+  distance: number;
+  triggerInterval: number;
+  speed: number;
+  radius: number;
+}) => void;

@@ -48,6 +48,7 @@ export async function connectWithDetection(transport: Transport): Promise<{
   // variant only names the family, and an unmodeled MSP board is still MSP.
   const adapter = await createProtocolAdapter(detection.protocol === "msp" ? "msp" : "mavlink");
   const vehicleInfo = await adapter.connect(transport);
+  const resolvedVehicleInfo = adapter.getVehicleInfo() ?? vehicleInfo;
 
-  return { adapter, vehicleInfo, firmwareType: detection.firmwareType };
+  return { adapter, vehicleInfo: resolvedVehicleInfo, firmwareType: resolvedVehicleInfo.firmwareType };
 }

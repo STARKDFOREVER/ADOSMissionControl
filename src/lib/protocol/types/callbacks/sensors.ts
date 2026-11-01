@@ -108,3 +108,41 @@ export type DebugCallback = (data: DebugData) => void;
 export type GimbalAttitudeCallback = (data: GimbalData) => void;
 
 export type ObstacleDistanceCallback = (data: ObstacleData) => void;
+
+export interface ACFlyK9EscTelemetry {
+  timestamp: number;
+  motorId: number;
+  errorFlags: number;
+  rpm: number;
+  voltage: number;
+  current: number;
+  /** Degrees Celsius; absent when the protocol reports INT16_MAX. */
+  escTemperature?: number;
+  /** Degrees Celsius; absent when the protocol reports INT16_MAX. */
+  motorTemperature?: number;
+}
+
+export type ACFlyK9EscTelemetryCallback = (data: ACFlyK9EscTelemetry) => void;
+
+export interface ACFlyK9PayloadTelemetry {
+  timestamp: number;
+  moduleId: number;
+  statusFlags: number;
+  hookLocked: boolean;
+  weightExceeded: boolean;
+  winchAtUpperLimit: boolean;
+  winchAtLowerLimit: boolean;
+  fuseActive: boolean;
+  cargoWeightKg: number;
+  totalWeightKg: number;
+  ropeLengthCm: number;
+  speedCmPerSecond: number;
+  /** Degrees Celsius; absent when the protocol reports INT16_MAX. */
+  fuseTemperature?: number;
+  maximumLoadKg: number;
+  maximumRopeLengthCm: number;
+  maximumUpSpeedCmPerSecond: number;
+  maximumDownSpeedCmPerSecond: number;
+}
+
+export type ACFlyK9PayloadTelemetryCallback = (data: ACFlyK9PayloadTelemetry) => void;

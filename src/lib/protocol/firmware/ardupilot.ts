@@ -17,6 +17,7 @@ import type {
 import { px4Handler, createPX4Handler, px4VehicleClassFromMavType } from './px4'
 import { betaflightHandler } from './betaflight'
 import { inavHandler } from './inav'
+import { acflyK9Handler } from './acfly-k9'
 import { GenericHandler } from './generic-handler'
 import { MAV_AUTOPILOT, MAV_TYPE, ARDUPILOT_CAPABILITIES } from './ardupilot-capabilities'
 
@@ -344,6 +345,8 @@ export function createFirmwareHandlerByType(firmwareType: FirmwareType): Firmwar
       return new ArduSubHandler()
     case 'px4':
       return px4Handler
+    case 'acfly-k9':
+      return acflyK9Handler
     case 'betaflight':
       return betaflightHandler
     case 'inav':

@@ -14,7 +14,11 @@ const created: string[] = [];
 vi.mock("../select-fc-adapter", () => ({
   createProtocolAdapter: async (protocol: string) => {
     created.push(protocol);
-    return { connect: async () => ({ firmwareType: "unknown" }) };
+    const vehicleInfo = { firmwareType: "unknown" };
+    return {
+      connect: async () => vehicleInfo,
+      getVehicleInfo: () => vehicleInfo,
+    };
   },
 }));
 

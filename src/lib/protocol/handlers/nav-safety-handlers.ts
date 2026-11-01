@@ -9,7 +9,7 @@ import type {
   EkfCallback, VibrationCallback, ServoOutputCallback,
   WindCallback, TerrainCallback, HomePositionCallback,
   DistanceSensorCallback, FenceStatusCallback, NavControllerCallback,
-  FencePointCallback, MissionProgressCallback,
+  FencePointCallback, MissionProgressCallback, ACFlyK9MissionCurrentCallback,
   WindCovCallback, MissionItemCallback, AdsbVehicleCallback,
 } from '../types'
 import {
@@ -17,6 +17,7 @@ import {
   decodeWind, decodeTerrainReport, decodeHomePosition,
   decodeDistanceSensor, decodeFenceStatus, decodeNavControllerOutput,
   decodeFencePoint, decodeMissionCurrent, decodeMissionItemReached,
+  decodeACFlyK9MissionCurrent,
   decodeWindCov, decodeMissionItem, decodeAdsbVehicle,
 } from '../messages'
 
@@ -161,6 +162,29 @@ export function handleMissionCurrent(payload: DataView, callbacks: MissionProgre
   const data = decodeMissionCurrent(payload)
   for (const cb of callbacks) {
     cb({ currentSeq: data.seq })
+  }
+}
+
+export function handleACFlyK9MissionCurrent(
+  payload: DataView,
+  callbacks: ACFlyK9MissionCurrentCallback[],
+): void {
+  const data = decodeACFlyK9MissionCurrent(payload)
+  for (const cb of callbacks) {
+    cb({
+      timestamp: Date.now(),
+      seq: data.seq,
+      resumeSeq: data.resumeSeq,
+      flag: data.flag === 0x7fff ? undefined : data.flag,
+      heading: data.heading,
+      vectorX: data.vectorX,
+      vectorY: data.vectorY,
+      vectorZ: data.vectorZ,
+      distance: data.distance,
+      triggerInterval: data.triggerInterval,
+      speed: data.speed,
+      radius: data.radius,
+    })
   }
 }
 

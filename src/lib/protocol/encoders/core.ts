@@ -4,6 +4,7 @@
  */
 
 import { buildFrame } from "./frame";
+import { setU8, writeI32 } from "./bounds";
 
 // ── Heartbeat (ID 0) ────────────────────────────────────────
 
@@ -12,15 +13,16 @@ import { buildFrame } from "./frame";
  *
  * Sent at 1 Hz to keep the link alive.
  * type=6 (MAV_TYPE_GCS), autopilot=8 (MAV_AUTOPILOT_INVALID),
- * baseMode=0, customMode=0, systemStatus=4 (MAV_STATE_ACTIVE).
+ * customMode=0, systemStatus=4 (MAV_STATE_ACTIVE). ACFly K9 requires
+ * baseMode=192; other firmware keeps the MAVLink default of 0.
  */
-export function encodeHeartbeat(sysId = 255, compId = 190): Uint8Array {
+export function encodeHeartbeat(sysId = 255, compId = 190, baseMode = 0): Uint8Array {
   const payload = new Uint8Array(9);
   const dv = new DataView(payload.buffer);
   dv.setUint32(0, 0, true);   // customMode
   payload[4] = 6;             // type = GCS
   payload[5] = 8;             // autopilot = INVALID
-  payload[6] = 0;             // baseMode
+  payload[6] = baseMode;      // baseMode
   payload[7] = 4;             // systemStatus = ACTIVE
   payload[8] = 3;             // mavlinkVersion = v2
   return buildFrame(0, payload, sysId, compId);
@@ -106,6 +108,60 @@ export function encodeCommandInt(
   payload[33] = current;
   payload[34] = autocontinue;
   return buildFrame(75, payload, sysId, compId);
+}
+
+/**
+ * Encode the ACFly K9 SET_HOME_POSITION dialect layout (ID 243).
+ * K9 specifies approach coordinates as int32 bit patterns in float fields.
+ */
+export function encodeACFlyK9SetHomePosition(
+  latitudeE7: number,
+  longitudeE7: number,
+  altitudeMm: number,
+  targetSys: number,
+  timeUsec: number,
+  approach?: { latitudeE7: number; longitudeE7: number; altitudeMm: number },
+  sysId = 255,
+  compId = 190,
+): Uint8Array {
+  const payload = new Uint8Array(61);
+  const dv = new DataView(payload.buffer);
+  if (latitudeE7 < -900_000_000 || latitudeE7 > 900_000_000) {
+    throw new RangeError(`ACFly K9 home latitude: expected -900000000..900000000, received ${latitudeE7}`);
+  }
+  if (longitudeE7 < -1_800_000_000 || longitudeE7 > 1_800_000_000) {
+    throw new RangeError(`ACFly K9 home longitude: expected -1800000000..1800000000, received ${longitudeE7}`);
+  }
+  if (!Number.isSafeInteger(timeUsec) || timeUsec < 0) {
+    throw new RangeError(`ACFly K9 home timestamp: expected a non-negative safe integer, received ${timeUsec}`);
+  }
+  const approachLatitudeE7 = approach?.latitudeE7 ?? 0;
+  const approachLongitudeE7 = approach?.longitudeE7 ?? 0;
+  const approachAltitudeMm = approach?.altitudeMm ?? 0;
+  if (approachLatitudeE7 < -900_000_000 || approachLatitudeE7 > 900_000_000) {
+    throw new RangeError(`ACFly K9 approach latitude: expected -900000000..900000000, received ${approachLatitudeE7}`);
+  }
+  if (approachLongitudeE7 < -1_800_000_000 || approachLongitudeE7 > 1_800_000_000) {
+    throw new RangeError(`ACFly K9 approach longitude: expected -1800000000..1800000000, received ${approachLongitudeE7}`);
+  }
+  if (!Number.isFinite(approachAltitudeMm)) {
+    throw new RangeError(`ACFly K9 approach altitude must be finite; received ${approachAltitudeMm}`);
+  }
+  writeI32(dv, 0, latitudeE7, "ACFly K9 home latitude");
+  writeI32(dv, 4, longitudeE7, "ACFly K9 home longitude");
+  writeI32(dv, 8, altitudeMm, "ACFly K9 home altitude");
+  dv.setFloat32(12, 0, true);
+  dv.setFloat32(16, 0, true);
+  dv.setFloat32(20, 0, true);
+  for (let i = 0; i < 4; i++) dv.setFloat32(24 + i * 4, 0, true);
+  writeI32(dv, 40, approachLatitudeE7, "ACFly K9 approach latitude");
+  writeI32(dv, 44, approachLongitudeE7, "ACFly K9 approach longitude");
+  dv.setFloat32(48, approachAltitudeMm, true);
+  setU8(payload, 52, targetSys, "ACFly K9 target system");
+  const time = timeUsec;
+  dv.setUint32(53, time >>> 0, true);
+  dv.setUint32(57, Math.floor(time / 0x100000000), true);
+  return buildFrame(243, payload, sysId, compId);
 }
 
 // ── SET_MODE (ID 11) ────────────────────────────────────────

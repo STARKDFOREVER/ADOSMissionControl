@@ -12,9 +12,12 @@ import type {
   EstimatorStatusCallback, LocalPositionCallback,
   RawImuCallback, RcChannelsRawCallback, RcChannelsOverrideCallback,
   AltitudeCallback,
+  ACFlyK9EscTelemetryCallback, ACFlyK9PayloadTelemetryCallback,
 } from '../types'
 import {
   decodeAttitude, decodeGlobalPositionInt, decodeBatteryStatus,
+  decodeACFlyK9BatteryStatus,
+  decodeACFlyK9ComponentExtension43,
   decodeGpsRawInt, decodeVfrHud, decodeRcChannels, decodeSysStatus,
   decodeRadioStatus, decodePowerStatus, decodeScaledImu, decodeScaledPressure,
   decodeEstimatorStatus, decodeLocalPositionNed,
@@ -99,6 +102,71 @@ export function handleBattery(payload: DataView, callbacks: BatteryCallback[]): 
       ...(perCell ? { cellCount: allSlots.length } : {}),
     })
   }
+}
+
+export function handleACFlyK9Battery(payload: DataView, callbacks: BatteryCallback[]): void {
+  const data = decodeACFlyK9BatteryStatus(payload)
+  if (data.voltage === 0xffffffff) return
+
+  // The protocol's cell-voltage unit conflicts with its worked example, so
+  // only publish pack voltage, whose unit is stated independently.
+  for (const cb of callbacks) {
+    cb({
+      timestamp: Date.now(),
+      id: data.id,
+      voltage: data.voltage / 10, // 100 mV → V
+      current: data.current / 10, // 100 mA → A
+      remaining: data.remainingPercentage,
+      temperature: data.temperature === 0x7fff ? undefined : data.temperature,
+      cellCount: data.cellCount === 0xff ? undefined : data.cellCount,
+    })
+  }
+}
+
+export function handleACFlyK9ComponentExtension43(
+  payload: DataView,
+  escCallbacks: ACFlyK9EscTelemetryCallback[],
+  payloadCallbacks: ACFlyK9PayloadTelemetryCallback[],
+): void {
+  const data = decodeACFlyK9ComponentExtension43(payload)
+  if (!data) return
+
+  if (data.messageType === 80) {
+    const temperature = (value: number) => value === 0x7fff ? undefined : value / 10
+    const telemetry = {
+      timestamp: Date.now(),
+      motorId: data.motorId,
+      errorFlags: data.errorFlags,
+      rpm: data.rpm,
+      voltage: data.voltage,
+      current: data.current,
+      escTemperature: temperature(data.escTemperature),
+      motorTemperature: temperature(data.motorTemperature),
+    }
+    for (const cb of escCallbacks) cb(telemetry)
+    return
+  }
+
+  const telemetry = {
+    timestamp: Date.now(),
+    moduleId: data.moduleId,
+    statusFlags: data.statusFlags,
+    hookLocked: data.hookLocked,
+    weightExceeded: data.weightExceeded,
+    winchAtUpperLimit: data.winchAtUpperLimit,
+    winchAtLowerLimit: data.winchAtLowerLimit,
+    fuseActive: data.fuseActive,
+    cargoWeightKg: data.cargoWeightKg,
+    totalWeightKg: data.totalWeightKg,
+    ropeLengthCm: data.ropeLengthCm,
+    speedCmPerSecond: data.speedCmPerSecond,
+    fuseTemperature: data.fuseTemperature === 0x7fff ? undefined : data.fuseTemperature / 10,
+    maximumLoadKg: data.maximumLoadKg,
+    maximumRopeLengthCm: data.maximumRopeLengthCm,
+    maximumUpSpeedCmPerSecond: data.maximumUpSpeedCmPerSecond,
+    maximumDownSpeedCmPerSecond: data.maximumDownSpeedCmPerSecond,
+  }
+  for (const cb of payloadCallbacks) cb(telemetry)
 }
 
 export function handleGpsRaw(payload: DataView, callbacks: GpsCallback[]): void {
