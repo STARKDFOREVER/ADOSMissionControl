@@ -7,12 +7,13 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { fcFirmwareLabel } from "../fc-firmware-label";
+import { fcFirmwareLabel, fcFlavorLabel } from "../fc-firmware-label";
 
 describe("fcFirmwareLabel", () => {
   it("names the two MAVLink stacks distinctly", () => {
     expect(fcFirmwareLabel("ardupilot")).toBe("ArduPilot");
     expect(fcFirmwareLabel("px4")).toBe("PX4");
+    expect(fcFirmwareLabel("acfly-k9")).toBe("ACFly K9");
   });
 
   it("normalises vehicle-suffixed ArduPilot families to ArduPilot", () => {
@@ -48,5 +49,9 @@ describe("fcFirmwareLabel", () => {
     expect(fcFirmwareLabel("unknown")).toBeUndefined();
     expect(fcFirmwareLabel("", "")).toBeUndefined();
     expect(fcFirmwareLabel("gizmo")).toBeUndefined();
+  });
+
+  it("does not append an unknown airframe to a recognized firmware name", () => {
+    expect(fcFlavorLabel("acfly-k9", undefined, "unknown")).toBe("ACFly K9");
   });
 });

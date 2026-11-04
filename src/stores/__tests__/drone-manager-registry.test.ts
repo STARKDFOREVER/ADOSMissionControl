@@ -122,7 +122,7 @@ describe("drone-manager <-> node-registry lifecycle", () => {
       firmwareType: "acfly-k9",
       firmwareVersionString: "1.2.3",
     });
-    expect(drone?.name).toBe(`1.2.3 (${vehicleInfo.vehicleClass})`);
+    expect(drone?.name).toBe("ACFly K9 (1.2.3)");
   });
 
   it("addDrone attaches a direct FC to the registry so it projects a fleet card", async () => {

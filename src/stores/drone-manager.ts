@@ -379,7 +379,11 @@ export const useDroneManager = create<DroneManagerState>((set, get) => ({
     }
     const previousAutoName = `${info.firmwareVersionString} (${info.vehicleClass})`;
     if (drone.name === previousAutoName || drone.name.startsWith(`${previousAutoName} `)) {
-      drone.name = `${firmwareVersionString} (${vehicleClass})${drone.name.slice(previousAutoName.length)}`;
+      const identityName =
+        firmwareType === "acfly-k9"
+          ? `ACFly K9 (${firmwareVersionString})`
+          : `${firmwareVersionString} (${vehicleClass})`;
+      drone.name = `${identityName}${drone.name.slice(previousAutoName.length)}`;
     }
     drone.vehicleInfo = { ...info, boardId, firmwareVersionString, firmwareType, vehicleClass };
     if (drone.connectionMeta && vehicle) {

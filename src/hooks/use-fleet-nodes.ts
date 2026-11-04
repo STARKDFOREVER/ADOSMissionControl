@@ -55,6 +55,8 @@ export interface FleetNodeEntry extends PairedDrone {
   /** True when the FC transport is open (live command-fleet status). With an
    * MSP fcVariant this is the honest "reachable MSP FC" signal. */
   transportOpen?: boolean;
+  /** True when a direct MAVLink adapter connected after receiving a heartbeat. */
+  mavlinkAlive?: boolean;
   /** True when this row is a live direct-connect flight controller (USB /
    * serial / TCP / BT / WS) with no agent or pairing identity — a transient
    * connection, present only while its transport is open. Drives always-live
@@ -92,6 +94,7 @@ export function enrichNodeWithLiveFc(
     fcFirmware: status.fcFirmware ?? node.fcFirmware,
     frameType: status.frameType ?? node.frameType,
     transportOpen: status.transportOpen ?? node.transportOpen,
+    mavlinkAlive: status.mavlinkAlive ?? node.mavlinkAlive,
     board: status.boardName ?? node.board,
     tier: status.boardTier ?? node.tier,
   };
@@ -179,6 +182,7 @@ export function mergeFleetNodes(
 export function adaptDirectFc(d: ManagedDrone): FleetNodeEntry {
   const connected = d.protocol.isConnected;
   const fw = d.vehicleInfo.firmwareType;
+  const isMsp = d.protocol.protocolName === "msp";
   return {
     _id: d.id,
     convexId: undefined,
@@ -200,8 +204,10 @@ export function adaptDirectFc(d: ManagedDrone): FleetNodeEntry {
     isLocal: false,
     isDirectFc: true,
     fcFirmware: fw,
+    fcVariant: isMsp && (fw === "betaflight" || fw === "inav") ? fw : undefined,
     frameType: d.vehicleInfo.vehicleClass,
     transportOpen: connected,
+    mavlinkAlive: connected && !isMsp,
   };
 }
 

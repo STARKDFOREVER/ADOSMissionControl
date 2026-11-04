@@ -256,14 +256,16 @@ function DroneBody({
     fcVariant: node.fcVariant,
     fcFirmware: node.fcFirmware,
     transportOpen: node.transportOpen,
-    mavlinkAlive: status?.mavlinkAlive,
+    mavlinkAlive: status?.mavlinkAlive ?? node.mavlinkAlive,
   });
   const flav = fcFlavorLabel(node.fcFirmware, node.fcVariant, node.frameType);
   const portBaud =
     status?.transportOpen !== false && status?.fcPort
       ? `${status.fcPort}${status.fcBaud ? ` @ ${status.fcBaud}` : ""}`
       : null;
-  const hbGated = status?.transportOpen !== undefined || status?.mavlinkAlive !== undefined;
+  const hbGated =
+    !node.isDirectFc &&
+    (status?.transportOpen !== undefined || status?.mavlinkAlive !== undefined);
   const showHeartbeat = hbGated && link.level !== "warning" && !link.label.includes("(MSP)");
 
   const hasCompanion = !!node.board;

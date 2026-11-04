@@ -171,6 +171,7 @@ describe("adaptDirectFc", () => {
     expect(e.fcFirmware).toBe("betaflight");
     expect(e.frameType).toBe("copter");
     expect(e.fcConnected).toBe(true);
+    expect(e.mavlinkAlive).toBe(true);
   });
 
   it("reports the transport connected state on fcConnected/transportOpen", () => {
@@ -179,6 +180,18 @@ describe("adaptDirectFc", () => {
     );
     expect(e.fcConnected).toBe(false);
     expect(e.transportOpen).toBe(false);
+    expect(e.mavlinkAlive).toBe(false);
+  });
+
+  it("does not label a connected MSP controller as a live MAVLink link", () => {
+    const e = adaptDirectFc(
+      managedFc({
+        protocol: { isConnected: true, protocolName: "msp" } as ManagedDrone["protocol"],
+      }),
+    );
+
+    expect(e.mavlinkAlive).toBe(false);
+    expect(e.fcVariant).toBe("betaflight");
   });
 });
 
