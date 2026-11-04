@@ -193,7 +193,8 @@ export class MAVLinkAdapter implements DroneProtocol {
     this.st.lastVehicleHeartbeat = Date.now(); this.st.linkIsLost = false
     this.linkLostCheckInterval = setInterval(() => checkLinkState(this.st), 1000)
     this.sendCommandLong(512, [242, 0, 0, 0, 0, 0, 0]).catch(() => {})
-    this.sendCommandLong(512, [148, 0, 0, 0, 0, 0, 0]).catch(() => {})
+    // ACFly K9 answers command 520 with AUTOPILOT_VERSION; it ignores REQUEST_MESSAGE(148).
+    this.sendCommandLong(520, [1, 0, 0, 0, 0, 0, 0]).catch(() => {})
     // COMPONENT_METADATA (397) is a PX4-only "component information" message;
     // ArduPilot does not implement it, so only request it for PX4 vehicles.
     if (this.st.firmwareHandler?.firmwareType === 'px4') {

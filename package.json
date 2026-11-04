@@ -6,7 +6,7 @@
   "description": "Altnautica Command — Open-source Ground Control Station for autonomous drones",
   "main": "dist-electron/main.js",
   "scripts": {
-    "copy:cesium": "rm -rf public/cesium && cp -R node_modules/cesium/Build/Cesium public/cesium",
+    "copy:cesium": "node scripts/copy-cesium-assets.mjs",
     "predev": "npm run copy:cesium && node scripts/fetch-basemap-assets.mjs",
     "prebuild": "npm run copy:cesium && node scripts/fetch-basemap-assets.mjs --strict",
     "predemo": "npm run copy:cesium && node scripts/fetch-basemap-assets.mjs",

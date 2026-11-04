@@ -237,6 +237,7 @@ describe("SerialPanel connect bookkeeping", () => {
     await waitFor(() => expect(h.save).toHaveBeenCalledTimes(1));
     expect(h.save.mock.calls[0][0]).toMatchObject({
       type: "serial",
+      baudRate: 57600,
       firmwareType: "ardupilot-copter",
       portVendorId: 0x1209,
       portProductId: 0x5741,

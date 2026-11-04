@@ -18,7 +18,7 @@
  * disarmed and never a confident armed / in-mission.
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 
 import { useDroneManager } from "../drone-manager";
 import { useDroneStore } from "../drone-store";
@@ -93,6 +93,36 @@ describe("drone-manager <-> node-registry lifecycle", () => {
       firmwareType: "acfly-k9",
       vehicle: { firmwareType: "acfly-k9" },
     });
+    expect(drone?.name).toBe("ACFly K9");
+  });
+
+  it("catches up on an identity reply received before store registration", async () => {
+    const { protocol, transport, vehicleInfo } = await makeDrone();
+    const identifiedInfo: VehicleInfo = {
+      ...vehicleInfo,
+      boardId: 5,
+      firmwareType: "acfly-k9",
+      firmwareVersionString: "1.2.3",
+    };
+    vi.spyOn(protocol, "getVehicleInfo").mockReturnValue(identifiedInfo);
+    const initialName = `${vehicleInfo.firmwareVersionString} (${vehicleInfo.vehicleClass})`;
+
+    useDroneManager.getState().addDrone(
+      "fc-early-k9",
+      initialName,
+      protocol,
+      transport,
+      vehicleInfo,
+      { type: "serial", firmwareType: vehicleInfo.firmwareType },
+    );
+
+    const drone = useDroneManager.getState().drones.get("fc-early-k9");
+    expect(drone?.vehicleInfo).toMatchObject({
+      boardId: 5,
+      firmwareType: "acfly-k9",
+      firmwareVersionString: "1.2.3",
+    });
+    expect(drone?.name).toBe(`1.2.3 (${vehicleInfo.vehicleClass})`);
   });
 
   it("addDrone attaches a direct FC to the registry so it projects a fleet card", async () => {

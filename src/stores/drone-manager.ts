@@ -263,6 +263,11 @@ export const useDroneManager = create<DroneManagerState>((set, get) => ({
       newMap.set(id, drone);
       return { drones: newMap };
     });
+    // A version reply can arrive between connect() returning and this store
+    // registration. Reconcile the protocol's latest identity after listeners
+    // are installed so that early replies are not lost.
+    const latestVehicleInfo = protocol.getVehicleInfo();
+    if (latestVehicleInfo) get().updateVehicleIdentity(id, latestVehicleInfo);
 
     useDiagnosticsStore.getState().logConnection("connect", name + " connected");
 
@@ -371,6 +376,10 @@ export const useDroneManager = create<DroneManagerState>((set, get) => ({
       (!drone.connectionMeta || drone.connectionMeta.firmwareType === firmwareType)
     ) {
       return;
+    }
+    const previousAutoName = `${info.firmwareVersionString} (${info.vehicleClass})`;
+    if (drone.name === previousAutoName || drone.name.startsWith(`${previousAutoName} `)) {
+      drone.name = `${firmwareVersionString} (${vehicleClass})${drone.name.slice(previousAutoName.length)}`;
     }
     drone.vehicleInfo = { ...info, boardId, firmwareVersionString, firmwareType, vehicleClass };
     if (drone.connectionMeta && vehicle) {

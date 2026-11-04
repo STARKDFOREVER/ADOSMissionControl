@@ -192,6 +192,16 @@ describe("command path honesty", () => {
 });
 
 describe("firmware identification", () => {
+  it("requests AUTOPILOT_VERSION through the capabilities command on connect", async () => {
+    const { link } = await connected();
+    const requestsVersion = link.frames(COMMAND_LONG).some((frame) => {
+      const payload = new DataView(frame.buffer, frame.byteOffset + 10);
+      return payload.getFloat32(0, true) === 1 && payload.getUint16(28, true) === 520;
+    });
+
+    expect(requestsVersion).toBe(true);
+  });
+
   it("switches the active firmware handler when AUTOPILOT_VERSION identifies an ACFly K9", async () => {
     const { adapter, link } = await connected();
     expect(adapter.getFirmwareHandler()?.firmwareType).toBe("ardupilot-copter");

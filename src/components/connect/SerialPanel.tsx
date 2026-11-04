@@ -40,7 +40,7 @@ export function SerialPanel({
 }) {
   const t = useTranslations("connect");
   const [mounted, setMounted] = useState(false);
-  const [localBaudRate, setLocalBaudRate] = useState("115200");
+  const [localBaudRate, setLocalBaudRate] = useState("57600");
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [knownPorts, setKnownPorts] = useState<PortInfo[]>([]);
