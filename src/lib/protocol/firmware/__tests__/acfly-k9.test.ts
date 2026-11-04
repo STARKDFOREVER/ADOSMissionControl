@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { asFlightMode } from '@/lib/flight-mode'
 import { createFirmwareHandlerByType } from '../ardupilot'
 import { acflyK9Handler, packACFlyK9FlightMode } from '../acfly-k9'
 
@@ -29,6 +30,11 @@ describe('ACFly K9 firmware handler', () => {
     })
     expect(() => acflyK9Handler.encodeFlightMode('TAKEOFF')).toThrow()
     expect(() => acflyK9Handler.encodeFlightMode('AUTO')).toThrow()
+  })
+
+  it('preserves the K9 avoidance mode through flight-mode validation', () => {
+    const decoded = acflyK9Handler.decodeFlightMode(packACFlyK9FlightMode(3, 2))
+    expect(asFlightMode(decoded)).toBe('ACFLYK9_POSHOLD_AVOID')
   })
 
   it('exposes only protocol-documented K9 capabilities and the 10 Hz stick rate', () => {

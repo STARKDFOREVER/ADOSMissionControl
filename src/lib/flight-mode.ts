@@ -46,6 +46,7 @@ export const KNOWN_FLIGHT_MODES: ReadonlySet<string> = new Set<FlightMode>([
   "LAND",
   "CIRCLE",
   "POSHOLD",
+  "ACFLYK9_POSHOLD_AVOID",
   "AUTOTUNE",
   "MANUAL",
   // ArduPlane
