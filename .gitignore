@@ -45,6 +45,7 @@ next-env.d.ts
 # electron
 /dist-electron
 /release
+/electron-v44.10.1-win32-x64.zip
 
 # cesium static assets (copied from node_modules by predev/prebuild)
 /public/cesium
